@@ -3,6 +3,7 @@ import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { AllocationBar } from '@/components/AllocationBar';
@@ -28,13 +29,13 @@ function computeHoldingCost(holding: Holding): number {
 
 export default function HomeScreen() {
   const colors = useColors();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { holdings } = useHoldings();
   const { data: prices, isLoading, refetch } = useMarketPrices();
 
   const summary = useMemo(() => {
-    let goldValue = 0, silverValue = 0, stockValue = 0, realEstateValue = 0;
-    let totalCost = 0;
+    let goldValue = 0, silverValue = 0, stockValue = 0, realEstateValue = 0, totalCost = 0;
     for (const h of holdings) {
       const v = computeHoldingValue(h, prices);
       const c = computeHoldingCost(h);
@@ -71,15 +72,18 @@ export default function HomeScreen() {
     >
       <View style={styles.header}>
         <View>
-          <Text style={[styles.greeting, { color: colors.mutedForeground }]}>استثمارك</Text>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Portfolio</Text>
+          <Text style={[styles.greeting, { color: colors.mutedForeground }]}>{t.appName}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t.portfolio}</Text>
         </View>
-        <View style={[styles.statusDot, { backgroundColor: colors.green }]} />
+        <View style={[styles.liveBadge, { backgroundColor: colors.green + '1A', borderColor: colors.green + '44' }]}>
+          <View style={[styles.liveDot, { backgroundColor: colors.green }]} />
+          <Text style={[styles.liveText, { color: colors.green }]}>{t.live}</Text>
+        </View>
       </View>
 
       {/* Total Value Hero */}
       <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>Total Portfolio Value</Text>
+        <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>{t.totalPortfolioValue}</Text>
         <Text style={[styles.heroValue, { color: colors.text }]}>
           {summary.totalValue.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
           <Text style={[styles.heroUnit, { color: colors.mutedForeground }]}> EGP</Text>
@@ -93,7 +97,10 @@ export default function HomeScreen() {
             </Text>
           </View>
         )}
+
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        {/* Live price quick stats */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={[styles.statVal, { color: colors.primary }]}>
@@ -118,16 +125,16 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Allocation bar */}
+      {/* Allocation Bar */}
       {summary.totalValue > 0 && (
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Allocation</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t.allocation}</Text>
           <AllocationBar
             segments={[
-              { label: 'Gold', value: summary.goldValue, color: colors.primary },
-              { label: 'Silver', value: summary.silverValue, color: colors.silverColor },
-              { label: 'Stocks', value: summary.stockValue, color: '#4A9EFF' },
-              { label: 'Real Estate', value: summary.realEstateValue, color: '#A47FCA' },
+              { label: t.gold, value: summary.goldValue, color: colors.primary },
+              { label: t.silver, value: summary.silverValue, color: colors.silverColor },
+              { label: t.egxStock, value: summary.stockValue, color: '#4A9EFF' },
+              { label: t.realEstate, value: summary.realEstateValue, color: '#A47FCA' },
             ]}
           />
         </View>
@@ -136,15 +143,13 @@ export default function HomeScreen() {
       {/* Top Holdings */}
       <View style={styles.holdingsSection}>
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-          {holdings.length > 0 ? 'TOP HOLDINGS' : 'HOLDINGS'}
+          {topHoldings.length > 0 ? t.topHoldings : t.holdings.toUpperCase()}
         </Text>
         {topHoldings.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="briefcase" size={28} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No investments yet</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Add your first holding from the Holdings tab
-            </Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noInvestmentsYet}</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.addFromHoldingsTab}</Text>
           </View>
         ) : (
           <View style={styles.holdingsList}>
@@ -161,27 +166,28 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 16 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   greeting: { fontSize: 13, fontFamily: 'Inter_400Regular', marginBottom: 2 },
   headerTitle: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
-  statusDot: { width: 8, height: 8, borderRadius: 4, marginTop: 14 },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
+  liveText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
   heroCard: { borderRadius: 20, padding: 20, borderWidth: 1, gap: 10 },
   heroLabel: { fontSize: 13, fontFamily: 'Inter_400Regular' },
   heroValue: { fontSize: 38, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   heroUnit: { fontSize: 18, fontFamily: 'Inter_400Regular' },
   gainBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
   },
   gainText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   divider: { height: 1, marginVertical: 2 },

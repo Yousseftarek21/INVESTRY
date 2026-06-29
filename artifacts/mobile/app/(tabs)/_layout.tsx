@@ -8,21 +8,27 @@ import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { useT } from "@/hooks/useTranslation";
 
 function NativeTabLayout() {
+  const t = useT();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "chart.pie", selected: "chart.pie.fill" }} />
-        <Label>Portfolio</Label>
+        <Label>{t.portfolio}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="markets">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Markets</Label>
+        <Label>{t.markets}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="holdings">
         <Icon sf={{ default: "briefcase", selected: "briefcase.fill" }} />
-        <Label>Holdings</Label>
+        <Label>{t.holdings}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="settings">
+        <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
+        <Label>{t.settings}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -30,6 +36,7 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
+  const t = useT();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
@@ -53,7 +60,7 @@ function ClassicTabLayout() {
           isIOS ? (
             <BlurView
               intensity={80}
-              tint={isDark ? "dark" : "dark"}
+              tint="dark"
               style={StyleSheet.absoluteFill}
             />
           ) : isWeb ? (
@@ -61,15 +68,19 @@ function ClassicTabLayout() {
               style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
+        tabBarLabelStyle: {
+          fontFamily: 'Inter_500Medium',
+          fontSize: 10,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Portfolio",
+          title: t.portfolio,
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="chart.pie" tintColor={color} size={22} />
+              <SymbolView name="chart.pie.fill" tintColor={color} size={22} />
             ) : (
               <Feather name="pie-chart" size={22} color={color} />
             ),
@@ -78,7 +89,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="markets"
         options={{
-          title: "Markets",
+          title: t.markets,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="chart.bar.fill" tintColor={color} size={22} />
@@ -90,12 +101,24 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="holdings"
         options={{
-          title: "Holdings",
+          title: t.holdings,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="briefcase.fill" tintColor={color} size={22} />
             ) : (
               <Feather name="briefcase" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: t.settings,
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="gearshape.fill" tintColor={color} size={22} />
+            ) : (
+              <Feather name="settings" size={22} color={color} />
             ),
         }}
       />

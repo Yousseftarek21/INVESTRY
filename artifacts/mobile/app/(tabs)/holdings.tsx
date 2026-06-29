@@ -5,28 +5,29 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding } from '@/types';
 
-const TYPE_LABELS: Record<Holding['type'], string> = {
-  gold: 'Gold — ذهب',
-  silver: 'Silver — فضة',
-  stock: 'EGX Stocks — أسهم',
-  real_estate: 'Real Estate — عقارات',
-};
-
 export default function HoldingsScreen() {
   const colors = useColors();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { holdings, removeHolding } = useHoldings();
   const { data: prices } = useMarketPrices();
 
+  const TYPE_LABELS: Record<Holding['type'], string> = {
+    gold: t.goldGroup,
+    silver: t.silverGroup,
+    stock: t.stockGroup,
+    real_estate: t.realEstateGroup,
+  };
+
   const grouped = holdings.reduce<Record<string, Holding[]>>((acc, h) => {
-    const key = h.type;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(h);
+    if (!acc[h.type]) acc[h.type] = [];
+    acc[h.type].push(h);
     return acc;
   }, {});
 
@@ -45,15 +46,13 @@ export default function HoldingsScreen() {
         contentContainerStyle={[styles.content, { paddingTop: topInsets + 16, paddingBottom: botInsets + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.screenTitle, { color: colors.text }]}>Holdings</Text>
+        <Text style={[styles.screenTitle, { color: colors.text }]}>{t.holdings}</Text>
 
         {holdings.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="briefcase" size={36} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No investments yet</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Tap the + button to add your first investment
-            </Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noHoldings}</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAdd}</Text>
           </View>
         ) : (
           Object.entries(grouped).map(([type, items]) => (
@@ -76,7 +75,6 @@ export default function HoldingsScreen() {
         )}
       </ScrollView>
 
-      {/* FAB */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary, bottom: botInsets + 80 }]}
         onPress={() => {
@@ -96,31 +94,16 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 20 },
   screenTitle: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
-  group: { gap: 10 },
+  group: { gap: 8 },
   groupLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1 },
   groupItems: { gap: 8 },
-  empty: {
-    borderRadius: 20,
-    padding: 40,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 20,
-  },
+  empty: { borderRadius: 20, padding: 40, borderWidth: 1, alignItems: 'center', gap: 10, marginTop: 20 },
   emptyTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', marginTop: 8 },
   emptySubtitle: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
   fab: {
-    position: 'absolute',
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#D4AC0D',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
+    position: 'absolute', right: 24, width: 56, height: 56,
+    borderRadius: 28, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#D4AC0D', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
   },
 });

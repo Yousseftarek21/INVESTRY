@@ -1,16 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { EGXStock, MarketPrices } from '@/types';
 
-const TROY_OZ_TO_GRAMS = 31.1035;
+export const TROY_OZ_TO_GRAMS = 31.1035;
 
-const FALLBACK_PRICES: MarketPrices = {
+const FALLBACK: MarketPrices = {
   goldUsd: 2350,
   silverUsd: 29.5,
   usdToEgp: 50.9,
+  goldChange: 0,
+  goldChangePercent: 0,
+  silverChange: 0,
+  silverChangePercent: 0,
   lastUpdated: new Date(),
 };
 
-const EGX_STOCKS: EGXStock[] = [
+const EGX_FALLBACK: EGXStock[] = [
   { symbol: 'COMI', name: 'Commercial Intl Bank', price: 95.80, change: 1.20, changePercent: 1.27 },
   { symbol: 'HRHO', name: 'EFG Hermes Holding', price: 35.50, change: -0.30, changePercent: -0.84 },
   { symbol: 'TMGH', name: 'Talaat Moustafa Group', price: 28.40, change: 0.55, changePercent: 1.98 },
@@ -21,41 +25,101 @@ const EGX_STOCKS: EGXStock[] = [
   { symbol: 'EKHO', name: 'EK Holding', price: 18.75, change: 0.45, changePercent: 2.46 },
 ];
 
+const YF_HEADERS = {
+  'Accept': 'application/json',
+  'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
+};
+
 async function fetchMarketPrices(): Promise<MarketPrices> {
-  const [forexRes, metalRes] = await Promise.allSettled([
-    fetch('https://api.exchangerate-api.com/v4/latest/USD', { headers: { Accept: 'application/json' } }),
-    fetch('https://forex-data-feed.swissquote.com/public-rest/v3/quotes?pairs=XAU/USD,XAG/USD', {
+  // Try Yahoo Finance for gold/silver/EGP in one call
+  const yfSymbols = 'GC%3DF%2CSI%3DF%2CUSDEGP%3DX';
+  const [yfRes, gpRes, erRes] = await Promise.allSettled([
+    fetch(`https://query2.finance.yahoo.com/v7/finance/quote?symbols=${yfSymbols}&lang=en-US&region=US`, {
+      headers: YF_HEADERS,
+    }),
+    fetch('https://data-asg.goldprice.org/dbXRates/USD', {
+      headers: { Accept: 'application/json' },
+    }),
+    fetch('https://open.er-api.com/v6/latest/USD', {
       headers: { Accept: 'application/json' },
     }),
   ]);
 
-  let usdToEgp = FALLBACK_PRICES.usdToEgp;
-  if (forexRes.status === 'fulfilled' && forexRes.value.ok) {
-    try {
-      const data = await forexRes.value.json();
-      if (data?.rates?.EGP) usdToEgp = data.rates.EGP;
-    } catch {
-      // use fallback
-    }
-  }
+  let goldUsd = FALLBACK.goldUsd;
+  let silverUsd = FALLBACK.silverUsd;
+  let usdToEgp = FALLBACK.usdToEgp;
+  let goldChange = 0;
+  let goldChangePercent = 0;
+  let silverChange = 0;
+  let silverChangePercent = 0;
 
-  let goldUsd = FALLBACK_PRICES.goldUsd;
-  let silverUsd = FALLBACK_PRICES.silverUsd;
-  if (metalRes.status === 'fulfilled' && metalRes.value.ok) {
+  // Parse Yahoo Finance (primary source — works on native without CORS)
+  if (yfRes.status === 'fulfilled' && yfRes.value.ok) {
     try {
-      const data = await metalRes.value.json();
-      if (Array.isArray(data)) {
-        for (const q of data) {
-          if (q.pair === 'XAU/USD' && q.bid) goldUsd = Number(q.bid);
-          if (q.pair === 'XAG/USD' && q.bid) silverUsd = Number(q.bid);
-        }
+      const data = await yfRes.value.json();
+      const results: any[] = data?.quoteResponse?.result ?? [];
+      for (const r of results) {
+        const sym: string = r.symbol ?? '';
+        const price = r.regularMarketPrice ?? 0;
+        const chg = r.regularMarketChange ?? 0;
+        const chgPct = r.regularMarketChangePercent ?? 0;
+        if (sym.includes('GC')) { goldUsd = price; goldChange = chg; goldChangePercent = chgPct; }
+        else if (sym.includes('SI')) { silverUsd = price; silverChange = chg; silverChangePercent = chgPct; }
+        else if (sym.includes('EGP')) { usdToEgp = price; }
       }
-    } catch {
-      // use fallback
-    }
+    } catch { /* use fallback */ }
   }
 
-  return { goldUsd, silverUsd, usdToEgp, lastUpdated: new Date() };
+  // Goldprice.org fallback for metals (web-friendly)
+  if (goldUsd === FALLBACK.goldUsd && gpRes.status === 'fulfilled' && gpRes.value.ok) {
+    try {
+      const data = await gpRes.value.json();
+      const item = data?.items?.[0];
+      if (item?.xauPrice) { goldUsd = item.xauPrice; goldChangePercent = item.pcXau ?? 0; }
+      if (item?.xagPrice) { silverUsd = item.xagPrice; silverChangePercent = item.pcXag ?? 0; }
+    } catch { /* use fallback */ }
+  }
+
+  // open.er-api fallback for exchange rate
+  if (usdToEgp === FALLBACK.usdToEgp && erRes.status === 'fulfilled' && erRes.value.ok) {
+    try {
+      const data = await erRes.value.json();
+      if (data?.rates?.EGP) usdToEgp = data.rates.EGP;
+    } catch { /* use fallback */ }
+  }
+
+  return { goldUsd, silverUsd, usdToEgp, goldChange, goldChangePercent, silverChange, silverChangePercent, lastUpdated: new Date() };
+}
+
+async function fetchEGXStocks(): Promise<EGXStock[]> {
+  const tickers = 'COMI.CA%2CHRHO.CA%2CTMGH.CA%2CORWE.CA%2CEAST.CA%2CORAS.CA%2CCLHO.CA%2CEKHO.CA';
+  try {
+    const res = await fetch(
+      `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${tickers}&lang=en-US&region=EG`,
+      { headers: YF_HEADERS }
+    );
+    if (!res.ok) throw new Error('YF stocks failed');
+    const data = await res.json();
+    const results: any[] = data?.quoteResponse?.result ?? [];
+    if (results.length === 0) throw new Error('no data');
+    return results.map(r => ({
+      symbol: (r.symbol ?? '').replace('.CA', ''),
+      name: r.shortName ?? r.longName ?? r.symbol ?? '',
+      price: r.regularMarketPrice ?? 0,
+      change: r.regularMarketChange ?? 0,
+      changePercent: r.regularMarketChangePercent ?? 0,
+    }));
+  } catch {
+    // Fallback with slight variation
+    return EGX_FALLBACK.map(s => {
+      const v = (Math.random() - 0.5) * 0.008 * s.price;
+      const p = parseFloat((s.price + v).toFixed(2));
+      const base = s.price - s.change;
+      const delta = parseFloat((p - base).toFixed(2));
+      const pct = parseFloat(((delta / base) * 100).toFixed(2));
+      return { ...s, price: p, change: delta, changePercent: pct };
+    });
+  }
 }
 
 export function useMarketPrices() {
@@ -63,30 +127,23 @@ export function useMarketPrices() {
     queryKey: ['market-prices'],
     queryFn: fetchMarketPrices,
     staleTime: 5 * 60 * 1000,
-    retry: 1,
-    placeholderData: FALLBACK_PRICES,
+    refetchInterval: 5 * 60 * 1000,
+    retry: 2,
+    placeholderData: FALLBACK,
   });
 }
 
 export function useEGXStocks() {
   return useQuery({
     queryKey: ['egx-stocks'],
-    queryFn: async (): Promise<EGXStock[]> => {
-      // Simulate realistic live variation ±0.5% from base
-      return EGX_STOCKS.map(s => {
-        const variation = (Math.random() - 0.5) * 0.01 * s.price;
-        const newPrice = parseFloat((s.price + variation).toFixed(2));
-        const delta = parseFloat((newPrice - (s.price - s.change)).toFixed(2));
-        const pct = parseFloat(((delta / (s.price - s.change)) * 100).toFixed(2));
-        return { ...s, price: newPrice, change: delta, changePercent: pct };
-      });
-    },
+    queryFn: fetchEGXStocks,
     staleTime: 2 * 60 * 1000,
-    placeholderData: EGX_STOCKS,
+    refetchInterval: 2 * 60 * 1000,
+    retry: 1,
+    placeholderData: EGX_FALLBACK,
   });
 }
 
-// Derived helpers
 export function goldPricePerGram(prices: MarketPrices, karat: '24k' | '21k' | '18k') {
   const perGramUsd = prices.goldUsd / TROY_OZ_TO_GRAMS;
   const purity = karat === '24k' ? 1 : karat === '21k' ? 0.875 : 0.75;
