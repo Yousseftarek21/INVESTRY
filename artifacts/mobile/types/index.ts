@@ -1,4 +1,4 @@
-export type GoldKarat = '24k' | '21k' | '18k';
+export type GoldKarat = '24k' | '22k' | '21k' | '18k';
 export type MetalForm = 'physical' | 'digital';
 export type PropertyType = 'apartment' | 'villa' | 'land' | 'commercial';
 

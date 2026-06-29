@@ -31,17 +31,17 @@ const YF_HEADERS = {
 };
 
 async function fetchMarketPrices(): Promise<MarketPrices> {
-  // Try Yahoo Finance for gold/silver/EGP in one call
+  // goldprice.org is the primary source — same as asaarmasr.com uses
   const yfSymbols = 'GC%3DF%2CSI%3DF%2CUSDEGP%3DX';
-  const [yfRes, gpRes, erRes] = await Promise.allSettled([
-    fetch(`https://query2.finance.yahoo.com/v7/finance/quote?symbols=${yfSymbols}&lang=en-US&region=US`, {
-      headers: YF_HEADERS,
-    }),
+  const [gpRes, erRes, yfRes] = await Promise.allSettled([
     fetch('https://data-asg.goldprice.org/dbXRates/USD', {
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
     }),
     fetch('https://open.er-api.com/v6/latest/USD', {
       headers: { Accept: 'application/json' },
+    }),
+    fetch(`https://query2.finance.yahoo.com/v7/finance/quote?symbols=${yfSymbols}&lang=en-US&region=US`, {
+      headers: YF_HEADERS,
     }),
   ]);
 
@@ -53,8 +53,35 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
   let silverChange = 0;
   let silverChangePercent = 0;
 
-  // Parse Yahoo Finance (primary source — works on native without CORS)
-  if (yfRes.status === 'fulfilled' && yfRes.value.ok) {
+  // goldprice.org — PRIMARY for metals (same source as asaarmasr.com)
+  if (gpRes.status === 'fulfilled' && gpRes.value.ok) {
+    try {
+      const data = await gpRes.value.json();
+      const item = data?.items?.[0];
+      if (item?.xauPrice && item.xauPrice > 0) {
+        goldUsd = item.xauPrice;
+        goldChange = item.chgXau ?? 0;
+        goldChangePercent = item.pcXau ?? 0;
+      }
+      if (item?.xagPrice && item.xagPrice > 0) {
+        silverUsd = item.xagPrice;
+        silverChange = item.chgXag ?? 0;
+        silverChangePercent = item.pcXag ?? 0;
+      }
+    } catch { /* fallback */ }
+  }
+
+  // open.er-api — PRIMARY for exchange rate (same source as asaarmasr.com)
+  if (erRes.status === 'fulfilled' && erRes.value.ok) {
+    try {
+      const data = await erRes.value.json();
+      if (data?.rates?.EGP) usdToEgp = data.rates.EGP;
+    } catch { /* fallback */ }
+  }
+
+  // Yahoo Finance fallback for metals & EGP if primary sources failed
+  if ((goldUsd === FALLBACK.goldUsd || usdToEgp === FALLBACK.usdToEgp) &&
+      yfRes.status === 'fulfilled' && yfRes.value.ok) {
     try {
       const data = await yfRes.value.json();
       const results: any[] = data?.quoteResponse?.result ?? [];
@@ -63,29 +90,11 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
         const price = r.regularMarketPrice ?? 0;
         const chg = r.regularMarketChange ?? 0;
         const chgPct = r.regularMarketChangePercent ?? 0;
-        if (sym.includes('GC')) { goldUsd = price; goldChange = chg; goldChangePercent = chgPct; }
-        else if (sym.includes('SI')) { silverUsd = price; silverChange = chg; silverChangePercent = chgPct; }
-        else if (sym.includes('EGP')) { usdToEgp = price; }
+        if (sym.includes('GC') && goldUsd === FALLBACK.goldUsd) { goldUsd = price; goldChange = chg; goldChangePercent = chgPct; }
+        else if (sym.includes('SI') && silverUsd === FALLBACK.silverUsd) { silverUsd = price; silverChange = chg; silverChangePercent = chgPct; }
+        else if (sym.includes('EGP') && usdToEgp === FALLBACK.usdToEgp) { usdToEgp = price; }
       }
-    } catch { /* use fallback */ }
-  }
-
-  // Goldprice.org fallback for metals (web-friendly)
-  if (goldUsd === FALLBACK.goldUsd && gpRes.status === 'fulfilled' && gpRes.value.ok) {
-    try {
-      const data = await gpRes.value.json();
-      const item = data?.items?.[0];
-      if (item?.xauPrice) { goldUsd = item.xauPrice; goldChangePercent = item.pcXau ?? 0; }
-      if (item?.xagPrice) { silverUsd = item.xagPrice; silverChangePercent = item.pcXag ?? 0; }
-    } catch { /* use fallback */ }
-  }
-
-  // open.er-api fallback for exchange rate
-  if (usdToEgp === FALLBACK.usdToEgp && erRes.status === 'fulfilled' && erRes.value.ok) {
-    try {
-      const data = await erRes.value.json();
-      if (data?.rates?.EGP) usdToEgp = data.rates.EGP;
-    } catch { /* use fallback */ }
+    } catch { /* use hardcoded fallback */ }
   }
 
   return { goldUsd, silverUsd, usdToEgp, goldChange, goldChangePercent, silverChange, silverChangePercent, lastUpdated: new Date() };
@@ -144,9 +153,9 @@ export function useEGXStocks() {
   });
 }
 
-export function goldPricePerGram(prices: MarketPrices, karat: '24k' | '21k' | '18k') {
+export function goldPricePerGram(prices: MarketPrices, karat: '24k' | '22k' | '21k' | '18k') {
   const perGramUsd = prices.goldUsd / TROY_OZ_TO_GRAMS;
-  const purity = karat === '24k' ? 1 : karat === '21k' ? 0.875 : 0.75;
+  const purity = karat === '24k' ? 1 : karat === '22k' ? 22/24 : karat === '21k' ? 0.875 : 0.75;
   return perGramUsd * purity * prices.usdToEgp;
 }
 

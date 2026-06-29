@@ -53,6 +53,8 @@ export default function AddInvestmentScreen() {
   const inputStyle = [styles.input, { backgroundColor: colors.cardSecondary, borderColor: colors.border, color: colors.text }];
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
 
+  const KARATS: GoldKarat[] = ['24k', '22k', '21k', '18k'];
+
   const TYPES: { key: InvestmentType; label: string; icon: keyof typeof Feather.glyphMap; color: string }[] = [
     { key: 'gold', label: t.gold, icon: 'award', color: colors.primary },
     { key: 'silver', label: t.silver, icon: 'circle', color: colors.silverColor },
@@ -152,7 +154,7 @@ export default function AddInvestmentScreen() {
           <View style={styles.section}>
             <Text style={labelStyle}>{t.karat}</Text>
             <View style={styles.chips}>
-              {(['24k', '21k', '18k'] as GoldKarat[]).map(k => (
+              {KARATS.map(k => (
                 <Chip key={k} value={k} selected={karat === k} onPress={() => setKarat(k)} />
               ))}
             </View>

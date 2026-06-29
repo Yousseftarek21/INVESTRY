@@ -49,6 +49,7 @@ export default function MarketsScreen() {
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
   const gold24 = prices ? Math.round(goldPricePerGram(prices, '24k')) : 0;
+  const gold22 = prices ? Math.round(goldPricePerGram(prices, '22k')) : 0;
   const gold21 = prices ? Math.round(goldPricePerGram(prices, '21k')) : 0;
   const gold18 = prices ? Math.round(goldPricePerGram(prices, '18k')) : 0;
   const silverG = prices ? silverPricePerGram(prices) : 0;
@@ -91,20 +92,27 @@ export default function MarketsScreen() {
               changePercent={prices?.goldChangePercent} change={prices ? Math.round(prices.goldChange * prices.usdToEgp / 31.1035) : undefined} />
           </View>
           <View style={styles.col}>
-            <PriceCard label="Gold 21k" sublabel={`${t.perGram} · عيار 21`} price={gold21}
+            <PriceCard label="Gold 22k" sublabel={`${t.perGram} · عيار 22`} price={gold22}
               icon="award" iconColor={colors.primary} />
           </View>
         </View>
         <View style={styles.twoCol}>
           <View style={styles.col}>
+            <PriceCard label="Gold 21k" sublabel={`${t.perGram} · عيار 21`} price={gold21}
+              icon="award" iconColor={colors.primary} />
+          </View>
+          <View style={styles.col}>
             <PriceCard label="Gold 18k" sublabel={`${t.perGram} · عيار 18`} price={gold18}
               icon="award" iconColor={colors.goldDark} />
           </View>
+        </View>
+        <View style={styles.twoCol}>
           <View style={styles.col}>
             <PriceCard label="Gold/oz" sublabel={t.perOunce}
               price={prices ? Math.round(prices.goldUsd * prices.usdToEgp) : 0}
               icon="trending-up" iconColor={colors.primary} />
           </View>
+          <View style={styles.col} />
         </View>
       </View>
 
