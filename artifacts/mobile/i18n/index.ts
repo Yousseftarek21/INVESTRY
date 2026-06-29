@@ -2,7 +2,7 @@ export type Language = 'en' | 'ar';
 
 const en = {
   // App
-  appName: 'استثمارك',
+  appName: 'INVST',
   appTagline: 'Your Investment',
 
   // Tabs
@@ -94,8 +94,8 @@ const en = {
 
 const ar: typeof en = {
   // App
-  appName: 'استثمارك',
-  appTagline: 'استثمارك في مكان واحد',
+  appName: 'INVST',
+  appTagline: 'استثماراتك في مكان واحد',
 
   // Tabs
   portfolio: 'المحفظة',

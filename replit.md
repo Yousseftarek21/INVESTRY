@@ -1,4 +1,4 @@
-# استثمارك — Egypt Investment Tracker
+# INVST — Egypt Investment Tracker
 
 Egypt's first investment tracking mobile app (Expo / React Native). Tracks gold & silver prices in EGP, EGX stocks, and real estate holdings. Shows a live portfolio overview with total value, allocation breakdown, and gain/loss vs. purchase cost.
 

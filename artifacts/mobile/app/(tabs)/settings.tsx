@@ -81,7 +81,7 @@ export default function SettingsScreen() {
           <Text style={[styles.screenTitle, { color: colors.text }]}>{t.settings}</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: colors.primary + '22', borderColor: colors.primary + '44' }]}>
-          <Text style={[styles.badgeText, { color: colors.primary }]}>استثمارك</Text>
+          <Text style={[styles.badgeText, { color: colors.primary }]}>INVST</Text>
         </View>
       </View>
 
@@ -180,7 +180,7 @@ export default function SettingsScreen() {
 
       {/* Gold bar decoration */}
       <View style={[styles.goldBar, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '33' }]}>
-        <Text style={[styles.goldBarText, { color: colors.primary }]}>استثمارك</Text>
+        <Text style={[styles.goldBarText, { color: colors.primary }]}>INVST</Text>
         <Text style={[styles.goldBarSub, { color: colors.mutedForeground }]}>
           {language === 'ar' ? 'مصر · بيانات حية' : 'Egypt · Live Data'}
         </Text>
