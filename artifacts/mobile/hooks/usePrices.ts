@@ -4,9 +4,9 @@ import { EGXStock, MarketPrices } from '@/types';
 export const TROY_OZ_TO_GRAMS = 31.1035;
 
 const FALLBACK: MarketPrices = {
-  goldUsd: 2350,
-  silverUsd: 29.5,
-  usdToEgp: 50.9,
+  goldUsd: 4018,
+  silverUsd: 58.5,
+  usdToEgp: 51.0,
   goldChange: 0,
   goldChangePercent: 0,
   silverChange: 0,
@@ -31,14 +31,15 @@ const YF_HEADERS = {
 };
 
 async function fetchMarketPrices(): Promise<MarketPrices> {
-  // goldprice.org is the primary source — same as asaarmasr.com uses
   const yfSymbols = 'GC%3DF%2CSI%3DF%2CUSDEGP%3DX';
-  const [gpRes, erRes, yfRes] = await Promise.allSettled([
+
+  // Fetch all sources in parallel
+  const [goldApiRes, silverApiRes, erRes, gpRes, yfRes] = await Promise.allSettled([
+    fetch('https://api.gold-api.com/price/XAU', { headers: { Accept: 'application/json' } }),
+    fetch('https://api.gold-api.com/price/XAG', { headers: { Accept: 'application/json' } }),
+    fetch('https://open.er-api.com/v6/latest/USD', { headers: { Accept: 'application/json' } }),
     fetch('https://data-asg.goldprice.org/dbXRates/USD', {
       headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
-    }),
-    fetch('https://open.er-api.com/v6/latest/USD', {
-      headers: { Accept: 'application/json' },
     }),
     fetch(`https://query2.finance.yahoo.com/v7/finance/quote?symbols=${yfSymbols}&lang=en-US&region=US`, {
       headers: YF_HEADERS,
@@ -53,13 +54,33 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
   let silverChange = 0;
   let silverChangePercent = 0;
 
-  // goldprice.org — PRIMARY for metals (same source as asaarmasr.com)
+  // PRIMARY: api.gold-api.com — CORS-friendly, works on web + native
+  if (goldApiRes.status === 'fulfilled' && goldApiRes.value.ok) {
+    try {
+      const data = await goldApiRes.value.json();
+      if (data?.price && data.price > 0) {
+        goldUsd = data.price;
+        // gold-api.com doesn't return change data, use 0 (will be overridden if goldprice.org succeeds)
+      }
+    } catch { /* fallback */ }
+  }
+
+  if (silverApiRes.status === 'fulfilled' && silverApiRes.value.ok) {
+    try {
+      const data = await silverApiRes.value.json();
+      if (data?.price && data.price > 0) {
+        silverUsd = data.price;
+      }
+    } catch { /* fallback */ }
+  }
+
+  // SECONDARY: goldprice.org — provides change/% data (CORS-blocked on web, works on native)
   if (gpRes.status === 'fulfilled' && gpRes.value.ok) {
     try {
       const data = await gpRes.value.json();
       const item = data?.items?.[0];
       if (item?.xauPrice && item.xauPrice > 0) {
-        goldUsd = item.xauPrice;
+        goldUsd = item.xauPrice; // more precise if available
         goldChange = item.chgXau ?? 0;
         goldChangePercent = item.pcXau ?? 0;
       }
@@ -68,10 +89,10 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
         silverChange = item.chgXag ?? 0;
         silverChangePercent = item.pcXag ?? 0;
       }
-    } catch { /* fallback */ }
+    } catch { /* use gold-api.com values */ }
   }
 
-  // open.er-api — PRIMARY for exchange rate (same source as asaarmasr.com)
+  // PRIMARY: open.er-api.com for USD/EGP exchange rate (CORS-friendly)
   if (erRes.status === 'fulfilled' && erRes.value.ok) {
     try {
       const data = await erRes.value.json();
@@ -79,7 +100,7 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
     } catch { /* fallback */ }
   }
 
-  // Yahoo Finance fallback for metals & EGP if primary sources failed
+  // TERTIARY: Yahoo Finance fallback if everything else failed
   if ((goldUsd === FALLBACK.goldUsd || usdToEgp === FALLBACK.usdToEgp) &&
       yfRes.status === 'fulfilled' && yfRes.value.ok) {
     try {
@@ -119,7 +140,6 @@ async function fetchEGXStocks(): Promise<EGXStock[]> {
       changePercent: r.regularMarketChangePercent ?? 0,
     }));
   } catch {
-    // Fallback with slight variation
     return EGX_FALLBACK.map(s => {
       const v = (Math.random() - 0.5) * 0.008 * s.price;
       const p = parseFloat((s.price + v).toFixed(2));
@@ -135,8 +155,8 @@ export function useMarketPrices() {
   return useQuery({
     queryKey: ['market-prices'],
     queryFn: fetchMarketPrices,
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
     retry: 2,
     placeholderData: FALLBACK,
   });

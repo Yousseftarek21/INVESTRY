@@ -8,15 +8,15 @@ const en = {
   // Tabs
   portfolio: 'Portfolio',
   markets: 'Markets',
-  holdings: 'Holdings',
+  holdings: 'Investments',
   settings: 'Settings',
 
   // Home
   totalPortfolioValue: 'Total Portfolio Value',
   allocation: 'Allocation',
-  topHoldings: 'TOP HOLDINGS',
+  topHoldings: 'TOP INVESTMENTS',
   noInvestmentsYet: 'No investments yet',
-  addFromHoldingsTab: 'Add your first holding from the Holdings tab',
+  addFromHoldingsTab: 'Add your first investment from the Investments tab',
   liveRates: 'LIVE RATES',
 
   // Markets
@@ -88,8 +88,8 @@ const en = {
   madeInEgypt: 'Made in Egypt',
   marketData: 'MARKET DATA',
   autoRefresh: 'Auto-refresh prices',
-  refreshInterval: 'Refresh every 5 minutes',
-  dataSource: 'Live data: Yahoo Finance + goldprice.org',
+  refreshInterval: 'Refresh every 2 minutes',
+  dataSource: 'Live data: gold-api.com + goldprice.org',
 };
 
 const ar: typeof en = {
@@ -100,15 +100,15 @@ const ar: typeof en = {
   // Tabs
   portfolio: 'المحفظة',
   markets: 'الأسواق',
-  holdings: 'أصولي',
+  holdings: 'استثماراتي',
   settings: 'الإعدادات',
 
   // Home
   totalPortfolioValue: 'إجمالي قيمة المحفظة',
   allocation: 'توزيع الأصول',
-  topHoldings: 'أهم الأصول',
+  topHoldings: 'أهم الاستثمارات',
   noInvestmentsYet: 'لا توجد استثمارات بعد',
-  addFromHoldingsTab: 'أضف أول استثمار من تبويب أصولي',
+  addFromHoldingsTab: 'أضف أول استثمار من تبويب استثماراتي',
   liveRates: 'الأسعار المباشرة',
 
   // Markets
@@ -180,8 +180,8 @@ const ar: typeof en = {
   madeInEgypt: 'صنع في مصر',
   marketData: 'بيانات السوق',
   autoRefresh: 'تحديث الأسعار تلقائياً',
-  refreshInterval: 'تحديث كل 5 دقائق',
-  dataSource: 'مصدر البيانات: Yahoo Finance + goldprice.org',
+  refreshInterval: 'تحديث كل دقيقتين',
+  dataSource: 'مصدر البيانات: gold-api.com + goldprice.org',
 };
 
 export const translations = { en, ar };
