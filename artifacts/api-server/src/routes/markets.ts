@@ -78,8 +78,13 @@ const EGX_TICKERS = [
   { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "Orascom Development Egypt"  },
 ];
 
-const TROY_OZ = 31.1035;
-const PURITY: Record<string, number> = { "24k": 1, "22k": 22 / 24, "21k": 0.875, "18k": 0.75 };
+const TROY_OZ = 31.1034768;  // exact grams per troy ounce
+const PURITY: Record<string, number> = {
+  "24k": 1,
+  "22k": 22 / 24,   // 91.6667%
+  "21k": 21 / 24,   // 87.5000%
+  "18k": 18 / 24,   // 75.0000%
+};
 
 const FALLBACK_GOLD   = 4018;
 const FALLBACK_SILVER = 58.5;
@@ -219,18 +224,28 @@ async function fetchPrices(): Promise<MarketPricesResponse> {
   const silverChangePct = historical && historical.xagClose > 0
     ? round2((silverChange / historical.xagClose) * 100) : 0;
 
-  const goldEgpPerGram: Record<string, number> = {};
-  for (const [karat, purity] of Object.entries(PURITY)) {
-    goldEgpPerGram[karat] = round2((goldUsd / TROY_OZ) * purity * usdToEgp);
-  }
-  const silverEgpPerGram = round2((silverUsd / TROY_OZ) * usdToEgp);
+  // Exact formula per user spec:
+  //   Step 1 — 24K (EGP/g) = (GoldOzUSD × USD_EGP) / 31.1034768
+  //   Step 2 — 22K = 24K × 22/24 | 21K = 24K × 21/24 | 18K = 24K × 18/24
+  const price24k = round2((goldUsd * usdToEgp) / TROY_OZ);
+  const goldEgpPerGram: Record<string, number> = {
+    "24k": price24k,
+    "22k": round2(price24k * (22 / 24)),
+    "21k": round2(price24k * (21 / 24)),
+    "18k": round2(price24k * (18 / 24)),
+  };
+  const silverEgpPerGram = round2((silverUsd * usdToEgp) / TROY_OZ);
+
+  // Round usdToEgp to 4dp so the displayed rate is precise enough
+  // that consumers can verify the gram-price calculation themselves.
+  const usdToEgpDisplay = Math.round(usdToEgp * 10000) / 10000;
 
   const sources: string[] = latest ? ["commoditypriceapi.com"] : ["fallback"];
 
   return {
     goldUsd:             round2(goldUsd),
     silverUsd:           round2(silverUsd),
-    usdToEgp:            round2(usdToEgp),
+    usdToEgp:            usdToEgpDisplay,
     goldChange,
     goldChangePercent:   goldChangePct,
     silverChange,
