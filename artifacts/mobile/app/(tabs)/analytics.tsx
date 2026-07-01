@@ -5,12 +5,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import Svg, { Polyline, Defs, LinearGradient, Stop, Polygon, Circle } from 'react-native-svg';
+import Svg, {
+  Polyline, Defs, LinearGradient, Stop, Polygon,
+  Circle, Path,
+} from 'react-native-svg';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
-import { DonutChart } from '@/components/DonutChart';
 import { Holding, MarketPrices } from '@/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -23,7 +25,6 @@ function computeValue(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'real_estate') return h.currentValue;
   return 0;
 }
-
 function computeCost(h: Holding): number {
   if (h.type === 'gold') return h.grams * h.purchasePricePerGram;
   if (h.type === 'silver') return h.grams * h.purchasePricePerGram;
@@ -31,7 +32,6 @@ function computeCost(h: Holding): number {
   if (h.type === 'real_estate') return h.purchasePrice;
   return 0;
 }
-
 function holdingLabel(h: Holding): string {
   if (h.type === 'gold') return `${h.karat.toUpperCase()} Gold`;
   if (h.type === 'silver') return 'Silver';
@@ -39,75 +39,178 @@ function holdingLabel(h: Holding): string {
   if (h.type === 'real_estate') return h.location || 'Real Estate';
   return '–';
 }
-
 function fmtEGP(n: number): string {
   return Math.abs(n).toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
-
-// ─── Animated counter ─────────────────────────────────────────────────────────
-
-function useCounterDisplay(target: number): string {
-  const anim = useRef(new Animated.Value(target)).current;
-  const [text, setText] = useState(target.toLocaleString('en-EG', { maximumFractionDigits: 0 }));
-  const prev = useRef(target);
-  useEffect(() => {
-    const id = anim.addListener(({ value }) =>
-      setText(Math.round(value).toLocaleString('en-EG', { maximumFractionDigits: 0 }))
-    );
-    return () => anim.removeListener(id);
-  }, []);
-  useEffect(() => {
-    if (prev.current === target) return;
-    prev.current = target;
-    Animated.timing(anim, { toValue: target, duration: 700, useNativeDriver: false }).start();
-  }, [target]);
-  return text;
+function fmtK(n: number): string {
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
 
-// ─── Live dot ─────────────────────────────────────────────────────────────────
-
-function LiveDot() {
-  const colors = useColors();
-  const opacity = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.25, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
-      ])
-    ).start();
-  }, []);
-  return (
-    <View style={ldSt.row}>
-      <Animated.View style={[ldSt.dot, { backgroundColor: colors.green, opacity }]} />
-      <Text style={[ldSt.text, { color: colors.green }]}>LIVE</Text>
-    </View>
-  );
-}
-const ldSt = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  text: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
-});
-
-// ─── Performance chart ────────────────────────────────────────────────────────
+// ─── Period chart helpers ──────────────────────────────────────────────────────
 
 const PERIODS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
 type Period = typeof PERIODS[number];
 
-function genCurve(gainPct: number, period: Period, seed: number, n = 30): number[] {
-  const scale: Record<Period, number> = { '1D': 0.15, '1W': 0.4, '1M': 1, '3M': 2, '1Y': 4, 'ALL': 6 };
+function genCurve(gainPct: number, period: Period, seed: number, n = 40): number[] {
+  const scale: Record<Period, number> = { '1D': 0.12, '1W': 0.35, '1M': 0.9, '3M': 1.8, '1Y': 3.5, 'ALL': 6 };
   const s = scale[period];
   let r = (seed || 7) % 99991;
   const rand = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
   let v = 100;
   return Array.from({ length: n }, (_, i) => {
-    v += (gainPct / 100) * s * (i / n) + (rand() - 0.47) * 2.2;
+    v += (gainPct / 100) * s * (i / n) + (rand() - 0.47) * 1.8;
     return v;
   });
 }
 
-function PerfChart({ gainPct, period, seed, width, height = 90 }: {
+// ─── Animated arc ring ────────────────────────────────────────────────────────
+
+function HealthArc({ score, size = 160 }: { score: number; size: number }) {
+  const colors = useColors();
+  const anim = useRef(new Animated.Value(0)).current;
+  const scoreColor =
+    score >= 75 ? colors.green : score >= 50 ? '#F59E0B' : colors.red;
+  const grade =
+    score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : score > 0 ? 'Needs Work' : 'No data';
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: score,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start();
+  }, [score]);
+
+  const sw = 14;
+  const r = (size - sw) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  // Arc from 150° to 390° (240° sweep) — bottom-left to bottom-right
+  const startDeg = 150;
+  const sweepDeg = 240;
+  const circ = 2 * Math.PI * r;
+  const arcLen = (sweepDeg / 360) * circ;
+
+  function arcPoint(deg: number) {
+    const rad = (deg * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  const s0 = arcPoint(startDeg);
+  const s1 = arcPoint(startDeg + sweepDeg);
+  const bgPath = `M ${s0.x} ${s0.y} A ${r} ${r} 0 1 1 ${s1.x} ${s1.y}`;
+  const filled = (score / 100) * arcLen;
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0" stopColor={scoreColor} stopOpacity="0.6" />
+            <Stop offset="1" stopColor={scoreColor} stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        {/* Track */}
+        <Path
+          d={bgPath}
+          fill="none"
+          stroke={colors.muted}
+          strokeWidth={sw}
+          strokeLinecap="round"
+        />
+        {/* Filled */}
+        <Path
+          d={bgPath}
+          fill="none"
+          stroke="url(#arcGrad)"
+          strokeWidth={sw}
+          strokeLinecap="round"
+          strokeDasharray={`${filled} ${arcLen}`}
+        />
+      </Svg>
+      <View style={{ alignItems: 'center', gap: 2, marginTop: -12 }}>
+        <Text style={[ha.score, { color: scoreColor }]}>{score}</Text>
+        <Text style={[ha.outOf, { color: colors.mutedForeground }]}>out of 100</Text>
+        <View style={[ha.gradePill, { backgroundColor: scoreColor + '22', borderColor: scoreColor + '44' }]}>
+          <Text style={[ha.gradeText, { color: scoreColor }]}>{grade}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+const ha = StyleSheet.create({
+  score: { fontSize: 44, fontFamily: 'Inter_700Bold', letterSpacing: -2 },
+  outOf: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  gradePill: { marginTop: 4, borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3 },
+  gradeText: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+});
+
+// ─── Stacked allocation bars ───────────────────────────────────────────────────
+
+function AllocationBars({ segs }: {
+  segs: { label: string; value: number; color: string; pct: number }[];
+}) {
+  const colors = useColors();
+  const widths = useRef(segs.map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    segs.forEach((seg, i) => {
+      Animated.timing(widths[i], {
+        toValue: seg.pct,
+        duration: 700 + i * 100,
+        useNativeDriver: false,
+      }).start();
+    });
+  }, [segs.map(s => s.pct).join(',')]);
+
+  if (!segs.length) return null;
+
+  return (
+    <View style={ab.container}>
+      {segs.map((seg, i) => (
+        <View key={seg.label} style={ab.row}>
+          <View style={ab.meta}>
+            <View style={[ab.dot, { backgroundColor: seg.color }]} />
+            <Text style={[ab.label, { color: colors.text }]}>{seg.label}</Text>
+            <Text style={[ab.value, { color: colors.mutedForeground }]}>{fmtK(seg.value)} EGP</Text>
+          </View>
+          <View style={[ab.track, { backgroundColor: colors.muted }]}>
+            <Animated.View
+              style={[
+                ab.fill,
+                {
+                  backgroundColor: seg.color,
+                  width: widths[i].interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) as any,
+                },
+              ]}
+            />
+          </View>
+          <Text style={[ab.pct, { color: seg.color }]}>
+            {seg.pct.toFixed(1)}%
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+const ab = StyleSheet.create({
+  container: { gap: 14 },
+  row: { gap: 6 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  label: { flex: 1, fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  value: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  track: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  fill: { height: 8, borderRadius: 4 },
+  pct: { fontSize: 12, fontFamily: 'Inter_700Bold', textAlign: 'right' },
+});
+
+// ─── Full-width performance chart ─────────────────────────────────────────────
+
+function PerfChart({ gainPct, period, seed, width, height = 110 }: {
   gainPct: number; period: Period; seed: number; width: number; height: number;
 }) {
   const colors = useColors();
@@ -123,211 +226,261 @@ function PerfChart({ gainPct, period, seed, width, height = 90 }: {
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   const fill = `0,${height} ${pts.join(' ')} ${width},${height}`;
+  const lastPt = pts[pts.length - 1].split(',');
+
   return (
     <Svg width={width} height={height}>
       <Defs>
         <LinearGradient id="cf" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity="0.22" />
+          <Stop offset="0" stopColor={color} stopOpacity="0.28" />
           <Stop offset="1" stopColor={color} stopOpacity="0" />
         </LinearGradient>
       </Defs>
       <Polygon points={fill} fill="url(#cf)" />
       <Polyline points={pts.join(' ')} fill="none" stroke={color}
-        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={lastPt[0]} cy={lastPt[1]} r="4" fill={color} />
+      <Circle cx={lastPt[0]} cy={lastPt[1]} r="8" fill={color} fillOpacity="0.2" />
     </Svg>
   );
 }
 
-// ─── Health ring (SVG arc) ────────────────────────────────────────────────────
+// ─── Podium performers ────────────────────────────────────────────────────────
 
-function HealthRing({ score, size = 96 }: { score: number; size: number }) {
-  const colors = useColors();
-  const sw = 10;
-  const r = (size - sw) / 2;
-  const c = size / 2;
-  const circ = 2 * Math.PI * r;
-  const fill = (score / 100) * circ;
-  const scoreColor = score >= 75 ? colors.green : score >= 50 ? '#F59E0B' : colors.red;
-
-  return (
-    <View style={{ width: size, height: size }}>
-      <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
-        <Circle cx={c} cy={c} r={r} stroke={colors.muted} strokeWidth={sw} fill="none" />
-        <Circle cx={c} cy={c} r={r} stroke={scoreColor} strokeWidth={sw} fill="none"
-          strokeDasharray={`${fill} ${circ}`} strokeLinecap="round" />
-      </Svg>
-      <View style={[ringSt.center, { width: size, height: size }]}>
-        <Text style={[ringSt.score, { color: scoreColor }]}>{score}</Text>
-        <Text style={[ringSt.out, { color: colors.mutedForeground }]}>/100</Text>
-      </View>
-    </View>
-  );
-}
-const ringSt = StyleSheet.create({
-  center: { position: 'absolute', top: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
-  score: { fontSize: 24, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
-  out: { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: -2 },
-});
-
-// ─── Section card ─────────────────────────────────────────────────────────────
-
-function SectionCard({ title, icon, badge, children }: {
-  title: string; icon: keyof typeof Feather.glyphMap; badge?: string; children: React.ReactNode;
-}) {
-  const colors = useColors();
-  return (
-    <View style={[scSt.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={scSt.hdr}>
-        <View style={[scSt.iconBox, { backgroundColor: colors.muted }]}>
-          <Feather name={icon} size={12} color={colors.mutedForeground} />
-        </View>
-        <Text style={[scSt.title, { color: colors.mutedForeground }]}>{title}</Text>
-        {badge !== undefined && (
-          <View style={[scSt.badge, { backgroundColor: colors.muted }]}>
-            <Text style={[scSt.badgeTxt, { color: colors.mutedForeground }]}>{badge}</Text>
-          </View>
-        )}
-      </View>
-      {children}
-    </View>
-  );
-}
-const scSt = StyleSheet.create({
-  card: { borderRadius: 20, borderWidth: 1, padding: 18, gap: 14 },
-  hdr: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBox: { width: 24, height: 24, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2 },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
-  badgeTxt: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-});
-
-// ─── Metric chip (hero) ───────────────────────────────────────────────────────
-
-function MetricChip({ label, value, sub, color }: {
-  label: string; value: string; sub?: string; color?: string;
-}) {
-  const colors = useColors();
-  const c = color ?? colors.text;
-  return (
-    <View style={[mcSt.chip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-      <Text style={[mcSt.label, { color: colors.mutedForeground }]}>{label}</Text>
-      <Text style={[mcSt.value, { color: c }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
-      {sub !== undefined && <Text style={[mcSt.sub, { color: color ? color + 'AA' : colors.mutedForeground }]}>{sub}</Text>}
-    </View>
-  );
-}
-const mcSt = StyleSheet.create({
-  chip: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 11, gap: 3 },
-  label: { fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
-  value: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  sub: { fontSize: 9, fontFamily: 'Inter_500Medium' },
-});
-
-// ─── Health row ───────────────────────────────────────────────────────────────
-
-function HealthRow({ label, score, max, color }: { label: string; score: number; max: number; color: string }) {
-  const colors = useColors();
-  return (
-    <View style={hrSt2.row}>
-      <Text style={[hrSt2.label, { color: colors.text }]}>{label}</Text>
-      <View style={[hrSt2.track, { backgroundColor: colors.muted }]}>
-        <View style={[hrSt2.bar, { width: `${(score / max) * 100}%` as any, backgroundColor: color }]} />
-      </View>
-      <Text style={[hrSt2.pts, { color: colors.mutedForeground }]}>{score}/{max}</Text>
-    </View>
-  );
-}
-const hrSt2 = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  label: { width: 108, fontSize: 12, fontFamily: 'Inter_500Medium' },
-  track: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
-  bar: { height: 6, borderRadius: 3 },
-  pts: { width: 34, fontSize: 11, fontFamily: 'Inter_600SemiBold', textAlign: 'right' },
-});
-
-// ─── Insight item ─────────────────────────────────────────────────────────────
-
-function InsightItem({ icon, color, text }: {
-  icon: keyof typeof Feather.glyphMap; color: string; text: string;
-}) {
-  const colors = useColors();
-  return (
-    <View style={[inSt.row, { backgroundColor: color + '0E', borderColor: color + '25' }]}>
-      <View style={[inSt.icon, { backgroundColor: color + '20' }]}>
-        <Feather name={icon} size={14} color={color} />
-      </View>
-      <Text style={[inSt.text, { color: colors.text }]}>{text}</Text>
-    </View>
-  );
-}
-const inSt = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderRadius: 14, borderWidth: 1, padding: 12 },
-  icon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
-  text: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20 },
-});
-
-// ─── Performer row ────────────────────────────────────────────────────────────
-
-function PerformerRow({ rank, label, gainPct, value }: {
-  rank: number; label: string; gainPct: number; value: number;
+function PodiumRow({ rank, label, gainPct, value, isFirst }: {
+  rank: number; label: string; gainPct: number; value: number; isFirst: boolean;
 }) {
   const colors = useColors();
   const isGain = gainPct >= 0;
   const gc = isGain ? colors.green : colors.red;
+  const rankColors = ['#D4AC0D', '#C0C8D4', '#CD7F32'];
+  const rankColor = rankColors[rank - 1] ?? colors.mutedForeground;
+
   return (
-    <View style={prSt.row}>
-      <View style={[prSt.rank, { backgroundColor: colors.muted }]}>
-        <Text style={[prSt.rankTxt, { color: colors.mutedForeground }]}>{rank}</Text>
-      </View>
-      <View style={prSt.body}>
-        <Text style={[prSt.label, { color: colors.text }]} numberOfLines={1}>{label}</Text>
-        <Text style={[prSt.value, { color: colors.mutedForeground }]}>
-          {fmtEGP(value)} EGP
+    <View style={[pod.row, isFirst && [pod.firstRow, { borderColor: colors.primary + '30', backgroundColor: colors.primary + '08' }]]}>
+      <Text style={[pod.rankNum, { color: rankColor }]}>{rank}</Text>
+      <View style={pod.body}>
+        <Text style={[pod.label, { color: colors.text }, isFirst && pod.labelFirst]} numberOfLines={1}>
+          {label}
         </Text>
+        <Text style={[pod.val, { color: colors.mutedForeground }]}>{fmtK(value)} EGP</Text>
       </View>
-      <View style={[prSt.badge, { backgroundColor: gc + '16' }]}>
-        <Text style={[prSt.badgeTxt, { color: gc }]}>
+      <View style={[pod.badge, { backgroundColor: gc + '18' }]}>
+        <Text style={[pod.badgeTxt, { color: gc }]}>
           {isGain ? '+' : ''}{gainPct.toFixed(1)}%
         </Text>
       </View>
     </View>
   );
 }
-const prSt = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rank: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  rankTxt: { fontSize: 12, fontFamily: 'Inter_700Bold' },
+const pod = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 14 },
+  firstRow: { paddingHorizontal: 12, borderWidth: 1 },
+  rankNum: { fontSize: 28, fontFamily: 'Inter_700Bold', width: 34, textAlign: 'center', letterSpacing: -1 },
   body: { flex: 1, minWidth: 0, gap: 2 },
-  label: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  value: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexShrink: 0 },
-  badgeTxt: { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  label: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  labelFirst: { fontFamily: 'Inter_700Bold' },
+  val: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  badge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  badgeTxt: { fontSize: 13, fontFamily: 'Inter_700Bold' },
 });
 
-// ─── Metal stat cell ──────────────────────────────────────────────────────────
+// ─── Insight cards (bordered left accent) ─────────────────────────────────────
 
-function MetalCell({ label, value, color }: { label: string; value: string; color?: string }) {
+function InsightCard({ icon, color, text }: {
+  icon: keyof typeof Feather.glyphMap; color: string; text: string;
+}) {
   const colors = useColors();
   return (
-    <View style={[mlSt.cell, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-      <Text style={[mlSt.label, { color: colors.mutedForeground }]}>{label}</Text>
-      <Text style={[mlSt.value, { color: color ?? colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-        {value}
+    <View style={[ic.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[ic.accent, { backgroundColor: color }]} />
+      <View style={[ic.iconBox, { backgroundColor: color + '1A' }]}>
+        <Feather name={icon} size={15} color={color} />
+      </View>
+      <Text style={[ic.text, { color: colors.text }]}>{text}</Text>
+    </View>
+  );
+}
+const ic = StyleSheet.create({
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 16, borderWidth: 1, overflow: 'hidden',
+    paddingRight: 14, paddingVertical: 14,
+  },
+  accent: { width: 4, alignSelf: 'stretch', borderRadius: 2, marginLeft: -1 },
+  iconBox: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  text: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20 },
+});
+
+// ─── Health score bars ─────────────────────────────────────────────────────────
+
+function ScoreBar({ label, score, max, color, icon }: {
+  label: string; score: number; max: number; color: string; icon: keyof typeof Feather.glyphMap;
+}) {
+  const colors = useColors();
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: score / max, duration: 800, useNativeDriver: false }).start();
+  }, [score, max]);
+
+  return (
+    <View style={sb.row}>
+      <View style={[sb.iconBox, { backgroundColor: color + '1A' }]}>
+        <Feather name={icon} size={12} color={color} />
+      </View>
+      <View style={sb.body}>
+        <View style={sb.topRow}>
+          <Text style={[sb.label, { color: colors.text }]}>{label}</Text>
+          <Text style={[sb.pts, { color: color }]}>{score}<Text style={[sb.max, { color: colors.mutedForeground }]}>/{max}</Text></Text>
+        </View>
+        <View style={[sb.track, { backgroundColor: colors.muted }]}>
+          <Animated.View style={[sb.fill, { backgroundColor: color, width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) as any }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
+const sb = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBox: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  body: { flex: 1, gap: 5 },
+  topRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  label: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  pts: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  max: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  track: { height: 5, borderRadius: 3, overflow: 'hidden' },
+  fill: { height: 5, borderRadius: 3 },
+});
+
+// ─── Metal spotlight card ──────────────────────────────────────────────────────
+
+function MetalSpotlight({ title, grams, value, avgBuy, gainPct, livePrice, tintColor }: {
+  title: string; grams: number; value: number; avgBuy: number;
+  gainPct: number; livePrice?: number; tintColor: string;
+}) {
+  const colors = useColors();
+  const isGain = gainPct >= 0;
+  const gc = isGain ? colors.green : colors.red;
+  return (
+    <View style={[ms.card, { backgroundColor: colors.card, borderColor: tintColor + '30' }]}>
+      <View style={[ms.topBar, { backgroundColor: tintColor + '12' }]}>
+        <Text style={[ms.title, { color: tintColor }]}>{title}</Text>
+        <View style={[ms.gainBadge, { backgroundColor: gc + '1A' }]}>
+          <Text style={[ms.gainTxt, { color: gc }]}>{isGain ? '+' : ''}{gainPct.toFixed(2)}%</Text>
+        </View>
+      </View>
+      <View style={ms.body}>
+        <View style={ms.statCol}>
+          <Text style={[ms.statVal, { color: colors.text }]}>{grams.toFixed(2)}<Text style={[ms.statUnit, { color: colors.mutedForeground }]}> g</Text></Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>Total Weight</Text>
+        </View>
+        <View style={[ms.divider, { backgroundColor: colors.border }]} />
+        <View style={ms.statCol}>
+          <Text style={[ms.statVal, { color: tintColor }]}>{fmtK(value)}<Text style={[ms.statUnit, { color: colors.mutedForeground }]}> EGP</Text></Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>Market Value</Text>
+        </View>
+        <View style={[ms.divider, { backgroundColor: colors.border }]} />
+        <View style={ms.statCol}>
+          <Text style={[ms.statVal, { color: colors.text }]}>{avgBuy.toFixed(0)}<Text style={[ms.statUnit, { color: colors.mutedForeground }]}> EGP/g</Text></Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>Avg Buy</Text>
+        </View>
+      </View>
+      {livePrice !== undefined && (
+        <View style={[ms.footer, { borderTopColor: tintColor + '20' }]}>
+          <Feather name="radio" size={10} color={tintColor} />
+          <Text style={[ms.footerTxt, { color: colors.mutedForeground }]}>
+            Live price: <Text style={{ color: tintColor }}>{livePrice.toFixed(0)} EGP/g</Text>
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+const ms = StyleSheet.create({
+  card: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
+  title: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 1.2 },
+  gainBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  gainTxt: { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  body: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 16, gap: 0 },
+  statCol: { flex: 1, alignItems: 'center', gap: 4 },
+  statVal: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
+  statUnit: { fontSize: 11, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
+  statLabel: { fontSize: 10, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  divider: { width: 1, height: 36, alignSelf: 'center' },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 10 },
+  footerTxt: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+});
+
+// ─── Section label ─────────────────────────────────────────────────────────────
+
+function SLabel({ icon, title, sub }: {
+  icon: keyof typeof Feather.glyphMap; title: string; sub?: string;
+}) {
+  const colors = useColors();
+  return (
+    <View style={sl.row}>
+      <View style={[sl.iconWrap, { backgroundColor: colors.muted }]}>
+        <Feather name={icon} size={13} color={colors.mutedForeground} />
+      </View>
+      <Text style={[sl.title, { color: colors.text }]}>{title}</Text>
+      {sub && <Text style={[sl.sub, { color: colors.mutedForeground }]}>{sub}</Text>}
+    </View>
+  );
+}
+const sl = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconWrap: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  title: { flex: 1, fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 0.1 },
+  sub: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+});
+
+// ─── Live dot ─────────────────────────────────────────────────────────────────
+
+function LiveDot() {
+  const colors = useColors();
+  const opacity = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(opacity, { toValue: 0.25, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
+    ])).start();
+  }, []);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <Animated.View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.green, opacity }} />
+      <Text style={{ fontSize: 10, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 1.5 }}>LIVE</Text>
+    </View>
+  );
+}
+
+// ─── Empty state ───────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  const colors = useColors();
+  return (
+    <View style={[em.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[em.icon, { backgroundColor: colors.muted }]}>
+        <Feather name="bar-chart-2" size={28} color={colors.mutedForeground} />
+      </View>
+      <Text style={[em.title, { color: colors.text }]}>No analytics yet</Text>
+      <Text style={[em.sub, { color: colors.mutedForeground }]}>
+        Add investments in the Holdings tab and your portfolio analytics will appear here.
       </Text>
     </View>
   );
 }
-const mlSt = StyleSheet.create({
-  cell: { flex: 1, minWidth: '46%', borderRadius: 14, borderWidth: 1, padding: 12, gap: 4 },
-  label: { fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
-  value: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+const em = StyleSheet.create({
+  card: { borderRadius: 24, borderWidth: 1, padding: 32, alignItems: 'center', gap: 12 },
+  icon: { width: 60, height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 17, fontFamily: 'Inter_700Bold' },
+  sub: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
   const colors = useColors();
-  const t = useT();
   const insets = useSafeAreaInsets();
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
@@ -335,45 +488,31 @@ export default function AnalyticsScreen() {
 
   const [period, setPeriod] = useState<Period>('ALL');
   const [chartWidth, setChartWidth] = useState(0);
-  const [donutSel, setDonutSel] = useState<string | null>(null);
 
-  // ── Portfolio maths ──────────────────────────────────────────────────────────
+  // ── Maths ─────────────────────────────────────────────────────────────────────
   const sm = useMemo(() => {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, totalCost = 0;
     let goldCost = 0, silverCost = 0;
     let totalGoldGrams = 0, totalSilverGrams = 0;
-    let todayGold = 0, todaySilver = 0;
-
     for (const h of holdings) {
       const v = computeValue(h, prices);
       const c = computeCost(h);
       totalCost += c;
-      if (h.type === 'gold') {
-        goldV += v; goldCost += c; totalGoldGrams += h.grams;
-        todayGold += v * ((prices?.goldChangePercent ?? 0) / 100);
-      } else if (h.type === 'silver') {
-        silverV += v; silverCost += c; totalSilverGrams += h.grams;
-        todaySilver += v * ((prices?.silverChangePercent ?? 0) / 100);
-      } else if (h.type === 'stock') {
-        stockV += v;
-      } else {
-        reV += v;
-      }
+      if (h.type === 'gold') { goldV += v; goldCost += c; totalGoldGrams += h.grams; }
+      else if (h.type === 'silver') { silverV += v; silverCost += c; totalSilverGrams += h.grams; }
+      else if (h.type === 'stock') { stockV += v; }
+      else { reV += v; }
     }
-
     const totalValue = goldV + silverV + stockV + reV;
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
-    const todayGain = todayGold + todaySilver;
-    const todayPct = totalValue > 0 ? (todayGain / totalValue) * 100 : 0;
     const goldGainPct = goldCost > 0 ? ((goldV - goldCost) / goldCost) * 100 : 0;
     const silverGainPct = silverCost > 0 ? ((silverV - silverCost) / silverCost) * 100 : 0;
     const goldAvgBuy = totalGoldGrams > 0 ? goldCost / totalGoldGrams : 0;
     const silverAvgBuy = totalSilverGrams > 0 ? silverCost / totalSilverGrams : 0;
     const metalPct = totalValue > 0 ? (goldV + silverV) / totalValue : 0;
-
     return {
-      totalValue, totalCost, gain, gainPct, todayGain, todayPct,
+      totalValue, totalCost, gain, gainPct,
       goldV, silverV, stockV, reV,
       goldCost, silverCost, goldGainPct, silverGainPct,
       totalGoldGrams, totalSilverGrams, goldAvgBuy, silverAvgBuy,
@@ -381,27 +520,21 @@ export default function AnalyticsScreen() {
     };
   }, [holdings, prices]);
 
-  const displayValue = useCounterDisplay(sm.totalValue);
-  const sparkSeed = holdings.reduce((s, h) => s + h.id.charCodeAt(0), 1);
-
-  // ── Health score ─────────────────────────────────────────────────────────────
+  // ── Health ────────────────────────────────────────────────────────────────────
   const typeCount = useMemo(() => new Set(holdings.map(h => h.type)).size, [holdings]);
-  const { healthScore, divScore, concScore, hedgeScore, realScore } = useMemo(() => {
-    if (!sm.totalValue) return { healthScore: 0, divScore: 0, concScore: 0, hedgeScore: 0, realScore: 0 };
-    const d = Math.min(30, typeCount * 8);
+  const health = useMemo(() => {
+    if (!sm.totalValue) return { score: 0, div: 0, conc: 0, hedge: 0, real: 0 };
+    const div = Math.min(30, typeCount * 8);
     const maxClass = Math.max(sm.goldV, sm.silverV, sm.stockV, sm.reV);
     const maxPct = maxClass / sm.totalValue;
-    const cn = maxPct > 0.8 ? 5 : maxPct > 0.6 ? 12 : maxPct > 0.4 ? 20 : 25;
-    const hd = sm.metalPct > 0.3 ? 25 : sm.metalPct > 0.15 ? 18 : sm.metalPct > 0 ? 10 : 0;
+    const conc = maxPct > 0.8 ? 5 : maxPct > 0.6 ? 12 : maxPct > 0.4 ? 20 : 25;
+    const hedge = sm.metalPct > 0.3 ? 25 : sm.metalPct > 0.15 ? 18 : sm.metalPct > 0 ? 10 : 0;
     const rp = (sm.goldV + sm.silverV + sm.reV) / sm.totalValue;
-    const re = rp > 0.5 ? 20 : rp > 0.25 ? 14 : rp > 0 ? 8 : 4;
-    return { healthScore: Math.min(100, d + cn + hd + re), divScore: d, concScore: cn, hedgeScore: hd, realScore: re };
+    const real = rp > 0.5 ? 20 : rp > 0.25 ? 14 : rp > 0 ? 8 : 4;
+    return { score: Math.min(100, div + conc + hedge + real), div, conc, hedge, real };
   }, [sm, typeCount]);
 
-  const healthColor = healthScore >= 75 ? colors.green : healthScore >= 50 ? '#F59E0B' : colors.red;
-  const healthGrade = healthScore >= 75 ? 'Excellent' : healthScore >= 50 ? 'Good' : 'Needs Work';
-
-  // ── Performers ───────────────────────────────────────────────────────────────
+  // ── Performers ────────────────────────────────────────────────────────────────
   const performers = useMemo(() =>
     holdings.map(h => {
       const v = computeValue(h, prices);
@@ -411,54 +544,56 @@ export default function AnalyticsScreen() {
     [holdings, prices]
   );
 
-  // ── Insights ─────────────────────────────────────────────────────────────────
-  const insights = useMemo(() => {
-    type Insight = { icon: keyof typeof Feather.glyphMap; color: string; text: string };
-    const items: Insight[] = [];
+  // ── Allocation segs ───────────────────────────────────────────────────────────
+  const allocSegs = useMemo(() => {
+    const raw = [
+      { label: 'Gold', value: sm.goldV, color: colors.primary },
+      { label: 'Silver', value: sm.silverV, color: colors.silverColor },
+      { label: 'EGX Stocks', value: sm.stockV, color: '#4A9EFF' },
+      { label: 'Real Estate', value: sm.reV, color: '#A47FCA' },
+    ].filter(s => s.value > 0);
+    return raw.map(s => ({ ...s, pct: sm.totalValue > 0 ? (s.value / sm.totalValue) * 100 : 0 }));
+  }, [sm, colors]);
 
+  // ── Insights ──────────────────────────────────────────────────────────────────
+  const insights = useMemo(() => {
+    type I = { icon: keyof typeof Feather.glyphMap; color: string; text: string };
+    const items: I[] = [];
     if (!holdings.length) {
       items.push({ icon: 'info', color: colors.primary, text: 'Add your first investment to see personalized insights about your portfolio.' });
       return items;
     }
-    if (performers.length > 0 && performers[0].gainPct !== 0) {
-      const best = performers[0];
-      items.push({ icon: 'trending-up', color: colors.green, text: `${best.label} is your best performer at ${best.gainPct > 0 ? '+' : ''}${best.gainPct.toFixed(1)}% gain.` });
+    if (performers[0]?.gainPct !== 0) {
+      const b = performers[0];
+      items.push({ icon: 'trending-up', color: colors.green, text: `${b.label} is your best performer at ${b.gainPct > 0 ? '+' : ''}${b.gainPct.toFixed(1)}%.` });
     }
     const worst = performers[performers.length - 1];
-    if (worst && worst.gainPct < -2) {
-      items.push({ icon: 'trending-down', color: colors.red, text: `${worst.label} is down ${worst.gainPct.toFixed(1)}%. Review this position.` });
+    if (worst?.gainPct < -2) {
+      items.push({ icon: 'trending-down', color: colors.red, text: `${worst.label} is down ${worst.gainPct.toFixed(1)}%. Consider reviewing this position.` });
     }
     if (typeCount < 2) {
-      items.push({ icon: 'alert-triangle', color: '#F59E0B', text: 'Your portfolio is in one asset class. Diversifying across gold, stocks, or real estate can reduce risk.' });
+      items.push({ icon: 'alert-triangle', color: '#F59E0B', text: 'All eggs in one basket. Spreading across gold, stocks, or real estate reduces risk.' });
     } else if (typeCount >= 3) {
-      items.push({ icon: 'check-circle', color: colors.green, text: `Good diversification — you hold ${typeCount} different asset types.` });
+      items.push({ icon: 'check-circle', color: colors.green, text: `Solid diversification — you hold ${typeCount} different asset classes.` });
     }
     if (sm.metalPct < 0.1 && sm.totalValue > 0) {
-      items.push({ icon: 'shield', color: '#A47FCA', text: 'Precious metals like gold and silver can protect against EGP inflation. Consider allocating 10–20% to metals.' });
+      items.push({ icon: 'shield', color: '#A47FCA', text: 'Gold & silver hedge against EGP inflation. A 10–20% metals allocation is a common strategy.' });
     }
     if ((prices?.goldChangePercent ?? 0) > 1) {
-      items.push({ icon: 'award', color: colors.primary, text: `Gold is up ${prices?.goldChangePercent.toFixed(2)}% today — your gold holdings are growing.` });
-    } else if ((prices?.goldChangePercent ?? 0) < -1) {
-      items.push({ icon: 'activity', color: '#F59E0B', text: `Gold is down ${prices?.goldChangePercent.toFixed(2)}% today. Precious metals remain a long-term inflation hedge.` });
+      items.push({ icon: 'award', color: colors.primary, text: `Gold up ${prices?.goldChangePercent.toFixed(2)}% today — your metals holdings are appreciating.` });
     }
     return items.slice(0, 4);
   }, [holdings, performers, typeCount, sm, prices, colors]);
 
-  // ── Segments ─────────────────────────────────────────────────────────────────
-  const donutSegs = useMemo(() => [
-    { key: 'gold', label: t.gold, value: sm.goldV, color: colors.primary },
-    { key: 'silver', label: t.silver, value: sm.silverV, color: colors.silverColor },
-    { key: 'stock', label: t.egxStock, value: sm.stockV, color: '#4A9EFF' },
-    { key: 'real_estate', label: t.realEstate, value: sm.reV, color: '#A47FCA' },
-  ].filter(s => s.value > 0), [sm, colors, t]);
+  // ── Live gold/silver price per gram ──────────────────────────────────────────
+  const liveGoldG = prices ? (prices.goldUsd * prices.usdToEgp) / 31.1035 : undefined;
+  const liveSilverG = prices ? (prices.silverUsd * prices.usdToEgp) / 31.1035 : undefined;
 
+  const sparkSeed = holdings.reduce((s, h) => s + h.id.charCodeAt(0), 1);
+  const hasHoldings = holdings.length > 0;
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
-  const hasHoldings = holdings.length > 0;
-  const isGain = sm.gain >= 0;
-  const gainColor = isGain ? colors.green : colors.red;
-  const isTodayGain = sm.todayGain >= 0;
-  const todayColor = isTodayGain ? colors.green : colors.red;
+  const healthColor = health.score >= 75 ? colors.green : health.score >= 50 ? '#F59E0B' : colors.red;
 
   return (
     <ScrollView
@@ -467,180 +602,146 @@ export default function AnalyticsScreen() {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
-      {/* ── Header ────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={s.header}>
         <View>
-          <Text style={[s.appLabel, { color: colors.primary }]}>INVSTRY</Text>
-          <Text style={[s.screenTitle, { color: colors.text }]}>Analytics</Text>
+          <Text style={[s.eyebrow, { color: colors.primary }]}>INVSTRY</Text>
+          <Text style={[s.pageTitle, { color: colors.text }]}>Analytics</Text>
         </View>
         <LiveDot />
       </View>
 
-      {/* ── Hero card ─────────────────────────────────────────────── */}
-      <View style={[s.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[s.heroAccent, { backgroundColor: colors.primary }]} />
-        <View style={s.heroBody}>
-          <Text style={[s.heroLabel, { color: colors.mutedForeground }]}>Total Portfolio Value</Text>
-          <Text style={[s.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-            {displayValue}
-            <Text style={[s.heroCur, { color: colors.mutedForeground }]}>{' '}EGP</Text>
-          </Text>
-          {hasHoldings && (
-            <View style={s.metricsRow}>
-              <MetricChip
-                label="Today"
-                value={`${isTodayGain ? '+' : '−'}${fmtEGP(sm.todayGain)}`}
-                sub={`${isTodayGain ? '+' : ''}${sm.todayPct.toFixed(2)}% EGP`}
-                color={todayColor}
-              />
-              <MetricChip
-                label="Total Return"
-                value={`${isGain ? '+' : '−'}${fmtEGP(sm.gain)}`}
-                sub={`${isGain ? '+' : ''}${sm.gainPct.toFixed(2)}% EGP`}
-                color={gainColor}
-              />
-              <MetricChip
-                label="Cost Basis"
-                value={fmtEGP(sm.totalCost)}
-                sub="EGP invested"
+      {!hasHoldings ? (
+        <EmptyState />
+      ) : (
+        <>
+          {/* ── Health hero ──────────────────────────────────────────── */}
+          <View style={[s.healthHero, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[s.heroSectionLabel, { color: colors.mutedForeground }]}>PORTFOLIO HEALTH</Text>
+            <View style={s.healthArcWrap}>
+              <HealthArc score={health.score} size={168} />
+            </View>
+            <View style={s.scoreBarsWrap}>
+              <ScoreBar label="Diversification" score={health.div} max={30} color={colors.primary} icon="layers" />
+              <ScoreBar label="Balance" score={health.conc} max={25} color="#4A9EFF" icon="sliders" />
+              <ScoreBar label="Inflation Hedge" score={health.hedge} max={25} color="#F59E0B" icon="shield" />
+              <ScoreBar label="Real Assets" score={health.real} max={20} color="#A47FCA" icon="home" />
+            </View>
+            <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
+              Informational only — not financial advice.
+            </Text>
+          </View>
+
+          {/* ── Performance chart ────────────────────────────────────── */}
+          <View style={s.chartSection}>
+            <View style={s.chartHeader}>
+              <SLabel icon="activity" title="Performance" sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
+            </View>
+            <View
+              onLayout={(e: LayoutChangeEvent) => {
+                const w = e.nativeEvent.layout.width;
+                if (w > 0) setChartWidth(w);
+              }}
+              style={s.chartArea}
+            >
+              <PerfChart gainPct={sm.gainPct} period={period} seed={sparkSeed} width={chartWidth} height={110} />
+            </View>
+            <View style={s.periodRow}>
+              {PERIODS.map(p => {
+                const active = p === period;
+                return (
+                  <Pressable
+                    key={p}
+                    onPress={() => setPeriod(p)}
+                    style={[s.periodPill, {
+                      backgroundColor: active ? colors.primary : colors.muted,
+                      borderColor: active ? colors.primary : 'transparent',
+                    }]}
+                  >
+                    <Text style={[s.periodTxt, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {p}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={[s.chartNote, { color: colors.mutedForeground }]}>
+              Simulated trend based on your portfolio's actual return
+            </Text>
+          </View>
+
+          {/* ── Allocation bars ──────────────────────────────────────── */}
+          {allocSegs.length > 0 && (
+            <View style={s.section}>
+              <SLabel icon="pie-chart" title="Asset Allocation" sub={`${allocSegs.length} classes`} />
+              <AllocationBars segs={allocSegs} />
+            </View>
+          )}
+
+          {/* ── Performers ───────────────────────────────────────────── */}
+          {performers.length > 0 && (
+            <View style={s.section}>
+              <SLabel icon="award" title="Performers" sub={`${performers.length} holdings`} />
+              <View style={s.performersList}>
+                {performers.slice(0, 5).map((p, i) => (
+                  <PodiumRow
+                    key={p.h.id}
+                    rank={i + 1}
+                    label={p.label}
+                    gainPct={p.gainPct}
+                    value={p.v}
+                    isFirst={i === 0}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* ── Smart insights ───────────────────────────────────────── */}
+          <View style={s.section}>
+            <SLabel icon="zap" title="Smart Insights" sub={`${insights.length} observations`} />
+            <View style={s.insightsList}>
+              {insights.map((ins, i) => (
+                <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
+              ))}
+            </View>
+            <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
+              Insights are informational only — not financial advice.
+            </Text>
+          </View>
+
+          {/* ── Gold spotlight ───────────────────────────────────────── */}
+          {sm.goldV > 0 && (
+            <View style={s.section}>
+              <SLabel icon="star" title="Gold Breakdown" />
+              <MetalSpotlight
+                title="GOLD HOLDINGS"
+                grams={sm.totalGoldGrams}
+                value={sm.goldV}
+                avgBuy={sm.goldAvgBuy}
+                gainPct={sm.goldGainPct}
+                livePrice={liveGoldG}
+                tintColor={colors.primary}
               />
             </View>
           )}
-        </View>
-      </View>
 
-      {/* ── Performance chart ─────────────────────────────────────── */}
-      {hasHoldings && (
-        <SectionCard title="PORTFOLIO PERFORMANCE" icon="activity">
-          <View
-            style={[s.chartArea, { borderBottomColor: colors.border }]}
-            onLayout={(e: LayoutChangeEvent) => {
-              const w = e.nativeEvent.layout.width;
-              if (w > 0) setChartWidth(w);
-            }}
-          >
-            <PerfChart gainPct={sm.gainPct} period={period} seed={sparkSeed} width={chartWidth} height={90} />
-          </View>
-          <Text style={[s.chartNote, { color: colors.mutedForeground }]}>
-            Simulated trend based on your portfolio's actual return
-          </Text>
-          <View style={s.periodRow}>
-            {PERIODS.map(p => {
-              const active = p === period;
-              return (
-                <Pressable
-                  key={p}
-                  style={[s.pill, {
-                    backgroundColor: active ? colors.primary : 'transparent',
-                    borderColor: active ? colors.primary : colors.border,
-                  }]}
-                  onPress={() => setPeriod(p)}
-                >
-                  <Text style={[s.pillTxt, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
-                    {p}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </SectionCard>
-      )}
-
-      {/* ── Asset allocation ──────────────────────────────────────── */}
-      {hasHoldings && donutSegs.length > 0 && (
-        <SectionCard title="ASSET ALLOCATION" icon="pie-chart">
-          <DonutChart
-            segments={donutSegs}
-            selectedKey={donutSel}
-            onSelect={setDonutSel}
-            size={140}
-            strokeWidth={18}
-          />
-        </SectionCard>
-      )}
-
-      {/* ── Portfolio health ──────────────────────────────────────── */}
-      {hasHoldings && (
-        <SectionCard title="PORTFOLIO HEALTH" icon="heart">
-          <View style={s.healthRow}>
-            <View style={s.healthLeft}>
-              <HealthRing score={healthScore} size={96} />
-              <Text style={[s.healthGrade, { color: healthColor }]}>{healthGrade}</Text>
-            </View>
-            <View style={s.healthRight}>
-              <HealthRow label="Diversification" score={divScore} max={30} color={colors.primary} />
-              <HealthRow label="Balance" score={concScore} max={25} color="#4A9EFF" />
-              <HealthRow label="Inflation Hedge" score={hedgeScore} max={25} color="#F59E0B" />
-              <HealthRow label="Real Assets" score={realScore} max={20} color="#A47FCA" />
-            </View>
-          </View>
-          <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-            Informational only — not financial advice.
-          </Text>
-        </SectionCard>
-      )}
-
-      {/* ── Smart insights ────────────────────────────────────────── */}
-      <SectionCard title="SMART INSIGHTS" icon="zap" badge={`${insights.length}`}>
-        <View style={s.insightsList}>
-          {insights.map((ins, i) => (
-            <InsightItem key={i} icon={ins.icon} color={ins.color} text={ins.text} />
-          ))}
-        </View>
-        <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-          Insights are informational only — not financial advice.
-        </Text>
-      </SectionCard>
-
-      {/* ── Performers ───────────────────────────────────────────── */}
-      {performers.length > 0 && (
-        <SectionCard title="PERFORMERS" icon="award" badge={`${performers.length}`}>
-          <View style={s.performersList}>
-            {performers.slice(0, 5).map((p, i) => (
-              <PerformerRow key={p.h.id} rank={i + 1} label={p.label} gainPct={p.gainPct} value={p.v} />
-            ))}
-          </View>
-        </SectionCard>
-      )}
-
-      {/* ── Gold analytics ────────────────────────────────────────── */}
-      {sm.goldV > 0 && (
-        <SectionCard title="GOLD ANALYTICS" icon="award">
-          <View style={s.metalGrid}>
-            <MetalCell label="Total Weight" value={`${sm.totalGoldGrams.toFixed(2)} g`} />
-            <MetalCell label="Current Value" value={`${fmtEGP(sm.goldV)} EGP`} color={colors.primary} />
-            <MetalCell label="Avg Buy Price" value={`${sm.goldAvgBuy.toFixed(0)} EGP/g`} />
-            <MetalCell
-              label="Unrealized P/L"
-              value={`${sm.goldGainPct >= 0 ? '+' : ''}${sm.goldGainPct.toFixed(2)}%`}
-              color={sm.goldGainPct >= 0 ? colors.green : colors.red}
-            />
-          </View>
-          {prices && (
-            <View style={[s.metalTip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-              <Feather name="info" size={12} color={colors.mutedForeground} />
-              <Text style={[s.metalTipTxt, { color: colors.mutedForeground }]}>
-                Live gold: {(prices.goldUsd * prices.usdToEgp / 31.1035).toFixed(0)} EGP/g (24K) · USD/EGP {prices.usdToEgp.toFixed(2)}
-              </Text>
+          {/* ── Silver spotlight ─────────────────────────────────────── */}
+          {sm.silverV > 0 && (
+            <View style={s.section}>
+              <SLabel icon="circle" title="Silver Breakdown" />
+              <MetalSpotlight
+                title="SILVER HOLDINGS"
+                grams={sm.totalSilverGrams}
+                value={sm.silverV}
+                avgBuy={sm.silverAvgBuy}
+                gainPct={sm.silverGainPct}
+                livePrice={liveSilverG}
+                tintColor={colors.silverColor}
+              />
             </View>
           )}
-        </SectionCard>
-      )}
-
-      {/* ── Silver analytics ──────────────────────────────────────── */}
-      {sm.silverV > 0 && (
-        <SectionCard title="SILVER ANALYTICS" icon="circle">
-          <View style={s.metalGrid}>
-            <MetalCell label="Total Weight" value={`${sm.totalSilverGrams.toFixed(2)} g`} />
-            <MetalCell label="Current Value" value={`${fmtEGP(sm.silverV)} EGP`} color={colors.silverColor} />
-            <MetalCell label="Avg Buy Price" value={`${sm.silverAvgBuy.toFixed(2)} EGP/g`} />
-            <MetalCell
-              label="Unrealized P/L"
-              value={`${sm.silverGainPct >= 0 ? '+' : ''}${sm.silverGainPct.toFixed(2)}%`}
-              color={sm.silverGainPct >= 0 ? colors.green : colors.red}
-            />
-          </View>
-        </SectionCard>
+        </>
       )}
     </ScrollView>
   );
@@ -650,39 +751,34 @@ export default function AnalyticsScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 16 },
+  content: { paddingHorizontal: 20, gap: 28 },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 2 },
-  appLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
-  screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  eyebrow: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
+  pageTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
 
-  heroCard: { borderRadius: 26, borderWidth: 1 },
-  heroAccent: { height: 3, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
-  heroBody: { paddingHorizontal: 22, paddingTop: 18, paddingBottom: 20, gap: 12 },
-  heroLabel: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  heroValue: { fontSize: 40, fontFamily: 'Inter_700Bold', letterSpacing: -1.5 },
-  heroCur: { fontSize: 17, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
-  metricsRow: { flexDirection: 'row', gap: 8 },
-
-  chartArea: { borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 12 },
-  chartNote: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: -4 },
-  periodRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  pill: { borderRadius: 9, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
-  pillTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-
-  healthRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  healthLeft: { alignItems: 'center', gap: 8, flexShrink: 0 },
-  healthRight: { flex: 1, gap: 10 },
-  healthGrade: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-  disclaimer: { fontSize: 10, fontFamily: 'Inter_400Regular', lineHeight: 16 },
-
-  insightsList: { gap: 8 },
-  performersList: { gap: 12 },
-
-  metalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metalTip: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8,
+  // Health hero (centrepiece)
+  healthHero: {
+    borderRadius: 28, borderWidth: 1,
+    paddingHorizontal: 22, paddingTop: 20, paddingBottom: 20,
+    alignItems: 'center', gap: 20,
   },
-  metalTipTxt: { flex: 1, fontSize: 11, fontFamily: 'Inter_400Regular' },
+  heroSectionLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2, alignSelf: 'flex-start' },
+  healthArcWrap: { alignItems: 'center' },
+  scoreBarsWrap: { alignSelf: 'stretch', gap: 12 },
+  disclaimer: { fontSize: 10, fontFamily: 'Inter_400Regular', lineHeight: 16, textAlign: 'center' },
+
+  // Chart section (no card border — lives directly in scroll)
+  chartSection: { gap: 14 },
+  chartHeader: {},
+  chartArea: { marginHorizontal: -20, paddingHorizontal: 20 },
+  periodRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  periodPill: { borderRadius: 9, paddingHorizontal: 11, paddingVertical: 5 },
+  periodTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  chartNote: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+
+  // Generic section
+  section: { gap: 14 },
+  performersList: { gap: 4 },
+  insightsList: { gap: 10 },
 });
