@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
   Animated, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, View,
@@ -12,6 +12,7 @@ import { useMarketPrices, useEGXStocks, goldPricePerGram, silverPricePerGram } f
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 
 const TABS = [
+  { key: 'heatmap',    label: 'Heatmap',     icon: 'grid'        },
   { key: 'metals',      label: 'Metals',      icon: 'award'       },
   { key: 'currencies',  label: 'Currencies',  icon: 'dollar-sign' },
   { key: 'egx',        label: 'EGX',         icon: 'bar-chart-2' },
@@ -331,7 +332,267 @@ const cs = StyleSheet.create({
   badgeTxt: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.3 },
 });
 
-// ─── Tab content views ────────────────────────────────────────────────────────
+// ─── Heatmap helpers ──────────────────────────────────────────────────────────
+
+type TileData = {
+  key: string; label: string; sublabel: string;
+  changePct: number; price: number; unit: string; size: 'lg' | 'sm';
+};
+
+function heatBg(changePct: number): string {
+  const mag = Math.min(Math.abs(changePct) / 3, 1);
+  const alpha = Math.round((0.18 + mag * 0.62) * 255).toString(16).padStart(2, '0');
+  return changePct >= 0 ? `#00D4AA${alpha}` : `#FF4444${alpha}`;
+}
+function heatText(changePct: number, green: string, red: string): string {
+  return changePct >= 0 ? green : red;
+}
+
+// ─── Heat tile ────────────────────────────────────────────────────────────────
+
+function HeatTile({
+  data, onPress, selected, tileWidth,
+}: { data: TileData; onPress: () => void; selected: boolean; tileWidth: number }) {
+  const colors = useColors();
+  const scale = useRef(new Animated.Value(1)).current;
+  const bg = heatBg(data.changePct);
+  const textColor = heatText(data.changePct, colors.green, colors.red);
+  const isPos = data.changePct >= 0;
+  const height = data.size === 'lg' ? 84 : 68;
+
+  const press = () => {
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.94, duration: 80, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(scale, { toValue: 1,    duration: 80, useNativeDriver: Platform.OS !== 'web' }),
+    ]).start();
+    onPress();
+  };
+
+  return (
+    <Pressable onPress={press} style={{ width: tileWidth }}>
+      <Animated.View style={[
+        ht.tile,
+        {
+          backgroundColor: bg,
+          borderColor: selected ? textColor : bg,
+          height,
+          transform: [{ scale }],
+        },
+      ]}>
+        <Text style={[ht.label, { color: colors.text }]} numberOfLines={1}>{data.label}</Text>
+        {data.size === 'lg' && data.sublabel ? (
+          <Text style={[ht.sub, { color: colors.text + 'AA' }]} numberOfLines={1}>{data.sublabel}</Text>
+        ) : null}
+        <View style={ht.bottomRow}>
+          <Feather
+            name={isPos ? 'trending-up' : 'trending-down'}
+            size={10}
+            color={textColor}
+          />
+          <Text style={[ht.pct, { color: textColor }]}>
+            {isPos ? '+' : ''}{data.changePct.toFixed(2)}%
+          </Text>
+        </View>
+      </Animated.View>
+    </Pressable>
+  );
+}
+const ht = StyleSheet.create({
+  tile: {
+    borderRadius: 14, borderWidth: 1.5, padding: 10,
+    justifyContent: 'space-between',
+  },
+  label: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.1 },
+  sub: { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  pct: { fontSize: 12, fontFamily: 'Inter_700Bold' },
+});
+
+// ─── Heat detail card (shown on tile tap) ─────────────────────────────────────
+
+function HeatDetailCard({ data, onClose }: { data: TileData; onClose: () => void }) {
+  const colors = useColors();
+  const isPos = data.changePct >= 0;
+  const gc = isPos ? colors.green : colors.red;
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(anim, { toValue: 1, useNativeDriver: Platform.OS !== 'web', tension: 80, friction: 10 }).start();
+  }, [data.key]);
+
+  return (
+    <Animated.View style={{
+      opacity: anim,
+      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+    }}>
+      <View style={[hd.card, { backgroundColor: colors.card, borderColor: gc + '40' }]}>
+        <View style={hd.left}>
+          <View style={[hd.dot, { backgroundColor: heatBg(data.changePct) }]} />
+          <View style={hd.info}>
+            <Text style={[hd.name, { color: colors.text }]}>{data.label}</Text>
+            <Text style={[hd.sub, { color: colors.mutedForeground }]}>{data.sublabel || data.unit}</Text>
+          </View>
+        </View>
+        <View style={hd.center}>
+          <Text style={[hd.price, { color: colors.text }]}>
+            {data.price > 0
+              ? data.price.toLocaleString('en-EG', { maximumFractionDigits: data.price < 10 ? 2 : 0 })
+              : '—'}
+          </Text>
+          <Text style={[hd.unit, { color: colors.mutedForeground }]}>{data.unit}</Text>
+        </View>
+        <View style={hd.right}>
+          <View style={[hd.badge, { backgroundColor: gc + '18' }]}>
+            <Feather name={isPos ? 'arrow-up' : 'arrow-down'} size={10} color={gc} />
+            <Text style={[hd.badgeTxt, { color: gc }]}>{isPos ? '+' : ''}{data.changePct.toFixed(2)}%</Text>
+          </View>
+          <Pressable onPress={onClose} style={hd.close} hitSlop={10}>
+            <Feather name="x" size={13} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+const hd = StyleSheet.create({
+  card: {
+    borderRadius: 16, borderWidth: 1, borderLeftWidth: 4,
+    flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12,
+  },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
+  dot: { width: 36, height: 36, borderRadius: 10 },
+  info: { flex: 1, minWidth: 0, gap: 2 },
+  name: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  sub: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  center: { alignItems: 'flex-end', gap: 1 },
+  price: { fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
+  unit: { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  right: { alignItems: 'flex-end', gap: 6 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  badgeTxt: { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  close: { padding: 2 },
+});
+
+// ─── Heatmap tab ──────────────────────────────────────────────────────────────
+
+function HeatmapTab({
+  prices,
+  stocks,
+}: {
+  prices: ReturnType<typeof useMarketPrices>['data'];
+  stocks: ReturnType<typeof useEGXStocks>['data'];
+}) {
+  const colors = useColors();
+  const [selected, setSelected] = useState<TileData | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  const tiles = useMemo<TileData[]>(() => {
+    const gold24g = prices ? goldPricePerGram(prices, '24k') : 0;
+    const silverG = prices ? silverPricePerGram(prices) : 0;
+    const featured: TileData[] = [
+      {
+        key: 'gold', label: 'Gold 24K', sublabel: 'XAU · EGP/g',
+        changePct: prices?.goldChangePercent ?? 0,
+        price: gold24g, unit: 'EGP/g', size: 'lg',
+      },
+      {
+        key: 'silver', label: 'Silver 999', sublabel: 'XAG · EGP/g',
+        changePct: prices?.silverChangePercent ?? 0,
+        price: silverG, unit: 'EGP/g', size: 'lg',
+      },
+    ];
+    const egx: TileData[] = (stocks ?? []).map(s => ({
+      key: s.symbol, label: s.symbol, sublabel: s.name,
+      changePct: s.changePercent, price: s.price, unit: 'EGP', size: 'sm',
+    }));
+    return [...featured, ...egx];
+  }, [prices, stocks]);
+
+  const GAP = 8;
+  const COLS_LG = 2;
+  const COLS_SM = 4;
+  const lgWidth   = containerWidth > 0 ? (containerWidth - GAP * (COLS_LG - 1)) / COLS_LG : 0;
+  const smWidth   = containerWidth > 0 ? (containerWidth - GAP * (COLS_SM - 1)) / COLS_SM : 0;
+
+  const featured = tiles.filter(t => t.size === 'lg');
+  const smTiles  = tiles.filter(t => t.size === 'sm');
+
+  return (
+    <View style={hm.root}>
+      {/* Legend */}
+      <View style={hm.legend}>
+        <View style={hm.legendItem}>
+          <View style={[hm.legendDot, { backgroundColor: colors.green }]} />
+          <Text style={[hm.legendTxt, { color: colors.mutedForeground }]}>Gaining</Text>
+        </View>
+        <View style={hm.legendItem}>
+          <View style={[hm.legendDot, { backgroundColor: colors.red }]} />
+          <Text style={[hm.legendTxt, { color: colors.mutedForeground }]}>Losing</Text>
+        </View>
+        <Text style={[hm.legendTxt, { color: colors.mutedForeground }]}>· Deeper = bigger move · Tap for details</Text>
+      </View>
+
+      <View
+        onLayout={e => {
+          const w = e.nativeEvent.layout.width;
+          if (w > 0) setContainerWidth(w);
+        }}
+        style={hm.grid}
+      >
+        {/* Featured row (metals) */}
+        {containerWidth > 0 && (
+          <View style={[hm.row, { gap: GAP }]}>
+            {featured.map(t => (
+              <HeatTile
+                key={t.key}
+                data={t}
+                tileWidth={lgWidth}
+                selected={selected?.key === t.key}
+                onPress={() => setSelected(prev => prev?.key === t.key ? null : t)}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Stock grid */}
+        {containerWidth > 0 && smTiles.length > 0 && (
+          <View style={{ gap: GAP }}>
+            <Text style={[hm.sectionLabel, { color: colors.mutedForeground }]}>EGX STOCKS</Text>
+            <View style={[hm.smGrid, { gap: GAP }]}>
+              {smTiles.map(t => (
+                <HeatTile
+                  key={t.key}
+                  data={t}
+                  tileWidth={smWidth}
+                  selected={selected?.key === t.key}
+                  onPress={() => setSelected(prev => prev?.key === t.key ? null : t)}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Detail card */}
+      {selected && (
+        <HeatDetailCard data={selected} onClose={() => setSelected(null)} />
+      )}
+    </View>
+  );
+}
+const hm = StyleSheet.create({
+  root: { gap: 14 },
+  legend: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendTxt: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  grid: { gap: 8 },
+  row: { flexDirection: 'row' },
+  smGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  sectionLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
+});
+
+// ─── Tab content ──────────────────────────────────────────────────────────────
 
 function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['data'] }) {
   const colors = useColors();
@@ -433,7 +694,7 @@ export default function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const { data: stocks, isLoading: lS, refetch: rS } = useEGXStocks();
-  const [activeTab, setActiveTab] = useState<TabKey>('metals');
+  const [activeTab, setActiveTab] = useState<TabKey>('heatmap');
 
   const isLoading = lP || lS;
   const refetch = () => { rP(); rS(); };
@@ -443,6 +704,8 @@ export default function MarketsScreen() {
 
   function renderContent() {
     switch (activeTab) {
+      case 'heatmap':
+        return <HeatmapTab prices={prices} stocks={stocks} />;
       case 'metals':
         return <MetalsTab prices={prices} />;
       case 'currencies':
