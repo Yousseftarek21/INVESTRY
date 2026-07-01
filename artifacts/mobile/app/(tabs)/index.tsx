@@ -58,6 +58,50 @@ function useCounterDisplay(target: number): string {
   return text;
 }
 
+// ─── Refresh button ───────────────────────────────────────────────────────────
+
+function RefreshButton({ onPress, loading }: { onPress: () => void; loading: boolean }) {
+  const colors = useColors();
+  const spin = useRef(new Animated.Value(0)).current;
+  const anim = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    if (loading) {
+      anim.current = Animated.loop(
+        Animated.timing(spin, { toValue: 1, duration: 900, useNativeDriver: Platform.OS !== 'web' })
+      );
+      anim.current.start();
+    } else {
+      anim.current?.stop();
+      spin.setValue(0);
+    }
+  }, [loading]);
+
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      style={({ pressed }) => [
+        rfSt.btn,
+        { backgroundColor: colors.muted, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+      ]}
+    >
+      <Animated.View style={{ transform: [{ rotate }] }}>
+        <Feather name="refresh-cw" size={15} color={loading ? colors.primary : colors.mutedForeground} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+const rfSt = StyleSheet.create({
+  btn: {
+    width: 36, height: 36, borderRadius: 12, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+});
+
 // ─── Live dot ─────────────────────────────────────────────────────────────────
 
 function LiveDot() {
@@ -227,7 +271,10 @@ export default function HomeScreen() {
           <Text style={[styles.appLabel, { color: colors.primary }]}>{t.appName}</Text>
           <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
         </View>
-        <LiveDot />
+        <View style={styles.headerRight}>
+          <RefreshButton onPress={refetch} loading={isLoading} />
+          <LiveDot />
+        </View>
       </View>
 
       {/* ── Hero Card ───────────────────────────────────────────── */}
@@ -398,6 +445,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'flex-end', marginBottom: 2,
   },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 4 },
   appLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
   screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
 
