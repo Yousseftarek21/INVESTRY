@@ -1,0 +1,178 @@
+Settings Tab Requirements (Apple HIG & App Store Compliant)
+Design the Settings tab to feel identical in quality and organization to Apple's native Settings app while maintaining the app's premium branding. The interface must be clean, accessible, and intuitive, using native controls, appropriate spacing, Dynamic Type, and SF Symbols on iOS.
+General Principles
+Follow the latest Apple Human Interface Guidelines.
+Use native iOS components (toggles, navigation rows, pickers, segmented controls, disclosure indicators).
+Avoid custom controls when native ones provide the same functionality.
+Support Dynamic Type, VoiceOver, Switch Control, and accessibility labels.
+Support Light Mode, Dark Mode, and Automatic Appearance.
+Respect Reduce Motion, Reduce Transparency, and Increased Contrast accessibility settings.
+Use clear, user-friendly language with no technical jargon.
+Display loading states and confirmations for actions that affect user data.
+Never require unnecessary permissions.
+Settings Structure
+Profile
+Profile Photo
+Name
+Email Address
+Apple ID (if Sign in with Apple)
+Google Account (if linked)
+Manage Subscription
+Account Status
+Verification Status
+Appearance
+Light Mode
+Dark Mode
+System Default
+Accent Color (optional)
+Dynamic Icons (if supported)
+App Icon Selection
+Display Currency
+Language
+Text Size Preview
+Portfolio Preferences
+Default Portfolio
+Default Currency
+Base Currency
+Preferred Precious Metal Units
+Preferred Weight Units (grams, ounces, kilograms)
+Default Chart Period
+Default Dashboard Layout
+Home Screen Widgets Preferences
+Market Preferences
+Preferred Stock Exchange
+EGX
+NYSE
+NASDAQ
+LSE
+Tadawul
+Preferred Gold Source
+Preferred Silver Source
+Refresh Frequency
+Real-Time Updates Toggle
+Market News Preferences
+Notifications
+Allow users to individually control:
+Price Alerts
+Gold Alerts
+Silver Alerts
+Stock Alerts
+Dividend Alerts
+Portfolio Alerts
+Goal Alerts
+News Alerts
+Daily Summary
+Weekly Summary
+Each notification category should have its own toggle.
+Privacy
+Include:
+Privacy Policy
+Data Collection Explanation
+Analytics Toggle
+Crash Reporting Toggle
+Personalized Recommendations Toggle
+Download My Data
+Export Personal Data
+Delete My Data
+Delete Account
+Manage Connected Devices
+Deleting an account must require confirmation and explain what data will be removed, in line with Apple's account deletion requirements.
+Security
+Face ID / Touch ID Toggle
+Passcode Lock
+Auto Lock Timer
+Two-Factor Authentication
+Active Sessions
+Trusted Devices
+Change Password
+Passkeys (if supported)
+Secure Backup Status
+Never display sensitive information in plain text.
+Data & Storage
+Offline Data Size
+Cache Size
+Clear Cache
+Downloaded Reports
+Sync Status
+Cloud Backup
+Last Synchronization Time
+Avoid "Clear Data" buttons that may confuse users.
+Accessibility
+Dynamic Type Preview
+Larger Text
+High Contrast
+Reduce Motion
+VoiceOver Compatibility
+Haptic Feedback Toggle
+Respect all system accessibility settings automatically.
+Integrations
+Connected Banks
+Brokerage Accounts
+Apple Health (if applicable)
+Calendar
+Widgets
+Siri Shortcuts
+Shortcuts App Integration
+Only request permissions when users initiate these features.
+Support
+Include:
+Help Center
+FAQ
+Contact Support
+Report a Bug
+Feature Requests
+Community
+Terms of Service
+Privacy Policy
+Open Source Licenses
+About
+Display:
+App Version
+Build Number
+Latest Update
+What's New
+Developer Information
+Acknowledgements
+Third-Party Licenses
+Legal
+Include:
+Terms & Conditions
+Privacy Policy
+Cookie Policy (if applicable)
+Data Processing Information
+Open Source Notices
+Software Licenses
+Regulatory Disclaimers
+These pages should always be accessible without requiring login.
+Advanced
+For power users:
+API Configuration
+Debug Logging (development builds only)
+Export Logs
+Reset Tutorials
+Reset App Preferences
+Hide developer options in production builds unless explicitly enabled.
+Apple Compliance Requirements
+The Settings screen must:
+Use native navigation patterns.
+Avoid duplicate settings already provided by iOS.
+Never prompt repeatedly for denied permissions.
+Explain why any permission is needed before requesting it.
+Include an in-app Delete Account option if account creation is supported.
+Make Privacy Policy and Terms of Service easy to find.
+Use secure authentication for sensitive actions.
+Respect system appearance and accessibility preferences.
+Avoid deceptive toggles, misleading wording, or dark patterns.
+Clearly distinguish informational content from investment guidance.
+UI Quality Requirements
+The Settings page should feel as polished as Apple's own apps:
+Native grouped sections with clear headers.
+SF Symbols paired with each section.
+Smooth navigation transitions.
+Consistent spacing and typography.
+Subtle haptic feedback where appropriate.
+Skeleton loading states for remote data.
+Proper empty and error states.
+Full support for Dynamic Type and right-to-left layouts (Arabic).
+Responsive layouts on all iPhone and Android screen sizes.
+Goal: A Settings experience that is familiar to iOS users, equally polished on Android, and fully aligned with Apple HIG, App Store Review Guidelines, Google Material Design 3, and Google Play policies.
