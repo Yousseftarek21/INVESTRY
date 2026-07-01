@@ -6,11 +6,13 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
-import { tokenCache } from "@clerk/expo/token-cache";
+import type { TokenCache } from "@clerk/expo";
+import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -20,6 +22,26 @@ import { HoldingsProvider } from "@/context/HoldingsContext";
 import { AppSettingsProvider } from "@/context/AppSettingsContext";
 
 SplashScreen.preventAutoHideAsync();
+
+const webTokenCache: TokenCache = {
+  getToken: (key: string) => Promise.resolve(localStorage.getItem(key)),
+  saveToken: (key: string, value: string) => {
+    localStorage.setItem(key, value);
+    return Promise.resolve();
+  },
+  clearToken: (key: string) => {
+    localStorage.removeItem(key);
+    return Promise.resolve();
+  },
+};
+
+const nativeTokenCache: TokenCache = {
+  getToken: (key: string) => SecureStore.getItemAsync(key),
+  saveToken: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  clearToken: (key: string) => SecureStore.deleteItemAsync(key),
+};
+
+const tokenCache: TokenCache = Platform.OS === "web" ? webTokenCache : nativeTokenCache;
 
 const queryClient = new QueryClient();
 
