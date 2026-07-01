@@ -77,13 +77,6 @@ export default function HomeScreen() {
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
-  const assetCategories = [
-    { label: t.gold,       value: summary.goldValue,       color: colors.primary },
-    { label: t.silver,     value: summary.silverValue,     color: colors.silverColor },
-    { label: t.egxStock,   value: summary.stockValue,      color: '#4A9EFF' },
-    { label: t.realEstate, value: summary.realEstateValue, color: '#A47FCA' },
-  ].filter(c => c.value > 0);
-
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -151,22 +144,6 @@ export default function HomeScreen() {
                 { label: t.realEstate, value: summary.realEstateValue, color: '#A47FCA' },
               ]}
             />
-            {/* Category chips */}
-            {assetCategories.length > 0 && (
-              <View style={styles.categoryChips}>
-                {assetCategories.map(c => (
-                  <View key={c.label} style={styles.categoryChip}>
-                    <View style={[styles.categoryDot, { backgroundColor: c.color }]} />
-                    <Text style={[styles.categoryChipLabel, { color: colors.mutedForeground }]}>
-                      {c.label}
-                    </Text>
-                    <Text style={[styles.categoryChipValue, { color: colors.textSecondary }]}>
-                      {Math.round((c.value / summary.totalValue) * 100)}%
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
           </View>
         )}
       </View>
@@ -250,12 +227,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22, paddingTop: 16, paddingBottom: 20,
     borderTopWidth: StyleSheet.hairlineWidth, gap: 14,
   },
-  categoryChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  categoryChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  categoryDot: { width: 7, height: 7, borderRadius: 3.5 },
-  categoryChipLabel: { fontSize: 11, fontFamily: 'Inter_500Medium' },
-  categoryChipValue: { fontSize: 11, fontFamily: 'Inter_700Bold' },
-
   holdingsSection: { gap: 12 },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionHeaderLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2 },
