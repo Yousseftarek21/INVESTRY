@@ -111,16 +111,61 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
   }
 }
 
+// Yahoo Finance headers — works on native devices; CORS-blocked on web (expected)
+const YF_HEADERS = {
+  'Accept': 'application/json',
+  'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+};
+
+const EGX_YAHOO = [
+  { yahoo: 'COMI.CA',  symbol: 'COMI',  name: 'Commercial Intl Bank'      },
+  { yahoo: 'HRHO.CA',  symbol: 'HRHO',  name: 'EFG Hermes Holding'         },
+  { yahoo: 'TMGH.CA',  symbol: 'TMGH',  name: 'Talaat Moustafa Group'      },
+  { yahoo: 'ORWE.CA',  symbol: 'ORWE',  name: 'Oriental Weavers'           },
+  { yahoo: 'EAST.CA',  symbol: 'EAST',  name: 'Eastern Company'            },
+  { yahoo: 'ORAS.CA',  symbol: 'ORAS',  name: 'Orascom Construction'       },
+  { yahoo: 'CLHO.CA',  symbol: 'CLHO',  name: 'Cleopatra Hospital'         },
+  { yahoo: 'EKHO.CA',  symbol: 'EKHO',  name: 'EK Holding'                 },
+  { yahoo: 'SWDY.CA',  symbol: 'SWDY',  name: 'El Sewedy Electric'         },
+  { yahoo: 'FWRY.CA',  symbol: 'FWRY',  name: 'Fawry Banking & Payment'    },
+  { yahoo: 'PHDC.CA',  symbol: 'PHDC',  name: 'Palm Hills Developments'    },
+  { yahoo: 'MNHD.CA',  symbol: 'MNHD',  name: 'Madinet Nasr Housing'       },
+  { yahoo: 'JUFO.CA',  symbol: 'JUFO',  name: 'Juhayna Food Industries'    },
+  { yahoo: 'ESRS.CA',  symbol: 'ESRS',  name: 'Ezz Steel'                  },
+  { yahoo: 'GAMA.CA',  symbol: 'GAMA',  name: 'Ghabbour Auto'              },
+  { yahoo: 'HDBK.CA',  symbol: 'HDBK',  name: 'Housing & Development Bank'  },
+  { yahoo: 'ABUK.CA',  symbol: 'ABUK',  name: 'Abu Kir Fertilizers'        },
+  { yahoo: 'SPMD.CA',  symbol: 'SPMD',  name: 'Speed Medical'              },
+  { yahoo: 'CIRA.CA',  symbol: 'CIRA',  name: 'CIRA Education'             },
+  { yahoo: 'OCDI.CA',  symbol: 'OCDI',  name: 'Orascom Development Egypt'  },
+];
+
 async function fetchEGXStocks(): Promise<EGXStock[]> {
+  // Fetch directly from Yahoo Finance — works on native (Expo Go / production),
+  // CORS-blocked on web preview (expected). Falls back to static data on web.
+  const tickers = EGX_YAHOO.map(t => encodeURIComponent(t.yahoo)).join('%2C');
   try {
-    const res = await fetch(`${API_BASE}/markets/stocks`, {
-      headers: { Accept: 'application/json' },
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${tickers}&lang=en-US&region=EG`,
+      { headers: YF_HEADERS }
+    );
+    if (!res.ok) throw new Error(`YF ${res.status}`);
+    const data = await res.json();
+    const results: any[] = data?.quoteResponse?.result ?? [];
+    if (results.length === 0) throw new Error('empty');
+
+    const byTicker = new Map(results.map((r: any) => [r.symbol as string, r]));
+    return EGX_YAHOO.map(t => {
+      const r = byTicker.get(t.yahoo);
+      if (!r) return { symbol: t.symbol, name: t.name, price: 0, change: 0, changePercent: 0 };
+      return {
+        symbol: t.symbol,
+        name: t.name,
+        price: parseFloat((r.regularMarketPrice ?? 0).toFixed(2)),
+        change: parseFloat((r.regularMarketChange ?? 0).toFixed(2)),
+        changePercent: parseFloat((r.regularMarketChangePercent ?? 0).toFixed(2)),
+      };
     });
-    if (!res.ok) throw new Error(`API ${res.status}`);
-    const data: EGXStock[] = await res.json();
-    // If server returned all-zeros (Yahoo Finance failed), fall back
-    if (data.every(s => s.price === 0)) return EGX_FALLBACK;
-    return data;
   } catch {
     return EGX_FALLBACK;
   }
