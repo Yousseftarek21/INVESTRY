@@ -44,8 +44,9 @@ export default function HomeScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { holdings } = useHoldings();
-  const { data: prices, isLoading, refetch } = useMarketPrices();
+  const { holdings, isLoading: holdingsLoading } = useHoldings();
+  const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
+  const isLoading = pricesLoading || holdingsLoading;
 
   const summary = useMemo(() => {
     let goldValue = 0, silverValue = 0, stockValue = 0, realEstateValue = 0, totalCost = 0;
@@ -161,7 +162,7 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {topHoldings.length === 0 ? (
+        {topHoldings.length === 0 && holdingsLoading ? null : topHoldings.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {/* Decorative rings */}
             <View style={[styles.emptyRing2, { borderColor: colors.primary + '10' }]} />

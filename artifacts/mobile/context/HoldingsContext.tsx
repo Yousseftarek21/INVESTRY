@@ -32,7 +32,11 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const persist = useCallback(async (next: Holding[]) => {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch (e) {
+      console.error('[Holdings] Failed to persist holdings to storage:', e);
+    }
   }, []);
 
   const addHolding = useCallback(async (holding: Holding) => {
