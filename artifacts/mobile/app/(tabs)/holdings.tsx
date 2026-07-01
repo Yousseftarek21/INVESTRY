@@ -52,6 +52,11 @@ export default function HoldingsScreen() {
     removeHolding(id);
   };
 
+  const openAdd = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/add-investment');
+  };
+
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
@@ -61,7 +66,7 @@ export default function HoldingsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingTop: topInsets + 20, paddingBottom: botInsets + 110 }]}
+        contentContainerStyle={[styles.content, { paddingTop: topInsets + 20, paddingBottom: botInsets + 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -74,15 +79,35 @@ export default function HoldingsScreen() {
               </Text>
             )}
           </View>
+          {/* Header add button — only shown when there are holdings */}
+          {totalCount > 0 && (
+            <TouchableOpacity
+              style={[styles.headerAddBtn, { backgroundColor: colors.primary }]}
+              onPress={openAdd}
+              activeOpacity={0.8}
+            >
+              <Feather name="plus" size={18} color={colors.primaryForeground} />
+              <Text style={[styles.headerAddText, { color: colors.primaryForeground }]}>Add</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {holdings.length === 0 ? (
+          /* ── Empty state ── */
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.muted }]}>
               <Feather name="briefcase" size={32} color={colors.mutedForeground} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noHoldings}</Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAdd}</Text>
+            <TouchableOpacity
+              style={[styles.inlineBtn, { backgroundColor: colors.primary }]}
+              onPress={openAdd}
+              activeOpacity={0.85}
+            >
+              <Feather name="plus" size={17} color={colors.primaryForeground} />
+              <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>Add Investment</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           TYPE_ORDER.filter(type => grouped[type]?.length).map(type => (
@@ -114,18 +139,6 @@ export default function HoldingsScreen() {
           ))
         )}
       </ScrollView>
-
-      {/* FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary, bottom: botInsets + 88 }]}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push('/add-investment');
-        }}
-        activeOpacity={0.85}
-      >
-        <Feather name="plus" size={26} color={colors.primaryForeground} />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -134,9 +147,18 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'flex-start', marginBottom: 4,
+  },
   screenTitle: { fontSize: 32, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   subtitle: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 4 },
+  headerAddBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 14, paddingVertical: 9,
+    borderRadius: 12, marginTop: 6,
+  },
+  headerAddText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   groupIconWrap: { width: 24, height: 24, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   groupLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.1, flex: 1 },
@@ -148,18 +170,19 @@ const styles = StyleSheet.create({
     borderRadius: 24, padding: 40, borderWidth: 1,
     alignItems: 'center', gap: 10, marginTop: 20,
   },
-  emptyIconWrap: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyIconWrap: {
+    width: 68, height: 68, borderRadius: 34,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
   emptyTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', marginTop: 4 },
-  emptySubtitle: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
-  emptyBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 7,
-    paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, marginTop: 8,
+  emptySubtitle: {
+    fontSize: 14, fontFamily: 'Inter_400Regular',
+    textAlign: 'center', lineHeight: 20,
   },
-  emptyBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  fab: {
-    position: 'absolute', right: 24, width: 58, height: 58,
-    borderRadius: 29, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#D4AC0D', shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4, shadowRadius: 16, elevation: 10,
+  inlineBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 28, paddingVertical: 14,
+    borderRadius: 16, marginTop: 8,
   },
+  inlineBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 });
