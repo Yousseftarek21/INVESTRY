@@ -69,7 +69,6 @@ export default function SignUpScreen() {
   const { signUp, errors, fetchStatus } = useSignUp();
   const { startSSOFlow } = useSSO();
 
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -87,14 +86,10 @@ export default function SignUpScreen() {
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
   const isFetching = fetchStatus === 'fetching';
-  const nameParts = name.trim().split(/\s+/);
-  const firstName = nameParts[0] ?? '';
-  const lastName = nameParts.slice(1).join(' ') || '';
-
   const handleSignUp = async () => {
     if (!agreedToTerms) { setGlobalError('Please accept the Terms & Privacy Policy to continue.'); return; }
     setGlobalError('');
-    const { error } = await signUp.password({ emailAddress: email, password, firstName, lastName });
+    const { error } = await signUp.password({ emailAddress: email, password });
     if (error) { setGlobalError(error.message ?? 'Sign up failed'); return; }
     await signUp.verifications.sendEmailCode();
   };
@@ -245,22 +240,7 @@ export default function SignUpScreen() {
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
-          {/* Full Name */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Full name</Text>
-            <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <Feather name="user" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { color: colors.text }]}
-                placeholder="Ahmed Mohamed"
-                placeholderTextColor={colors.mutedForeground}
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-                autoComplete="name"
-              />
-            </View>
-          </View>
+
 
           {/* Email */}
           <View style={styles.fieldGroup}>
