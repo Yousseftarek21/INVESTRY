@@ -5,30 +5,112 @@ import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices, useEGXStocks, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
-import { PriceCard } from '@/components/PriceCard';
 
-function StockRow({ symbol, name, price, change, changePercent, last }: {
+function SectionLabel({ label, icon }: { label: string; icon: keyof typeof Feather.glyphMap }) {
+  const colors = useColors();
+  return (
+    <View style={styles.sectionLabelRow}>
+      <View style={[styles.sectionLabelIcon, { backgroundColor: colors.muted }]}>
+        <Feather name={icon} size={12} color={colors.mutedForeground} />
+      </View>
+      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{label}</Text>
+    </View>
+  );
+}
+
+function MetalCard({
+  label, karat, purity, price, change, changePercent, accentColor, large,
+}: {
+  label: string; karat?: string; purity?: string; price: number;
+  change?: number; changePercent?: number; accentColor: string; large?: boolean;
+}) {
+  const colors = useColors();
+  const hasChange = changePercent !== undefined;
+  const isPos = (changePercent ?? 0) >= 0;
+  const chgColor = isPos ? colors.green : colors.red;
+
+  return (
+    <View style={[
+      styles.metalCard,
+      { backgroundColor: colors.card, borderColor: colors.border },
+      large && styles.metalCardLarge,
+    ]}>
+      <View style={[styles.metalAccent, { backgroundColor: accentColor + '30', borderColor: accentColor + '40' }]}>
+        <View style={[styles.metalDot, { backgroundColor: accentColor }]} />
+      </View>
+      <View style={styles.metalBody}>
+        <Text style={[styles.metalLabel, { color: colors.text }]}>{label}</Text>
+        {karat && <Text style={[styles.metalKarat, { color: accentColor }]}>{karat}</Text>}
+        {purity && <Text style={[styles.metalPurity, { color: colors.mutedForeground }]}>{purity}</Text>}
+      </View>
+      <Text style={[styles.metalPrice, { color: colors.text }, large && styles.metalPriceLarge]}>
+        {price.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+        <Text style={[styles.metalUnit, { color: colors.mutedForeground }]}> EGP</Text>
+      </Text>
+      {hasChange && (
+        <View style={[styles.metalChange, { backgroundColor: chgColor + '15' }]}>
+          <Feather name={isPos ? 'arrow-up' : 'arrow-down'} size={10} color={chgColor} />
+          <Text style={[styles.metalChangeTxt, { color: chgColor }]}>
+            {isPos ? '+' : ''}{(changePercent ?? 0).toFixed(2)}%
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function CurrencyCard({ price }: { price: number }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.currencyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.currencyLeft}>
+        <View style={[styles.currencyIconWrap, { backgroundColor: '#4A9EFF20' }]}>
+          <Text style={[styles.currencyFlag]}>🇺🇸</Text>
+        </View>
+        <View>
+          <Text style={[styles.currencyName, { color: colors.text }]}>US Dollar</Text>
+          <Text style={[styles.currencyPair, { color: colors.mutedForeground }]}>USD / EGP</Text>
+        </View>
+      </View>
+      <View style={styles.currencyRight}>
+        <Text style={[styles.currencyPrice, { color: colors.text }]}>
+          {price.toFixed(2)}
+        </Text>
+        <Text style={[styles.currencyUnit, { color: colors.mutedForeground }]}>EGP</Text>
+      </View>
+    </View>
+  );
+}
+
+function StockRow({ symbol, name, price, change, changePercent, index, total }: {
   symbol: string; name: string; price: number; change: number;
-  changePercent: number; last?: boolean;
+  changePercent: number; index: number; total: number;
 }) {
   const colors = useColors();
   const isPos = changePercent >= 0;
   const color = isPos ? colors.green : colors.red;
+  const isLast = index === total - 1;
+  const isFirst = index === 0;
 
   return (
-    <View style={[styles.stockRow, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-      <View style={[styles.stockSymbolWrap, { backgroundColor: colors.muted }]}>
-        <Text style={[styles.stockSymbol, { color: colors.primary }]}>{symbol}</Text>
+    <View style={[
+      styles.stockRow,
+      !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+    ]}>
+      <View style={[styles.stockAvatar, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
+        <Text style={[styles.stockAvatarText, { color: colors.primary }]} numberOfLines={1}>
+          {symbol.length <= 3 ? symbol : symbol.substring(0, 3)}
+        </Text>
       </View>
       <View style={styles.stockInfo}>
-        <Text style={[styles.stockName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
-        <Text style={[styles.stockTicker, { color: colors.mutedForeground }]}>{symbol}</Text>
+        <Text style={[styles.stockSymbol, { color: colors.text }]}>{symbol}</Text>
+        <Text style={[styles.stockName, { color: colors.mutedForeground }]} numberOfLines={1}>{name}</Text>
       </View>
       <View style={styles.stockRight}>
         <Text style={[styles.stockPrice, { color: colors.text }]}>{price.toFixed(2)}</Text>
-        <View style={[styles.stockBadge, { backgroundColor: color + '18' }]}>
-          <Feather name={isPos ? 'arrow-up' : 'arrow-down'} size={10} color={color} />
-          <Text style={[styles.stockBadgeText, { color }]}>{Math.abs(changePercent).toFixed(2)}%</Text>
+        <View style={[styles.changePill, { backgroundColor: color + '15' }]}>
+          <Feather name={isPos ? 'arrow-up' : 'arrow-down'} size={9} color={color} />
+          <Text style={[styles.changePillTxt, { color }]}>{Math.abs(changePercent).toFixed(2)}%</Text>
         </View>
       </View>
     </View>
@@ -39,11 +121,11 @@ export default function MarketsScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { data: prices, isLoading: loadingPrices, refetch: refetchPrices } = useMarketPrices();
-  const { data: stocks, isLoading: loadingStocks, refetch: refetchStocks } = useEGXStocks();
+  const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
+  const { data: stocks, isLoading: lS, refetch: rS } = useEGXStocks();
 
-  const isLoading = loadingPrices || loadingStocks;
-  const refetch = () => { refetchPrices(); refetchStocks(); };
+  const isLoading = lP || lS;
+  const refetch = () => { rP(); rS(); };
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -52,18 +134,25 @@ export default function MarketsScreen() {
   const gold22 = prices ? Math.round(goldPricePerGram(prices, '22k')) : 0;
   const gold21 = prices ? Math.round(goldPricePerGram(prices, '21k')) : 0;
   const gold18 = prices ? Math.round(goldPricePerGram(prices, '18k')) : 0;
-  const silverG = prices ? silverPricePerGram(prices) : 0;
+  const goldOz = prices ? Math.round(prices.goldUsd * prices.usdToEgp) : 0;
+  const silverG = prices ? parseFloat(silverPricePerGram(prices).toFixed(2)) : 0;
+  const silverOz = prices ? Math.round(prices.silverUsd * prices.usdToEgp) : 0;
+
+  const goldChangePct = prices?.goldChangePercent;
+  const goldChangeAbs = prices ? Math.round(prices.goldChange * prices.usdToEgp / 31.1035) : undefined;
+  const silverChangePct = prices?.silverChangePercent;
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[styles.content, { paddingTop: topInsets + 16, paddingBottom: botInsets + 90 }]}
+      contentContainerStyle={[styles.content, { paddingTop: topInsets + 20, paddingBottom: botInsets + 100 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
-      <View style={styles.titleRow}>
+      {/* Header */}
+      <View style={styles.header}>
         <Text style={[styles.screenTitle, { color: colors.text }]}>{t.markets}</Text>
-        <View style={[styles.liveBadge, { backgroundColor: colors.green + '1A', borderColor: colors.green + '33' }]}>
+        <View style={[styles.livePill, { backgroundColor: colors.green + '15', borderColor: colors.green + '30' }]}>
           <View style={[styles.liveDot, { backgroundColor: colors.green }]} />
           <Text style={[styles.liveTxt, { color: colors.green }]}>{t.live}</Text>
         </View>
@@ -71,86 +160,63 @@ export default function MarketsScreen() {
 
       {/* Currency */}
       <View style={styles.group}>
-        <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>{t.currency}</Text>
-        <PriceCard
-          label={t.usDollar}
-          sublabel="USD / EGP"
-          price={prices ? parseFloat(prices.usdToEgp.toFixed(2)) : 0}
-          unit="EGP"
-          icon="dollar-sign"
-          iconColor="#4A9EFF"
-        />
+        <SectionLabel label={t.currency} icon="dollar-sign" />
+        {prices && <CurrencyCard price={parseFloat(prices.usdToEgp.toFixed(2))} />}
       </View>
 
       {/* Gold */}
       <View style={styles.group}>
-        <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>{t.goldSection}</Text>
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <PriceCard label="Gold 24k" sublabel={`${t.perGram} · خالص`} price={gold24}
-              icon="award" iconColor={colors.primary}
-              changePercent={prices?.goldChangePercent} change={prices ? Math.round(prices.goldChange * prices.usdToEgp / 31.1035) : undefined} />
-          </View>
-          <View style={styles.col}>
-            <PriceCard label="Gold 22k" sublabel={`${t.perGram} · عيار 22`} price={gold22}
-              icon="award" iconColor={colors.primary} />
-          </View>
+        <SectionLabel label={t.goldSection} icon="award" />
+        <View style={styles.goldGrid}>
+          <MetalCard label="Gold 24k" karat="24K" purity="خالص" price={gold24}
+            changePercent={goldChangePct} accentColor={colors.primary} />
+          <MetalCard label="Gold 22k" karat="22K" purity="عيار 22" price={gold22}
+            accentColor={colors.primary} />
+          <MetalCard label="Gold 21k" karat="21K" purity="عيار 21" price={gold21}
+            accentColor={colors.primary} />
+          <MetalCard label="Gold 18k" karat="18K" purity="عيار 18" price={gold18}
+            accentColor={colors.goldDark} />
         </View>
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <PriceCard label="Gold 21k" sublabel={`${t.perGram} · عيار 21`} price={gold21}
-              icon="award" iconColor={colors.primary} />
-          </View>
-          <View style={styles.col}>
-            <PriceCard label="Gold 18k" sublabel={`${t.perGram} · عيار 18`} price={gold18}
-              icon="award" iconColor={colors.goldDark} />
-          </View>
-        </View>
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <PriceCard label="Gold/oz" sublabel={t.perOunce}
-              price={prices ? Math.round(prices.goldUsd * prices.usdToEgp) : 0}
-              icon="trending-up" iconColor={colors.primary} />
-          </View>
-          <View style={styles.col} />
-        </View>
+        <MetalCard label="Gold / Troy Oz" purity={t.perOunce} price={goldOz}
+          changePercent={goldChangePct} accentColor={colors.primary} large />
       </View>
 
       {/* Silver */}
       <View style={styles.group}>
-        <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>{t.silverSection}</Text>
+        <SectionLabel label={t.silverSection} icon="circle" />
         <View style={styles.twoCol}>
           <View style={styles.col}>
-            <PriceCard label="Silver/g" sublabel={t.perGram} price={parseFloat(silverG.toFixed(2))}
-              icon="circle" iconColor={colors.silverColor}
-              changePercent={prices?.silverChangePercent} change={prices ? parseFloat((prices.silverChange * prices.usdToEgp / 31.1035).toFixed(2)) : undefined} />
+            <MetalCard label="Silver / g" purity={t.perGram} price={silverG}
+              changePercent={silverChangePct} accentColor={colors.silverColor} />
           </View>
           <View style={styles.col}>
-            <PriceCard label="Silver/oz" sublabel={t.perOunce}
-              price={prices ? Math.round(prices.silverUsd * prices.usdToEgp) : 0}
-              icon="circle" iconColor={colors.silverColor} />
+            <MetalCard label="Silver / oz" purity={t.perOunce} price={silverOz}
+              accentColor={colors.silverColor} />
           </View>
         </View>
       </View>
 
       {/* EGX Stocks */}
       <View style={styles.group}>
-        <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>{t.egxSection}</Text>
+        <SectionLabel label={t.egxSection} icon="bar-chart-2" />
         <View style={[styles.stockTable, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.stockTableHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.tableHeaderTxt, { color: colors.mutedForeground }]}>{t.stockCol}</Text>
-            <Text style={[styles.tableHeaderTxtR, { color: colors.mutedForeground }]}>{t.priceCol}</Text>
+          <View style={[styles.tableHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.tableHeaderLeft, { color: colors.mutedForeground }]}>{t.stockCol}</Text>
+            <Text style={[styles.tableHeaderRight, { color: colors.mutedForeground }]}>{t.priceCol}</Text>
           </View>
           {(stocks ?? []).map((s, i) => (
-            <StockRow key={s.symbol} {...s} last={i === (stocks ?? []).length - 1} />
+            <StockRow key={s.symbol} {...s} index={i} total={(stocks ?? []).length} />
           ))}
         </View>
       </View>
 
       {prices?.lastUpdated && (
-        <Text style={[styles.timestamp, { color: colors.mutedForeground }]}>
-          {t.updated} {new Date(prices.lastUpdated).toLocaleTimeString()}
-        </Text>
+        <View style={styles.timestampRow}>
+          <Feather name="clock" size={11} color={colors.mutedForeground} />
+          <Text style={[styles.timestamp, { color: colors.mutedForeground }]}>
+            {t.updated} {new Date(prices.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </Text>
+        </View>
       )}
     </ScrollView>
   );
@@ -158,32 +224,74 @@ export default function MarketsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 20 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  screenTitle: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
-  liveDot: { width: 6, height: 6, borderRadius: 3 },
-  liveTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-  group: { gap: 8 },
-  groupLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1 },
+  content: { paddingHorizontal: 20, gap: 24 },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  screenTitle: { fontSize: 32, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, marginBottom: 4 },
+  liveDot: { width: 7, height: 7, borderRadius: 4 },
+  liveTxt: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  group: { gap: 10 },
+  sectionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionLabelIcon: { width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  sectionLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2 },
+  currencyCard: {
+    borderRadius: 18, padding: 18, borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  currencyLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  currencyIconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  currencyFlag: { fontSize: 22 },
+  currencyName: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  currencyPair: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  currencyRight: { alignItems: 'flex-end' },
+  currencyPrice: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
+  currencyUnit: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  goldGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  metalCard: {
+    borderRadius: 16, padding: 14, borderWidth: 1, gap: 6,
+    width: '48%',
+    flexGrow: 1,
+  },
+  metalCardLarge: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16 },
+  metalAccent: {
+    width: 32, height: 32, borderRadius: 10, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start',
+  },
+  metalDot: { width: 10, height: 10, borderRadius: 5 },
+  metalBody: { flex: 1, gap: 2 },
+  metalLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  metalKarat: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  metalPurity: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  metalPrice: { fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
+  metalPriceLarge: { fontSize: 22 },
+  metalUnit: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  metalChange: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start',
+  },
+  metalChangeTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
   twoCol: { flexDirection: 'row', gap: 8 },
   col: { flex: 1 },
-  stockTable: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  stockTableHeader: {
+  stockTable: { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+  tableHeader: {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  tableHeaderTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
-  tableHeaderTxtR: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
-  stockRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 11, gap: 10 },
-  stockSymbolWrap: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  stockSymbol: { fontSize: 10, fontFamily: 'Inter_700Bold', textAlign: 'center' },
+  tableHeaderLeft: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
+  tableHeaderRight: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
+  stockRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 12 },
+  stockAvatar: {
+    width: 42, height: 42, borderRadius: 12, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stockAvatarText: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.2 },
   stockInfo: { flex: 1, gap: 2 },
-  stockName: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  stockTicker: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  stockSymbol: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  stockName: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   stockRight: { alignItems: 'flex-end', gap: 4 },
   stockPrice: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  stockBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
-  stockBadgeText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-  timestamp: { fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: -8 },
+  changePill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
+  changePillTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  timestampRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  timestamp: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });

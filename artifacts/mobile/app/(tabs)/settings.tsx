@@ -17,7 +17,7 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-function SettingsCard({ children }: { children: React.ReactNode }) {
+function Card({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -26,17 +26,21 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SettingsRow({ icon, label, value, last }: {
+function InfoRow({ icon, iconBg, label, value, last }: {
   icon: keyof typeof Feather.glyphMap;
+  iconBg: string;
   label: string;
   value?: string;
   last?: boolean;
 }) {
   const colors = useColors();
   return (
-    <View style={[styles.row, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-      <View style={[styles.rowIcon, { backgroundColor: colors.muted }]}>
-        <Feather name={icon} size={15} color={colors.mutedForeground} />
+    <View style={[
+      styles.infoRow,
+      !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+    ]}>
+      <View style={[styles.rowIconWrap, { backgroundColor: iconBg }]}>
+        <Feather name={icon} size={14} color={colors.text} />
       </View>
       <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
       {value ? <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>{value}</Text> : null}
@@ -72,47 +76,45 @@ export default function SettingsScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[styles.content, { paddingTop: topInsets + 16, paddingBottom: botInsets + 90 }]}
+      contentContainerStyle={[styles.content, { paddingTop: topInsets + 20, paddingBottom: botInsets + 100 }]}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
       <View style={styles.headerRow}>
-        <View>
-          <Text style={[styles.screenTitle, { color: colors.text }]}>{t.settings}</Text>
-        </View>
-        <View style={[styles.badge, { backgroundColor: colors.primary + '22', borderColor: colors.primary + '44' }]}>
-          <Text style={[styles.badgeText, { color: colors.primary }]}>INVST</Text>
+        <Text style={[styles.screenTitle, { color: colors.text }]}>{t.settings}</Text>
+        <View style={[styles.versionPill, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+          <Text style={[styles.versionPillText, { color: colors.mutedForeground }]}>v{APP_VERSION}</Text>
         </View>
       </View>
 
       {/* Appearance */}
       <View style={styles.section}>
         <SectionLabel label={t.appearance} />
-        <SettingsCard>
-          <View style={[styles.segmentedRow]}>
-            {THEMES.map((item, i) => {
+        <Card>
+          <View style={styles.themeRow}>
+            {THEMES.map((item) => {
               const active = themeMode === item.key;
               return (
                 <TouchableOpacity
                   key={item.key}
                   style={[
-                    styles.segment,
-                    active && { backgroundColor: colors.primary },
-                    i === 0 && styles.segmentFirst,
-                    i === THEMES.length - 1 && styles.segmentLast,
+                    styles.themeChip,
+                    active
+                      ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                      : { backgroundColor: 'transparent', borderColor: colors.border },
                   ]}
                   onPress={() => handleTheme(item.key)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.75}
                 >
                   <Feather
                     name={item.icon}
-                    size={14}
+                    size={15}
                     color={active ? colors.primaryForeground : colors.mutedForeground}
                   />
                   <Text style={[
-                    styles.segmentText,
+                    styles.themeChipLabel,
                     { color: active ? colors.primaryForeground : colors.mutedForeground },
-                    active && styles.segmentTextActive,
+                    active && styles.themeChipLabelActive,
                   ]}>
                     {item.label}
                   </Text>
@@ -120,15 +122,16 @@ export default function SettingsScreen() {
               );
             })}
           </View>
-        </SettingsCard>
+        </Card>
       </View>
 
       {/* Language */}
       <View style={styles.section}>
         <SectionLabel label={t.language} />
         <View style={styles.langRow}>
-          {([['en', t.english, 'EN'], ['ar', t.arabic, 'عر']] as [Language, string, string][]).map(([lang, label, abbr]) => {
+          {(['en', 'ar'] as Language[]).map((lang) => {
             const active = language === lang;
+            const isAr = lang === 'ar';
             return (
               <TouchableOpacity
                 key={lang}
@@ -137,23 +140,23 @@ export default function SettingsScreen() {
                   {
                     backgroundColor: active ? colors.primary : colors.card,
                     borderColor: active ? colors.primary : colors.border,
-                    flex: 1,
                   },
                 ]}
                 onPress={() => handleLanguage(lang)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.langAbbr, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
-                  {abbr}
-                </Text>
-                <Text style={[styles.langLabel, { color: active ? colors.primaryForeground : colors.text }]}>
-                  {label}
-                </Text>
                 {active && (
-                  <View style={styles.langCheck}>
-                    <Feather name="check" size={14} color={colors.primaryForeground} />
+                  <View style={styles.langCheckWrap}>
+                    <Feather name="check-circle" size={16} color={colors.primaryForeground} />
                   </View>
                 )}
+                <Text style={[styles.langEmoji]}>{isAr ? '🇪🇬' : '🇺🇸'}</Text>
+                <Text style={[styles.langCode, { color: active ? colors.primaryForeground : colors.text }]}>
+                  {isAr ? 'عربي' : 'EN'}
+                </Text>
+                <Text style={[styles.langName, { color: active ? colors.primaryForeground + 'CC' : colors.mutedForeground }]}>
+                  {isAr ? t.arabic : t.english}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -163,26 +166,27 @@ export default function SettingsScreen() {
       {/* Market Data */}
       <View style={styles.section}>
         <SectionLabel label={t.marketData} />
-        <SettingsCard>
-          <SettingsRow icon="zap" label={t.autoRefresh} value="5 min" />
-          <SettingsRow icon="database" label="Source" value="Yahoo Finance" last />
-        </SettingsCard>
+        <Card>
+          <InfoRow icon="zap" iconBg="#FFD70020" label={t.autoRefresh} value="2 min" />
+          <InfoRow icon="globe" iconBg="#4A9EFF20" label="Primary Source" value="gold-api.com" />
+          <InfoRow icon="layers" iconBg="#A47FCA20" label="Fallback" value="goldprice.org" last />
+        </Card>
       </View>
 
       {/* About */}
       <View style={styles.section}>
         <SectionLabel label={t.about} />
-        <SettingsCard>
-          <SettingsRow icon="info" label={t.version} value={APP_VERSION} />
-          <SettingsRow icon="map-pin" label={t.madeInEgypt} last />
-        </SettingsCard>
+        <Card>
+          <InfoRow icon="info" iconBg="#00D4AA20" label={t.version} value={APP_VERSION} />
+          <InfoRow icon="map-pin" iconBg="#FF444420" label={t.madeInEgypt} last />
+        </Card>
       </View>
 
-      {/* Gold bar decoration */}
-      <View style={[styles.goldBar, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '33' }]}>
-        <Text style={[styles.goldBarText, { color: colors.primary }]}>INVST</Text>
-        <Text style={[styles.goldBarSub, { color: colors.mutedForeground }]}>
-          {language === 'ar' ? 'مصر · بيانات حية' : 'Egypt · Live Data'}
+      {/* Footer brand */}
+      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+        <Text style={[styles.footerBrand, { color: colors.primary }]}>INVST</Text>
+        <Text style={[styles.footerTagline, { color: colors.mutedForeground }]}>
+          {language === 'ar' ? 'مصر · بيانات حية · ٢٠٢٤' : 'Egypt · Live Market Data · 2024'}
         </Text>
       </View>
     </ScrollView>
@@ -191,69 +195,38 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  screenTitle: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
+  content: { paddingHorizontal: 20, gap: 22 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  screenTitle: { fontSize: 32, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
+  versionPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
+  versionPillText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  section: { gap: 10 },
+  sectionLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2 },
+  card: { borderRadius: 18, borderWidth: 1, overflow: 'hidden' },
+  themeRow: { flexDirection: 'row', gap: 6, padding: 8 },
+  themeChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 11, borderRadius: 12, borderWidth: 1,
   },
-  badgeText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
-  section: { gap: 8 },
-  sectionLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 1 },
-  card: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
-  segmentedRow: { flexDirection: 'row', padding: 6, gap: 4 },
-  segment: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  segmentFirst: { borderTopLeftRadius: 10, borderBottomLeftRadius: 10 },
-  segmentLast: { borderTopRightRadius: 10, borderBottomRightRadius: 10 },
-  segmentText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  segmentTextActive: { fontFamily: 'Inter_600SemiBold' },
+  themeChipLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  themeChipLabelActive: { fontFamily: 'Inter_700Bold' },
   langRow: { flexDirection: 'row', gap: 10 },
   langCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 16,
-    alignItems: 'center',
-    gap: 4,
-    position: 'relative',
+    flex: 1, borderRadius: 18, borderWidth: 1,
+    padding: 20, alignItems: 'center', gap: 5, position: 'relative',
   },
-  langAbbr: { fontSize: 22, fontFamily: 'Inter_700Bold' },
-  langLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  langCheck: { position: 'absolute', top: 10, right: 10 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    gap: 12,
+  langCheckWrap: { position: 'absolute', top: 12, right: 12 },
+  langEmoji: { fontSize: 28, marginBottom: 4 },
+  langCode: { fontSize: 20, fontFamily: 'Inter_700Bold' },
+  langName: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  infoRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, gap: 13,
   },
-  rowIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  rowIconWrap: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   rowLabel: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular' },
-  rowValue: { fontSize: 13, fontFamily: 'Inter_400Regular' },
-  goldBar: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 20,
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  goldBarText: { fontSize: 20, fontFamily: 'Inter_700Bold' },
-  goldBarSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  rowValue: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  footer: { alignItems: 'center', paddingTop: 24, gap: 6, borderTopWidth: StyleSheet.hairlineWidth },
+  footerBrand: { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 3 },
+  footerTagline: { fontSize: 12, fontFamily: 'Inter_400Regular' },
 });
