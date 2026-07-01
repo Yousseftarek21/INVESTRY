@@ -416,16 +416,16 @@ const styles = StyleSheet.create({
   heroCurrency: { fontSize: 18, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
 
   // P/L chips
-  plRow: { flexDirection: 'row', gap: 10 },
+  plRow: { flexDirection: 'row', gap: 8 },
   plChip: {
-    flex: 1, flexDirection: 'column', gap: 6,
-    borderRadius: 14, borderWidth: 1, padding: 12,
+    flex: 1, flexDirection: 'column', gap: 4,
+    borderRadius: 11, borderWidth: 1, padding: 9,
   },
-  plTop: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  plLabel: { flex: 1, fontSize: 10, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  plValue: { fontSize: 15, fontFamily: 'Inter_700Bold', minWidth: 0 },
-  plBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  plBadgeText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+  plTop: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  plLabel: { flex: 1, fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  plValue: { fontSize: 13, fontFamily: 'Inter_700Bold', minWidth: 0 },
+  plBadge: { borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 },
+  plBadgeText: { fontSize: 9, fontFamily: 'Inter_700Bold' },
 
   // Sparkline
   sparkWrap: {
