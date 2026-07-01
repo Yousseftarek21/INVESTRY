@@ -414,9 +414,9 @@ const styles = StyleSheet.create({
   updatedAt: { fontSize: 10, fontFamily: 'Inter_400Regular' },
 
   // Big value
-  valueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  heroValue: { flex: 1, fontSize: 44, fontFamily: 'Inter_700Bold', letterSpacing: -1.5, lineHeight: 52 },
-  heroCurrency: { fontSize: 18, fontFamily: 'Inter_400Regular', paddingBottom: 5 },
+  valueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  heroValue: { flexShrink: 1, fontSize: 44, fontFamily: 'Inter_700Bold', letterSpacing: -1.5, lineHeight: 52 },
+  heroCurrency: { fontSize: 16, fontFamily: 'Inter_500Medium' },
 
   // P/L chips
   plRow: { flexDirection: 'row', gap: 10 },
