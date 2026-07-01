@@ -1,0 +1,138 @@
+Create a complete authentication system for Investry that provides a premium, secure, and intuitive onboarding experience for first-time users while complying with the latest Apple App Store Review Guidelines, Apple Human Interface Guidelines (HIG), Google Material Design 3, Google Play Developer Policies, GDPR, and CCPA.
+Authentication Flow
+First Launch
+When the app is opened for the first time:
+Show a beautiful onboarding experience (3–5 screens).
+Explain the app's core features:
+Gold & Silver Portfolio
+EGX Stocks
+Real Estate
+Net Worth Tracking
+AI Investment Insights
+Include a "Skip" option.
+Store onboarding completion locally so it is only shown once unless the user resets it.
+Welcome Screen
+Display:
+App logo
+"Welcome to Investry"
+Short description
+Primary button: Get Started
+Secondary button: Sign In
+Sign Up
+Allow account creation using:
+Sign in with Apple (required on iOS if third-party sign-in is offered)
+Google Sign-In
+Email & Password
+Collect only:
+Full Name
+Email
+Password
+Password requirements:
+Minimum 8 characters
+One uppercase letter
+One lowercase letter
+One number
+One special character
+Display password strength in real time.
+Require users to accept:
+Terms & Conditions
+Privacy Policy
+Provide links to both documents.
+Sign In
+Support:
+Sign in with Apple
+Google Sign-In
+Email & Password
+Include:
+Remember Me
+Forgot Password
+Show/Hide Password
+Biometrics (Face ID / Touch ID / Android Biometrics) after first successful login
+Forgot Password
+Allow password reset via email.
+Show:
+Confirmation screen
+Success message
+Do not reveal whether an email address exists in the system.
+Email Verification
+If email/password authentication is used:
+Send verification email
+Prevent access to cloud features until email is verified
+Allow resend verification email
+Session Management
+Keep users signed in securely using refresh tokens.
+Automatically restore the session when reopening the app.
+If authentication expires:
+Silently refresh the token
+If refresh fails, return to the Sign In screen
+Logout
+Inside Settings → Account, provide a clearly labeled Sign Out button.
+When tapped:
+Display a confirmation dialog:
+"Are you sure you want to sign out?"
+Cancel
+Sign Out
+On sign out:
+Remove authentication tokens securely
+Clear sensitive cached user data
+Preserve local preferences such as:
+Theme
+Language
+Notification preferences
+Return to the Welcome/Sign In screen
+Require authentication to access protected data again
+Do not delete the user's account or locally stored preferences when signing out.
+Delete Account
+Provide an in-app Delete Account option to comply with Apple's App Store requirements.
+Before deletion:
+Explain what data will be permanently removed
+Require password re-authentication or biometric confirmation
+Ask for final confirmation
+After deletion:
+Remove cloud data
+Sign the user out
+Return to the Welcome screen
+Security
+Implement:
+Firebase Authentication (or equivalent secure authentication service)
+JWT access tokens
+Refresh tokens
+HTTPS only
+Secure token storage:
+iOS Keychain
+Android EncryptedSharedPreferences/Keystore
+Biometric authentication
+Certificate pinning (recommended)
+Rate limiting
+Brute-force protection
+Automatic session timeout after prolonged inactivity (optional, user configurable)
+Never store passwords locally.
+UX Requirements
+Native iOS and Android components
+Smooth animations
+Skeleton loading indicators
+Friendly error messages
+Offline detection
+Loading states on all authentication actions
+Haptic feedback where appropriate
+Full support for Light Mode and Dark Mode
+Arabic (RTL) and English localization
+Dynamic Type and accessibility support
+Apple & Google Compliance
+Ensure the authentication flow complies with:
+Apple Human Interface Guidelines
+App Store Review Guidelines
+Google Material Design 3
+Google Play Developer Policies
+GDPR
+CCPA
+Requirements:
+"Sign in with Apple" must be available on iOS if Google Sign-In is offered.
+Include in-app account deletion.
+Do not request unnecessary permissions.
+Display Privacy Policy and Terms of Service before account creation.
+Explain why any requested permission is needed.
+Never use deceptive UI or dark patterns.
+Ensure all authentication screens are fully accessible.
+Desired User Experience
+The authentication flow should feel comparable to the onboarding and sign-in experiences of premium apps such as Apple Wallet, Revolut, Robinhood, Notion, and Airbnb—fast, secure, elegant, and effortless, with automatic session restoration, biometric login, and a polished first-time user journey.
