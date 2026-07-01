@@ -122,31 +122,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <View style={[styles.heroDivider, { backgroundColor: colors.border }]} />
-
-        {/* Quick stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statVal, { color: colors.primary }]}>
-              {prices ? prices.usdToEgp.toFixed(2) : '—'}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>USD/EGP</Text>
-          </View>
-          <View style={[styles.statSep, { backgroundColor: colors.border }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statVal, { color: colors.primary }]}>
-              {prices ? Math.round(goldPricePerGram(prices, '21k')).toLocaleString() : '—'}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Gold 21k/g</Text>
-          </View>
-          <View style={[styles.statSep, { backgroundColor: colors.border }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statVal, { color: colors.silverColor }]}>
-              {prices ? silverPricePerGram(prices).toFixed(0) : '—'}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Silver/g</Text>
-          </View>
-        </View>
       </View>
 
       {/* Allocation */}
@@ -226,12 +201,6 @@ const styles = StyleSheet.create({
   gainAmount: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   gainPctPill: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
   gainPct: { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  heroDivider: { height: StyleSheet.hairlineWidth },
-  statsRow: { flexDirection: 'row', alignItems: 'center' },
-  statItem: { flex: 1, alignItems: 'center', gap: 4 },
-  statVal: { fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
-  statLabel: { fontSize: 10, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  statSep: { width: StyleSheet.hairlineWidth, height: 40 },
   section: { borderRadius: 20, padding: 18, borderWidth: 1, gap: 14 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   sectionTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
