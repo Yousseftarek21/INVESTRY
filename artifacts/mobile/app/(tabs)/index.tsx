@@ -251,12 +251,10 @@ export default function HomeScreen() {
           </View>
 
           {/* Big value */}
-          <View style={styles.valueRow}>
-            <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-              {displayValue}
-            </Text>
-            <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>EGP</Text>
-          </View>
+          <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+            {displayValue}
+            <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>{' '}EGP</Text>
+          </Text>
 
           {/* P/L row — only when user has cost basis */}
           {summary.totalCost > 0 && (
@@ -414,9 +412,8 @@ const styles = StyleSheet.create({
   updatedAt: { fontSize: 10, fontFamily: 'Inter_400Regular' },
 
   // Big value
-  valueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  heroValue: { flexShrink: 1, fontSize: 44, fontFamily: 'Inter_700Bold', letterSpacing: -1.5, lineHeight: 52 },
-  heroCurrency: { fontSize: 16, fontFamily: 'Inter_500Medium' },
+  heroValue: { fontSize: 44, fontFamily: 'Inter_700Bold', letterSpacing: -1.5 },
+  heroCurrency: { fontSize: 18, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
 
   // P/L chips
   plRow: { flexDirection: 'row', gap: 10 },
