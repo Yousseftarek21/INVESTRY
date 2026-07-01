@@ -3,7 +3,7 @@ export type Language = 'en' | 'ar';
 const en = {
   // App
   appName: 'INVST',
-  appTagline: 'Your Investment',
+  appTagline: 'Your Investment Tracker',
 
   // Tabs
   portfolio: 'Portfolio',
@@ -22,23 +22,34 @@ const en = {
   // Markets
   currency: 'CURRENCY',
   usDollar: 'US Dollar',
-  goldSection: 'GOLD — عيار',
-  silverSection: 'SILVER — فضة',
-  egxSection: 'EGX STOCKS — البورصة المصرية',
+  goldSection: 'GOLD',
+  silverSection: 'SILVER',
+  egxSection: 'EGX STOCKS',
   perGram: 'Per gram',
-  perOunce: 'Troy oz in EGP',
+  perOunce: 'Troy oz · EGP',
   stockCol: 'Stock',
   priceCol: 'Price (EGP)',
   updated: 'Updated',
   live: 'LIVE',
 
-  // Holdings
+  // Gold karat labels
+  karat24label: '24K · Pure',
+  karat22label: '22K',
+  karat21label: '21K',
+  karat18label: '18K',
+  goldOzLabel: 'Gold · Troy Oz',
+
+  // Silver labels
+  silverGramLabel: 'Silver · Gram',
+  silverOzLabel: 'Silver · Troy Oz',
+
+  // Investments (Holdings)
   noHoldings: 'No investments yet',
-  tapToAdd: 'Tap the + button to add your first investment',
-  goldGroup: 'GOLD — ذهب',
-  silverGroup: 'SILVER — فضة',
-  stockGroup: 'EGX STOCKS — أسهم',
-  realEstateGroup: 'REAL ESTATE — عقارات',
+  tapToAdd: 'Tap + to add your first investment',
+  goldGroup: 'GOLD',
+  silverGroup: 'SILVER',
+  stockGroup: 'EGX STOCKS',
+  realEstateGroup: 'REAL ESTATE',
 
   // Add Investment
   addInvestment: 'Add Investment',
@@ -50,13 +61,13 @@ const en = {
   enterPrices: 'Please enter purchase price and current value.',
   notes: 'Notes (optional)',
   addNote: 'Add a note...',
-  karat: 'Karat — العيار',
+  karat: 'Karat',
   form: 'Form',
   physical: 'Physical',
   digital: 'Digital',
   weightGrams: 'Weight (grams)',
   purchasePricePerGram: 'Purchase Price per Gram (EGP)',
-  stockSymbol: 'Stock Symbol — EGX',
+  stockSymbol: 'Stock Symbol',
   customSymbol: 'Or enter custom symbol...',
   numberOfShares: 'Number of Shares',
   purchasePricePerShare: 'Purchase Price per Share (EGP)',
@@ -83,19 +94,22 @@ const en = {
   dark: 'Dark',
   system: 'System',
   english: 'English',
-  arabic: 'العربية',
+  arabic: 'Arabic',
   version: 'Version',
   madeInEgypt: 'Made in Egypt',
   marketData: 'MARKET DATA',
   autoRefresh: 'Auto-refresh prices',
   refreshInterval: 'Refresh every 2 minutes',
   dataSource: 'Live data: gold-api.com + goldprice.org',
+
+  // Footer
+  footerTagline: 'Egypt · Live Market Data · 2024',
 };
 
 const ar: typeof en = {
   // App
   appName: 'INVST',
-  appTagline: 'استثماراتك في مكان واحد',
+  appTagline: 'متابع استثماراتك',
 
   // Tabs
   portfolio: 'المحفظة',
@@ -116,15 +130,26 @@ const ar: typeof en = {
   usDollar: 'الدولار الأمريكي',
   goldSection: 'الذهب',
   silverSection: 'الفضة',
-  egxSection: 'البورصة المصرية EGX',
+  egxSection: 'البورصة المصرية',
   perGram: 'للجرام',
-  perOunce: 'للأوقية بالجنيه',
+  perOunce: 'للأوقية · جنيه',
   stockCol: 'السهم',
   priceCol: 'السعر (جنيه)',
   updated: 'آخر تحديث',
   live: 'مباشر',
 
-  // Holdings
+  // Gold karat labels
+  karat24label: '24 قيراط · خالص',
+  karat22label: 'عيار 22',
+  karat21label: 'عيار 21',
+  karat18label: 'عيار 18',
+  goldOzLabel: 'ذهب · أوقية',
+
+  // Silver labels
+  silverGramLabel: 'فضة · جرام',
+  silverOzLabel: 'فضة · أوقية',
+
+  // Investments (Holdings)
   noHoldings: 'لا توجد استثمارات بعد',
   tapToAdd: 'اضغط + لإضافة أول استثمار',
   goldGroup: 'الذهب',
@@ -148,7 +173,7 @@ const ar: typeof en = {
   digital: 'رقمي',
   weightGrams: 'الوزن (جرام)',
   purchasePricePerGram: 'سعر الشراء للجرام (جنيه)',
-  stockSymbol: 'رمز السهم — البورصة',
+  stockSymbol: 'رمز السهم',
   customSymbol: 'أو أدخل رمزاً مخصصاً...',
   numberOfShares: 'عدد الأسهم',
   purchasePricePerShare: 'سعر الشراء للسهم (جنيه)',
@@ -182,6 +207,9 @@ const ar: typeof en = {
   autoRefresh: 'تحديث الأسعار تلقائياً',
   refreshInterval: 'تحديث كل دقيقتين',
   dataSource: 'مصدر البيانات: gold-api.com + goldprice.org',
+
+  // Footer
+  footerTagline: 'مصر · بيانات حية · ٢٠٢٤',
 };
 
 export const translations = { en, ar };

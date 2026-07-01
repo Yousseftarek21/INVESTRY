@@ -19,10 +19,10 @@ function SectionLabel({ label, icon }: { label: string; icon: keyof typeof Feath
 }
 
 function MetalCard({
-  label, karat, purity, price, change, changePercent, accentColor, large,
+  label, sublabel, price, changePercent, accentColor, large,
 }: {
-  label: string; karat?: string; purity?: string; price: number;
-  change?: number; changePercent?: number; accentColor: string; large?: boolean;
+  label: string; sublabel?: string; price: number;
+  changePercent?: number; accentColor: string; large?: boolean;
 }) {
   const colors = useColors();
   const hasChange = changePercent !== undefined;
@@ -35,13 +35,12 @@ function MetalCard({
       { backgroundColor: colors.card, borderColor: colors.border },
       large && styles.metalCardLarge,
     ]}>
-      <View style={[styles.metalAccent, { backgroundColor: accentColor + '30', borderColor: accentColor + '40' }]}>
+      <View style={[styles.metalAccentDot, { backgroundColor: accentColor + '30', borderColor: accentColor + '50' }]}>
         <View style={[styles.metalDot, { backgroundColor: accentColor }]} />
       </View>
       <View style={styles.metalBody}>
         <Text style={[styles.metalLabel, { color: colors.text }]}>{label}</Text>
-        {karat && <Text style={[styles.metalKarat, { color: accentColor }]}>{karat}</Text>}
-        {purity && <Text style={[styles.metalPurity, { color: colors.mutedForeground }]}>{purity}</Text>}
+        {sublabel ? <Text style={[styles.metalSublabel, { color: colors.mutedForeground }]}>{sublabel}</Text> : null}
       </View>
       <Text style={[styles.metalPrice, { color: colors.text }, large && styles.metalPriceLarge]}>
         {price.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
@@ -59,47 +58,43 @@ function MetalCard({
   );
 }
 
-function CurrencyCard({ price }: { price: number }) {
+function CurrencyCard({ price, label, pair }: { price: number; label: string; pair: string }) {
   const colors = useColors();
   return (
     <View style={[styles.currencyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.currencyLeft}>
-        <View style={[styles.currencyIconWrap, { backgroundColor: '#4A9EFF20' }]}>
-          <Text style={[styles.currencyFlag]}>🇺🇸</Text>
+        <View style={[styles.currencyFlag, { backgroundColor: '#4A9EFF18' }]}>
+          <Text style={styles.currencyFlagText}>🇺🇸</Text>
         </View>
         <View>
-          <Text style={[styles.currencyName, { color: colors.text }]}>US Dollar</Text>
-          <Text style={[styles.currencyPair, { color: colors.mutedForeground }]}>USD / EGP</Text>
+          <Text style={[styles.currencyName, { color: colors.text }]}>{label}</Text>
+          <Text style={[styles.currencyPair, { color: colors.mutedForeground }]}>{pair}</Text>
         </View>
       </View>
       <View style={styles.currencyRight}>
-        <Text style={[styles.currencyPrice, { color: colors.text }]}>
-          {price.toFixed(2)}
-        </Text>
+        <Text style={[styles.currencyPrice, { color: colors.text }]}>{price.toFixed(2)}</Text>
         <Text style={[styles.currencyUnit, { color: colors.mutedForeground }]}>EGP</Text>
       </View>
     </View>
   );
 }
 
-function StockRow({ symbol, name, price, change, changePercent, index, total }: {
+function StockRow({ symbol, name, price, changePercent, index, total }: {
   symbol: string; name: string; price: number; change: number;
   changePercent: number; index: number; total: number;
 }) {
   const colors = useColors();
   const isPos = changePercent >= 0;
   const color = isPos ? colors.green : colors.red;
-  const isLast = index === total - 1;
-  const isFirst = index === 0;
 
   return (
     <View style={[
       styles.stockRow,
-      !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+      index < total - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
     ]}>
       <View style={[styles.stockAvatar, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
-        <Text style={[styles.stockAvatarText, { color: colors.primary }]} numberOfLines={1}>
-          {symbol.length <= 3 ? symbol : symbol.substring(0, 3)}
+        <Text style={[styles.stockAvatarText, { color: colors.primary }]}>
+          {symbol.length <= 4 ? symbol : symbol.substring(0, 4)}
         </Text>
       </View>
       <View style={styles.stockInfo}>
@@ -139,7 +134,6 @@ export default function MarketsScreen() {
   const silverOz = prices ? Math.round(prices.silverUsd * prices.usdToEgp) : 0;
 
   const goldChangePct = prices?.goldChangePercent;
-  const goldChangeAbs = prices ? Math.round(prices.goldChange * prices.usdToEgp / 31.1035) : undefined;
   const silverChangePct = prices?.silverChangePercent;
 
   return (
@@ -161,23 +155,29 @@ export default function MarketsScreen() {
       {/* Currency */}
       <View style={styles.group}>
         <SectionLabel label={t.currency} icon="dollar-sign" />
-        {prices && <CurrencyCard price={parseFloat(prices.usdToEgp.toFixed(2))} />}
+        {prices && (
+          <CurrencyCard
+            price={parseFloat(prices.usdToEgp.toFixed(2))}
+            label={t.usDollar}
+            pair="USD / EGP"
+          />
+        )}
       </View>
 
       {/* Gold */}
       <View style={styles.group}>
         <SectionLabel label={t.goldSection} icon="award" />
         <View style={styles.goldGrid}>
-          <MetalCard label="Gold 24k" karat="24K" purity="خالص" price={gold24}
+          <MetalCard label={t.karat24label} sublabel={t.perGram} price={gold24}
             changePercent={goldChangePct} accentColor={colors.primary} />
-          <MetalCard label="Gold 22k" karat="22K" purity="عيار 22" price={gold22}
+          <MetalCard label={t.karat22label} sublabel={t.perGram} price={gold22}
             accentColor={colors.primary} />
-          <MetalCard label="Gold 21k" karat="21K" purity="عيار 21" price={gold21}
+          <MetalCard label={t.karat21label} sublabel={t.perGram} price={gold21}
             accentColor={colors.primary} />
-          <MetalCard label="Gold 18k" karat="18K" purity="عيار 18" price={gold18}
+          <MetalCard label={t.karat18label} sublabel={t.perGram} price={gold18}
             accentColor={colors.goldDark} />
         </View>
-        <MetalCard label="Gold / Troy Oz" purity={t.perOunce} price={goldOz}
+        <MetalCard label={t.goldOzLabel} sublabel={t.perOunce} price={goldOz}
           changePercent={goldChangePct} accentColor={colors.primary} large />
       </View>
 
@@ -186,11 +186,11 @@ export default function MarketsScreen() {
         <SectionLabel label={t.silverSection} icon="circle" />
         <View style={styles.twoCol}>
           <View style={styles.col}>
-            <MetalCard label="Silver / g" purity={t.perGram} price={silverG}
+            <MetalCard label={t.silverGramLabel} sublabel={t.perGram} price={silverG}
               changePercent={silverChangePct} accentColor={colors.silverColor} />
           </View>
           <View style={styles.col}>
-            <MetalCard label="Silver / oz" purity={t.perOunce} price={silverOz}
+            <MetalCard label={t.silverOzLabel} sublabel={t.perOunce} price={silverOz}
               accentColor={colors.silverColor} />
           </View>
         </View>
@@ -238,30 +238,28 @@ const styles = StyleSheet.create({
     borderRadius: 18, padding: 18, borderWidth: 1,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  currencyLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  currencyIconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  currencyFlag: { fontSize: 22 },
+  currencyLeft: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  currencyFlag: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  currencyFlagText: { fontSize: 22 },
   currencyName: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   currencyPair: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   currencyRight: { alignItems: 'flex-end' },
-  currencyPrice: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
+  currencyPrice: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
   currencyUnit: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   goldGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   metalCard: {
     borderRadius: 16, padding: 14, borderWidth: 1, gap: 6,
-    width: '48%',
-    flexGrow: 1,
+    width: '48%', flexGrow: 1,
   },
   metalCardLarge: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16 },
-  metalAccent: {
-    width: 32, height: 32, borderRadius: 10, borderWidth: 1,
+  metalAccentDot: {
+    width: 30, height: 30, borderRadius: 9, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start',
   },
   metalDot: { width: 10, height: 10, borderRadius: 5 },
   metalBody: { flex: 1, gap: 2 },
   metalLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  metalKarat: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
-  metalPurity: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  metalSublabel: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   metalPrice: { fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
   metalPriceLarge: { fontSize: 22 },
   metalUnit: { fontSize: 11, fontFamily: 'Inter_400Regular' },

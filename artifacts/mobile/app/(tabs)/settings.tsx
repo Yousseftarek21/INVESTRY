@@ -186,7 +186,7 @@ export default function SettingsScreen() {
       <View style={[styles.footer, { borderTopColor: colors.border }]}>
         <Text style={[styles.footerBrand, { color: colors.primary }]}>INVST</Text>
         <Text style={[styles.footerTagline, { color: colors.mutedForeground }]}>
-          {language === 'ar' ? 'مصر · بيانات حية · ٢٠٢٤' : 'Egypt · Live Market Data · 2024'}
+          {t.footerTagline}
         </Text>
       </View>
     </ScrollView>
