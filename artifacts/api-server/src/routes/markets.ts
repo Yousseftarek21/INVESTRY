@@ -191,16 +191,45 @@ async function fetchCommodityHistorical(): Promise<HistoricalRates | null> {
 }
 
 // ─── USD → EGP exchange rate ───────────────────────────────────────────────────
-// CommodityPriceAPI does not provide FX pairs; EGP conversion requires a
-// separate FX source. We use open.er-api.com (free, no key) for this only.
+// CommodityPriceAPI has no FX pairs, so we fetch the mid-market rate from:
+//   1. Wise   — real-time mid-market (same as XE / Google Finance)
+//   2. fawazahmed0 (jsdelivr CDN)  — daily, no key
+//   3. fawazahmed0 (CF pages CDN)  — daily, no key (alternate CDN)
+//   4. open.er-api.com             — daily, no key (last resort)
+//   5. hardcoded fallback
 
-interface ErApiResponse { rates: { EGP: number } }
+interface WiseRateResponse { source: string; target: string; value: number; time: number }
+interface Fawaz0Response { date: string; usd: { egp: number } }
+interface ErApiResponse  { rates: { EGP: number } }
 
 async function fetchUsdToEgp(): Promise<number> {
-  const data = await safeJson<ErApiResponse>(
+  // 1. Wise real-time mid-market rate (updates every few seconds)
+  const wise = await safeJson<WiseRateResponse>(
+    await safeFetch("https://wise.com/rates/live?source=USD&target=EGP")
+  );
+  if (wise?.value && wise.value > 0) {
+    logger.info({ rate: wise.value, ts: wise.time }, "USD/EGP from Wise");
+    return wise.value;
+  }
+
+  // 2. fawazahmed0 via jsDelivr CDN (daily, highly accurate)
+  const fawaz1 = await safeJson<Fawaz0Response>(
+    await safeFetch("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json")
+  );
+  if (fawaz1?.usd?.egp && fawaz1.usd.egp > 0) return fawaz1.usd.egp;
+
+  // 3. fawazahmed0 via Cloudflare Pages CDN (alternate)
+  const fawaz2 = await safeJson<Fawaz0Response>(
+    await safeFetch("https://latest.currency-api.pages.dev/v1/currencies/usd.json")
+  );
+  if (fawaz2?.usd?.egp && fawaz2.usd.egp > 0) return fawaz2.usd.egp;
+
+  // 4. open.er-api.com (daily)
+  const er = await safeJson<ErApiResponse>(
     await safeFetch("https://open.er-api.com/v6/latest/USD")
   );
-  if (data?.rates?.EGP && data.rates.EGP > 0) return data.rates.EGP;
+  if (er?.rates?.EGP && er.rates.EGP > 0) return er.rates.EGP;
+
   return FALLBACK_EGP;
 }
 
