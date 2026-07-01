@@ -149,6 +149,7 @@ export default function SettingsScreen() {
   const { holdings, removeHolding } = useHoldings();
 
   const [modal, setModal] = useState<{ title: string; content: string } | null>(null);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -297,31 +298,50 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <SectionHeader label={t.language} />
           <SectionCard>
-            {(['en', 'ar'] as Language[]).map((lang, i, arr) => {
-              const active = language === lang;
-              const isLast = i === arr.length - 1;
-              return (
-                <React.Fragment key={lang}>
-                  <TouchableOpacity
-                    style={styles.row}
-                    onPress={() => handleLanguage(lang)}
-                    activeOpacity={0.6}
-                  >
-                    <IconBadge icon="globe" bg="#0EA5E9" />
-                    <Text style={[styles.rowLabel, { color: colors.text }]}>
-                      {lang === 'ar' ? t.arabic : t.english}
-                    </Text>
-                    <View style={styles.rowRight}>
-                      <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
-                        {lang === 'ar' ? 'عربي' : 'English'}
-                      </Text>
-                      {active && <Feather name="check" size={15} color={colors.primary} style={{ marginLeft: 4 }} />}
-                    </View>
-                  </TouchableOpacity>
-                  {!isLast && <RowDivider />}
-                </React.Fragment>
-              );
-            })}
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => setLangDropdownOpen(v => !v)}
+              activeOpacity={0.6}
+            >
+              <IconBadge icon="globe" bg="#0EA5E9" />
+              <Text style={[styles.rowLabel, { color: colors.text }]}>{t.language}</Text>
+              <View style={styles.rowRight}>
+                <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
+                  {language === 'ar' ? 'عربي' : 'English'}
+                </Text>
+                <Feather
+                  name={langDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                  size={15}
+                  color={colors.mutedForeground}
+                />
+              </View>
+            </TouchableOpacity>
+
+            {langDropdownOpen && (
+              <>
+                <View style={[styles.divider, { backgroundColor: colors.border, marginLeft: 0 }]} />
+                {(['en', 'ar'] as Language[]).map((lang, i, arr) => {
+                  const active = language === lang;
+                  const isLast = i === arr.length - 1;
+                  return (
+                    <React.Fragment key={lang}>
+                      <TouchableOpacity
+                        style={[styles.row, styles.dropdownOptionRow, { backgroundColor: active ? colors.primary + '14' : 'transparent' }]}
+                        onPress={() => { handleLanguage(lang); setLangDropdownOpen(false); }}
+                        activeOpacity={0.6}
+                      >
+                        <View style={styles.dropdownIndent} />
+                        <Text style={[styles.rowLabel, { color: active ? colors.primary : colors.text }]}>
+                          {lang === 'ar' ? 'عربي — Arabic' : 'English'}
+                        </Text>
+                        {active && <Feather name="check" size={15} color={colors.primary} />}
+                      </TouchableOpacity>
+                      {!isLast && <View style={[styles.divider, { backgroundColor: colors.border, marginLeft: 55 }]} />}
+                    </React.Fragment>
+                  );
+                })}
+              </>
+            )}
           </SectionCard>
         </View>
 
@@ -590,16 +610,9 @@ const styles = StyleSheet.create({
   },
   themeChipLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
 
-  // Language
-  langRow: { flexDirection: 'row', gap: 10 },
-  langCard: {
-    flex: 1, borderRadius: 16, borderWidth: 1,
-    paddingVertical: 20, alignItems: 'center', gap: 4, position: 'relative',
-  },
-  langCheck: { position: 'absolute', top: 11, right: 11 },
-  langFlag: { fontSize: 26, marginBottom: 3 },
-  langCode: { fontSize: 20, fontFamily: 'Inter_700Bold' },
-  langName: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  // Language dropdown
+  dropdownOptionRow: { paddingVertical: 12 },
+  dropdownIndent: { width: 43 },
 
   // Segment small
   segmentSmall: { flexDirection: 'row', gap: 4 },
