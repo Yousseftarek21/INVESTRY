@@ -83,17 +83,6 @@ export default function HoldingsScreen() {
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noHoldings}</Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAdd}</Text>
-            <TouchableOpacity
-              style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/add-investment');
-              }}
-              activeOpacity={0.8}
-            >
-              <Feather name="plus" size={16} color={colors.primaryForeground} />
-              <Text style={[styles.emptyBtnText, { color: colors.primaryForeground }]}>Add Investment</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           TYPE_ORDER.filter(type => grouped[type]?.length).map(type => (

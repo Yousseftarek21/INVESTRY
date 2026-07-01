@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Platform, ScrollView,
+  Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -14,20 +14,232 @@ import { GoldKarat, Holding, MetalForm, PropertyType } from '@/types';
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate';
 
+// ─── All major EGX listed stocks ──────────────────────────────────────────────
 const EGX_SYMBOLS = [
-  { symbol: 'COMI', name: 'Commercial Intl Bank' },
+  { symbol: 'COMI', name: 'Commercial International Bank' },
   { symbol: 'HRHO', name: 'EFG Hermes Holding' },
   { symbol: 'TMGH', name: 'Talaat Moustafa Group' },
   { symbol: 'ORWE', name: 'Oriental Weavers' },
   { symbol: 'EAST', name: 'Eastern Company' },
   { symbol: 'ORAS', name: 'Orascom Construction' },
-  { symbol: 'CLHO', name: 'Cleopatra Hospital' },
+  { symbol: 'CLHO', name: 'Cleopatra Hospital Group' },
   { symbol: 'EKHO', name: 'EK Holding' },
+  { symbol: 'ABUK', name: 'Abu Kir Fertilizers' },
+  { symbol: 'ACGC', name: 'Alexandria Container & Cargo' },
+  { symbol: 'ADIB', name: 'Abu Dhabi Islamic Bank Egypt' },
+  { symbol: 'AIVC', name: 'Arabia Investments' },
+  { symbol: 'ALEX', name: 'Alexandria Mineral Oils' },
+  { symbol: 'AMOC', name: 'Alexandria Petroleum' },
+  { symbol: 'AMER', name: 'Americana Restaurants' },
+  { symbol: 'AMOC', name: 'Alexandria Mineral Oils Company' },
+  { symbol: 'ARAB', name: 'Arab Bank Egypt' },
+  { symbol: 'ARKI', name: 'Ark Investment & Real Estate' },
+  { symbol: 'ASCM', name: 'Alexandria Spinning & Weaving' },
+  { symbol: 'AUTO', name: 'Egyptian Automotive' },
+  { symbol: 'BFED', name: 'Banque du Caire' },
+  { symbol: 'BMOB', name: 'Banque Misr' },
+  { symbol: 'BMOS', name: 'Bank of Alexandria' },
+  { symbol: 'BRCI', name: 'Beltone Financial Holding' },
+  { symbol: 'BTFH', name: 'Beltone Capital Holding' },
+  { symbol: 'CCAP', name: 'Cairo Capital Holding' },
+  { symbol: 'CCFH', name: 'Cairo for Housing & Development' },
+  { symbol: 'CCSM', name: 'Ceramica Cleopatra Group' },
+  { symbol: 'CIEB', name: 'CIB Egypt' },
+  { symbol: 'CIRA', name: 'CIRA Education' },
+  { symbol: 'COMD', name: 'Commercial Warehousing' },
+  { symbol: 'CPTH', name: 'Cairo Pharmaceuticals' },
+  { symbol: 'DCRC', name: 'Delta Construction & Rebuilding' },
+  { symbol: 'DSCR', name: 'Discover Vision Group' },
+  { symbol: 'DYSE', name: 'Dice Sport & Casual Wear' },
+  { symbol: 'EAIG', name: 'Egypt Insurance Group' },
+  { symbol: 'EALY', name: 'Egyptian Aluminium' },
+  { symbol: 'ECAP', name: 'Egyptian Capital Holding' },
+  { symbol: 'ECAR', name: 'Egypt Car' },
+  { symbol: 'ECHO', name: 'Egyptian Company for Hotels' },
+  { symbol: 'EDBE', name: 'Egyptian Arab Development Bank' },
+  { symbol: 'EFID', name: 'Egyptian Financial & Industrial' },
+  { symbol: 'EGTS', name: 'Egyptian Tourism' },
+  { symbol: 'ELKA', name: 'El Kahera Housing' },
+  { symbol: 'ELSH', name: 'El Shams Housing' },
+  { symbol: 'ELWS', name: 'El Wady Ceramics' },
+  { symbol: 'EMFD', name: 'Egypt Foods Group' },
+  { symbol: 'EMIC', name: 'Egyptian Media Production City' },
+  { symbol: 'ENPI', name: 'Egyptian Nat\'l Posts' },
+  { symbol: 'ESRS', name: 'Ezz Steel' },
+  { symbol: 'ETRS', name: 'Egyptian Transport' },
+  { symbol: 'EXPA', name: 'Export Development Bank' },
+  { symbol: 'FWRY', name: 'Fawry Banking & Payment Tech' },
+  { symbol: 'GAMA', name: 'Ghabbour Auto' },
+  { symbol: 'GBCO', name: 'General Buildings' },
+  { symbol: 'GTHE', name: 'GTHE' },
+  { symbol: 'GWIC', name: 'Gulf Western Investments' },
+  { symbol: 'HDBK', name: 'Housing & Development Bank' },
+  { symbol: 'HELI', name: 'Heliopolis Housing' },
+  { symbol: 'HERO', name: 'Egyptian Real Estate Group' },
+  { symbol: 'ICON', name: 'Icon Real Estate' },
+  { symbol: 'IDEG', name: 'IDEG' },
+  { symbol: 'IFAP', name: 'Integrated Finance' },
+  { symbol: 'IRAX', name: 'Arabia Real Estate' },
+  { symbol: 'ISPH', name: 'Ismailia for Real Estate Inv.' },
+  { symbol: 'JUFO', name: 'Juhayna Food Industries' },
+  { symbol: 'KABO', name: 'Kafr El Zayat Pesticides' },
+  { symbol: 'KFSB', name: 'El Kahera El Watania Inv.' },
+  { symbol: 'LCSW', name: 'Lecico Egypt' },
+  { symbol: 'MASR', name: 'Misr Insurance Holding' },
+  { symbol: 'MCIT', name: 'Misr Chemical Industries' },
+  { symbol: 'MEDC', name: 'Middle East Glass' },
+  { symbol: 'MNHD', name: 'Madinet Nasr for Housing' },
+  { symbol: 'MOSI', name: 'Mosharaka Ins. & Reinsurance' },
+  { symbol: 'MPCI', name: 'Misr Petroleum' },
+  { symbol: 'MRSE', name: 'Maser Shipping' },
+  { symbol: 'NASR', name: 'Nasr City Housing' },
+  { symbol: 'NCGR', name: 'National Co. for Glass' },
+  { symbol: 'NGAS', name: 'National Gas & Mining' },
+  { symbol: 'NTGL', name: 'National Textile' },
+  { symbol: 'OCDI', name: 'Orascom Development Egypt' },
+  { symbol: 'ORAM', name: 'Orascom Media' },
+  { symbol: 'ORAS', name: 'Orascom Construction' },
+  { symbol: 'ORHD', name: 'Orascom Hotels & Development' },
+  { symbol: 'ORPD', name: 'Orascom Development' },
+  { symbol: 'PHDC', name: 'Palm Hills Developments' },
+  { symbol: 'PORT', name: 'Alexandria Port Said' },
+  { symbol: 'POUL', name: 'Cairo Poultry' },
+  { symbol: 'RAIA', name: 'Raia Medical Center' },
+  { symbol: 'RCYC', name: 'Recyclomed' },
+  { symbol: 'SDCH', name: 'Sidi Kerir Petrochemicals' },
+  { symbol: 'SEMG', name: 'Americana Group Egypt' },
+  { symbol: 'SKPC', name: 'Sidi Kerir Petrochem' },
+  { symbol: 'SMFR', name: 'Samcrete Egypt' },
+  { symbol: 'SPMD', name: 'Speed Medical' },
+  { symbol: 'SUGR', name: 'Upper Egypt Sugar' },
+  { symbol: 'SWDY', name: 'El Sewedy Electric' },
+  { symbol: 'TMHC', name: 'Trans Ocean Hotels' },
+  { symbol: 'TOYS', name: 'Toys Home' },
+  { symbol: 'UEGC', name: 'United Egypt Group' },
+  { symbol: 'UNIT', name: 'United Housing & Development' },
+  { symbol: 'UTAC', name: 'United Arab Contractors' },
+  { symbol: 'VIOS', name: 'Viossi' },
+  { symbol: 'WATA', name: 'Wataniya Insurance' },
+  { symbol: 'WMCK', name: 'Wadi Kom Ombo' },
+  { symbol: 'ZCAP', name: 'Zap Capital' },
+  { symbol: 'ZNHO', name: 'Zahraa Nasr City' },
 ];
 
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
+
+// ─── Stock Picker Modal ───────────────────────────────────────────────────────
+
+function StockPickerModal({
+  visible,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  selected: { symbol: string; name: string };
+  onSelect: (s: { symbol: string; name: string }) => void;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    if (!q) return EGX_SYMBOLS;
+    return EGX_SYMBOLS.filter(
+      s => s.symbol.includes(q) || s.name.toUpperCase().includes(q)
+    );
+  }, [query]);
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={[pickerStyles.container, { backgroundColor: colors.background }]}>
+        {/* Header */}
+        <View style={[pickerStyles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
+          <Text style={[pickerStyles.title, { color: colors.text }]}>EGX Stocks</Text>
+          <TouchableOpacity onPress={onClose} style={[pickerStyles.closeBtn, { backgroundColor: colors.muted }]}>
+            <Feather name="x" size={15} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search */}
+        <View style={[pickerStyles.searchWrap, { borderBottomColor: colors.border }]}>
+          <View style={[pickerStyles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="search" size={15} color={colors.mutedForeground} />
+            <TextInput
+              style={[pickerStyles.searchInput, { color: colors.text }]}
+              placeholder="Search symbol or company..."
+              placeholderTextColor={colors.mutedForeground}
+              value={query}
+              onChangeText={setQuery}
+              autoCapitalize="characters"
+              returnKeyType="search"
+            />
+            {query.length > 0 && (
+              <TouchableOpacity onPress={() => setQuery('')}>
+                <Feather name="x-circle" size={15} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Count */}
+        <Text style={[pickerStyles.countLabel, { color: colors.mutedForeground }]}>
+          {filtered.length} stocks listed
+        </Text>
+
+        {/* List */}
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.symbol}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          renderItem={({ item, index }) => {
+            const isSelected = selected.symbol === item.symbol;
+            const isLast = index === filtered.length - 1;
+            return (
+              <TouchableOpacity
+                style={[
+                  pickerStyles.stockRow,
+                  { borderBottomColor: colors.border },
+                  !isLast && pickerStyles.stockRowBorder,
+                  isSelected && { backgroundColor: colors.primary + '10' },
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onSelect(item);
+                  onClose();
+                }}
+                activeOpacity={0.65}
+              >
+                <View style={[pickerStyles.avatar, {
+                  backgroundColor: isSelected ? colors.primary + '25' : colors.muted,
+                  borderColor: isSelected ? colors.primary + '60' : colors.border,
+                }]}>
+                  <Text style={[pickerStyles.avatarText, { color: isSelected ? colors.primary : colors.mutedForeground }]}>
+                    {item.symbol.substring(0, 4)}
+                  </Text>
+                </View>
+                <View style={pickerStyles.stockInfo}>
+                  <Text style={[pickerStyles.symbol, { color: colors.text }]}>{item.symbol}</Text>
+                  <Text style={[pickerStyles.stockName, { color: colors.mutedForeground }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                </View>
+                {isSelected && <Feather name="check-circle" size={18} color={colors.primary} />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function AddInvestmentScreen() {
   const colors = useColors();
@@ -42,6 +254,7 @@ export default function AddInvestmentScreen() {
   const [purchasePricePerGram, setPurchasePricePerGram] = useState('');
   const [selectedStock, setSelectedStock] = useState(EGX_SYMBOLS[0]);
   const [customSymbol, setCustomSymbol] = useState('');
+  const [stockPickerVisible, setStockPickerVisible] = useState(false);
   const [shares, setShares] = useState('');
   const [purchasePricePerShare, setPurchasePricePerShare] = useState('');
   const [propertyType, setPropertyType] = useState<PropertyType>('apartment');
@@ -105,172 +318,212 @@ export default function AddInvestmentScreen() {
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
+  const activeStock = customSymbol.trim()
+    ? { symbol: customSymbol.trim().toUpperCase(), name: 'Custom symbol' }
+    : selectedStock;
+
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={[styles.modalHeader, {
-        paddingTop: topInsets + 10,
-        borderBottomColor: colors.border,
-        backgroundColor: colors.background,
-      }]}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-          <Feather name="x" size={22} color={colors.mutedForeground} />
-        </TouchableOpacity>
-        <Text style={[styles.modalTitle, { color: colors.text }]}>{t.addInvestment}</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: botInsets + 40 }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Type */}
-        <View style={styles.section}>
-          <Text style={labelStyle}>{t.investmentType}</Text>
-          <View style={styles.typeGrid}>
-            {TYPES.map(tp => (
+        <View style={[styles.modalHeader, {
+          paddingTop: topInsets + 10,
+          borderBottomColor: colors.border,
+          backgroundColor: colors.background,
+        }]}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+            <Feather name="x" size={22} color={colors.mutedForeground} />
+          </TouchableOpacity>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>{t.addInvestment}</Text>
+          <TouchableOpacity onPress={handleSave}>
+            <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: botInsets + 40 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Type */}
+          <View style={styles.section}>
+            <Text style={labelStyle}>{t.investmentType}</Text>
+            <View style={styles.typeGrid}>
+              {TYPES.map(tp => (
+                <TouchableOpacity
+                  key={tp.key}
+                  style={[styles.typeCard, {
+                    backgroundColor: type === tp.key ? tp.color + '22' : colors.card,
+                    borderColor: type === tp.key ? tp.color : colors.border,
+                  }]}
+                  onPress={() => setType(tp.key)}
+                >
+                  <Feather name={tp.icon} size={20} color={type === tp.key ? tp.color : colors.mutedForeground} />
+                  <Text style={[styles.typeLabel, { color: type === tp.key ? tp.color : colors.text }]}>{tp.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Gold */}
+          {type === 'gold' && (<>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.karat}</Text>
+              <View style={styles.chips}>
+                {KARATS.map(k => (
+                  <Chip key={k} value={k} selected={karat === k} onPress={() => setKarat(k)} />
+                ))}
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.form}</Text>
+              <View style={styles.chips}>
+                {(['physical', 'digital'] as MetalForm[]).map(f => (
+                  <Chip key={f} value={f} selected={form === f} onPress={() => setForm(f)}
+                    label={f === 'physical' ? t.physical : t.digital} />
+                ))}
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.weightGrams}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 50" placeholderTextColor={colors.mutedForeground}
+                value={grams} onChangeText={setGrams} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 3900" placeholderTextColor={colors.mutedForeground}
+                value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} keyboardType="decimal-pad" />
+            </View>
+          </>)}
+
+          {/* Silver */}
+          {type === 'silver' && (<>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.form}</Text>
+              <View style={styles.chips}>
+                {(['physical', 'digital'] as MetalForm[]).map(f => (
+                  <Chip key={f} value={f} selected={form === f} onPress={() => setForm(f)}
+                    label={f === 'physical' ? t.physical : t.digital} />
+                ))}
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.weightGrams}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 500" placeholderTextColor={colors.mutedForeground}
+                value={grams} onChangeText={setGrams} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 52" placeholderTextColor={colors.mutedForeground}
+                value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} keyboardType="decimal-pad" />
+            </View>
+          </>)}
+
+          {/* Stock */}
+          {type === 'stock' && (<>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.stockSymbol}</Text>
+
+              {/* Dropdown trigger */}
               <TouchableOpacity
-                key={tp.key}
-                style={[styles.typeCard, {
-                  backgroundColor: type === tp.key ? tp.color + '22' : colors.card,
-                  borderColor: type === tp.key ? tp.color : colors.border,
-                }]}
-                onPress={() => setType(tp.key)}
+                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.primary }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStockPickerVisible(true); }}
+                activeOpacity={0.75}
               >
-                <Feather name={tp.icon} size={20} color={type === tp.key ? tp.color : colors.mutedForeground} />
-                <Text style={[styles.typeLabel, { color: type === tp.key ? tp.color : colors.text }]}>{tp.label}</Text>
+                <View style={[styles.dropdownAvatar, { backgroundColor: colors.primary + '20' }]}>
+                  <Text style={[styles.dropdownAvatarText, { color: colors.primary }]}>
+                    {activeStock.symbol.substring(0, 4)}
+                  </Text>
+                </View>
+                <View style={styles.dropdownInfo}>
+                  <Text style={[styles.dropdownSymbol, { color: colors.text }]}>{activeStock.symbol}</Text>
+                  <Text style={[styles.dropdownName, { color: colors.mutedForeground }]} numberOfLines={1}>
+                    {activeStock.name}
+                  </Text>
+                </View>
+                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
-            ))}
-          </View>
-        </View>
 
-        {/* Gold */}
-        {type === 'gold' && (<>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.karat}</Text>
-            <View style={styles.chips}>
-              {KARATS.map(k => (
-                <Chip key={k} value={k} selected={karat === k} onPress={() => setKarat(k)} />
-              ))}
+              {/* Custom symbol override */}
+              <View style={styles.customRow}>
+                <View style={[styles.customDivider, { backgroundColor: colors.border }]} />
+                <Text style={[styles.customOr, { color: colors.mutedForeground }]}>or enter custom</Text>
+                <View style={[styles.customDivider, { backgroundColor: colors.border }]} />
+              </View>
+              <TextInput
+                style={inputStyle}
+                placeholder={t.customSymbol}
+                placeholderTextColor={colors.mutedForeground}
+                value={customSymbol}
+                onChangeText={setCustomSymbol}
+                autoCapitalize="characters"
+              />
             </View>
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.form}</Text>
-            <View style={styles.chips}>
-              {(['physical', 'digital'] as MetalForm[]).map(f => (
-                <Chip key={f} value={f} selected={form === f} onPress={() => setForm(f)}
-                  label={f === 'physical' ? t.physical : t.digital} />
-              ))}
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.numberOfShares}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 100" placeholderTextColor={colors.mutedForeground}
+                value={shares} onChangeText={setShares} keyboardType="decimal-pad" />
             </View>
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.weightGrams}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. 50" placeholderTextColor={colors.mutedForeground}
-              value={grams} onChangeText={setGrams} keyboardType="decimal-pad" />
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. 3900" placeholderTextColor={colors.mutedForeground}
-              value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} keyboardType="decimal-pad" />
-          </View>
-        </>)}
-
-        {/* Silver */}
-        {type === 'silver' && (<>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.form}</Text>
-            <View style={styles.chips}>
-              {(['physical', 'digital'] as MetalForm[]).map(f => (
-                <Chip key={f} value={f} selected={form === f} onPress={() => setForm(f)}
-                  label={f === 'physical' ? t.physical : t.digital} />
-              ))}
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.purchasePricePerShare}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 95.50" placeholderTextColor={colors.mutedForeground}
+                value={purchasePricePerShare} onChangeText={setPurchasePricePerShare} keyboardType="decimal-pad" />
             </View>
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.weightGrams}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. 500" placeholderTextColor={colors.mutedForeground}
-              value={grams} onChangeText={setGrams} keyboardType="decimal-pad" />
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. 52" placeholderTextColor={colors.mutedForeground}
-              value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} keyboardType="decimal-pad" />
-          </View>
-        </>)}
+          </>)}
 
-        {/* Stock */}
-        {type === 'stock' && (<>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.stockSymbol}</Text>
-            <View style={styles.stockGrid}>
-              {EGX_SYMBOLS.map(s => (
-                <Chip key={s.symbol} value={s.symbol} selected={selectedStock.symbol === s.symbol && !customSymbol}
-                  onPress={() => { setSelectedStock(s); setCustomSymbol(''); }} />
-              ))}
+          {/* Real Estate */}
+          {type === 'real_estate' && (<>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.propertyType}</Text>
+              <View style={styles.chips}>
+                {(['apartment', 'villa', 'land', 'commercial'] as PropertyType[]).map(p => (
+                  <Chip key={p} value={p} selected={propertyType === p} onPress={() => setPropertyType(p)}
+                    label={t[p as 'apartment' | 'villa' | 'land' | 'commercial']} />
+                ))}
+              </View>
             </View>
-            <TextInput style={[inputStyle, { marginTop: 8 }]} placeholder={t.customSymbol}
-              placeholderTextColor={colors.mutedForeground} value={customSymbol}
-              onChangeText={setCustomSymbol} autoCapitalize="characters" />
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.numberOfShares}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. 100" placeholderTextColor={colors.mutedForeground}
-              value={shares} onChangeText={setShares} keyboardType="decimal-pad" />
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.purchasePricePerShare}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. 95.50" placeholderTextColor={colors.mutedForeground}
-              value={purchasePricePerShare} onChangeText={setPurchasePricePerShare} keyboardType="decimal-pad" />
-          </View>
-        </>)}
-
-        {/* Real Estate */}
-        {type === 'real_estate' && (<>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.propertyType}</Text>
-            <View style={styles.chips}>
-              {(['apartment', 'villa', 'land', 'commercial'] as PropertyType[]).map(p => (
-                <Chip key={p} value={p} selected={propertyType === p} onPress={() => setPropertyType(p)}
-                  label={t[p as 'apartment' | 'villa' | 'land' | 'commercial']} />
-              ))}
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.location}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. New Cairo" placeholderTextColor={colors.mutedForeground}
+                value={location} onChangeText={setLocation} />
             </View>
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.location}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. New Cairo" placeholderTextColor={colors.mutedForeground}
-              value={location} onChangeText={setLocation} />
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.purchasePrice}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. 3500000" placeholderTextColor={colors.mutedForeground}
-              value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" />
-          </View>
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.currentEstimatedValue}</Text>
-            <TextInput style={inputStyle} placeholder="e.g. 4200000" placeholderTextColor={colors.mutedForeground}
-              value={currentValue} onChangeText={setCurrentValue} keyboardType="decimal-pad" />
-          </View>
-        </>)}
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.purchasePrice}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 3500000" placeholderTextColor={colors.mutedForeground}
+                value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.currentEstimatedValue}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 4200000" placeholderTextColor={colors.mutedForeground}
+                value={currentValue} onChangeText={setCurrentValue} keyboardType="decimal-pad" />
+            </View>
+          </>)}
 
-        {/* Notes */}
-        <View style={styles.section}>
-          <Text style={labelStyle}>{t.notes}</Text>
-          <TextInput style={[inputStyle, styles.notesInput]} placeholder={t.addNote}
-            placeholderTextColor={colors.mutedForeground} value={notes} onChangeText={setNotes} multiline />
-        </View>
+          {/* Notes */}
+          <View style={styles.section}>
+            <Text style={labelStyle}>{t.notes}</Text>
+            <TextInput style={[inputStyle, styles.notesInput]} placeholder={t.addNote}
+              placeholderTextColor={colors.mutedForeground} value={notes} onChangeText={setNotes} multiline />
+          </View>
 
-        <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]}
-          onPress={handleSave} activeOpacity={0.85}>
-          <Feather name="check" size={20} color={colors.primaryForeground} />
-          <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>{t.addInvestment}</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]}
+            onPress={handleSave} activeOpacity={0.85}>
+            <Feather name="check" size={20} color={colors.primaryForeground} />
+            <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>{t.addInvestment}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Stock Picker Modal */}
+      <StockPickerModal
+        visible={stockPickerVisible}
+        selected={selectedStock}
+        onSelect={(s) => { setSelectedStock(s); setCustomSymbol(''); }}
+        onClose={() => setStockPickerVisible(false)}
+      />
+    </>
   );
 }
 
@@ -291,9 +544,54 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  stockGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
   notesInput: { minHeight: 80, textAlignVertical: 'top' },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16, marginTop: 8 },
   saveButtonText: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  // Dropdown
+  dropdownTrigger: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 14, borderWidth: 1.5, padding: 14,
+  },
+  dropdownAvatar: {
+    width: 42, height: 42, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  dropdownAvatarText: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.3 },
+  dropdownInfo: { flex: 1 },
+  dropdownSymbol: { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  dropdownName: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  customRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 12 },
+  customDivider: { flex: 1, height: StyleSheet.hairlineWidth },
+  customOr: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+});
+
+const pickerStyles = StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  title: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  closeBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  searchWrap: { padding: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10,
+  },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' },
+  countLabel: { fontSize: 11, fontFamily: 'Inter_500Medium', paddingHorizontal: 16, paddingVertical: 8 },
+  stockRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 13, gap: 13,
+  },
+  stockRowBorder: { borderBottomWidth: StyleSheet.hairlineWidth },
+  avatar: {
+    width: 42, height: 42, borderRadius: 11, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.2 },
+  stockInfo: { flex: 1 },
+  symbol: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  stockName: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
 });
