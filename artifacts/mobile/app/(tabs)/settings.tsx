@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useClerk } from '@clerk/expo';
+import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useAppSettings, ThemeMode, WeightUnit } from '@/context/AppSettingsContext';
@@ -142,6 +144,8 @@ export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const t = useT();
+  const router = useRouter();
+  const { signOut } = useClerk();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, notifications,
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setNotification,
@@ -223,6 +227,25 @@ export default function SettingsScreen() {
               '@invstry_haptics', '@invstry_analytics', '@invstry_notif',
             ]);
             if (hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSignOut = () => {
+    haptic(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            router.replace('/(auth)/welcome' as any);
           },
         },
       ]
@@ -549,6 +572,21 @@ export default function SettingsScreen() {
                 'INVSTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nPrecious metal and currency prices are fetched from third-party APIs and may be delayed or inaccurate. Always verify prices with a certified financial professional before making investment decisions.\n\nEGX stock prices shown are for reference only and may not reflect real-time trading prices.'
               )
             } last />
+          </SectionCard>
+        </View>
+
+        {/* ── ACCOUNT ── */}
+        <View style={styles.section}>
+          <SectionHeader label="ACCOUNT" />
+          <SectionCard>
+            <NavRow
+              icon="log-out"
+              iconBg={colors.red}
+              label="Sign Out"
+              onPress={handleSignOut}
+              destructive
+              last
+            />
           </SectionCard>
         </View>
 

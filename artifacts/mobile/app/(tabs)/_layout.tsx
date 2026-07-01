@@ -1,14 +1,24 @@
+import { useAuth } from "@clerk/expo";
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { useT } from "@/hooks/useTranslation";
+
+function LoadingScreen() {
+  const colors = useColors();
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
+      <ActivityIndicator color={colors.primary} />
+    </View>
+  );
+}
 
 function NativeTabLayout() {
   const t = useT();
@@ -127,6 +137,11 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
+  const { isSignedIn, isLoaded } = useAuth();
+
+  if (!isLoaded) return <LoadingScreen />;
+  if (!isSignedIn) return <Redirect href={"/(auth)/welcome" as any} />;
+
   if (isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }

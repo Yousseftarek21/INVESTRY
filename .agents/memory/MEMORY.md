@@ -1,0 +1,1 @@
+- [Clerk auth setup](clerk-auth.md) — Replit-managed Clerk on Expo SDK 54; key decisions and gotchas for future sessions.
