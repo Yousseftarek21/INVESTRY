@@ -1,10 +1,37 @@
-import React from 'react';
-import { Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { Animated, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices, useEGXStocks, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+
+// ─── Live dot (same as home) ──────────────────────────────────────────────────
+
+function LiveDot() {
+  const colors = useColors();
+  const opacity = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.25, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
+      ])
+    ).start();
+  }, []);
+  return (
+    <View style={ldSt.row}>
+      <Animated.View style={[ldSt.dot, { backgroundColor: colors.green, opacity }]} />
+      <Text style={[ldSt.text, { color: colors.green }]}>LIVE</Text>
+    </View>
+  );
+}
+
+const ldSt = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  text: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
+});
 
 // ─── Section header ───────────────────────────────────────────────────────────
 
@@ -189,10 +216,7 @@ export default function MarketsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.screenTitle, { color: colors.text }]}>{t.markets}</Text>
-        <View style={[styles.livePill, { backgroundColor: colors.green + '18', borderColor: colors.green + '35' }]}>
-          <View style={[styles.liveDot, { backgroundColor: colors.green }]} />
-          <Text style={[styles.liveTxt, { color: colors.green }]}>{t.live}</Text>
-        </View>
+        <LiveDot />
       </View>
 
       {/* Currency */}
@@ -309,13 +333,6 @@ const styles = StyleSheet.create({
 
   header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
-  livePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20, borderWidth: 1, marginBottom: 4,
-  },
-  liveDot: { width: 7, height: 7, borderRadius: 4 },
-  liveTxt: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
-
   group: { gap: 10 },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionHeaderIcon: {
