@@ -1,0 +1,421 @@
+Create a world-class cross-platform investment tracking application called Investry.
+The application must follow the latest:
+Apple Human Interface Guidelines (HIG)
+Google Material Design 3
+App Store Review Guidelines
+Google Play Developer Policies
+GDPR
+CCPA
+Privacy by Design
+OWASP Mobile Security Best Practices
+The app should be production-ready and suitable for App Store and Google Play approval.
+Main Goal
+Create the most beautiful and intelligent investment tracker focused primarily on the Egyptian market while supporting global assets.
+The application should allow users to manage their complete portfolio across:
+• Gold
+• Silver
+• EGX Stocks
+• Global Stocks
+• ETFs
+• Mutual Funds
+• Real Estate
+• Savings Accounts
+• Bank Certificates (CDs)
+• Fixed Income
+• Cash Holdings
+• Foreign Currencies
+Everything should update automatically using real-time market data.
+Core Philosophy
+The app should feel like a combination of:
+Apple Stocks
+Yahoo Finance
+TradingView
+Delta Investment Tracker
+Snowball Analytics
+Notion
+Revolut
+Simple.
+Premium.
+Fast.
+Elegant.
+Minimal.
+Professional.
+Target Users
+• Egyptian Investors
+• Gold Investors
+• Silver Investors
+• EGX Investors
+• Long-term investors
+• Wealth builders
+• Beginners
+• Advanced investors
+Assets Supported
+Precious Metals
+24K Gold
+21K Gold
+18K Gold
+14K Gold
+Silver 999
+Silver 925
+Silver Coins
+Gold Coins
+Gold Bars
+Silver Bars
+Imported Gold
+Local Gold
+Egyptian Stock Market
+Support every listed EGX company.
+Examples:
+CIB
+EFG Holding
+Talaat Moustafa
+Palm Hills
+Abu Qir Fertilizers
+Telecom Egypt
+Suez Canal Bank
+Banque du Caire (when listed)
+Misr Fertilizers
+Elsewedy Electric
+All sectors.
+Global Markets
+NYSE
+NASDAQ
+LSE
+Saudi Tadawul
+Dubai
+Crypto (optional)
+Real Estate
+Track:
+Purchase Price
+Current Estimated Value
+Annual Appreciation
+Rental Income
+ROI
+Mortgage
+Expenses
+Net Cash Flow
+Dashboard
+Beautiful Apple-inspired dashboard.
+Include:
+Portfolio Value
+Today's Profit/Loss
+Total Profit/Loss
+Monthly Performance
+Annual Performance
+Allocation Pie Chart
+Asset Allocation
+Performance Graph
+Recent Activity
+Top Winners
+Top Losers
+Metal Prices
+EGX Summary
+Market News
+Upcoming Dividends
+Portfolio Health Score
+Risk Score
+Diversification Score
+Gold Section
+Dedicated Gold Dashboard.
+Display:
+Live Gold Prices
+24K
+21K
+18K
+14K
+Gold Ounce
+Gold USD Price
+USD/EGP
+Premium
+Spread
+Historical Charts
+Buy/Sell Calculator
+Profit Calculator
+Average Cost
+Tax Calculator
+Gold Alerts
+Price Notifications
+Trend Analysis
+AI Prediction (clearly labeled as probabilistic, not financial advice)
+Silver Section
+Same features as Gold.
+EGX Stocks
+Real-time prices
+Charts
+Company Profiles
+Financial Statements
+PE Ratio
+PB Ratio
+EPS
+Dividend Yield
+Market Cap
+Volume
+52 Week High
+52 Week Low
+Technical Indicators
+Moving Averages
+RSI
+MACD
+Bollinger Bands
+Support
+Resistance
+Portfolio Tracking
+Watchlists
+Dividend Calendar
+Corporate Actions
+News
+Real Estate Module
+Property Images
+Purchase Date
+Purchase Price
+Current Value
+Mortgage
+ROI
+Rental Yield
+Expenses
+Maintenance
+Taxes
+Appreciation Chart
+Net Worth Impact
+Portfolio Features
+Unlimited portfolios.
+Examples:
+Main Portfolio
+Gold Portfolio
+Retirement
+Savings
+Trading
+Real Estate
+Family
+Business
+Transactions
+Buy
+Sell
+Transfer
+Deposit
+Withdraw
+Dividend
+Interest
+Fees
+Taxes
+Bonus Shares
+Stock Split
+Reverse Split
+Analytics
+Net Worth
+XIRR
+CAGR
+ROI
+Sharpe Ratio
+Annualized Return
+Monthly Returns
+Daily Returns
+Drawdown
+Risk Analysis
+Diversification Analysis
+Benchmark Comparison
+Charts
+Beautiful animations.
+Interactive.
+Pinch to zoom.
+Candlestick
+Line
+Area
+Bar
+Pie
+Heat Map
+Allocation
+Timeline
+Performance
+AI Features
+AI Portfolio Analysis
+Investment Insights
+Risk Detection
+Diversification Suggestions
+Goal Tracking
+Market Summaries
+Natural Language Search
+Voice Search
+AI Assistant
+Automatic Portfolio Review
+Notifications
+Gold Price Alerts
+Silver Alerts
+Stock Alerts
+Dividend Alerts
+News Alerts
+Portfolio Milestones
+Goal Achievements
+Search
+Global Search.
+Search:
+Gold
+Silver
+Stocks
+Companies
+Properties
+Transactions
+News
+Markets
+Authentication
+Apple Sign In
+Google Sign In
+Email
+Face ID
+Touch ID
+Biometric Login
+2FA
+Passkeys
+Security
+End-to-End Encryption for sensitive local data
+Keychain (iOS)
+Encrypted SharedPreferences (Android)
+JWT Authentication
+OAuth 2.0
+HTTPS Everywhere
+Certificate Pinning
+Rate Limiting
+Input Validation
+SQL Injection Protection
+OWASP Compliance
+Cloud
+Firebase Authentication
+Firebase Analytics
+Firebase Crashlytics
+Cloud Firestore
+Cloud Functions
+Cloud Messaging
+Offline Sync
+Automatic Backup
+Real-Time APIs
+Integrate robust, officially supported APIs where possible, with abstraction layers to allow providers to be swapped.
+Precious Metals
+GoldAPI
+Metals.dev
+MetalPriceAPI
+LBMA reference pricing where licensing permits
+Egyptian Gold Prices
+Reliable Egyptian market pricing providers or licensed local data feeds
+USD/EGP FX conversion
+Configurable fallback pricing sources
+EGX
+Licensed EGX market data provider
+Mubasher data (subject to licensing)
+Refinitiv/LSEG if enterprise edition
+Polygon/IEX where applicable for non-EGX assets
+Global Stocks
+Twelve Data
+Finnhub
+Alpha Vantage
+Polygon.io
+Financial Modeling Prep
+Yahoo Finance (only where compliant with terms of service; avoid unofficial scraping)
+Currency
+ExchangeRate.host
+Open Exchange Rates
+ECB exchange rates
+News
+NewsAPI
+Marketaux
+Financial Times API (licensed)
+Reuters/LSEG feeds (licensed)
+Real Estate
+Configurable property valuation providers
+Manual valuation with user overrides
+Country-specific integrations where available
+Implement:
+API abstraction
+Automatic failover
+Smart caching
+Retry policies
+Offline support
+Rate-limit handling
+Background refresh
+Data freshness indicators
+UI Design
+Premium.
+Luxury.
+Minimal.
+Apple-quality.
+Use:
+Rounded Cards
+Glassmorphism (subtle)
+Soft Shadows
+Blur Effects
+Smooth Animations
+Haptic Feedback
+Large Typography
+Excellent White Space
+Native Components
+120 FPS animations where supported
+Themes
+Automatic
+Light
+Dark
+Dynamic colors
+OLED Dark Mode
+Accessibility contrast modes
+Accessibility
+VoiceOver
+TalkBack
+Dynamic Font
+Color Blind Support
+Reduce Motion
+Keyboard Navigation
+Screen Reader Labels
+WCAG AA compliance
+Performance
+Launch < 2 seconds
+60–120 FPS
+Offline Mode
+Lazy Loading
+Image Caching
+Smart Synchronization
+Memory Efficient
+Battery Optimized
+Settings
+Currency
+Language
+Theme
+Biometric
+Notifications
+Default Portfolio
+Export Data
+Import Data
+Delete Account
+Privacy Controls
+API Keys (advanced users)
+Export
+PDF
+Excel
+CSV
+Print
+Share
+Languages
+English
+Arabic (RTL)
+Support seamless switching with full localization.
+Technology Stack
+Flutter (recommended for iOS + Android) or React Native with native modules where required
+Firebase backend
+Clean Architecture
+MVVM or Riverpod/Bloc state management
+REST + WebSocket support
+Local SQLite/Isar database
+Secure storage
+Dependency Injection
+Comprehensive unit, widget, and integration tests
+CI/CD for App Store and Google Play deployment
+Compliance
+Ensure every feature complies with:
+Apple App Store Review Guidelines
+Apple Human Interface Guidelines
+Google Play Developer Policies
+Material Design 3
+GDPR
+CCPA
+OWASP Mobile Security
+Accessibility (WCAG 2.2 AA)
+Do not provide personalized financial advice or guaranteed return predictions. Clearly label AI-generated insights as informational only, and include appropriate investment-risk disclaimers where required.
+Final Goal
+Create an app that feels like a premium Bloomberg Terminal for everyday investors, with exceptional focus on the Egyptian market, gold and silver investing, EGX stocks, and real estate. Every screen should feel polished, responsive, intuitive, and trustworthy, delivering a best-in-class user experience on both iOS and Android while meeting all platform policies and review requirements.
