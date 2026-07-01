@@ -309,7 +309,7 @@ export default function HomeScreen() {
               {/* Today */}
               <View style={[styles.plChip, { backgroundColor: todayColor + '12', borderColor: todayColor + '28' }]}>
                 <View style={styles.plTop}>
-                  <Feather name={isTodayGain ? 'sunrise' : 'sunset'} size={11} color={todayColor} />
+                  <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={11} color={todayColor} />
                   <Text style={[styles.plLabel, { color: todayColor + 'CC' }]}>Today</Text>
                   <View style={[styles.plBadge, { backgroundColor: todayColor + '22' }]}>
                     <Text style={[styles.plBadgeText, { color: todayColor }]}>
