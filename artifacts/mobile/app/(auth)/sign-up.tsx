@@ -80,7 +80,7 @@ export default function SignUpScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: Platform.OS !== 'web' }).start();
   }, []);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
@@ -99,15 +99,23 @@ export default function SignUpScreen() {
     await signUp.verifications.sendEmailCode();
   };
 
+  const finalizeNavigate = ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
+    if (session?.currentTask) return;
+    const url = decorateUrl('/');
+    if (url.startsWith('http') && typeof window !== 'undefined') {
+      window.location.href = url;
+    } else {
+      router.replace('/(tabs)' as any);
+    }
+  };
+
   const handleVerify = async () => {
     setGlobalError('');
     await signUp.verifications.verifyEmailCode({ code });
     if (signUp.status === 'complete') {
-      await signUp.finalize({
-        navigate: () => router.replace('/(tabs)'),
-      });
+      await signUp.finalize({ navigate: finalizeNavigate });
     } else {
-      setGlobalError('Verification failed. Please check your code and try again.');
+      setGlobalError('Invalid code. Please check and try again.');
     }
   };
 
@@ -120,10 +128,7 @@ export default function SignUpScreen() {
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId) {
-        await setActive!({
-          session: createdSessionId,
-          navigate: () => router.replace('/(tabs)'),
-        });
+        await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Google sign-up failed');
@@ -142,7 +147,7 @@ export default function SignUpScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.inner, { paddingTop: topPad + 24, paddingBottom: botPad + 24 }]}>
-          <Pressable onPress={() => signUp.reset()} style={styles.backBtn}>
+          <Pressable onPress={() => router.replace('/(auth)/sign-up' as any)} style={styles.backBtn}>
             <Feather name="arrow-left" size={20} color={colors.text} />
           </Pressable>
           <View style={styles.iconWrap}>

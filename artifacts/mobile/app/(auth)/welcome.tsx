@@ -63,7 +63,7 @@ export default function WelcomeScreen() {
     AsyncStorage.getItem(ONBOARDING_KEY).then(done => {
       if (done) setShowWelcome(true);
     });
-    Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: Platform.OS !== 'web' }).start();
   }, []);
 
   const markDone = async () => {
@@ -75,9 +75,9 @@ export default function WelcomeScreen() {
       flatRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else {
       await markDone();
-      Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: Platform.OS !== 'web' }).start(() => {
         setShowWelcome(true);
-        Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+        Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: Platform.OS !== 'web' }).start();
       });
     }
   };

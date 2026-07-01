@@ -39,7 +39,7 @@ export default function SignInScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: Platform.OS !== 'web' }).start();
   }, []);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
@@ -47,24 +47,28 @@ export default function SignInScreen() {
 
   const isFetching = fetchStatus === 'fetching';
 
+  const finalizeNavigate = ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
+    if (session?.currentTask) return;
+    const url = decorateUrl('/');
+    if (url.startsWith('http') && typeof window !== 'undefined') {
+      window.location.href = url;
+    } else {
+      router.replace('/(tabs)' as any);
+    }
+  };
+
   const handleSignIn = async () => {
     setGlobalError('');
     const { error } = await signIn.password({ emailAddress: email, password });
-    if (error) { setGlobalError(error.message ?? 'Sign in failed'); return; }
+    if (error) { setGlobalError(error.message ?? 'Incorrect email or password.'); return; }
 
     if (signIn.status === 'complete') {
-      await signIn.finalize({
-        navigate: ({ decorateUrl }) => {
-          const url = decorateUrl('/');
-          if (url.startsWith('http')) {
-            router.replace('/(tabs)');
-          } else {
-            router.replace('/(tabs)');
-          }
-        },
-      });
-    } else if (signIn.status === 'needs_client_trust') {
-      await signIn.mfa.sendEmailCode();
+      await signIn.finalize({ navigate: finalizeNavigate });
+    } else if (signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust') {
+      const factor = signIn.supportedSecondFactors?.find((f: any) => f.strategy === 'email_code');
+      if (factor) await signIn.mfa.sendEmailCode();
+    } else {
+      setGlobalError('Unexpected sign-in state. Please try again.');
     }
   };
 
@@ -72,9 +76,9 @@ export default function SignInScreen() {
     setGlobalError('');
     await signIn.mfa.verifyEmailCode({ code });
     if (signIn.status === 'complete') {
-      await signIn.finalize({
-        navigate: () => router.replace('/(tabs)'),
-      });
+      await signIn.finalize({ navigate: finalizeNavigate });
+    } else {
+      setGlobalError('Invalid code. Please try again.');
     }
   };
 
@@ -87,10 +91,7 @@ export default function SignInScreen() {
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId) {
-        await setActive!({
-          session: createdSessionId,
-          navigate: () => router.replace('/(tabs)'),
-        });
+        await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Google sign-in failed');
@@ -224,9 +225,6 @@ export default function SignInScreen() {
           <View style={styles.fieldGroup}>
             <View style={styles.fieldLabelRow}>
               <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Password</Text>
-              <Pressable onPress={() => router.push('/(auth)/forgot-password' as any)}>
-                <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot?</Text>
-              </Pressable>
             </View>
             <View style={[styles.inputWrap, { borderColor: errors.fields.password ? colors.red : colors.border, backgroundColor: colors.card }]}>
               <Feather name="lock" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
