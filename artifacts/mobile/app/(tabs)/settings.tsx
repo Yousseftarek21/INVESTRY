@@ -296,38 +296,33 @@ export default function SettingsScreen() {
         {/* ── LANGUAGE ── */}
         <View style={styles.section}>
           <SectionHeader label={t.language} />
-          <View style={styles.langRow}>
-            {(['en', 'ar'] as Language[]).map((lang) => {
+          <SectionCard>
+            {(['en', 'ar'] as Language[]).map((lang, i, arr) => {
               const active = language === lang;
+              const isLast = i === arr.length - 1;
               return (
-                <TouchableOpacity
-                  key={lang}
-                  style={[
-                    styles.langCard,
-                    {
-                      backgroundColor: active ? colors.primary : colors.card,
-                      borderColor: active ? colors.primary : colors.border,
-                    },
-                  ]}
-                  onPress={() => handleLanguage(lang)}
-                  activeOpacity={0.8}
-                >
-                  {active && (
-                    <View style={styles.langCheck}>
-                      <Feather name="check-circle" size={15} color={colors.primaryForeground} />
+                <React.Fragment key={lang}>
+                  <TouchableOpacity
+                    style={styles.row}
+                    onPress={() => handleLanguage(lang)}
+                    activeOpacity={0.6}
+                  >
+                    <IconBadge icon="globe" bg="#0EA5E9" />
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>
+                      {lang === 'ar' ? t.arabic : t.english}
+                    </Text>
+                    <View style={styles.rowRight}>
+                      <Text style={[styles.rowValue, { color: colors.mutedForeground }]}>
+                        {lang === 'ar' ? 'عربي' : 'English'}
+                      </Text>
+                      {active && <Feather name="check" size={15} color={colors.primary} style={{ marginLeft: 4 }} />}
                     </View>
-                  )}
-                  <Text style={styles.langFlag}>{lang === 'ar' ? '🇪🇬' : '🇺🇸'}</Text>
-                  <Text style={[styles.langCode, { color: active ? colors.primaryForeground : colors.text }]}>
-                    {lang === 'ar' ? 'عربي' : 'EN'}
-                  </Text>
-                  <Text style={[styles.langName, { color: active ? colors.primaryForeground + 'CC' : colors.mutedForeground }]}>
-                    {lang === 'ar' ? t.arabic : t.english}
-                  </Text>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                  {!isLast && <RowDivider />}
+                </React.Fragment>
               );
             })}
-          </View>
+          </SectionCard>
         </View>
 
         {/* ── PORTFOLIO PREFERENCES ── */}
