@@ -355,9 +355,7 @@ function HeatTile({
 }: { data: TileData; onPress: () => void; selected: boolean; tileWidth: number }) {
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
-  const bg = heatBg(data.changePct);
-  const textColor = heatText(data.changePct, colors.green, colors.red);
-  const isPos = data.changePct >= 0;
+  const dotColor = data.changePct >= 0 ? colors.green : colors.red;
   const height = data.size === 'lg' ? 84 : 68;
 
   const press = () => {
@@ -373,26 +371,23 @@ function HeatTile({
       <Animated.View style={[
         ht.tile,
         {
-          backgroundColor: bg,
-          borderColor: selected ? textColor : bg,
+          backgroundColor: colors.card,
+          borderColor: selected ? dotColor : colors.border,
           height,
           transform: [{ scale }],
         },
       ]}>
-        <Text style={[ht.label, { color: colors.text }]} numberOfLines={1}>{data.label}</Text>
-        {data.size === 'lg' && data.sublabel ? (
-          <Text style={[ht.sub, { color: colors.text + 'AA' }]} numberOfLines={1}>{data.sublabel}</Text>
-        ) : null}
-        <View style={ht.bottomRow}>
-          <Feather
-            name={isPos ? 'trending-up' : 'trending-down'}
-            size={10}
-            color={textColor}
-          />
-          <Text style={[ht.pct, { color: textColor }]}>
-            {isPos ? '+' : ''}{data.changePct.toFixed(2)}%
-          </Text>
+        {/* Dot indicator */}
+        <View style={ht.topRow}>
+          <View style={[ht.dot, { backgroundColor: dotColor }]} />
+          {data.size === 'lg' && data.sublabel ? (
+            <Text style={[ht.sub, { color: colors.mutedForeground }]} numberOfLines={1}>{data.sublabel}</Text>
+          ) : null}
         </View>
+        <Text style={[ht.label, { color: colors.text }]} numberOfLines={1}>{data.label}</Text>
+        <Text style={[ht.pct, { color: dotColor }]}>
+          {data.changePct >= 0 ? '+' : ''}{data.changePct.toFixed(2)}%
+        </Text>
       </Animated.View>
     </Pressable>
   );
@@ -402,10 +397,11 @@ const ht = StyleSheet.create({
     borderRadius: 14, borderWidth: 1.5, padding: 10,
     justifyContent: 'space-between',
   },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   label: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.1 },
-  sub: { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  pct: { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  sub: { fontSize: 9, fontFamily: 'Inter_400Regular', flex: 1 },
+  pct: { fontSize: 11, fontFamily: 'Inter_700Bold' },
 });
 
 // ─── Heat detail card (shown on tile tap) ─────────────────────────────────────
