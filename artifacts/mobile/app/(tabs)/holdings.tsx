@@ -52,6 +52,11 @@ export default function HoldingsScreen() {
     removeHolding(id);
   };
 
+  const handleEdit = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/add-investment?holdingId=${id}` as any);
+  };
+
   const openAdd = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push('/add-investment');
@@ -131,6 +136,7 @@ export default function HoldingsScreen() {
                     key={h.id}
                     holding={h}
                     prices={prices}
+                    onEdit={() => handleEdit(h.id)}
                     onDelete={() => handleDelete(h.id)}
                   />
                 ))}

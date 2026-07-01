@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -245,7 +245,11 @@ export default function AddInvestmentScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { addHolding } = useHoldings();
+  const { addHolding, updateHolding, holdings } = useHoldings();
+  const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
+
+  const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
+  const isEditing = editingHolding !== null;
 
   const [type, setType] = useState<InvestmentType>('gold');
   const [karat, setKarat] = useState<GoldKarat>('21k');
@@ -262,6 +266,34 @@ export default function AddInvestmentScreen() {
   const [purchasePrice, setPurchasePrice] = useState('');
   const [currentValue, setCurrentValue] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (!editingHolding) return;
+    setType(editingHolding.type as InvestmentType);
+    setNotes(editingHolding.notes ?? '');
+    if (editingHolding.type === 'gold') {
+      setKarat(editingHolding.karat);
+      setForm(editingHolding.form);
+      setGrams(String(editingHolding.grams));
+      setPurchasePricePerGram(String(editingHolding.purchasePricePerGram));
+    } else if (editingHolding.type === 'silver') {
+      setForm(editingHolding.form);
+      setGrams(String(editingHolding.grams));
+      setPurchasePricePerGram(String(editingHolding.purchasePricePerGram));
+    } else if (editingHolding.type === 'stock') {
+      const match = EGX_SYMBOLS.find(s => s.symbol === editingHolding.symbol);
+      if (match) { setSelectedStock(match); setCustomSymbol(''); }
+      else setCustomSymbol(editingHolding.symbol);
+      setShares(String(editingHolding.shares));
+      setPurchasePricePerShare(String(editingHolding.purchasePricePerShare));
+    } else if (editingHolding.type === 'real_estate') {
+      setPropertyType(editingHolding.propertyType);
+      setLocation(editingHolding.location);
+      setPurchasePrice(String(editingHolding.purchasePrice));
+      setCurrentValue(String(editingHolding.currentValue));
+    }
+  }, [holdingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inputStyle = [styles.input, { backgroundColor: colors.cardSecondary, borderColor: colors.border, color: colors.text }];
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
@@ -291,27 +323,32 @@ export default function AddInvestmentScreen() {
 
   const handleSave = async () => {
     let holding: Holding | null = null;
-    const today = new Date().toISOString().split('T')[0];
+    const today = editingHolding?.purchaseDate ?? new Date().toISOString().split('T')[0];
+    const id = editingHolding?.id ?? generateId();
 
     if (type === 'gold') {
       if (!grams || !purchasePricePerGram) { Alert.alert(t.missingFields, t.enterGramsAndPrice); return; }
-      holding = { id: generateId(), type: 'gold', karat, form, grams: parseFloat(grams), purchasePricePerGram: parseFloat(purchasePricePerGram), purchaseDate: today, notes };
+      holding = { id, type: 'gold', karat, form, grams: parseFloat(grams), purchasePricePerGram: parseFloat(purchasePricePerGram), purchaseDate: today, notes };
     } else if (type === 'silver') {
       if (!grams || !purchasePricePerGram) { Alert.alert(t.missingFields, t.enterGramsAndPrice); return; }
-      holding = { id: generateId(), type: 'silver', form, grams: parseFloat(grams), purchasePricePerGram: parseFloat(purchasePricePerGram), purchaseDate: today, notes };
+      holding = { id, type: 'silver', form, grams: parseFloat(grams), purchasePricePerGram: parseFloat(purchasePricePerGram), purchaseDate: today, notes };
     } else if (type === 'stock') {
       if (!shares || !purchasePricePerShare) { Alert.alert(t.missingFields, t.enterSharesAndPrice); return; }
       const sym = customSymbol.trim().toUpperCase() || selectedStock.symbol;
       const name = customSymbol.trim() ? customSymbol.trim().toUpperCase() : selectedStock.name;
-      holding = { id: generateId(), type: 'stock', symbol: sym, companyName: name, shares: parseFloat(shares), purchasePricePerShare: parseFloat(purchasePricePerShare), purchaseDate: today, notes };
+      holding = { id, type: 'stock', symbol: sym, companyName: name, shares: parseFloat(shares), purchasePricePerShare: parseFloat(purchasePricePerShare), purchaseDate: today, notes };
     } else if (type === 'real_estate') {
       if (!purchasePrice || !currentValue) { Alert.alert(t.missingFields, t.enterPrices); return; }
-      holding = { id: generateId(), type: 'real_estate', propertyType, location, purchasePrice: parseFloat(purchasePrice), currentValue: parseFloat(currentValue), purchaseDate: today, notes };
+      holding = { id, type: 'real_estate', propertyType, location, purchasePrice: parseFloat(purchasePrice), currentValue: parseFloat(currentValue), purchaseDate: today, notes };
     }
 
     if (!holding) return;
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await addHolding(holding);
+    if (isEditing) {
+      await updateHolding(holding);
+    } else {
+      await addHolding(holding);
+    }
     router.back();
   };
 
@@ -336,7 +373,7 @@ export default function AddInvestmentScreen() {
           <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </TouchableOpacity>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>{t.addInvestment}</Text>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>{isEditing ? 'Edit Investment' : t.addInvestment}</Text>
           <TouchableOpacity onPress={handleSave}>
             <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
           </TouchableOpacity>
@@ -351,19 +388,25 @@ export default function AddInvestmentScreen() {
           <View style={styles.section}>
             <Text style={labelStyle}>{t.investmentType}</Text>
             <View style={styles.typeGrid}>
-              {TYPES.map(tp => (
-                <TouchableOpacity
-                  key={tp.key}
-                  style={[styles.typeCard, {
-                    backgroundColor: type === tp.key ? tp.color + '22' : colors.card,
-                    borderColor: type === tp.key ? tp.color : colors.border,
-                  }]}
-                  onPress={() => setType(tp.key)}
-                >
-                  <Feather name={tp.icon} size={20} color={type === tp.key ? tp.color : colors.mutedForeground} />
-                  <Text style={[styles.typeLabel, { color: type === tp.key ? tp.color : colors.text }]}>{tp.label}</Text>
-                </TouchableOpacity>
-              ))}
+              {TYPES.map(tp => {
+                const isActive = type === tp.key;
+                const isDisabled = isEditing && !isActive;
+                return (
+                  <TouchableOpacity
+                    key={tp.key}
+                    style={[styles.typeCard, {
+                      backgroundColor: isActive ? tp.color + '22' : colors.card,
+                      borderColor: isActive ? tp.color : colors.border,
+                      opacity: isDisabled ? 0.35 : 1,
+                    }]}
+                    onPress={() => { if (!isEditing) setType(tp.key); }}
+                    activeOpacity={isEditing ? 1 : 0.7}
+                  >
+                    <Feather name={tp.icon} size={20} color={isActive ? tp.color : colors.mutedForeground} />
+                    <Text style={[styles.typeLabel, { color: isActive ? tp.color : colors.text }]}>{tp.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -511,7 +554,7 @@ export default function AddInvestmentScreen() {
           <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]}
             onPress={handleSave} activeOpacity={0.85}>
             <Feather name="check" size={20} color={colors.primaryForeground} />
-            <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>{t.addInvestment}</Text>
+            <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>{isEditing ? 'Save Changes' : t.addInvestment}</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

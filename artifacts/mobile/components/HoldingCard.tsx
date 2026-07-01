@@ -9,6 +9,7 @@ interface HoldingCardProps {
   holding: Holding;
   prices?: MarketPrices;
   onDelete?: () => void;
+  onEdit?: () => void;
 }
 
 function computeCurrentValue(holding: Holding, prices?: MarketPrices): number {
@@ -57,7 +58,7 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   real_estate: '#A47FCA',
 };
 
-export function HoldingCard({ holding, prices, onDelete }: HoldingCardProps) {
+export function HoldingCard({ holding, prices, onDelete, onEdit }: HoldingCardProps) {
   const colors = useColors();
   const currentValue = computeCurrentValue(holding, prices);
   const cost = computeCost(holding);
@@ -100,16 +101,28 @@ export function HoldingCard({ holding, prices, onDelete }: HoldingCardProps) {
         )}
       </View>
 
-      {onDelete && (
-        <TouchableOpacity
-          onPress={onDelete}
-          style={[styles.deleteBtn, { backgroundColor: colors.red + '12' }]}
-          hitSlop={8}
-          activeOpacity={0.7}
-        >
-          <Feather name="trash-2" size={14} color={colors.red} />
-        </TouchableOpacity>
-      )}
+      <View style={styles.actions}>
+        {onEdit && (
+          <TouchableOpacity
+            onPress={onEdit}
+            style={[styles.actionBtn, { backgroundColor: colors.primary + '14' }]}
+            hitSlop={8}
+            activeOpacity={0.7}
+          >
+            <Feather name="edit-2" size={13} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+        {onDelete && (
+          <TouchableOpacity
+            onPress={onDelete}
+            style={[styles.actionBtn, { backgroundColor: colors.red + '12' }]}
+            hitSlop={8}
+            activeOpacity={0.7}
+          >
+            <Feather name="trash-2" size={13} color={colors.red} />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -182,7 +195,12 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 6,
   },
-  deleteBtn: {
+  actions: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  actionBtn: {
     width: 30,
     height: 30,
     borderRadius: 8,
