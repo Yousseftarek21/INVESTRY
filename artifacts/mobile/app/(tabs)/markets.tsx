@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   Animated, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, View,
@@ -9,10 +9,9 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices, useEGXStocks, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 
-// ─── Tab definitions ──────────────────────────────────────────────────────────
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'heatmap',    label: 'Heatmap',     icon: 'grid'        },
   { key: 'metals',      label: 'Metals',      icon: 'award'       },
   { key: 'currencies',  label: 'Currencies',  icon: 'dollar-sign' },
   { key: 'egx',        label: 'EGX',         icon: 'bar-chart-2' },
@@ -50,7 +49,7 @@ const ldSt = StyleSheet.create({
   text: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
 });
 
-// ─── Horizontal tab bar ───────────────────────────────────────────────────────
+// ─── Tab bar ──────────────────────────────────────────────────────────────────
 
 function TabBar({ active, onChange }: { active: TabKey; onChange: (k: TabKey) => void }) {
   const colors = useColors();
@@ -99,6 +98,28 @@ const tb = StyleSheet.create({
   label: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
 });
 
+// ─── Change badge (dot + %) ───────────────────────────────────────────────────
+// Used by both MetalRow and StockRow
+
+function ChangeBadge({ changePct }: { changePct: number }) {
+  const colors = useColors();
+  const isPos = changePct >= 0;
+  const color = isPos ? colors.green : colors.red;
+  return (
+    <View style={[cb.badge, { backgroundColor: color + '15' }]}>
+      <View style={[cb.dot, { backgroundColor: color }]} />
+      <Text style={[cb.txt, { color }]}>
+        {isPos ? '+' : ''}{changePct.toFixed(2)}%
+      </Text>
+    </View>
+  );
+}
+const cb = StyleSheet.create({
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 },
+  dot: { width: 7, height: 7, borderRadius: 4, flexShrink: 0 },
+  txt: { fontSize: 11, fontFamily: 'Inter_700Bold' },
+});
+
 // ─── Metal row ────────────────────────────────────────────────────────────────
 
 function MetalRow({
@@ -109,9 +130,6 @@ function MetalRow({
   price: number; unit?: string; changePercent?: number; isLast?: boolean; bold?: boolean;
 }) {
   const colors = useColors();
-  const hasChange = changePercent !== undefined;
-  const isPos = (changePercent ?? 0) >= 0;
-  const chgColor = isPos ? colors.green : colors.red;
   return (
     <View style={[
       mr.row,
@@ -119,7 +137,7 @@ function MetalRow({
     ]}>
       <View style={mr.left}>
         <View style={[mr.dotWrap, { backgroundColor: accentColor + '20', borderColor: accentColor + '40' }]}>
-          <View style={[mr.dot, { backgroundColor: accentColor }]} />
+          <View style={[mr.metalDot, { backgroundColor: accentColor }]} />
         </View>
         <View style={mr.labels}>
           <Text style={[mr.label, { color: colors.text }, bold && mr.labelBold]}>{label}</Text>
@@ -131,14 +149,7 @@ function MetalRow({
           {price.toLocaleString('en-EG', { maximumFractionDigits: price < 10 ? 2 : 0 })}
           <Text style={[mr.unit, { color: colors.mutedForeground }]}> {unit}</Text>
         </Text>
-        {hasChange && (
-          <View style={[mr.badge, { backgroundColor: chgColor + '15' }]}>
-            <Feather name={isPos ? 'arrow-up' : 'arrow-down'} size={9} color={chgColor} />
-            <Text style={[mr.badgeTxt, { color: chgColor }]}>
-              {isPos ? '+' : ''}{(changePercent ?? 0).toFixed(2)}%
-            </Text>
-          </View>
-        )}
+        {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
       </View>
     </View>
   );
@@ -150,20 +161,18 @@ const mr = StyleSheet.create({
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 },
   dotWrap: { width: 32, height: 32, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  metalDot: { width: 10, height: 10, borderRadius: 5 },
   labels: { gap: 2, flex: 1, minWidth: 0 },
   label: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   labelBold: { fontFamily: 'Inter_700Bold' },
   sub: { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  right: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
+  right: { alignItems: 'flex-end', gap: 5, flexShrink: 0 },
   price: { fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.2 },
   priceBold: { fontSize: 17 },
   unit: { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
-  badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 });
 
-// ─── Table card wrapper ────────────────────────────────────────────────────────
+// ─── Table card ───────────────────────────────────────────────────────────────
 
 function TableCard({ children }: { children: React.ReactNode }) {
   const colors = useColors();
@@ -175,7 +184,7 @@ function TableCard({ children }: { children: React.ReactNode }) {
 }
 const tc = StyleSheet.create({ card: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' } });
 
-// ─── Section label ─────────────────────────────────────────────────────────────
+// ─── Section label ────────────────────────────────────────────────────────────
 
 function SLabel({ icon, title }: { icon: keyof typeof Feather.glyphMap; title: string }) {
   const colors = useColors();
@@ -194,7 +203,7 @@ const sl = StyleSheet.create({
   title: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.3 },
 });
 
-// ─── Currency row ──────────────────────────────────────────────────────────────
+// ─── Currency row ─────────────────────────────────────────────────────────────
 
 function CurrencyRow({
   flag, name, pair, rate, unit, isLast, isLive,
@@ -256,8 +265,6 @@ function StockRow({ symbol, name, price, changePercent, index, total }: {
   change: number; changePercent: number; index: number; total: number;
 }) {
   const colors = useColors();
-  const isPos = changePercent >= 0;
-  const color = isPos ? colors.green : colors.red;
   const isLast = index === total - 1;
   return (
     <View style={[
@@ -275,12 +282,7 @@ function StockRow({ symbol, name, price, changePercent, index, total }: {
       </View>
       <View style={sr.right}>
         <Text style={[sr.price, { color: colors.text }]}>{price > 0 ? price.toFixed(2) : '—'}</Text>
-        {price > 0 && (
-          <View style={[sr.pill, { backgroundColor: color + '15' }]}>
-            <Feather name={isPos ? 'arrow-up' : 'arrow-down'} size={9} color={color} />
-            <Text style={[sr.pillTxt, { color }]}>{Math.abs(changePercent).toFixed(2)}%</Text>
-          </View>
-        )}
+        {price > 0 && <ChangeBadge changePct={changePercent} />}
       </View>
     </View>
   );
@@ -292,13 +294,11 @@ const sr = StyleSheet.create({
   info: { flex: 1, gap: 2, minWidth: 0 },
   symbol: { fontSize: 14, fontFamily: 'Inter_700Bold' },
   name: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  right: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
+  right: { alignItems: 'flex-end', gap: 5, flexShrink: 0 },
   price: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  pill: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
-  pillTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 });
 
-// ─── Coming soon card ─────────────────────────────────────────────────────────
+// ─── Coming soon ──────────────────────────────────────────────────────────────
 
 function ComingSoon({ icon, title, description }: {
   icon: keyof typeof Feather.glyphMap; title: string; description: string;
@@ -332,262 +332,6 @@ const cs = StyleSheet.create({
   badgeTxt: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.3 },
 });
 
-// ─── Heatmap helpers ──────────────────────────────────────────────────────────
-
-type TileData = {
-  key: string; label: string; sublabel: string;
-  changePct: number; price: number; unit: string; size: 'lg' | 'sm';
-};
-
-function heatBg(changePct: number): string {
-  const mag = Math.min(Math.abs(changePct) / 3, 1);
-  const alpha = Math.round((0.18 + mag * 0.62) * 255).toString(16).padStart(2, '0');
-  return changePct >= 0 ? `#00D4AA${alpha}` : `#FF4444${alpha}`;
-}
-function heatText(changePct: number, green: string, red: string): string {
-  return changePct >= 0 ? green : red;
-}
-
-// ─── Heat tile ────────────────────────────────────────────────────────────────
-
-function HeatTile({
-  data, onPress, selected, tileWidth,
-}: { data: TileData; onPress: () => void; selected: boolean; tileWidth: number }) {
-  const colors = useColors();
-  const scale = useRef(new Animated.Value(1)).current;
-  const dotColor = data.changePct >= 0 ? colors.green : colors.red;
-  const height = data.size === 'lg' ? 84 : 68;
-
-  const press = () => {
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.94, duration: 80, useNativeDriver: Platform.OS !== 'web' }),
-      Animated.timing(scale, { toValue: 1,    duration: 80, useNativeDriver: Platform.OS !== 'web' }),
-    ]).start();
-    onPress();
-  };
-
-  return (
-    <Pressable onPress={press} style={{ width: tileWidth }}>
-      <Animated.View style={[
-        ht.tile,
-        {
-          backgroundColor: colors.card,
-          borderColor: selected ? dotColor : colors.border,
-          height,
-          transform: [{ scale }],
-        },
-      ]}>
-        {/* Dot indicator */}
-        <View style={ht.topRow}>
-          <View style={[ht.dot, { backgroundColor: dotColor }]} />
-          {data.size === 'lg' && data.sublabel ? (
-            <Text style={[ht.sub, { color: colors.mutedForeground }]} numberOfLines={1}>{data.sublabel}</Text>
-          ) : null}
-        </View>
-        <Text style={[ht.label, { color: colors.text }]} numberOfLines={1}>{data.label}</Text>
-        <Text style={[ht.pct, { color: dotColor }]}>
-          {data.changePct >= 0 ? '+' : ''}{data.changePct.toFixed(2)}%
-        </Text>
-      </Animated.View>
-    </Pressable>
-  );
-}
-const ht = StyleSheet.create({
-  tile: {
-    borderRadius: 14, borderWidth: 1.5, padding: 10,
-    justifyContent: 'space-between',
-  },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  label: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.1 },
-  sub: { fontSize: 9, fontFamily: 'Inter_400Regular', flex: 1 },
-  pct: { fontSize: 11, fontFamily: 'Inter_700Bold' },
-});
-
-// ─── Heat detail card (shown on tile tap) ─────────────────────────────────────
-
-function HeatDetailCard({ data, onClose }: { data: TileData; onClose: () => void }) {
-  const colors = useColors();
-  const isPos = data.changePct >= 0;
-  const gc = isPos ? colors.green : colors.red;
-  const anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.spring(anim, { toValue: 1, useNativeDriver: Platform.OS !== 'web', tension: 80, friction: 10 }).start();
-  }, [data.key]);
-
-  return (
-    <Animated.View style={{
-      opacity: anim,
-      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-    }}>
-      <View style={[hd.card, { backgroundColor: colors.card, borderColor: gc + '40' }]}>
-        <View style={hd.left}>
-          <View style={[hd.dot, { backgroundColor: heatBg(data.changePct) }]} />
-          <View style={hd.info}>
-            <Text style={[hd.name, { color: colors.text }]}>{data.label}</Text>
-            <Text style={[hd.sub, { color: colors.mutedForeground }]}>{data.sublabel || data.unit}</Text>
-          </View>
-        </View>
-        <View style={hd.center}>
-          <Text style={[hd.price, { color: colors.text }]}>
-            {data.price > 0
-              ? data.price.toLocaleString('en-EG', { maximumFractionDigits: data.price < 10 ? 2 : 0 })
-              : '—'}
-          </Text>
-          <Text style={[hd.unit, { color: colors.mutedForeground }]}>{data.unit}</Text>
-        </View>
-        <View style={hd.right}>
-          <View style={[hd.badge, { backgroundColor: gc + '18' }]}>
-            <Feather name={isPos ? 'arrow-up' : 'arrow-down'} size={10} color={gc} />
-            <Text style={[hd.badgeTxt, { color: gc }]}>{isPos ? '+' : ''}{data.changePct.toFixed(2)}%</Text>
-          </View>
-          <Pressable onPress={onClose} style={hd.close} hitSlop={10}>
-            <Feather name="x" size={13} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      </View>
-    </Animated.View>
-  );
-}
-const hd = StyleSheet.create({
-  card: {
-    borderRadius: 16, borderWidth: 1, borderLeftWidth: 4,
-    flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12,
-  },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
-  dot: { width: 36, height: 36, borderRadius: 10 },
-  info: { flex: 1, minWidth: 0, gap: 2 },
-  name: { fontSize: 14, fontFamily: 'Inter_700Bold' },
-  sub: { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  center: { alignItems: 'flex-end', gap: 1 },
-  price: { fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
-  unit: { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  right: { alignItems: 'flex-end', gap: 6 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeTxt: { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  close: { padding: 2 },
-});
-
-// ─── Heatmap tab ──────────────────────────────────────────────────────────────
-
-function HeatmapTab({
-  prices,
-  stocks,
-}: {
-  prices: ReturnType<typeof useMarketPrices>['data'];
-  stocks: ReturnType<typeof useEGXStocks>['data'];
-}) {
-  const colors = useColors();
-  const [selected, setSelected] = useState<TileData | null>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-
-  const tiles = useMemo<TileData[]>(() => {
-    const gold24g = prices ? goldPricePerGram(prices, '24k') : 0;
-    const silverG = prices ? silverPricePerGram(prices) : 0;
-    const featured: TileData[] = [
-      {
-        key: 'gold', label: 'Gold 24K', sublabel: 'XAU · EGP/g',
-        changePct: prices?.goldChangePercent ?? 0,
-        price: gold24g, unit: 'EGP/g', size: 'lg',
-      },
-      {
-        key: 'silver', label: 'Silver 999', sublabel: 'XAG · EGP/g',
-        changePct: prices?.silverChangePercent ?? 0,
-        price: silverG, unit: 'EGP/g', size: 'lg',
-      },
-    ];
-    const egx: TileData[] = (stocks ?? []).map(s => ({
-      key: s.symbol, label: s.symbol, sublabel: s.name,
-      changePct: s.changePercent, price: s.price, unit: 'EGP', size: 'sm',
-    }));
-    return [...featured, ...egx];
-  }, [prices, stocks]);
-
-  const GAP = 8;
-  const COLS_LG = 2;
-  const COLS_SM = 4;
-  const lgWidth   = containerWidth > 0 ? (containerWidth - GAP * (COLS_LG - 1)) / COLS_LG : 0;
-  const smWidth   = containerWidth > 0 ? (containerWidth - GAP * (COLS_SM - 1)) / COLS_SM : 0;
-
-  const featured = tiles.filter(t => t.size === 'lg');
-  const smTiles  = tiles.filter(t => t.size === 'sm');
-
-  return (
-    <View style={hm.root}>
-      {/* Legend */}
-      <View style={hm.legend}>
-        <View style={hm.legendItem}>
-          <View style={[hm.legendDot, { backgroundColor: colors.green }]} />
-          <Text style={[hm.legendTxt, { color: colors.mutedForeground }]}>Gaining</Text>
-        </View>
-        <View style={hm.legendItem}>
-          <View style={[hm.legendDot, { backgroundColor: colors.red }]} />
-          <Text style={[hm.legendTxt, { color: colors.mutedForeground }]}>Losing</Text>
-        </View>
-        <Text style={[hm.legendTxt, { color: colors.mutedForeground }]}>· Deeper = bigger move · Tap for details</Text>
-      </View>
-
-      <View
-        onLayout={e => {
-          const w = e.nativeEvent.layout.width;
-          if (w > 0) setContainerWidth(w);
-        }}
-        style={hm.grid}
-      >
-        {/* Featured row (metals) */}
-        {containerWidth > 0 && (
-          <View style={[hm.row, { gap: GAP }]}>
-            {featured.map(t => (
-              <HeatTile
-                key={t.key}
-                data={t}
-                tileWidth={lgWidth}
-                selected={selected?.key === t.key}
-                onPress={() => setSelected(prev => prev?.key === t.key ? null : t)}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Stock grid */}
-        {containerWidth > 0 && smTiles.length > 0 && (
-          <View style={{ gap: GAP }}>
-            <Text style={[hm.sectionLabel, { color: colors.mutedForeground }]}>EGX STOCKS</Text>
-            <View style={[hm.smGrid, { gap: GAP }]}>
-              {smTiles.map(t => (
-                <HeatTile
-                  key={t.key}
-                  data={t}
-                  tileWidth={smWidth}
-                  selected={selected?.key === t.key}
-                  onPress={() => setSelected(prev => prev?.key === t.key ? null : t)}
-                />
-              ))}
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* Detail card */}
-      {selected && (
-        <HeatDetailCard data={selected} onClose={() => setSelected(null)} />
-      )}
-    </View>
-  );
-}
-const hm = StyleSheet.create({
-  root: { gap: 14 },
-  legend: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendTxt: { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  grid: { gap: 8 },
-  row: { flexDirection: 'row' },
-  smGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  sectionLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
-});
-
 // ─── Tab content ──────────────────────────────────────────────────────────────
 
 function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['data'] }) {
@@ -601,27 +345,25 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
   const silver999  = prices ? parseFloat((silverPure * 0.999).toFixed(2)) : 0;
   const silver925  = prices ? parseFloat((silverPure * 0.925).toFixed(2)) : 0;
   const silverOz   = prices ? Math.round(prices.silverUsd * prices.usdToEgp) : 0;
-  const goldChg   = prices?.goldChangePercent;
-  const silverChg = prices?.silverChangePercent;
 
   return (
     <View style={tab.group}>
       <View style={tab.section}>
         <SLabel icon="award" title="GOLD" />
         <TableCard>
-          <MetalRow accentColor={colors.primary} label="24K · Pure Gold"   sublabel="99.9% · Per gram"    price={gold24} changePercent={goldChg} />
+          <MetalRow accentColor={colors.primary} label="24K · Pure Gold"   sublabel="99.9% · Per gram"    price={gold24} changePercent={prices?.goldChangePercent} />
           <MetalRow accentColor={colors.primary} label="22K Gold"           sublabel="91.67% · Per gram"   price={gold22} />
           <MetalRow accentColor={colors.primary} label="21K Gold"           sublabel="87.5% · Per gram"    price={gold21} />
           <MetalRow accentColor={colors.goldDark ?? '#A68700'} label="18K Gold" sublabel="75.0% · Per gram" price={gold18} />
-          <MetalRow accentColor={colors.primary} label="Gold · Troy Ounce"  sublabel="31.10 g · XAU/EGP"   price={goldOz}   unit="EGP" changePercent={goldChg} isLast bold />
+          <MetalRow accentColor={colors.primary} label="Gold · Troy Ounce"  sublabel="31.10 g · XAU/EGP"   price={goldOz}   unit="EGP" changePercent={prices?.goldChangePercent} isLast bold />
         </TableCard>
       </View>
       <View style={tab.section}>
         <SLabel icon="circle" title="SILVER" />
         <TableCard>
-          <MetalRow accentColor={colors.silverColor} label="Silver 999 · Fine"    sublabel="99.9% · Per gram"   price={silver999} changePercent={silverChg} />
+          <MetalRow accentColor={colors.silverColor} label="Silver 999 · Fine"    sublabel="99.9% · Per gram"  price={silver999} changePercent={prices?.silverChangePercent} />
           <MetalRow accentColor={colors.silverColor} label="Silver 925 · Sterling" sublabel="92.5% · Per gram"  price={silver925} />
-          <MetalRow accentColor={colors.silverColor} label="Silver · Troy Ounce"  sublabel="31.10 g · XAG/EGP"  price={silverOz}  unit="EGP" changePercent={silverChg} isLast bold />
+          <MetalRow accentColor={colors.silverColor} label="Silver · Troy Ounce"  sublabel="31.10 g · XAG/EGP"  price={silverOz}  unit="EGP" changePercent={prices?.silverChangePercent} isLast bold />
         </TableCard>
       </View>
     </View>
@@ -629,22 +371,20 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
 }
 
 function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['data'] }) {
-  const usd  = prices ? prices.usdToEgp : 0;
-  // SAR and AED are USD-pegged — calculate precisely from live USD/EGP
-  const sar  = prices ? usd / 3.75    : 0;
-  const aed  = prices ? usd / 3.6725  : 0;
-  // KWD: roughly 3.25 USD
-  const kwd  = prices ? usd * 3.25    : 0;
+  const usd = prices ? prices.usdToEgp : 0;
+  const sar = prices ? usd / 3.75    : 0;
+  const aed = prices ? usd / 3.6725  : 0;
+  const kwd = prices ? usd * 3.25    : 0;
 
   return (
     <View style={tab.group}>
       <View style={tab.section}>
         <SLabel icon="dollar-sign" title="EXCHANGE RATES vs. EGP" />
         <TableCard>
-          <CurrencyRow flag="🇺🇸" name="US Dollar"      pair="USD / EGP" rate={usd}  unit="EGP per 1 USD" isLive />
-          <CurrencyRow flag="🇸🇦" name="Saudi Riyal"    pair="SAR / EGP" rate={sar}  unit="EGP per 1 SAR" isLive />
-          <CurrencyRow flag="🇦🇪" name="UAE Dirham"     pair="AED / EGP" rate={aed}  unit="EGP per 1 AED" isLive />
-          <CurrencyRow flag="🇰🇼" name="Kuwaiti Dinar"  pair="KWD / EGP" rate={kwd}  unit="EGP per 1 KWD" isLast isLive />
+          <CurrencyRow flag="🇺🇸" name="US Dollar"     pair="USD / EGP" rate={usd} unit="EGP per 1 USD" isLive />
+          <CurrencyRow flag="🇸🇦" name="Saudi Riyal"   pair="SAR / EGP" rate={sar} unit="EGP per 1 SAR" isLive />
+          <CurrencyRow flag="🇦🇪" name="UAE Dirham"    pair="AED / EGP" rate={aed} unit="EGP per 1 AED" isLive />
+          <CurrencyRow flag="🇰🇼" name="Kuwaiti Dinar" pair="KWD / EGP" rate={kwd} unit="EGP per 1 KWD" isLast isLive />
         </TableCard>
         <Text style={tab.note}>SAR, AED, KWD rates are derived from the live USD/EGP rate.</Text>
       </View>
@@ -690,7 +430,7 @@ export default function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const { data: stocks, isLoading: lS, refetch: rS } = useEGXStocks();
-  const [activeTab, setActiveTab] = useState<TabKey>('heatmap');
+  const [activeTab, setActiveTab] = useState<TabKey>('metals');
 
   const isLoading = lP || lS;
   const refetch = () => { rP(); rS(); };
@@ -700,46 +440,17 @@ export default function MarketsScreen() {
 
   function renderContent() {
     switch (activeTab) {
-      case 'heatmap':
-        return <HeatmapTab prices={prices} stocks={stocks} />;
-      case 'metals':
-        return <MetalsTab prices={prices} />;
-      case 'currencies':
-        return <CurrenciesTab prices={prices} />;
-      case 'egx':
-        return <EGXTab stocks={stocks} />;
+      case 'metals':      return <MetalsTab prices={prices} />;
+      case 'currencies':  return <CurrenciesTab prices={prices} />;
+      case 'egx':         return <EGXTab stocks={stocks} />;
       case 'stocks':
-        return (
-          <ComingSoon
-            icon="trending-up"
-            title="Global Stocks"
-            description="Live prices for international equities — S&P 500, NASDAQ, and more."
-          />
-        );
+        return <ComingSoon icon="trending-up" title="Global Stocks"    description="Live prices for international equities — S&P 500, NASDAQ, and more." />;
       case 'global':
-        return (
-          <ComingSoon
-            icon="globe"
-            title="Global Indices"
-            description="Track major market indices from around the world in one place."
-          />
-        );
+        return <ComingSoon icon="globe"       title="Global Indices"   description="Track major market indices from around the world in one place." />;
       case 'real_estate':
-        return (
-          <ComingSoon
-            icon="home"
-            title="Real Estate"
-            description="Egyptian real estate price indices and market trends by city."
-          />
-        );
+        return <ComingSoon icon="home"        title="Real Estate"      description="Egyptian real estate price indices and market trends by city." />;
       case 'crypto':
-        return (
-          <ComingSoon
-            icon="cpu"
-            title="Crypto Markets"
-            description="Bitcoin, Ethereum, and top cryptocurrencies priced in EGP."
-          />
-        );
+        return <ComingSoon icon="cpu"         title="Crypto Markets"   description="Bitcoin, Ethereum, and top cryptocurrencies priced in EGP." />;
     }
   }
 
@@ -750,7 +461,6 @@ export default function MarketsScreen() {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
-      {/* Header */}
       <View style={s.header}>
         <View>
           <Text style={[s.eyebrow, { color: colors.primary }]}>INVSTRY</Text>
@@ -759,13 +469,10 @@ export default function MarketsScreen() {
         <LiveDot />
       </View>
 
-      {/* Tab bar */}
       <TabBar active={activeTab} onChange={setActiveTab} />
 
-      {/* Content */}
       {renderContent()}
 
-      {/* Timestamp */}
       {prices?.lastUpdated && (activeTab === 'metals' || activeTab === 'currencies' || activeTab === 'egx') && (
         <View style={s.tsRow}>
           <Feather name="clock" size={11} color={colors.mutedForeground} />
@@ -778,8 +485,6 @@ export default function MarketsScreen() {
     </ScrollView>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   container: { flex: 1 },
