@@ -263,36 +263,34 @@ export default function HomeScreen() {
             <View style={styles.plRow}>
               {/* Today */}
               <View style={[styles.plChip, { backgroundColor: todayColor + '12', borderColor: todayColor + '28' }]}>
-                <Feather name={isTodayGain ? 'sunrise' : 'sunset'} size={12} color={todayColor} />
-                <View style={styles.plBody}>
-                  <Text style={[styles.plLabel, { color: todayColor + 'AA' }]}>Today</Text>
-                  <Text style={[styles.plValue, { color: todayColor }]} numberOfLines={1}>
-                    {isTodayGain ? '+' : '−'}
-                    {Math.abs(summary.todayGain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
-                  </Text>
+                <View style={styles.plTop}>
+                  <Feather name={isTodayGain ? 'sunrise' : 'sunset'} size={11} color={todayColor} />
+                  <Text style={[styles.plLabel, { color: todayColor + 'CC' }]}>Today</Text>
+                  <View style={[styles.plBadge, { backgroundColor: todayColor + '22' }]}>
+                    <Text style={[styles.plBadgeText, { color: todayColor }]}>
+                      {isTodayGain ? '+' : ''}{summary.todayPct.toFixed(2)}%
+                    </Text>
+                  </View>
                 </View>
-                <View style={[styles.plBadge, { backgroundColor: todayColor + '1E' }]}>
-                  <Text style={[styles.plBadgeText, { color: todayColor }]}>
-                    {isTodayGain ? '+' : ''}{summary.todayPct.toFixed(2)}%
-                  </Text>
-                </View>
+                <Text style={[styles.plValue, { color: todayColor }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {isTodayGain ? '+' : '−'}{Math.abs(summary.todayGain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                </Text>
               </View>
 
               {/* Total */}
               <View style={[styles.plChip, { backgroundColor: gainColor + '12', borderColor: gainColor + '28' }]}>
-                <Feather name={isGain ? 'trending-up' : 'trending-down'} size={12} color={gainColor} />
-                <View style={styles.plBody}>
-                  <Text style={[styles.plLabel, { color: gainColor + 'AA' }]}>Total P/L</Text>
-                  <Text style={[styles.plValue, { color: gainColor }]} numberOfLines={1}>
-                    {isGain ? '+' : '−'}
-                    {Math.abs(summary.gain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
-                  </Text>
+                <View style={styles.plTop}>
+                  <Feather name={isGain ? 'trending-up' : 'trending-down'} size={11} color={gainColor} />
+                  <Text style={[styles.plLabel, { color: gainColor + 'CC' }]}>Total P/L</Text>
+                  <View style={[styles.plBadge, { backgroundColor: gainColor + '22' }]}>
+                    <Text style={[styles.plBadgeText, { color: gainColor }]}>
+                      {isGain ? '+' : ''}{summary.gainPct.toFixed(2)}%
+                    </Text>
+                  </View>
                 </View>
-                <View style={[styles.plBadge, { backgroundColor: gainColor + '1E' }]}>
-                  <Text style={[styles.plBadgeText, { color: gainColor }]}>
-                    {isGain ? '+' : ''}{summary.gainPct.toFixed(2)}%
-                  </Text>
-                </View>
+                <Text style={[styles.plValue, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit>
+                  {isGain ? '+' : '−'}{Math.abs(summary.gain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                </Text>
               </View>
             </View>
           )}
@@ -423,13 +421,13 @@ const styles = StyleSheet.create({
   // P/L chips
   plRow: { flexDirection: 'row', gap: 10 },
   plChip: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 14, borderWidth: 1, padding: 10,
+    flex: 1, flexDirection: 'column', gap: 6,
+    borderRadius: 14, borderWidth: 1, padding: 12,
   },
-  plBody: { flex: 1, minWidth: 0 },
-  plLabel: { fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
-  plValue: { fontSize: 11, fontFamily: 'Inter_700Bold' },
-  plBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, flexShrink: 0 },
+  plTop: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  plLabel: { flex: 1, fontSize: 10, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  plValue: { fontSize: 15, fontFamily: 'Inter_700Bold', minWidth: 0 },
+  plBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   plBadgeText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 
   // Sparkline
