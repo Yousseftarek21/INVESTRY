@@ -36,6 +36,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "briefcase", selected: "briefcase.fill" }} />
         <Label>{t.holdings}</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="analytics">
+        <Icon sf={{ default: "chart.xyaxis.line", selected: "chart.xyaxis.line" }} />
+        <Label>{t.analytics}</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
         <Label>{t.settings}</Label>
@@ -117,6 +121,18 @@ function ClassicTabLayout() {
               <SymbolView name="briefcase.fill" tintColor={color} size={22} />
             ) : (
               <Feather name="briefcase" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: t.analytics,
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="chart.xyaxis.line" tintColor={color} size={22} />
+            ) : (
+              <Feather name="activity" size={22} color={color} />
             ),
         }}
       />

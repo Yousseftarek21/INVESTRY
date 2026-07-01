@@ -9,6 +9,7 @@ const en = {
   portfolio: 'Portfolio',
   markets: 'Markets',
   holdings: 'Investments',
+  analytics: 'Analytics',
   settings: 'Settings',
 
   // Home
@@ -115,6 +116,7 @@ const ar: typeof en = {
   portfolio: 'المحفظة',
   markets: 'الأسواق',
   holdings: 'استثماراتي',
+  analytics: 'التحليلات',
   settings: 'الإعدادات',
 
   // Home

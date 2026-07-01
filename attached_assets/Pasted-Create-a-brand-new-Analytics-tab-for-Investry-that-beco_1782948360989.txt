@@ -1,0 +1,138 @@
+Create a brand-new Analytics tab for Investry that becomes the user's personal financial intelligence center. Do not overload the page with unnecessary charts or statistics. Instead, focus on presenting meaningful insights with a clean, premium, Apple-inspired interface that feels effortless to understand.
+The Analytics tab must follow the latest Apple Human Interface Guidelines (HIG), App Store Review Guidelines, Google Material Design 3, Google Play Developer Policies, and accessibility best practices. Every component should support Light Mode, Dark Mode, Dynamic Type, VoiceOver, RTL (Arabic), and smooth 60–120 FPS animations.
+Overall Experience
+The Analytics screen should answer three questions:
+How is my wealth performing?
+Where is my money invested?
+What insights can help me make better investment decisions?
+The design should feel similar in quality to Apple Stocks, Apple Health, Revolut, Delta Investment Tracker, and TradingView while maintaining Investry's own premium identity.
+Analytics Dashboard
+Begin with a hero section displaying:
+Total Net Worth
+Total Portfolio Value
+Today's Gain/Loss
+Total Return
+Annual Return
+Last Updated Time
+Animate values smoothly whenever they change.
+Below the hero section, include an interactive portfolio performance chart with selectable periods:
+1D
+1W
+1M
+3M
+YTD
+1Y
+3Y
+ALL
+Support pinch-to-zoom, smooth scrolling, and touch tooltips.
+Asset Allocation
+Display an animated donut chart showing portfolio allocation by asset type.
+Examples:
+Gold
+Silver
+EGX Stocks
+International Stocks
+Real Estate
+Cash
+Bank Certificates
+ETFs
+Selecting a segment should filter all analytics to that asset.
+Performance Comparison
+Allow users to compare their portfolio against benchmarks such as:
+Gold
+Silver
+EGX30
+S&P 500
+USD/EGP
+Inflation
+Display comparative growth using clean interactive line charts.
+Portfolio Health
+Create a premium "Portfolio Health Score" (0–100) based on:
+Diversification
+Asset Allocation
+Risk Level
+Cash Reserve
+Inflation Protection
+Portfolio Concentration
+Display a score with a short explanation and practical suggestions for improvement. Clearly state that these are informational insights, not financial advice.
+AI Insights
+Include a daily AI-generated insights card that summarizes the user's portfolio.
+Examples include:
+Best-performing asset
+Largest contributor to gains or losses
+Portfolio concentration observations
+Diversification suggestions
+Performance compared to selected benchmarks
+Ensure all AI insights are clearly labeled as informational.
+Profit Breakdown
+Separate returns into categories such as:
+Capital Gains
+Dividends
+Interest Income
+Rental Income
+Passive Income
+Visualize the breakdown using elegant charts and summary cards.
+Monthly Performance
+Display a monthly performance heatmap showing profitable and negative months with interactive details.
+Top & Bottom Performers
+Highlight:
+Best Performing Asset
+Worst Performing Asset
+Largest Position
+Fastest Growing Investment
+Allow users to tap any item to view detailed analytics.
+Gold & Silver Analytics
+Provide dedicated analytics for precious metals including:
+Current Price
+Average Buy Price
+Total Weight
+Total Holdings Value
+Unrealized Profit/Loss
+Historical Performance
+Price Trend
+Allocation Percentage
+Cash Flow
+Visualize:
+Money Invested
+Money Withdrawn
+Dividends Received
+Interest Earned
+Rental Income
+Monthly Investment Activity
+Goal Tracking
+Display investment goals with progress indicators.
+Examples:
+Emergency Fund
+Retirement
+House
+Car
+Education
+Estimate progress and projected completion based on current contributions without guaranteeing future performance.
+Wealth Timeline
+Create a beautiful chronological timeline showing important financial milestones such as:
+First Investment
+Portfolio Milestones
+First Gold Purchase
+Dividend Payments
+Net Worth Achievements
+Reports
+Allow users to generate and export:
+PDF Reports
+Excel Files
+CSV Files
+Include performance summaries, asset allocation, transaction history, and portfolio analytics.
+Premium User Experience
+The entire Analytics tab should feature:
+Smooth count-up number animations
+Interactive charts
+Skeleton loading placeholders
+Soft card elevation
+Subtle glassmorphism
+Native haptic feedback
+Spring animations
+Fluid page transitions
+Excellent spacing and typography
+Fast loading and offline support
+Avoid clutter, unnecessary statistics, and overwhelming users. Every chart and metric should provide clear value.
+Final Goal
+The Analytics tab should become the most powerful and visually polished financial analytics experience available for investors in Egypt and the MENA region. It should help users understand their financial progress at a glance, monitor wealth growth over time, compare performance against major benchmarks, and receive actionable insights through elegant visualizations. The experience should feel premium, intuitive, and trustworthy—comparable to the quality of Apple Wallet, Apple Stocks, Revolut, Delta Investment Tracker, and TradingView—while remaining uniquely tailored to gold, silver, EGX stocks, real estate, and diversified investment portfolios.
