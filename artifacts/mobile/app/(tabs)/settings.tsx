@@ -184,7 +184,7 @@ export default function SettingsScreen() {
 
       {/* Footer brand */}
       <View style={[styles.footer, { borderTopColor: colors.border }]}>
-        <Text style={[styles.footerBrand, { color: colors.primary }]}>INVST</Text>
+        <Text style={[styles.footerBrand, { color: colors.primary }]}>INVSTRY</Text>
         <Text style={[styles.footerTagline, { color: colors.mutedForeground }]}>
           {t.footerTagline}
         </Text>
