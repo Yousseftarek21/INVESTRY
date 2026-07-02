@@ -11,14 +11,14 @@ interface PremiumGateProps {
   children: React.ReactNode;
 }
 
-const PLAN_LABEL: Record<'pro' | 'pro_plus', string> = {
-  pro: 'PRO',
-  pro_plus: 'PRO+',
-};
-
-const PLAN_COLOR: Record<'pro' | 'pro_plus', string> = {
+const ACCENT: Record<'pro' | 'pro_plus', string> = {
   pro: '#D4AC0D',
   pro_plus: '#A47FCA',
+};
+
+const BADGE: Record<'pro' | 'pro_plus', string> = {
+  pro: 'PRO',
+  pro_plus: 'PRO+',
 };
 
 function hasAccess(userPlan: Plan, required: 'pro' | 'pro_plus'): boolean {
@@ -27,86 +27,101 @@ function hasAccess(userPlan: Plan, required: 'pro' | 'pro_plus'): boolean {
 }
 
 export function PremiumGate({ requiredPlan, feature, description, children }: PremiumGateProps) {
-  const colors = useColors();
   const { plan, showPaywall } = useSubscription();
 
   if (hasAccess(plan, requiredPlan)) return <>{children}</>;
 
-  const accentColor = PLAN_COLOR[requiredPlan];
-  const badgeLabel = PLAN_LABEL[requiredPlan];
+  const accent = ACCENT[requiredPlan];
+  const badge = BADGE[requiredPlan];
 
   return (
-    <View style={[g.card, { backgroundColor: colors.card, borderColor: accentColor + '30' }]}>
-      {/* Top accent */}
-      <View style={[g.topAccent, { backgroundColor: accentColor }]} />
+    <View style={[g.wrapper, { marginHorizontal: 20, marginVertical: 8 }]}>
+      {/* Subtle glow rings */}
+      <View style={[g.glowRingOuter, { borderColor: accent + '18' }]} />
+      <View style={[g.glowRingInner, { borderColor: accent + '28' }]} />
 
-      <View style={g.body}>
-        {/* Badge + Lock row */}
-        <View style={g.topRow}>
-          <View style={[g.badge, { backgroundColor: accentColor + '18', borderColor: accentColor + '40' }]}>
-            <Feather name="star" size={10} color={accentColor} style={{ marginRight: 4 }} />
-            <Text style={[g.badgeTxt, { color: accentColor }]}>{badgeLabel}</Text>
+      <View style={[g.card, { borderColor: accent + '30', backgroundColor: '#060D1A' }]}>
+        {/* Top accent bar */}
+        <View style={[g.topBar, { backgroundColor: accent }]} />
+
+        <View style={g.body}>
+          {/* Header row */}
+          <View style={g.headerRow}>
+            <View style={[g.badge, { backgroundColor: accent + '15', borderColor: accent + '35' }]}>
+              <Feather name={requiredPlan === 'pro' ? 'star' : 'zap'} size={10} color={accent} style={{ marginRight: 5 }} />
+              <Text style={[g.badgeTxt, { color: accent }]}>{badge}</Text>
+            </View>
+            <View style={[g.lockCircle, { backgroundColor: accent + '12', borderColor: accent + '25' }]}>
+              <Feather name="lock" size={13} color={accent} />
+            </View>
           </View>
-          <View style={[g.lockWrap, { backgroundColor: accentColor + '12' }]}>
-            <Feather name="lock" size={14} color={accentColor} />
-          </View>
+
+          {/* Feature name */}
+          <Text style={g.featureName}>{feature}</Text>
+
+          {/* Description */}
+          <Text style={g.featureDesc}>{description}</Text>
+
+          {/* Divider */}
+          <View style={[g.divider, { backgroundColor: accent + '20' }]} />
+
+          {/* Upgrade button */}
+          <Pressable
+            onPress={() => showPaywall(requiredPlan)}
+            style={({ pressed }) => [g.btn, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
+          >
+            <Feather name="zap" size={14} color="#000" style={{ marginRight: 7 }} />
+            <Text style={g.btnTxt}>Upgrade to {badge}</Text>
+          </Pressable>
+
+          <Text style={[g.unlockHint, { color: accent + '80' }]}>
+            {requiredPlan === 'pro' ? 'From 1,999 EGP/year' : 'From 3,999 EGP/year'}
+          </Text>
         </View>
-
-        {/* Title + description */}
-        <Text style={[g.featureTitle, { color: colors.text }]}>{feature}</Text>
-        <Text style={[g.featureDesc, { color: colors.mutedForeground }]}>{description}</Text>
-
-        {/* Upgrade button */}
-        <Pressable
-          onPress={() => showPaywall(requiredPlan)}
-          style={({ pressed }) => [g.btn, { backgroundColor: accentColor, opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Feather name="zap" size={14} color="#000" style={{ marginRight: 7 }} />
-          <Text style={g.btnTxt}>Upgrade to {badgeLabel}</Text>
-        </Pressable>
       </View>
     </View>
   );
 }
 
 const g = StyleSheet.create({
+  wrapper: { position: 'relative' },
+
+  glowRingOuter: {
+    position: 'absolute', top: -8, left: -8, right: -8, bottom: -8,
+    borderRadius: 30, borderWidth: 1,
+  },
+  glowRingInner: {
+    position: 'absolute', top: -3, left: -3, right: -3, bottom: -3,
+    borderRadius: 25, borderWidth: 1,
+  },
+
   card: {
-    borderRadius: 20, borderWidth: 1,
-    overflow: 'hidden',
-    marginHorizontal: 20, marginVertical: 8,
+    borderRadius: 22, borderWidth: 1.5, overflow: 'hidden',
   },
-  topAccent: {
-    height: 3, width: '100%',
-  },
-  body: {
-    padding: 20, gap: 10,
-  },
-  topRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
+  topBar: { height: 2 },
+  body: { padding: 22, gap: 12 },
+
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   badge: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 8, borderWidth: 1,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 9, borderWidth: 1,
   },
-  badgeTxt: {
-    fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1,
-  },
-  lockWrap: {
-    width: 32, height: 32, borderRadius: 10,
+  badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
+  lockCircle: {
+    width: 34, height: 34, borderRadius: 11, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
-  featureTitle: {
-    fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3,
-  },
-  featureDesc: {
-    fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20,
-  },
+
+  featureName: { fontSize: 20, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: -0.4 },
+  featureDesc: { fontSize: 13, fontFamily: 'Inter_400Regular', color: '#5A6C80', lineHeight: 20 },
+
+  divider: { height: 1 },
+
   btn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    borderRadius: 12, paddingVertical: 13, marginTop: 4,
+    borderRadius: 14, paddingVertical: 15,
   },
-  btnTxt: {
-    fontSize: 14, fontFamily: 'Inter_700Bold', color: '#000',
-  },
+  btnTxt: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#000' },
+
+  unlockHint: { fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: -4 },
 });
