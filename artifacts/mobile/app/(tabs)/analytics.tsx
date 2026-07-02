@@ -637,7 +637,6 @@ export default function AnalyticsScreen() {
         <View>
           <Text style={[s.pageTitle, { color: colors.text }]}>Analytics</Text>
         </View>
-        <LiveDot />
       </View>
 
       {/* ══ SECTION 1: Financial Tools (always first & visible) ══════ */}
