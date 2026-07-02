@@ -20,6 +20,7 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
 import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
+import { PremiumBadge } from '@/components/PremiumBadge';
 
 const APP_VERSION = '1.0.0';
 const BUILD = '100';
@@ -250,10 +251,11 @@ const cm = StyleSheet.create({
 // ─── Profile hero card ────────────────────────────────────────────────────────
 
 function ProfileHero({
-  initials, fullName, email, verified, holdingsCount, onPress,
+  initials, fullName, email, verified, holdingsCount, onPress, plan,
 }: {
   initials: string; fullName: string; email: string;
   verified: boolean; holdingsCount: number; onPress: () => void;
+  plan?: 'pro' | 'pro_plus' | null;
 }) {
   const colors = useColors();
   return (
@@ -281,7 +283,10 @@ function ProfileHero({
 
         {/* Info */}
         <View style={ph.info}>
-          <Text style={[ph.name, { color: colors.text }]} numberOfLines={1}>{fullName}</Text>
+          <View style={ph.nameRow}>
+            <Text style={[ph.name, { color: colors.text }]} numberOfLines={1}>{fullName}</Text>
+            {(plan === 'pro' || plan === 'pro_plus') && <PremiumBadge plan={plan} size="sm" />}
+          </View>
           <Text style={[ph.email, { color: colors.mutedForeground }]} numberOfLines={1}>{email}</Text>
 
           <View style={ph.tagsRow}>
@@ -318,6 +323,7 @@ const ph = StyleSheet.create({
   avatarText: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   verifyDot: { position: 'absolute', bottom: 2, right: 2, width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, gap: 4, paddingTop: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
   name: { fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: -0.4 },
   email: { fontSize: 13, fontFamily: 'Inter_400Regular' },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
@@ -660,6 +666,7 @@ export default function SettingsScreen() {
           <ProfileHero
             initials={initials} fullName={fullName} email={email}
             verified={verified} holdingsCount={holdings.length}
+            plan={plan === 'pro' || plan === 'pro_plus' ? plan : null}
             onPress={() => showModal('Account Details',
               `Name: ${fullName}\nEmail: ${email}\nVerified: ${verified ? 'Yes ✓' : 'Pending'}\n\nInvestments: ${holdings.length} investment${holdings.length !== 1 ? 's' : ''}\nStorage: Locally on your device only\n\nFor account changes, sign out and sign in with updated credentials.`
             )}

@@ -4,3 +4,4 @@
 - [Stripe entitlement sync](stripe-entitlement-sync.md) — stripe-replit-sync never touches app tables; must wire subscription.created/updated/deleted to your own users.plan column yourself
 - [Subscription system](subscription-system.md) — mock RevenueCat context; paywall in components/SubscriptionScreen.tsx (NOT app/); paywall callback pattern via _registerPaywallCallback
 - [Launch Access mode](launch-access-mode.md) — free Pro+ via FREE_ACCESS_PLAN env flag; DEV_UNLOCKED bypass hides it in dev preview; Clerk e2e tests need testClerkAuth: true
+- [expo-symbols SF Symbol naming](expo-symbols-naming.md) — SymbolView name strings come from sf-symbols-typescript's type, not Apple's catalog names (e.g. "rosette" not "rosette.fill")

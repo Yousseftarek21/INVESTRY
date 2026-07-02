@@ -12,8 +12,10 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, useGoldHistory, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
+import { PremiumBadge } from '@/components/PremiumBadge';
 import { Holding, MarketPrices } from '@/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -304,6 +306,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
+  const { plan, isPro } = useSubscription();
   const isLoading = pricesLoading || holdingsLoading;
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
@@ -376,7 +379,10 @@ export default function HomeScreen() {
             <Text style={[styles.appLabel, { color: colors.primary }]}>{t.appName}</Text>
             <Text style={[styles.sloganText, { color: colors.primary }]}>Know Your Wealth</Text>
           </View>
-          <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
+            {isPro && (plan === 'pro' || plan === 'pro_plus') && <PremiumBadge plan={plan} size="sm" />}
+          </View>
         </View>
         <View style={styles.headerRight}>
           <LiveChip lastUpdated={prices?.lastUpdated ?? null} />
@@ -628,6 +634,7 @@ const styles = StyleSheet.create({
   appLabel:    { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 5 },
   sloganText:  { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 1.8, opacity: 0.6, alignSelf: 'center' },
   screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   heroAccent: { height: 2.5 },
