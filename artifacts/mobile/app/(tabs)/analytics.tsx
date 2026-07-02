@@ -642,14 +642,15 @@ export default function AnalyticsScreen() {
       </View>
 
       {/* ══ SECTION 1: Financial Tools (always first & visible) ══════ */}
-      <View style={s.toolsHeader}>
-        <View style={[s.toolsAccentBar, { backgroundColor: colors.primary }]} />
+      <View style={s.sectionHeader}>
+        <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
+          <Feather name="tool" size={15} color={colors.primary} />
+        </View>
         <View style={{ flex: 1 }}>
-          <Text style={[s.toolsTitle, { color: colors.text }]}>Financial Tools</Text>
-          <Text style={[s.toolsSub, { color: colors.mutedForeground }]}>Smart calculators for investors</Text>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>Financial Tools</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Smart calculators for investors</Text>
         </View>
         <View style={[s.toolsBadge, { backgroundColor: colors.primary + '18' }]}>
-          <Feather name="tool" size={11} color={colors.primary} style={{ marginRight: 5 }} />
           <Text style={[s.toolsBadgeTxt, { color: colors.primary }]}>8 TOOLS</Text>
         </View>
       </View>

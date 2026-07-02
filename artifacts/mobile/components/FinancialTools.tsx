@@ -512,40 +512,77 @@ function ToolCard({ tool, onPress }: { tool: typeof TOOLS[number]; onPress: () =
   const scale = useRef(new Animated.Value(1)).current;
 
   const onPressIn = () =>
-    Animated.spring(scale, { toValue: 0.93, useNativeDriver: Platform.OS !== 'web' }).start();
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: Platform.OS !== 'web' }).start();
   const onPressOut = () =>
     Animated.spring(scale, { toValue: 1, useNativeDriver: Platform.OS !== 'web' }).start();
 
   return (
-    <Animated.View style={{ transform: [{ scale }], flex: 1 }}>
+    <Animated.View style={[{ transform: [{ scale }] }, tc.flex]}>
       <Pressable
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        style={[tc.card, { backgroundColor: colors.card }]}
+        style={[tc.card, {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+        }]}
       >
-        {/* Colored top accent bar */}
-        <View style={[tc.accentBar, { backgroundColor: tool.color }]} />
-        {/* Icon */}
-        <View style={[tc.iconWrap, { backgroundColor: tool.color + '22' }]}>
-          <Feather name={tool.icon as any} size={20} color={tool.color} />
+        {/* Colored left accent strip */}
+        <View style={[tc.leftAccent, { backgroundColor: tool.color }]} />
+
+        <View style={tc.inner}>
+          {/* Icon */}
+          <View style={[tc.iconWrap, { backgroundColor: tool.color + '1A' }]}>
+            <Feather name={tool.icon as any} size={22} color={tool.color} />
+          </View>
+
+          {/* Text block */}
+          <View style={tc.textBlock}>
+            <Text style={[tc.label, { color: colors.text }]} numberOfLines={1}>
+              {tool.label}
+            </Text>
+            <Text style={[tc.sub, { color: colors.mutedForeground }]} numberOfLines={1}>
+              {tool.sub}
+            </Text>
+          </View>
+
+          {/* Chevron */}
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} style={tc.chevron} />
         </View>
-        <Text style={[tc.label, { color: colors.text }]} numberOfLines={1}>{tool.label}</Text>
       </Pressable>
     </Animated.View>
   );
 }
 const tc = StyleSheet.create({
+  flex: { flex: 1 },
   card: {
-    borderRadius: 16, overflow: 'hidden',
-    paddingTop: 20, paddingBottom: 14, paddingHorizontal: 8,
-    alignItems: 'center', gap: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  accentBar: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+  leftAccent: {
+    position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
   },
-  iconWrap: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 11, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingLeft: 20,
+    paddingRight: 14,
+    gap: 14,
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  textBlock: { flex: 1, gap: 3 },
+  label: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  sub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  chevron: { flexShrink: 0 },
 });
 
 // ─── Main export ───────────────────────────────────────────────────────────────
@@ -555,22 +592,11 @@ export function FinancialTools() {
 
   return (
     <>
-      {/* 4-column compact grid — 2 rows of 4 */}
-      <View style={ft.grid}>
-        <View style={ft.row}>
-          {TOOLS.slice(0, 4).map(tool => (
-            <View key={tool.id} style={ft.cell}>
-              <ToolCard tool={tool} onPress={() => setOpen(tool.id)} />
-            </View>
-          ))}
-        </View>
-        <View style={ft.row}>
-          {TOOLS.slice(4, 8).map(tool => (
-            <View key={tool.id} style={ft.cell}>
-              <ToolCard tool={tool} onPress={() => setOpen(tool.id)} />
-            </View>
-          ))}
-        </View>
+      {/* Single-column list */}
+      <View style={ft.list}>
+        {TOOLS.map(tool => (
+          <ToolCard key={tool.id} tool={tool} onPress={() => setOpen(tool.id)} />
+        ))}
       </View>
 
       {/* Modals */}
@@ -586,7 +612,5 @@ export function FinancialTools() {
   );
 }
 const ft = StyleSheet.create({
-  grid: { gap: 12 },
-  row: { flexDirection: 'row', gap: 12 },
-  cell: { flex: 1 },
+  list: { gap: 10 },
 });
