@@ -640,6 +640,116 @@ export default function AnalyticsScreen() {
         <LiveDot />
       </View>
 
+      {/* ══ SECTION 1: Financial Tools (always first & visible) ══════ */}
+      <View style={s.sectionHeader}>
+        <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
+          <Feather name="tool" size={15} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>Financial Tools</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Calculators & smart tools</Text>
+        </View>
+      </View>
+      <FinancialTools />
+
+      {/* ══ SECTION 2: Market Intelligence ══════════════════════════ */}
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      <View style={s.sectionHeader}>
+        <View style={[s.sectionIconWrap, { backgroundColor: '#4A9EFF18' }]}>
+          <Feather name="globe" size={15} color="#4A9EFF" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>Market Intelligence</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Live rates & portfolio signals</Text>
+        </View>
+        <LiveDot />
+      </View>
+
+      {/* Market Summary Cards — 3-up row */}
+      <View style={s.marketRow}>
+        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>USD / EGP</Text>
+          <Text style={[s.mktPrice, { color: colors.text }]}>
+            {prices?.usdToEgp ? prices.usdToEgp.toFixed(2) : '—'}
+          </Text>
+          <View style={[s.mktBadge, { backgroundColor: '#4A9EFF18' }]}>
+            <Text style={[s.mktBadgeTxt, { color: '#4A9EFF' }]}>LIVE</Text>
+          </View>
+        </View>
+
+        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}>
+          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Gold 21K / g</Text>
+          <Text style={[s.mktPrice, { color: colors.primary }]}>
+            {prices ? Math.round(goldPricePerGram(prices, '21k')).toLocaleString('en-EG') : '—'}
+          </Text>
+          {prices?.goldChangePercent !== undefined && (
+            <View style={[s.mktBadge, { backgroundColor: (prices.goldChangePercent >= 0 ? colors.green : colors.red) + '18' }]}>
+              <Text style={[s.mktBadgeTxt, { color: prices.goldChangePercent >= 0 ? colors.green : colors.red }]}>
+                {prices.goldChangePercent >= 0 ? '+' : ''}{prices.goldChangePercent.toFixed(2)}%
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Silver / g</Text>
+          <Text style={[s.mktPrice, { color: colors.silverColor }]}>
+            {prices ? Math.round(silverPricePerGram(prices)).toLocaleString('en-EG') : '—'}
+          </Text>
+          {prices?.silverChangePercent !== undefined && (
+            <View style={[s.mktBadge, { backgroundColor: (prices.silverChangePercent >= 0 ? colors.green : colors.red) + '18' }]}>
+              <Text style={[s.mktBadgeTxt, { color: prices.silverChangePercent >= 0 ? colors.green : colors.red }]}>
+                {prices.silverChangePercent >= 0 ? '+' : ''}{prices.silverChangePercent.toFixed(2)}%
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Gold karat strip */}
+      {prices && (
+        <View style={[s.karatStrip, { backgroundColor: colors.card, borderColor: colors.primary + '25' }]}>
+          <Text style={[s.karatStripLabel, { color: colors.mutedForeground }]}>GOLD PRICES (EGP/g)</Text>
+          <View style={s.karatRow}>
+            {(['24k', '22k', '21k', '18k'] as const).map(k => (
+              <View key={k} style={s.karatCol}>
+                <Text style={[s.karatVal, { color: colors.primary }]}>
+                  {Math.round(goldPricePerGram(prices, k)).toLocaleString('en-EG')}
+                </Text>
+                <Text style={[s.karatKey, { color: colors.mutedForeground }]}>{k.toUpperCase()}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Personalized signals */}
+      {marketInsights.length > 0 && (
+        <View style={s.section}>
+          <SLabel icon="cpu" title="Personalized Insights" sub="Based on your portfolio" />
+          <View style={s.insightsList}>
+            {marketInsights.map((ins, i) => (
+              <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
+            ))}
+          </View>
+          <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
+            Insights are informational only — not financial advice.
+          </Text>
+        </View>
+      )}
+
+      {/* ══ SECTION 3: Portfolio Analytics ═══════════════════════════ */}
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      <View style={s.sectionHeader}>
+        <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
+          <Feather name="bar-chart-2" size={15} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>Portfolio Analytics</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Performance, health & allocation</Text>
+        </View>
+      </View>
+
       {!hasHoldings ? (
         <EmptyState />
       ) : (
@@ -663,9 +773,7 @@ export default function AnalyticsScreen() {
 
           {/* ── Performance chart ────────────────────────────────────── */}
           <View style={s.chartSection}>
-            <View style={s.chartHeader}>
-              <SLabel icon="activity" title="Performance" sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
-            </View>
+            <SLabel icon="activity" title="Performance" sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
             <View
               onLayout={(e: LayoutChangeEvent) => {
                 const w = e.nativeEvent.layout.width;
@@ -684,7 +792,6 @@ export default function AnalyticsScreen() {
                     onPress={() => setPeriod(p)}
                     style={[s.periodPill, {
                       backgroundColor: active ? colors.primary : colors.muted,
-                      borderColor: active ? colors.primary : 'transparent',
                     }]}
                   >
                     <Text style={[s.periodTxt, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
@@ -772,111 +879,6 @@ export default function AnalyticsScreen() {
           )}
         </>
       )}
-
-      {/* ══ SECTION 2: Market Intelligence ══════════════════════════ */}
-      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: '#4A9EFF18' }]}>
-          <Feather name="globe" size={15} color="#4A9EFF" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>Market Intelligence</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Live market data & portfolio signals</Text>
-        </View>
-        <LiveDot />
-      </View>
-
-      {/* Market Summary Cards */}
-      <View style={s.marketRow}>
-        {/* USD/EGP */}
-        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>USD / EGP</Text>
-          <Text style={[s.mktPrice, { color: colors.text }]}>
-            {prices?.usdToEgp ? prices.usdToEgp.toFixed(2) : '—'}
-          </Text>
-          <View style={[s.mktBadge, { backgroundColor: '#4A9EFF18' }]}>
-            <Text style={[s.mktBadgeTxt, { color: '#4A9EFF' }]}>LIVE RATE</Text>
-          </View>
-        </View>
-
-        {/* Gold 21K */}
-        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}>
-          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Gold 21K / g</Text>
-          <Text style={[s.mktPrice, { color: colors.primary }]}>
-            {prices ? Math.round(goldPricePerGram(prices, '21k')).toLocaleString('en-EG') : '—'}
-          </Text>
-          {prices?.goldChangePercent !== undefined && (
-            <View style={[s.mktBadge, { backgroundColor: prices.goldChangePercent >= 0 ? colors.green + '18' : colors.red + '18' }]}>
-              <Text style={[s.mktBadgeTxt, { color: prices.goldChangePercent >= 0 ? colors.green : colors.red }]}>
-                {prices.goldChangePercent >= 0 ? '+' : ''}{prices.goldChangePercent.toFixed(2)}%
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Silver */}
-        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Silver / g</Text>
-          <Text style={[s.mktPrice, { color: colors.silverColor }]}>
-            {prices ? Math.round(silverPricePerGram(prices)).toLocaleString('en-EG') : '—'}
-          </Text>
-          {prices?.silverChangePercent !== undefined && (
-            <View style={[s.mktBadge, { backgroundColor: prices.silverChangePercent >= 0 ? colors.green + '18' : colors.red + '18' }]}>
-              <Text style={[s.mktBadgeTxt, { color: prices.silverChangePercent >= 0 ? colors.green : colors.red }]}>
-                {prices.silverChangePercent >= 0 ? '+' : ''}{prices.silverChangePercent.toFixed(2)}%
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Gold karat breakdown strip */}
-      {prices && (
-        <View style={[s.karatStrip, { backgroundColor: colors.card, borderColor: colors.primary + '25' }]}>
-          <Text style={[s.karatStripLabel, { color: colors.mutedForeground }]}>GOLD PRICES (EGP/g)</Text>
-          <View style={s.karatRow}>
-            {(['24k', '22k', '21k', '18k'] as const).map(k => (
-              <View key={k} style={s.karatCol}>
-                <Text style={[s.karatVal, { color: colors.primary }]}>
-                  {Math.round(goldPricePerGram(prices, k)).toLocaleString('en-EG')}
-                </Text>
-                <Text style={[s.karatKey, { color: colors.mutedForeground }]}>{k.toUpperCase()}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Personalized Market Insights */}
-      {marketInsights.length > 0 && (
-        <View style={s.section}>
-          <SLabel icon="cpu" title="Personalized Insights" sub="Based on your portfolio" />
-          <View style={s.insightsList}>
-            {marketInsights.map((ins, i) => (
-              <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
-            ))}
-          </View>
-          <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-            Insights are informational only — not financial advice.
-          </Text>
-        </View>
-      )}
-
-      {/* ══ SECTION 3: Financial Tools ════════════════════════════ */}
-      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
-          <Feather name="tool" size={15} color={colors.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>Financial Tools</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Calculators & smart tools</Text>
-        </View>
-      </View>
-      <FinancialTools />
-      <Text style={[s.disclaimer, { color: colors.mutedForeground, textAlign: 'center' }]}>
-        All calculations use live market prices where available.
-      </Text>
     </ScrollView>
   );
 }
