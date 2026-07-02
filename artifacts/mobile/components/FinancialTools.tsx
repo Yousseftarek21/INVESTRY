@@ -522,10 +522,13 @@ function ToolCard({ tool, onPress }: { tool: typeof TOOLS[number]; onPress: () =
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        style={[tc.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+        style={[tc.card, { backgroundColor: colors.card }]}
       >
-        <View style={[tc.iconWrap, { backgroundColor: tool.color + '1A' }]}>
-          <Feather name={tool.icon as any} size={18} color={tool.color} />
+        {/* Colored top accent bar */}
+        <View style={[tc.accentBar, { backgroundColor: tool.color }]} />
+        {/* Icon */}
+        <View style={[tc.iconWrap, { backgroundColor: tool.color + '22' }]}>
+          <Feather name={tool.icon as any} size={20} color={tool.color} />
         </View>
         <Text style={[tc.label, { color: colors.text }]} numberOfLines={1}>{tool.label}</Text>
       </Pressable>
@@ -534,11 +537,14 @@ function ToolCard({ tool, onPress }: { tool: typeof TOOLS[number]; onPress: () =
 }
 const tc = StyleSheet.create({
   card: {
-    borderRadius: 16, borderWidth: 1,
-    paddingVertical: 14, paddingHorizontal: 8,
-    alignItems: 'center', gap: 8,
+    borderRadius: 16, overflow: 'hidden',
+    paddingTop: 20, paddingBottom: 14, paddingHorizontal: 8,
+    alignItems: 'center', gap: 10,
   },
-  iconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  accentBar: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+  },
+  iconWrap: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 11, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
 });
 

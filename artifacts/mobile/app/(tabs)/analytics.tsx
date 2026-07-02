@@ -641,13 +641,15 @@ export default function AnalyticsScreen() {
       </View>
 
       {/* ══ SECTION 1: Financial Tools (always first & visible) ══════ */}
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
-          <Feather name="tool" size={15} color={colors.primary} />
-        </View>
+      <View style={s.toolsHeader}>
+        <View style={[s.toolsAccentBar, { backgroundColor: colors.primary }]} />
         <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>Financial Tools</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Calculators & smart tools</Text>
+          <Text style={[s.toolsTitle, { color: colors.text }]}>Financial Tools</Text>
+          <Text style={[s.toolsSub, { color: colors.mutedForeground }]}>Smart calculators for investors</Text>
+        </View>
+        <View style={[s.toolsBadge, { backgroundColor: colors.primary + '18' }]}>
+          <Feather name="tool" size={11} color={colors.primary} style={{ marginRight: 5 }} />
+          <Text style={[s.toolsBadgeTxt, { color: colors.primary }]}>8 TOOLS</Text>
         </View>
       </View>
       <FinancialTools />
@@ -940,4 +942,12 @@ const s = StyleSheet.create({
   karatCol: { alignItems: 'center', gap: 3 },
   karatVal: { fontSize: 14, fontFamily: 'Inter_700Bold' },
   karatKey: { fontSize: 10, fontFamily: 'Inter_500Medium' },
+
+  // Financial Tools header (distinct from live sections)
+  toolsHeader: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  toolsAccentBar: { width: 4, height: 46, borderRadius: 2 },
+  toolsTitle: { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
+  toolsSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  toolsBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  toolsBadgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
 });
