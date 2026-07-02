@@ -264,15 +264,7 @@ function ProfileHero({
       onPress={onPress} activeOpacity={0.75}
       style={[ph.card, { backgroundColor: colors.card, borderColor: colors.border }]}
     >
-      {/* Purple accent glow at top of card (matches Pro badge color) */}
-      <View style={ph.accentGlow} pointerEvents="none">
-        <ExpoLinearGradient
-          colors={['#A47FCA00', '#A47FCA40', '#A47FCA00']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
+      {/* Purple accent line at top of card (matches Pro badge color) */}
       <ExpoLinearGradient
         colors={['#A47FCA00', '#A47FCACC', '#A47FCA00']}
         start={{ x: 0, y: 0 }}
@@ -329,7 +321,6 @@ function ProfileHero({
 }
 const ph = StyleSheet.create({
   card: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  accentGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 16 },
   accentBar: { height: 1.5, width: '100%' },
   inner: { flexDirection: 'row', alignItems: 'flex-start', padding: 18, gap: 15 },
   avatarArea: { flexShrink: 0, position: 'relative' },

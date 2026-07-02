@@ -417,14 +417,6 @@ export default function HomeScreen() {
 
       {/* ── Hero Card ───────────────────────────────────────────── */}
       <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.heroAccentGlow} pointerEvents="none">
-          <ExpoLinearGradient
-            colors={[colors.primary + '00', colors.primary + '40', colors.primary + '00']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
         <ExpoLinearGradient
           colors={[colors.primary + '00', colors.primary + 'CC', colors.primary + '00']}
           start={{ x: 0, y: 0 }}
@@ -680,7 +672,6 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  heroAccentGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 16 },
   heroAccent: { height: 1.25 },
   heroBody:   { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 16 },
 
