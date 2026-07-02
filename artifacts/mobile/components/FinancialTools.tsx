@@ -3,7 +3,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Alert, Animated, KeyboardAvoidingView, Modal, Platform,
+  Animated, KeyboardAvoidingView, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -512,77 +512,48 @@ function ToolCard({ tool, onPress }: { tool: typeof TOOLS[number]; onPress: () =
   const scale = useRef(new Animated.Value(1)).current;
 
   const onPressIn = () =>
-    Animated.spring(scale, { toValue: 0.96, useNativeDriver: Platform.OS !== 'web' }).start();
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: Platform.OS !== 'web' }).start();
   const onPressOut = () =>
     Animated.spring(scale, { toValue: 1, useNativeDriver: Platform.OS !== 'web' }).start();
 
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, tc.flex]}>
+    <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        style={[tc.card, {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-        }]}
+        style={[tc.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       >
-        {/* Colored left accent strip */}
-        <View style={[tc.leftAccent, { backgroundColor: tool.color }]} />
-
-        <View style={tc.inner}>
-          {/* Icon */}
-          <View style={[tc.iconWrap, { backgroundColor: tool.color + '1A' }]}>
-            <Feather name={tool.icon as any} size={22} color={tool.color} />
-          </View>
-
-          {/* Text block */}
-          <View style={tc.textBlock}>
-            <Text style={[tc.label, { color: colors.text }]} numberOfLines={1}>
-              {tool.label}
-            </Text>
-            <Text style={[tc.sub, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {tool.sub}
-            </Text>
-          </View>
-
-          {/* Chevron */}
-          <Feather name="chevron-right" size={16} color={colors.mutedForeground} style={tc.chevron} />
+        {/* Coloured top accent */}
+        <View style={[tc.topAccent, { backgroundColor: tool.color }]} />
+        {/* Icon */}
+        <View style={[tc.iconWrap, { backgroundColor: tool.color + '1A' }]}>
+          <Feather name={tool.icon as any} size={22} color={tool.color} />
         </View>
+        {/* Label */}
+        <Text style={[tc.label, { color: colors.text }]} numberOfLines={1}>{tool.label}</Text>
+        {/* Sub */}
+        <Text style={[tc.sub, { color: colors.mutedForeground }]} numberOfLines={1}>{tool.sub}</Text>
       </Pressable>
     </Animated.View>
   );
 }
 const tc = StyleSheet.create({
-  flex: { flex: 1 },
   card: {
+    width: 100,
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
-  },
-  leftAccent: {
-    position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
-  },
-  inner: {
-    flexDirection: 'row',
+    paddingTop: 18,
+    paddingBottom: 14,
+    paddingHorizontal: 10,
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingLeft: 20,
-    paddingRight: 14,
-    gap: 14,
+    gap: 8,
   },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  textBlock: { flex: 1, gap: 3 },
-  label: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  sub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  chevron: { flexShrink: 0 },
+  topAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
+  iconWrap: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 12, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  sub: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' },
 });
 
 // ─── Main export ───────────────────────────────────────────────────────────────
@@ -592,12 +563,16 @@ export function FinancialTools() {
 
   return (
     <>
-      {/* Single-column list */}
-      <View style={ft.list}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={ft.wrap}
+        contentContainerStyle={ft.row}
+      >
         {TOOLS.map(tool => (
           <ToolCard key={tool.id} tool={tool} onPress={() => setOpen(tool.id)} />
         ))}
-      </View>
+      </ScrollView>
 
       {/* Modals */}
       <ZakatModal      visible={open === 'zakat'}    onClose={() => setOpen(null)} />
@@ -612,5 +587,6 @@ export function FinancialTools() {
   );
 }
 const ft = StyleSheet.create({
-  list: { gap: 10 },
+  wrap: { marginHorizontal: -20 },
+  row: { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
 });
