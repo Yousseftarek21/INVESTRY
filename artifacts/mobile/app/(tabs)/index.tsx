@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import Svg, { Polyline, Defs, LinearGradient, Stop, Polygon } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -38,6 +39,46 @@ function fmtCompact(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`;
   if (n >= 1_000)     return `${(n / 1_000).toFixed(n >= 100_000 ? 0 : 1)}K`;
   return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
+}
+
+// ─── Chart helpers ────────────────────────────────────────────────────────────
+
+type Pt = { x: number; y: number; value: number };
+
+function buildSmoothPath(pts: Pt[]): string {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const t = 0.25;
+    const cp1x = p1.x + (p2.x - p0.x) * t;
+    const cp1y = p1.y + (p2.y - p0.y) * t;
+    const cp2x = p2.x - (p3.x - p1.x) * t;
+    const cp2y = p2.y - (p3.y - p1.y) * t;
+    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+  }
+  return d;
+}
+
+const TIME_FILTERS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
+type TimeFilter = typeof TIME_FILTERS[number];
+
+function getApproxDates(range: TimeFilter, count: number): string[] {
+  const now = new Date();
+  const shift = (days: number) => { const d = new Date(now); d.setDate(d.getDate() - days); return d; };
+  const totalDays: Record<TimeFilter, number> = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365, 'ALL': 1825 };
+  const days = totalDays[range];
+  return Array.from({ length: count }, (_, i) => {
+    if (range === '1D') return i === 0 ? 'Yesterday' : 'Today';
+    const daysAgo = Math.round((count - 1 - i) * days / Math.max(count - 1, 1));
+    const d = shift(daysAgo);
+    if (range === '1W') return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (range === '1M' || range === '3M') return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  });
 }
 
 // ─── Animated number display ──────────────────────────────────────────────────
@@ -143,47 +184,117 @@ const chipSt = StyleSheet.create({
   time:  { fontSize: 9, fontFamily: 'Inter_400Regular', letterSpacing: 0.1 },
 });
 
-// ─── Sparkline ────────────────────────────────────────────────────────────────
+// ─── Interactive Chart ────────────────────────────────────────────────────────
 
-const TIME_FILTERS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
-type TimeFilter = typeof TIME_FILTERS[number];
-
-function Sparkline({ prices, width, height = 58 }: {
-  prices: number[] | null; width: number; height?: number;
+function InteractiveChart({ prices, width, height = 78, timeFilter }: {
+  prices: number[] | null; width: number; height?: number; timeFilter: TimeFilter;
 }) {
   const colors = useColors();
-  if (width < 10 || !prices || prices.length < 2) return <View style={{ height }} />;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [touchIdx, setTouchIdx] = useState<number | null>(null);
+  const pricesKey = prices ? prices.join(',') : '';
+
+  useEffect(() => {
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1, duration: 600, delay: 80, useNativeDriver: true,
+    }).start();
+  }, [pricesKey]);
+
+  if (!prices || prices.length < 2 || width < 10) return <View style={{ height: height + 28 }} />;
 
   const color = prices[prices.length - 1] >= prices[0] ? colors.green : colors.red;
   const minV = Math.min(...prices);
   const maxV = Math.max(...prices);
   const range = maxV - minV || 1;
-  const vPad = 4;
+  const vPad = 10;
 
-  const pts = prices.map((v, i) => {
-    const x = (i / (prices.length - 1)) * width;
-    const y = vPad + ((maxV - v) / range) * (height - vPad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const fillPts = `0,${height} ${pts.join(' ')} ${width},${height}`;
+  const pts: Pt[] = prices.map((v, i) => ({
+    x: (i / (prices.length - 1)) * width,
+    y: vPad + ((maxV - v) / range) * (height - vPad * 2),
+    value: v,
+  }));
+
+  const linePath = buildSmoothPath(pts);
+  const lastPt = pts[pts.length - 1];
+  const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
+  const dates = getApproxDates(timeFilter, prices.length);
+  const activePt = touchIdx !== null ? pts[touchIdx] : null;
 
   return (
-    <Svg width={width} height={height}>
-      <Defs>
-        <LinearGradient id="sfill" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity="0.18" />
-          <Stop offset="1" stopColor={color} stopOpacity="0" />
-        </LinearGradient>
-      </Defs>
-      <Polygon points={fillPts} fill="url(#sfill)" />
-      <Polyline
-        points={pts.join(' ')}
-        fill="none" stroke={color} strokeWidth="1.8"
-        strokeLinecap="round" strokeLinejoin="round"
-      />
-    </Svg>
+    <View>
+      {/* Tooltip row — always reserves 28px so layout doesn't shift */}
+      <View style={chartSt.tooltipRow}>
+        {activePt !== null && touchIdx !== null ? (
+          <View style={chartSt.tooltipInner}>
+            <Text style={[chartSt.ttValue, { color: colors.text }]}>
+              ${activePt.value.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+            </Text>
+            <View style={[chartSt.ttDot, { backgroundColor: colors.border }]} />
+            <Text style={[chartSt.ttDate, { color: colors.mutedForeground }]}>
+              {dates[touchIdx]}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* SVG chart with fade-in reveal */}
+      <View>
+        <Animated.View style={{ opacity: fadeAnim }}>
+          <Svg width={width} height={height}>
+            <Defs>
+              <LinearGradient id="cgfill" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0"   stopColor={color} stopOpacity="0.30" />
+                <Stop offset="0.55" stopColor={color} stopOpacity="0.08" />
+                <Stop offset="1"   stopColor={color} stopOpacity="0" />
+              </LinearGradient>
+            </Defs>
+            <Path d={fillPath} fill="url(#cgfill)" />
+            <Path
+              d={linePath} fill="none"
+              stroke={color} strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"
+            />
+            {activePt !== null && (
+              <>
+                <Line
+                  x1={activePt.x} y1={0}
+                  x2={activePt.x} y2={height}
+                  stroke={color + '55'} strokeWidth="1"
+                  strokeDasharray="3 3"
+                />
+                <Circle cx={activePt.x} cy={activePt.y} r={9} fill={color + '20'} />
+                <Circle cx={activePt.x} cy={activePt.y} r={4} fill={color} />
+              </>
+            )}
+          </Svg>
+        </Animated.View>
+
+        {/* Touch overlay — sits on top, captures drags */}
+        <View
+          style={[StyleSheet.absoluteFill]}
+          onStartShouldSetResponder={() => true}
+          onMoveShouldSetResponder={() => true}
+          onResponderMove={e => {
+            const x = Math.max(0, Math.min(width, e.nativeEvent.locationX));
+            const idx = Math.round((x / width) * (prices.length - 1));
+            setTouchIdx(Math.max(0, Math.min(prices.length - 1, idx)));
+          }}
+          onResponderRelease={() => setTouchIdx(null)}
+          onResponderTerminate={() => setTouchIdx(null)}
+        />
+      </View>
+    </View>
   );
 }
+
+const chartSt = StyleSheet.create({
+  tooltipRow:   { height: 24, justifyContent: 'center', marginBottom: 4 },
+  tooltipInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ttValue:      { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  ttDot:        { width: 3, height: 3, borderRadius: 1.5 },
+  ttDate:       { fontSize: 11, fontFamily: 'Inter_400Regular' },
+});
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -203,21 +314,22 @@ export default function HomeScreen() {
   const summary = useMemo(() => {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, totalCost = 0;
     let todayGold = 0, todaySilver = 0;
+    let goldGrams = 0, silverGrams = 0, stockCount = 0, reCount = 0;
 
     for (const h of holdings) {
       const v = computeValue(h, prices);
       const c = computeCost(h);
       totalCost += c;
       if (h.type === 'gold') {
-        goldV += v;
+        goldV += v; goldGrams += h.grams;
         todayGold += v * ((prices?.goldChangePercent ?? 0) / 100);
       } else if (h.type === 'silver') {
-        silverV += v;
+        silverV += v; silverGrams += h.grams;
         todaySilver += v * ((prices?.silverChangePercent ?? 0) / 100);
       } else if (h.type === 'stock') {
-        stockV += v;
+        stockV += v; stockCount++;
       } else {
-        reV += v;
+        reV += v; reCount++;
       }
     }
 
@@ -227,7 +339,11 @@ export default function HomeScreen() {
     const todayGain = todayGold + todaySilver;
     const todayPct = totalValue > 0 ? (todayGain / totalValue) * 100 : 0;
 
-    return { totalValue, totalCost, gain, gainPct, todayGain, todayPct, goldV, silverV, stockV, reV };
+    return {
+      totalValue, totalCost, gain, gainPct, todayGain, todayPct,
+      goldV, silverV, stockV, reV,
+      goldGrams, silverGrams, stockCount, reCount,
+    };
   }, [holdings, prices]);
 
   const displayValue = useCounterDisplay(summary.totalValue);
@@ -319,7 +435,6 @@ export default function HomeScreen() {
           {/* P/L row */}
           {summary.totalCost > 0 && (
             <View style={styles.plRow}>
-              {/* Today */}
               <View style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}>
                 <View style={styles.plTop}>
                   <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
@@ -335,7 +450,6 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
-              {/* Total P/L */}
               <View style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}>
                 <View style={styles.plTop}>
                   <Feather name={isGain ? 'trending-up' : 'trending-down'} size={10} color={gainColor + 'CC'} />
@@ -353,20 +467,21 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Sparkline */}
+          {/* Interactive Chart */}
           {hasHoldings && (
             <>
               <View
-                style={[styles.sparkWrap, { borderTopColor: colors.border }]}
+                style={[styles.chartWrap, { borderTopColor: colors.border }]}
                 onLayout={(e: LayoutChangeEvent) => {
                   const w = e.nativeEvent.layout.width;
                   if (w > 0) setSparkWidth(w);
                 }}
               >
-                <Sparkline
+                <InteractiveChart
                   prices={goldHistory ?? null}
                   width={sparkWidth}
-                  height={56}
+                  height={78}
+                  timeFilter={timeFilter}
                 />
               </View>
 
@@ -377,13 +492,27 @@ export default function HomeScreen() {
                   return (
                     <Pressable
                       key={f}
-                      style={[styles.timePill, {
-                        backgroundColor: active ? colors.primary : 'transparent',
-                        borderColor: active ? colors.primary : colors.border,
-                      }]}
-                      onPress={() => setTimeFilter(f)}
+                      style={({ pressed }) => [
+                        styles.timePill,
+                        {
+                          backgroundColor: active ? colors.primary : colors.muted + '90',
+                          borderColor: active ? colors.primary : 'transparent',
+                          opacity: pressed ? 0.7 : 1,
+                          transform: [{ scale: pressed ? 0.94 : 1 }],
+                        },
+                      ]}
+                      onPress={() => {
+                        if (f !== timeFilter) {
+                          if (Platform.OS !== 'web') {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          }
+                          setTimeFilter(f);
+                        }
+                      }}
                     >
-                      <Text style={[styles.timePillText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
+                      <Text style={[styles.timePillText, {
+                        color: active ? colors.primaryForeground : colors.mutedForeground,
+                      }]}>
                         {f}
                       </Text>
                     </Pressable>
@@ -399,10 +528,22 @@ export default function HomeScreen() {
           <View style={[styles.allocationStrip, { borderTopColor: colors.border }]}>
             <AllocationBar
               segments={[
-                { label: t.gold,       value: summary.goldV,   color: colors.primary },
-                { label: t.silver,     value: summary.silverV, color: colors.silverColor },
-                { label: t.egxStock,   value: summary.stockV,  color: '#4A9EFF' },
-                { label: t.realEstate, value: summary.reV,     color: '#A47FCA' },
+                {
+                  label: t.gold,     value: summary.goldV,   color: colors.primary,
+                  icon: 'award',     quantity: summary.goldGrams > 0 ? `${summary.goldGrams.toFixed(1)}g` : undefined,
+                },
+                {
+                  label: t.silver,   value: summary.silverV, color: colors.silverColor,
+                  icon: 'disc',      quantity: summary.silverGrams > 0 ? `${summary.silverGrams.toFixed(1)}g` : undefined,
+                },
+                {
+                  label: t.egxStock, value: summary.stockV,  color: '#4A9EFF',
+                  icon: 'bar-chart-2', quantity: summary.stockCount > 0 ? `${summary.stockCount} stock${summary.stockCount !== 1 ? 's' : ''}` : undefined,
+                },
+                {
+                  label: t.realEstate, value: summary.reV,  color: '#A47FCA',
+                  icon: 'home',      quantity: summary.reCount > 0 ? `${summary.reCount} propert${summary.reCount !== 1 ? 'ies' : 'y'}` : undefined,
+                },
               ]}
             />
           </View>
@@ -509,12 +650,12 @@ const styles = StyleSheet.create({
   plBadge:        { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
   plBadgeText:    { fontSize: 9, fontFamily: 'Inter_700Bold' },
 
-  sparkWrap:  { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14 },
-  timeRow:    { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  timePill:   { borderRadius: 9, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
-  timePillText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  chartWrap:  { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
+  timeRow:    { flexDirection: 'row', gap: 5 },
+  timePill:   { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
+  timePillText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
 
-  allocationStrip: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 20, gap: 14 },
+  allocationStrip: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 24, paddingTop: 18, paddingBottom: 20, gap: 0 },
 
   holdingsSection:  { gap: 12 },
   sectionRow:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
