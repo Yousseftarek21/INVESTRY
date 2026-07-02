@@ -375,7 +375,13 @@ export default function HomeScreen() {
                   if (w > 0) setSparkWidth(w);
                 }}
               >
-                <Sparkline gainPct={summary.gainPct} filter={timeFilter} seed={sparkSeed} width={sparkWidth} height={58} />
+                <Sparkline
+                  gainPct={timeFilter === '1D' ? summary.todayPct : summary.gainPct}
+                  filter={timeFilter}
+                  seed={sparkSeed}
+                  width={sparkWidth}
+                  height={58}
+                />
               </View>
 
               {/* Time filters */}
