@@ -1,10 +1,10 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { Holding } from '@/types';
 import { apiFetch } from '@/utils/api';
 
-// Keep the original key so existing locally-stored data is still found
+// Same key as the original implementation — preserves all existing local data
 const LOCAL_KEY = '@istithmarak_holdings';
 
 interface HoldingsContextValue {
@@ -21,10 +21,11 @@ const HoldingsContext = createContext<HoldingsContextValue | null>(null);
 export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isSignedIn } = useAuth();
   const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  // Track the last user who loaded so we can clear state on sign-out
+  const loadedRef = useRef(false);
 
-  // Persist to local storage (same key as always)
   const persist = useCallback(async (data: Holding[]) => {
     try { await AsyncStorage.setItem(LOCAL_KEY, JSON.stringify(data)); } catch { /* ignore */ }
   }, []);
@@ -33,9 +34,16 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     try { return await getToken(); } catch { return null; }
   }, [getToken]);
 
-  // ── Load on sign-in ────────────────────────────────────────────────────────
+  // ── Load / clear on auth state change ─────────────────────────────────────
   useEffect(() => {
-    if (!isSignedIn) { setIsLoading(false); return; }
+    // Not signed in — clear everything so no stale data leaks between accounts
+    if (!isSignedIn) {
+      setHoldings([]);
+      setIsLoading(false);
+      setSyncError(null);
+      loadedRef.current = false;
+      return;
+    }
 
     (async () => {
       setIsLoading(true);
@@ -48,7 +56,7 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         if (raw) { localData = JSON.parse(raw); setHoldings(localData); }
       } catch { /* ignore */ }
 
-      // 2. Fetch authoritative data from API
+      // 2. Fetch authoritative data from the API
       try {
         const t = await token();
         if (!t) { setIsLoading(false); return; }
@@ -57,24 +65,26 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const apiData: Holding[] = await res.json();
 
-          // One-time migration: if the API is empty but we have local data,
-          // push everything up so the user doesn't lose their holdings.
           if (apiData.length === 0 && localData.length > 0) {
+            // One-time migration: push all local holdings up to the cloud
+            // so the user's existing data isn't lost when they first go online
             await Promise.all(
-              localData.map(h => apiFetch('/api/holdings', t, {
-                method: 'POST',
-                body: JSON.stringify(h),
-              }).catch(() => null))
+              localData.map(h =>
+                apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(h) })
+                  .catch(() => null)
+              )
             );
-            // Local data is now the source of truth for this session
-            setHoldings(localData);
-          } else {
+            // Local data is canonical for this session; API now has it for next session
+            await persist(localData);
+          } else if (apiData.length > 0) {
             setHoldings(apiData);
             await persist(apiData);
           }
+          // else: both empty — nothing to do
+
+          loadedRef.current = true;
         } else {
-          // API failed — keep local data showing
-          setSyncError('Offline — showing local data.');
+          setSyncError('Could not sync — showing local data.');
         }
       } catch {
         setSyncError('Offline — showing local data.');
