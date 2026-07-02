@@ -20,7 +20,6 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
 import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
-import { LaunchBadge } from '@/components/LaunchAccess';
 
 const APP_VERSION = '1.0.0';
 const BUILD = '100';
@@ -706,7 +705,9 @@ export default function SettingsScreen() {
                 {isProPlus ? 'All features unlocked' : 'Analytics & tools unlocked'}
               </Text>
             </View>
-            <LaunchBadge accent={isProPlus ? '#A47FCA' : '#D4AC0D'} style={sc.launchTag} />
+            <View style={[sc.activeTag, { backgroundColor: (isProPlus ? '#A47FCA' : '#D4AC0D') + '18' }]}>
+              <Text style={[sc.activeTagTxt, { color: isProPlus ? '#A47FCA' : '#D4AC0D' }]}>FREE</Text>
+            </View>
           </View>
         ) : (
           <Pressable
@@ -967,5 +968,4 @@ const sc = StyleSheet.create({
   proBannerSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   activeTag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   activeTagTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
-  launchTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
 });
