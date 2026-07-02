@@ -92,41 +92,55 @@ function RefreshButton({ onPress, loading }: { onPress: () => void; loading: boo
       disabled={loading}
       style={({ pressed }) => [
         rfSt.btn,
-        { backgroundColor: colors.muted, borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+        { backgroundColor: colors.muted + '60', opacity: pressed ? 0.5 : 1 },
       ]}
     >
       <Animated.View style={{ transform: [{ rotate }] }}>
-        <Feather name="refresh-cw" size={15} color={loading ? colors.primary : colors.mutedForeground} />
+        <Feather name="refresh-cw" size={13} color={loading ? colors.primary : colors.mutedForeground} />
       </Animated.View>
     </Pressable>
   );
 }
 const rfSt = StyleSheet.create({
-  btn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  btn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
 });
 
-// ─── Live dot ─────────────────────────────────────────────────────────────────
+// ─── Live chip ────────────────────────────────────────────────────────────────
 
-function LiveDot() {
+function LiveChip({ lastUpdated }: { lastUpdated: Date | null }) {
   const colors = useColors();
   const opacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.loop(Animated.sequence([
-      Animated.timing(opacity, { toValue: 0.25, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
-      Animated.timing(opacity, { toValue: 1,   duration: 800, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(opacity, { toValue: 0.2, duration: 900, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(opacity, { toValue: 1,   duration: 900, useNativeDriver: Platform.OS !== 'web' }),
     ])).start();
   }, []);
+
+  const timeStr = lastUpdated
+    ? lastUpdated.toLocaleTimeString('en-EG', { hour: '2-digit', minute: '2-digit' })
+    : null;
+
   return (
-    <View style={liveSt.row}>
-      <Animated.View style={[liveSt.dot, { backgroundColor: colors.green, opacity }]} />
-      <Text style={[liveSt.text, { color: colors.green }]}>LIVE</Text>
+    <View style={chipSt.col}>
+      <View style={[chipSt.pill, { backgroundColor: colors.green + '14', borderColor: colors.green + '30' }]}>
+        <Animated.View style={[chipSt.dot, { backgroundColor: colors.green, opacity }]} />
+        <Text style={[chipSt.label, { color: colors.green }]}>LIVE</Text>
+      </View>
+      {timeStr && (
+        <Text style={[chipSt.time, { color: colors.mutedForeground }]}>
+          Updated {timeStr}
+        </Text>
+      )}
     </View>
   );
 }
-const liveSt = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  text: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
+const chipSt = StyleSheet.create({
+  col:   { alignItems: 'flex-end', gap: 3 },
+  pill:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
+  dot:   { width: 6, height: 6, borderRadius: 3 },
+  label: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 1.4 },
+  time:  { fontSize: 9, fontFamily: 'Inter_400Regular', letterSpacing: 0.1 },
 });
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
@@ -157,7 +171,7 @@ function Sparkline({ prices, width, height = 58 }: {
     <Svg width={width} height={height}>
       <Defs>
         <LinearGradient id="sfill" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity="0.22" />
+          <Stop offset="0" stopColor={color} stopOpacity="0.18" />
           <Stop offset="1" stopColor={color} stopOpacity="0" />
         </LinearGradient>
       </Defs>
@@ -217,7 +231,6 @@ export default function HomeScreen() {
   }, [holdings, prices]);
 
   const displayValue = useCounterDisplay(summary.totalValue);
-  const sparkSeed = holdings.reduce((s, h) => s + h.id.charCodeAt(0), 1);
 
   const isGain = summary.gain >= 0;
   const isTodayGain = summary.todayGain >= 0;
@@ -242,13 +255,13 @@ export default function HomeScreen() {
     >
       {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={[styles.appLabel, { color: colors.primary }]}>{t.appName}</Text>
           <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
         </View>
         <View style={styles.headerRight}>
           <RefreshButton onPress={refetch} loading={isLoading} />
-          <LiveDot />
+          <LiveChip lastUpdated={prices?.lastUpdated ?? null} />
         </View>
       </View>
 
@@ -257,47 +270,48 @@ export default function HomeScreen() {
         <View style={[styles.heroAccent, { backgroundColor: colors.primary }]} />
 
         <View style={styles.heroBody}>
-          {/* Label + time */}
-          <View style={styles.labelRow}>
-            <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
-              {t.totalPortfolioValue}
-            </Text>
-            {prices && (
-              <Text style={[styles.updatedAt, { color: colors.mutedForeground }]}>
-                {prices.lastUpdated.toLocaleTimeString('en-EG', { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            )}
-          </View>
+          {/* Label */}
+          <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
+            {t.totalPortfolioValue}
+          </Text>
 
           {/* Big value */}
-          <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-            {displayValue}
-            <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>{' '}EGP</Text>
-          </Text>
+          <View style={styles.heroValueRow}>
+            <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+              {displayValue}
+            </Text>
+            <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>EGP</Text>
+          </View>
 
           {/* Invested · Current · Return strip */}
           {summary.totalCost > 0 && (
-            <View style={[styles.iStrip, { backgroundColor: colors.muted + '80', borderColor: colors.border }]}>
+            <View style={[styles.iStrip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
               <View style={styles.iCell}>
-                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>INVESTED</Text>
-                <Text style={[styles.iCellValue, { color: colors.text }]}>{fmtCompact(summary.totalCost)}</Text>
-                <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Invested</Text>
+                <View style={styles.iCellValueRow}>
+                  <Text style={[styles.iCellValue, { color: colors.text }]}>{fmtCompact(summary.totalCost)}</Text>
+                  <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>
+                </View>
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
               <View style={styles.iCell}>
-                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>CURRENT</Text>
-                <Text style={[styles.iCellValue, { color: colors.text }]}>{fmtCompact(summary.totalValue)}</Text>
-                <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Current</Text>
+                <View style={styles.iCellValueRow}>
+                  <Text style={[styles.iCellValue, { color: colors.text }]}>{fmtCompact(summary.totalValue)}</Text>
+                  <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>
+                </View>
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
               <View style={styles.iCell}>
-                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>RETURN</Text>
-                <Text style={[styles.iCellValue, { color: gainColor }]}>
-                  {isGain ? '+' : ''}{summary.gainPct.toFixed(1)}%
-                </Text>
-                <Text style={[styles.iCellCur, { color: gainColor + '99' }]}>
-                  {isGain ? '▲' : '▼'}
-                </Text>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Return</Text>
+                <View style={styles.iCellValueRow}>
+                  <Text style={[styles.iCellValue, { color: gainColor }]}>
+                    {isGain ? '+' : ''}{summary.gainPct.toFixed(1)}%
+                  </Text>
+                  <Text style={[styles.iCellCur, { color: gainColor + 'AA' }]}>
+                    {isGain ? '▲' : '▼'}
+                  </Text>
+                </View>
               </View>
             </View>
           )}
@@ -306,11 +320,11 @@ export default function HomeScreen() {
           {summary.totalCost > 0 && (
             <View style={styles.plRow}>
               {/* Today */}
-              <View style={[styles.plChip, { backgroundColor: todayColor + '12', borderColor: todayColor + '28' }]}>
+              <View style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}>
                 <View style={styles.plTop}>
-                  <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={11} color={todayColor} />
-                  <Text style={[styles.plLabel, { color: todayColor + 'CC' }]}>Today</Text>
-                  <View style={[styles.plBadge, { backgroundColor: todayColor + '22' }]}>
+                  <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
+                  <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>Today</Text>
+                  <View style={[styles.plBadge, { backgroundColor: todayColor + '1A' }]}>
                     <Text style={[styles.plBadgeText, { color: todayColor }]}>
                       {isTodayGain ? '+' : ''}{summary.todayPct.toFixed(2)}%
                     </Text>
@@ -322,11 +336,11 @@ export default function HomeScreen() {
               </View>
 
               {/* Total P/L */}
-              <View style={[styles.plChip, { backgroundColor: gainColor + '12', borderColor: gainColor + '28' }]}>
+              <View style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}>
                 <View style={styles.plTop}>
-                  <Feather name={isGain ? 'trending-up' : 'trending-down'} size={11} color={gainColor} />
-                  <Text style={[styles.plLabel, { color: gainColor + 'CC' }]}>Total P/L</Text>
-                  <View style={[styles.plBadge, { backgroundColor: gainColor + '22' }]}>
+                  <Feather name={isGain ? 'trending-up' : 'trending-down'} size={10} color={gainColor + 'CC'} />
+                  <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>Total P/L</Text>
+                  <View style={[styles.plBadge, { backgroundColor: gainColor + '1A' }]}>
                     <Text style={[styles.plBadgeText, { color: gainColor }]}>
                       {isGain ? '+' : ''}{summary.gainPct.toFixed(2)}%
                     </Text>
@@ -352,7 +366,7 @@ export default function HomeScreen() {
                 <Sparkline
                   prices={goldHistory ?? null}
                   width={sparkWidth}
-                  height={58}
+                  height={56}
                 />
               </View>
 
@@ -464,63 +478,61 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 20 },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 2 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 4 },
-  appLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
+  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 2 },
+  headerLeft:  { gap: 6 },
+  headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4 },
+  appLabel:    { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5 },
   screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
 
-  heroCard: { borderRadius: 26, borderWidth: 1, overflow: 'hidden' },
-  heroAccent: { height: 3 },
-  heroBody: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 22, gap: 14 },
+  heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  heroAccent: { height: 2.5 },
+  heroBody:   { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 16 },
 
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  heroLabel: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  updatedAt: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
+  heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52 },
+  heroCurrency:   { fontSize: 16, fontFamily: 'Inter_400Regular', letterSpacing: 0, paddingBottom: 6 },
 
-  heroValue: { fontSize: 44, fontFamily: 'Inter_700Bold', letterSpacing: -1.5 },
-  heroCurrency: { fontSize: 18, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
+  iStrip:         { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: -24, paddingHorizontal: 24 },
+  iCell:          { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 4 },
+  iCellLabel:     { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 0.2 },
+  iCellValueRow:  { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  iCellValue:     { fontSize: 14, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
+  iCellCur:       { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  iDivider:       { width: StyleSheet.hairlineWidth, marginVertical: 14 },
 
-  iStrip: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginTop: 2 },
-  iCell: { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2 },
-  iCellLabel: { fontSize: 8, fontFamily: 'Inter_700Bold', letterSpacing: 1.3 },
-  iCellValue: { fontSize: 14, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
-  iCellCur: { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  iDivider: { width: StyleSheet.hairlineWidth, marginVertical: 10 },
+  plRow:          { flexDirection: 'row', gap: 8 },
+  plChip:         { flex: 1, gap: 5, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 10 },
+  plTop:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  plLabel:        { flex: 1, fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  plValue:        { fontSize: 13, fontFamily: 'Inter_700Bold', minWidth: 0 },
+  plBadge:        { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  plBadgeText:    { fontSize: 9, fontFamily: 'Inter_700Bold' },
 
-  plRow: { flexDirection: 'row', gap: 8 },
-  plChip: { flex: 1, flexDirection: 'column', gap: 4, borderRadius: 12, borderWidth: 1, padding: 10 },
-  plTop: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  plLabel: { flex: 1, fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  plValue: { fontSize: 13, fontFamily: 'Inter_700Bold', minWidth: 0 },
-  plBadge: { borderRadius: 5, paddingHorizontal: 5, paddingVertical: 2 },
-  plBadgeText: { fontSize: 9, fontFamily: 'Inter_700Bold' },
-
-  sparkWrap: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14 },
-  timeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  timePill: { borderRadius: 9, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
+  sparkWrap:  { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14 },
+  timeRow:    { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  timePill:   { borderRadius: 9, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
   timePillText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
 
-  allocationStrip: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 22, paddingTop: 16, paddingBottom: 20, gap: 14 },
+  allocationStrip: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 20, gap: 14 },
 
-  holdingsSection: { gap: 12 },
-  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2, flex: 1 },
-  sectionRowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  countBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
-  countText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-  manageBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  manageTxt: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  holdingsSection:  { gap: 12 },
+  sectionRow:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionLabel:     { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2, flex: 1 },
+  sectionRowRight:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  countBadge:       { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
+  countText:        { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  manageBtn:        { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  manageTxt:        { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+
+  empty:        { borderRadius: 22, borderWidth: 1, padding: 40, alignItems: 'center', gap: 12, overflow: 'hidden' },
+  emptyRing1:   { position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1, top: -60, right: -60 },
+  emptyRing2:   { position: 'absolute', width: 300, height: 300, borderRadius: 150, borderWidth: 1, top: -120, right: -100 },
+  emptyIconWrap: { width: 60, height: 60, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle:   { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  emptySub:     { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 18 },
+
   holdingsList: { gap: 8 },
-  seeAllBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 14, borderRadius: 16, borderWidth: 1,
-  },
-  seeAllTxt: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-
-  empty: { borderRadius: 24, paddingVertical: 52, paddingHorizontal: 24, borderWidth: 1, alignItems: 'center', gap: 8, overflow: 'hidden' },
-  emptyRing1: { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 1, top: 14, alignSelf: 'center' },
-  emptyRing2: { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1, top: -16, alignSelf: 'center' },
-  emptyIconWrap: { width: 64, height: 64, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  emptyTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold', marginTop: 2 },
-  emptySub: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
+  seeAllBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14, borderRadius: 14, borderWidth: 1 },
+  seeAllTxt:    { fontSize: 13, fontFamily: 'Inter_500Medium' },
 });
