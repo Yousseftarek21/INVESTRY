@@ -4,33 +4,20 @@ import { Feather } from '@expo/vector-icons';
 import { useAuth } from '@clerk/expo';
 import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
-import { useSubscription, Plan } from '@/context/SubscriptionContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
 
 interface PremiumGateProps {
-  requiredPlan: 'pro' | 'pro_plus';
   feature: string;
   description: string;
   children: React.ReactNode;
 }
 
-const ACCENT: Record<'pro' | 'pro_plus', string> = {
-  pro: '#D4AC0D',
-  pro_plus: '#A47FCA',
-};
+const ACCENT = '#A47FCA';
+const BADGE = 'PRO';
 
-const BADGE: Record<'pro' | 'pro_plus', string> = {
-  pro: 'PRO',
-  pro_plus: 'PRO+',
-};
-
-function hasAccess(userPlan: Plan, required: 'pro' | 'pro_plus'): boolean {
-  if (required === 'pro') return userPlan === 'pro' || userPlan === 'pro_plus';
-  return userPlan === 'pro_plus';
-}
-
-export function PremiumGate({ requiredPlan, feature, description, children }: PremiumGateProps) {
-  const { plan, launchAccess, showPaywall } = useSubscription();
+export function PremiumGate({ feature, description, children }: PremiumGateProps) {
+  const { isPro, launchAccess, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
   const t = useT();
 
@@ -38,10 +25,10 @@ export function PremiumGate({ requiredPlan, feature, description, children }: Pr
   // right now" — never rely on `plan` alone here, since it could momentarily
   // be stale/unresolved (loading, cache, network hiccup) even though the
   // backend has already granted everyone access.
-  if (launchAccess || hasAccess(plan, requiredPlan)) return <>{children}</>;
+  if (launchAccess || isPro) return <>{children}</>;
 
-  const accent = ACCENT[requiredPlan];
-  const badge = BADGE[requiredPlan];
+  const accent = ACCENT;
+  const badge = BADGE;
 
   // Signed-out visitors aren't missing a paid plan — they're missing an
   // account. During Launch Access every signed-in user gets this feature
@@ -102,7 +89,7 @@ export function PremiumGate({ requiredPlan, feature, description, children }: Pr
           {/* Header row */}
           <View style={g.headerRow}>
             <View style={[g.badge, { backgroundColor: accent + '15', borderColor: accent + '35' }]}>
-              <Feather name={requiredPlan === 'pro' ? 'star' : 'zap'} size={10} color={accent} style={{ marginRight: 5 }} />
+              <Feather name="zap" size={10} color={accent} style={{ marginRight: 5 }} />
               <Text style={[g.badgeTxt, { color: accent }]}>{badge}</Text>
             </View>
             <View style={[g.lockCircle, { backgroundColor: accent + '12', borderColor: accent + '25' }]}>
@@ -121,7 +108,7 @@ export function PremiumGate({ requiredPlan, feature, description, children }: Pr
 
           {/* Upgrade button */}
           <Pressable
-            onPress={() => showPaywall(requiredPlan)}
+            onPress={() => showPaywall()}
             style={({ pressed }) => [g.btn, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
           >
             <Feather name="zap" size={14} color="#000" style={{ marginRight: 7 }} />
@@ -129,7 +116,7 @@ export function PremiumGate({ requiredPlan, feature, description, children }: Pr
           </Pressable>
 
           <Text style={[g.unlockHint, { color: accent + '80' }]}>
-            {requiredPlan === 'pro' ? t.subFromYearlyPro : t.subFromYearlyProPlus}
+            {t.subFromYearlyPro}
           </Text>
         </View>
       </View>

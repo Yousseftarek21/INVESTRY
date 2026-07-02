@@ -35,7 +35,7 @@ export function LaunchBanner() {
         <Text style={bn.title}>Launch Offer</Text>
       </View>
       <Text style={bn.body}>
-        To celebrate our launch, all users receive complimentary access to Pro and Pro+ features
+        To celebrate our launch, all users receive complimentary access to Pro features
         for a limited time. Thank you for helping us build the future of investment tracking.
       </Text>
     </View>

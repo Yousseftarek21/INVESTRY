@@ -397,7 +397,7 @@ export default function AddInvestmentScreen() {
         ]);
         return;
       }
-      showPaywall('pro');
+      showPaywall();
       return;
     }
 

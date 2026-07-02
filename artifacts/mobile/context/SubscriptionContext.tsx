@@ -1,7 +1,7 @@
 /**
  * SubscriptionContext — real Stripe-backed implementation.
  *
- * In development builds (`__DEV__`) all Pro+ features stay unlocked locally
+ * In development builds (`__DEV__`) all Pro features stay unlocked locally
  * so the developer never hits the paywall. In production builds, entitlement
  * is sourced from the backend (`GET /api/subscription`), which itself is the
  * authoritative record synced from Stripe via webhooks. AsyncStorage is only
@@ -57,7 +57,7 @@ async function openCheckoutUrl(
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type Plan = 'free' | 'pro' | 'pro_plus';
+export type Plan = 'free' | 'pro';
 export type BillingPeriod = 'monthly' | 'annual';
 
 export interface MockProduct {
@@ -76,7 +76,6 @@ export interface SubscriptionContextValue {
   billingPeriod: BillingPeriod;
   isSubscribed: boolean;
   isPro: boolean;
-  isProPlus: boolean;
   /**
    * Single source of truth for "Launch Access" mode. Sourced from the
    * backend (`GET /api/subscription`), which itself reads one env flag
@@ -92,12 +91,11 @@ export interface SubscriptionContextValue {
   isRestoring: boolean;
   offerings: {
     pro: MockProduct;
-    proPlus: MockProduct;
   };
-  purchase: (plan: 'pro' | 'pro_plus', period: BillingPeriod, webPopup?: Window | null) => Promise<void>;
+  purchase: (period: BillingPeriod, webPopup?: Window | null) => Promise<void>;
   restore: () => Promise<void>;
   manageSubscription: (webPopup?: Window | null) => Promise<void>;
-  showPaywall: (requiredPlan?: 'pro' | 'pro_plus') => void;
+  showPaywall: () => void;
   _devSetPlan: (plan: Plan) => void;
 }
 
@@ -112,17 +110,7 @@ const OFFERINGS: SubscriptionContextValue['offerings'] = {
     annualPrice: 399.99,
     annualSavingsPct: 33,
     title: 'Investry Pro',
-    description: 'Unlimited investments, all tools & analytics',
-  },
-  proPlus: {
-    identifier: 'pro_plus',
-    priceString: '69.99 EGP',
-    annualPriceString: '559.99 EGP',
-    price: 69.99,
-    annualPrice: 559.99,
-    annualSavingsPct: 33,
-    title: 'Investry Pro+',
-    description: 'Everything in Pro + advanced charts, EGX real-time & export',
+    description: 'Unlimited investments, all tools & analytics, advanced charts, EGX real-time & export',
   },
 };
 
@@ -131,10 +119,10 @@ function subscriptionKey(userId: string) {
   return `@invstry_subscription_${userId}`;
 }
 
-// Historically, development builds force-unlocked Pro+ locally so the
-// developer never hit the paywall. Now that the backend grants free Pro+ to
+// Historically, development builds force-unlocked Pro locally so the
+// developer never hit the paywall. Now that the backend grants free Pro to
 // every signed-in user via Launch Access (`FREE_ACCESS_PLAN`), that local
-// override is redundant and actively harmful: it sets `plan='pro_plus'` but
+// override is redundant and actively harmful: it sets `plan='pro'` but
 // skips the real `/api/subscription` fetch, so `launchAccess` never becomes
 // true. That mismatch makes screens like Settings render the real
 // "manage subscription" button instead of the non-interactive Launch Access
@@ -145,7 +133,7 @@ const DEV_UNLOCKED = false;
 
 interface PriceCatalogEntry {
   priceId: string;
-  plan: 'pro' | 'pro_plus';
+  plan: 'pro';
   billingPeriod: BillingPeriod;
 }
 
@@ -153,8 +141,8 @@ interface PriceCatalogEntry {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 
-let _paywallCallback: ((requiredPlan?: 'pro' | 'pro_plus') => void) | null = null;
-export function _registerPaywallCallback(cb: (requiredPlan?: 'pro' | 'pro_plus') => void) {
+let _paywallCallback: (() => void) | null = null;
+export function _registerPaywallCallback(cb: () => void) {
   _paywallCallback = cb;
 }
 
@@ -207,7 +195,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     loadedUserRef.current = userId;
 
     if (DEV_UNLOCKED) {
-      setPlan('pro_plus');
+      setPlan('pro');
       setBillingPeriod('monthly');
       setIsLoading(false);
       return;
@@ -253,34 +241,33 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return () => { active = false; };
   }, [userId, fetchSubscription, cachePlan]);
 
-  const getPriceId = useCallback(async (targetPlan: 'pro' | 'pro_plus', period: BillingPeriod): Promise<string> => {
+  const getPriceId = useCallback(async (period: BillingPeriod): Promise<string> => {
     const token = await getToken();
     if (!token) throw new Error('Not signed in');
     const res = await apiFetch('/api/stripe/prices', token);
     if (!res.ok) throw new Error(`GET /api/stripe/prices failed: ${res.status}`);
     const data = (await res.json()) as { prices: PriceCatalogEntry[] };
-    const match = data.prices.find((p) => p.plan === targetPlan && p.billingPeriod === period);
-    if (!match) throw new Error(`No Stripe price found for ${targetPlan}/${period}`);
+    const match = data.prices.find((p) => p.plan === 'pro' && p.billingPeriod === period);
+    if (!match) throw new Error(`No Stripe price found for pro/${period}`);
     return match.priceId;
   }, [getToken]);
 
   const purchase = useCallback(async (
-    targetPlan: 'pro' | 'pro_plus',
     period: BillingPeriod,
     webPopup?: Window | null,
   ) => {
     if (!userId) throw new Error('Not signed in');
 
     if (DEV_UNLOCKED) {
-      // Dev builds skip real checkout entirely — Pro+ is always unlocked.
-      setPlan(targetPlan);
+      // Dev builds skip real checkout entirely — Pro is always unlocked.
+      setPlan('pro');
       setBillingPeriod(period);
-      await cachePlan(userId, targetPlan, period);
+      await cachePlan(userId, 'pro', period);
       return;
     }
 
     if (launchAccess) {
-      // Launch Access is on — everyone already has Pro+, purchase UI is
+      // Launch Access is on — everyone already has Pro, purchase UI is
       // replaced with a non-clickable badge, but guard here too in case
       // anything still calls this directly.
       return;
@@ -291,14 +278,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       const token = await getToken();
       if (!token) throw new Error('Not signed in');
 
-      const priceId = await getPriceId(targetPlan, period);
+      const priceId = await getPriceId(period);
       const redirectUrl = Linking.createURL('subscription/checkout-complete');
 
       const res = await apiFetch('/api/stripe/checkout', token, {
         method: 'POST',
         body: JSON.stringify({
           priceId,
-          plan: targetPlan,
+          plan: 'pro',
           billingPeriod: period,
           successUrl: redirectUrl,
           cancelUrl: redirectUrl,
@@ -369,8 +356,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   }, [userId, fetchSubscription, cachePlan]);
 
-  const showPaywall = useCallback((requiredPlan?: 'pro' | 'pro_plus') => {
-    _paywallCallback?.(requiredPlan);
+  const showPaywall = useCallback(() => {
+    _paywallCallback?.();
   }, []);
 
   const _devSetPlan = useCallback((p: Plan) => {
@@ -379,14 +366,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     cachePlan(userId, p, billingPeriod).catch(() => null);
   }, [userId, billingPeriod, cachePlan]);
 
-  const isPro = plan === 'pro' || plan === 'pro_plus';
-  const isProPlus = plan === 'pro_plus';
+  const isPro = plan === 'pro';
 
   return (
     <SubscriptionContext.Provider value={{
       plan, billingPeriod,
       isSubscribed: isPro,
-      isPro, isProPlus,
+      isPro,
       launchAccess,
       isLoading, isPurchasing, isRestoring,
       offerings: OFFERINGS,

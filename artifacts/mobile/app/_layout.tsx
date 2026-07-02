@@ -65,11 +65,9 @@ function RootLayoutNav() {
 
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
   const [paywallVisible, setPaywallVisible] = React.useState(false);
-  const [paywallPlan, setPaywallPlan] = React.useState<'pro' | 'pro_plus'>('pro');
 
   React.useEffect(() => {
-    _registerPaywallCallback((requiredPlan) => {
-      setPaywallPlan(requiredPlan ?? 'pro');
+    _registerPaywallCallback(() => {
       setPaywallVisible(true);
     });
   }, []);
@@ -79,7 +77,6 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
       {children}
       <SubscriptionScreen
         visible={paywallVisible}
-        initialPlan={paywallPlan}
         onClose={() => setPaywallVisible(false)}
       />
     </>

@@ -3,13 +3,9 @@ import { Animated, Platform } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Feather } from '@expo/vector-icons';
 
-const GOLD = '#D4AC0D';
 const PURPLE = '#A47FCA';
 
-type Plan = 'pro' | 'pro_plus';
-
-export function PremiumBadge({ plan, size = 'md' }: { plan: Plan; size?: 'sm' | 'md' }) {
-  const isProPlus = plan === 'pro_plus';
+export function PremiumBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const scale = useRef(new Animated.Value(0.6)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
@@ -24,7 +20,6 @@ export function PremiumBadge({ plan, size = 'md' }: { plan: Plan; size?: 'sm' | 
   }, [scale, opacity]);
 
   useEffect(() => {
-    if (!isProPlus) return;
     let cancelled = false;
     const runShimmer = () => {
       if (cancelled) return;
@@ -40,18 +35,17 @@ export function PremiumBadge({ plan, size = 'md' }: { plan: Plan; size?: 'sm' | 
     return () => {
       cancelled = true;
     };
-  }, [isProPlus, glow]);
+  }, [glow]);
 
   const isIOS = Platform.OS === 'ios';
-  const color = isProPlus ? PURPLE : GOLD;
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] });
 
   return (
-    <Animated.View style={{ opacity: Animated.multiply(opacity, isProPlus ? glowOpacity : 1), transform: [{ scale }] }}>
+    <Animated.View style={{ opacity: Animated.multiply(opacity, glowOpacity), transform: [{ scale }] }}>
       {isIOS ? (
-        <SymbolView name="rosette" tintColor={color} size={iconSize} />
+        <SymbolView name="rosette" tintColor={PURPLE} size={iconSize} />
       ) : (
-        <Feather name="award" size={iconSize} color={color} />
+        <Feather name="award" size={iconSize} color={PURPLE} />
       )}
     </Animated.View>
   );

@@ -255,7 +255,7 @@ function ProfileHero({
 }: {
   initials: string; fullName: string; email: string;
   verified: boolean; holdingsCount: number; onPress: () => void;
-  plan?: 'pro' | 'pro_plus' | null;
+  plan?: 'pro' | null;
 }) {
   const colors = useColors();
   return (
@@ -285,7 +285,7 @@ function ProfileHero({
         <View style={ph.info}>
           <View style={ph.nameRow}>
             <Text style={[ph.name, { color: colors.text }]} numberOfLines={1}>{fullName}</Text>
-            {(plan === 'pro' || plan === 'pro_plus') && <PremiumBadge plan={plan} size="sm" />}
+            {plan === 'pro' && <PremiumBadge size="sm" />}
           </View>
           <Text style={[ph.email, { color: colors.mutedForeground }]} numberOfLines={1}>{email}</Text>
 
@@ -564,7 +564,7 @@ export default function SettingsScreen() {
   const haptic  = useHaptic();
   const { signOut } = useClerk();
   const { user } = useUser();
-  const { plan, isPro, isProPlus, launchAccess, showPaywall, manageSubscription } = useSubscription();
+  const { plan, isPro, launchAccess, showPaywall, manageSubscription } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, notifications,
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setNotification,
@@ -666,7 +666,7 @@ export default function SettingsScreen() {
           <ProfileHero
             initials={initials} fullName={fullName} email={email}
             verified={verified} holdingsCount={holdings.length}
-            plan={plan === 'pro' || plan === 'pro_plus' ? plan : null}
+            plan={plan === 'pro' ? plan : null}
             onPress={() => showModal('Account Details',
               `Name: ${fullName}\nEmail: ${email}\nVerified: ${verified ? 'Yes ✓' : 'Pending'}\n\nInvestments: ${holdings.length} investment${holdings.length !== 1 ? 's' : ''}\nStorage: Locally on your device only\n\nFor account changes, sign out and sign in with updated credentials.`
             )}
@@ -676,7 +676,7 @@ export default function SettingsScreen() {
         {/* ── SUBSCRIPTION ─────────────────────────────────── */}
         {!isPro ? (
           <Pressable
-            onPress={() => (user ? showPaywall('pro') : router.push('/(auth)/sign-in' as any))}
+            onPress={() => (user ? showPaywall() : router.push('/(auth)/sign-in' as any))}
             style={({ pressed }) => [sc.upgradeCard, { opacity: pressed ? 0.88 : 1 }]}
           >
             <View style={sc.upgradeLeft}>
@@ -699,21 +699,17 @@ export default function SettingsScreen() {
           </Pressable>
         ) : launchAccess ? (
           <View
-            style={[sc.proBanner, { backgroundColor: colors.card, borderColor: isProPlus ? '#A47FCA40' : '#D4AC0D40' }]}
+            style={[sc.proBanner, { backgroundColor: colors.card, borderColor: '#A47FCA40' }]}
           >
-            <View style={[sc.proBannerIcon, { backgroundColor: isProPlus ? '#A47FCA18' : '#D4AC0D18' }]}>
-              <Feather name="star" size={18} color={isProPlus ? '#A47FCA' : '#D4AC0D'} />
+            <View style={[sc.proBannerIcon, { backgroundColor: '#A47FCA18' }]}>
+              <Feather name="star" size={18} color="#A47FCA" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[sc.proBannerTitle, { color: colors.text }]}>
-                {isProPlus ? 'Investry Pro+' : 'Investry Pro'}
-              </Text>
-              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>
-                {isProPlus ? 'All features unlocked' : 'Analytics & tools unlocked'}
-              </Text>
+              <Text style={[sc.proBannerTitle, { color: colors.text }]}>Investry Pro</Text>
+              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>All features unlocked</Text>
             </View>
-            <View style={[sc.activeTag, { backgroundColor: (isProPlus ? '#A47FCA' : '#D4AC0D') + '18' }]}>
-              <Text style={[sc.activeTagTxt, { color: isProPlus ? '#A47FCA' : '#D4AC0D' }]}>FREE</Text>
+            <View style={[sc.activeTag, { backgroundColor: '#A47FCA18' }]}>
+              <Text style={[sc.activeTagTxt, { color: '#A47FCA' }]}>FREE</Text>
             </View>
           </View>
         ) : (
@@ -728,21 +724,17 @@ export default function SettingsScreen() {
                 showModal('Could not open billing portal', 'Please check your internet connection and try again.');
               });
             }}
-            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: isProPlus ? '#A47FCA40' : '#D4AC0D40', opacity: pressed ? 0.88 : 1 }]}
+            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: '#A47FCA40', opacity: pressed ? 0.88 : 1 }]}
           >
-            <View style={[sc.proBannerIcon, { backgroundColor: isProPlus ? '#A47FCA18' : '#D4AC0D18' }]}>
-              <Feather name="star" size={18} color={isProPlus ? '#A47FCA' : '#D4AC0D'} />
+            <View style={[sc.proBannerIcon, { backgroundColor: '#A47FCA18' }]}>
+              <Feather name="star" size={18} color="#A47FCA" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[sc.proBannerTitle, { color: colors.text }]}>
-                {isProPlus ? 'Investry Pro+' : 'Investry Pro'}
-              </Text>
-              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>
-                {isProPlus ? 'All features unlocked · Tap to manage' : 'Analytics & tools unlocked · Tap to manage'}
-              </Text>
+              <Text style={[sc.proBannerTitle, { color: colors.text }]}>Investry Pro</Text>
+              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>All features unlocked · Tap to manage</Text>
             </View>
-            <View style={[sc.activeTag, { backgroundColor: (isProPlus ? '#A47FCA' : '#D4AC0D') + '18' }]}>
-              <Text style={[sc.activeTagTxt, { color: isProPlus ? '#A47FCA' : '#D4AC0D' }]}>ACTIVE</Text>
+            <View style={[sc.activeTag, { backgroundColor: '#A47FCA18' }]}>
+              <Text style={[sc.activeTagTxt, { color: '#A47FCA' }]}>ACTIVE</Text>
             </View>
           </Pressable>
         )}

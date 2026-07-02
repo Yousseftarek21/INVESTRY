@@ -396,7 +396,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.titleRow}>
             <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
-            {isPro && (plan === 'pro' || plan === 'pro_plus') && <PremiumBadge plan={plan} size="sm" />}
+            {isPro && <PremiumBadge size="sm" />}
           </View>
         </View>
         <View style={styles.headerRight}>

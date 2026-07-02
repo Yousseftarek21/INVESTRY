@@ -1,7 +1,7 @@
 import { getUncachableStripeClient } from "./stripeClient";
 
 /**
- * Creates the INVESTRY Pro and Pro+ products/prices in Stripe.
+ * Creates the INVESTRY Pro product/prices in Stripe.
  * Idempotent: checks for existing active products by name before creating.
  * Run with: pnpm --filter @workspace/scripts exec tsx src/seed-products.ts
  */
@@ -13,13 +13,6 @@ const PLANS = [
     description: "Unlimited investments, all tools & analytics",
     monthly: { amount: 4999, interval: "month" as const }, // 49.99 EGP
     annual: { amount: 39999, interval: "year" as const }, // 399.99 EGP
-  },
-  {
-    name: "Investry Pro+",
-    planKey: "pro_plus",
-    description: "Everything in Pro + advanced charts, EGX real-time & export",
-    monthly: { amount: 6999, interval: "month" as const }, // 69.99 EGP
-    annual: { amount: 55999, interval: "year" as const }, // 559.99 EGP
   },
 ];
 

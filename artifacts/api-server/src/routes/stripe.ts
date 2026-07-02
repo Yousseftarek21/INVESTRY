@@ -6,15 +6,15 @@ import { stripeService } from "../lib/stripeService";
 const router: IRouter = Router();
 
 // Launch Access mode: grant everyone a plan for free, without touching
-// Stripe or the checkout/webhook wiring. Set FREE_ACCESS_PLAN=pro or
-// pro_plus to turn this on; unset it (or set to "off") once you're ready to
-// start charging — real Stripe subscriptions immediately take back over
-// with no code changes on either the server or the client. This is the
-// single source of truth for "Launch Access" — the client never derives
+// Stripe or the checkout/webhook wiring. Set FREE_ACCESS_PLAN=pro to turn
+// this on; unset it (or set to "off") once you're ready to start
+// charging — real Stripe subscriptions immediately take back over with no
+// code changes on either the server or the client. This is the single
+// source of truth for "Launch Access" — the client never derives
 // entitlement any other way, it always reads it from this endpoint.
 const FREE_ACCESS_PLAN = (() => {
   const raw = (process.env.FREE_ACCESS_PLAN ?? "off").trim().toLowerCase();
-  return raw === "pro" || raw === "pro_plus" ? raw : null;
+  return raw === "pro" ? raw : null;
 })();
 
 // Require a valid Clerk session for all subscription/checkout routes

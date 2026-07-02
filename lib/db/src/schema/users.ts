@@ -7,7 +7,7 @@ export const usersTable = pgTable("users", {
   email:                  text("email"),
   stripeCustomerId:       text("stripe_customer_id"),
   stripeSubscriptionId:   text("stripe_subscription_id"),
-  plan:                   text("plan").notNull().default("free"), // 'free' | 'pro' | 'pro_plus'
+  plan:                   text("plan").notNull().default("free"), // 'free' | 'pro'
   billingPeriod:          text("billing_period").notNull().default("monthly"), // 'monthly' | 'annual'
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

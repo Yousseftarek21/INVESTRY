@@ -5,38 +5,45 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { SymbolView } from 'expo-symbols';
 import { useSubscription, openWebPopup, BillingPeriod } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
 import { LaunchBadge, LaunchBanner } from '@/components/LaunchAccess';
 
+const ACCENT = '#A47FCA';
+
 // ─── Confirm modal ─────────────────────────────────────────────────────────────
 
 function ConfirmPurchase({
-  visible, planLabel, priceString, onConfirm, onCancel, isPurchasing, accent,
+  visible, planLabel, priceString, onConfirm, onCancel, isPurchasing,
 }: {
   visible: boolean; planLabel: string; priceString: string;
-  onConfirm: () => void; onCancel: () => void; isPurchasing: boolean; accent: string;
+  onConfirm: () => void; onCancel: () => void; isPurchasing: boolean;
 }) {
   const t = useT();
   if (!visible) return null;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
       <View style={cm.overlay}>
-        <View style={[cm.card, { borderColor: accent + '35' }]}>
-          <View style={[cm.iconWrap, { backgroundColor: accent + '15', borderColor: accent + '30' }]}>
-            <Feather name="star" size={28} color={accent} />
+        <View style={[cm.card, { borderColor: ACCENT + '35' }]}>
+          <View style={[cm.iconWrap, { backgroundColor: ACCENT + '15', borderColor: ACCENT + '30' }]}>
+            {Platform.OS === 'ios' ? (
+              <SymbolView name="rosette" tintColor={ACCENT} size={28} />
+            ) : (
+              <Feather name="award" size={28} color={ACCENT} />
+            )}
           </View>
           <Text style={cm.title}>{t.subConfirmTitle}</Text>
           <Text style={cm.msg}>
             {t.subSubscribingTo + '\n'}
             <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold' }}>{planLabel}</Text>
             {'\n' + t.subAt + ' '}
-            <Text style={{ color: accent, fontFamily: 'Inter_700Bold' }}>{priceString}</Text>
+            <Text style={{ color: ACCENT, fontFamily: 'Inter_700Bold' }}>{priceString}</Text>
           </Text>
           <Pressable
             onPress={onConfirm}
             disabled={isPurchasing}
-            style={[cm.confirmBtn, { backgroundColor: accent }]}
+            style={[cm.confirmBtn, { backgroundColor: ACCENT }]}
           >
             {isPurchasing
               ? <ActivityIndicator size="small" color="#000" />
@@ -72,16 +79,10 @@ const cm = StyleSheet.create({
 
 // ─── Plan card ─────────────────────────────────────────────────────────────────
 
-function PlanCard({
-  planKey, selected, period, onSelect,
-}: {
-  planKey: 'pro' | 'pro_plus'; selected: boolean; period: BillingPeriod; onSelect: () => void;
-}) {
+function PlanCard({ period }: { period: BillingPeriod }) {
   const { offerings } = useSubscription();
   const t = useT();
-  const product = planKey === 'pro' ? offerings.pro : offerings.proPlus;
-  const accent = planKey === 'pro' ? '#D4AC0D' : '#A47FCA';
-  const isProPlus = planKey === 'pro_plus';
+  const product = offerings.pro;
   const price = period === 'monthly'
     ? `${product.priceString}/${t.subMonth}`
     : `${product.annualPriceString}/${t.subYear}`;
@@ -89,60 +90,30 @@ function PlanCard({
     ? `≈ ${Math.round(product.annualPrice / 12).toLocaleString('en-EG')} EGP/${t.subMonth}`
     : null;
 
-  const scale = useRef(new Animated.Value(1)).current;
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.975, duration: 70, useNativeDriver: Platform.OS !== 'web' }),
-      Animated.spring(scale, { toValue: 1, tension: 300, friction: 10, useNativeDriver: Platform.OS !== 'web' }),
-    ]).start();
-    onSelect();
-  };
-
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <Pressable
-        onPress={handlePress}
-        style={[
-          pc.card,
-          selected
-            ? { borderColor: accent, borderWidth: 2, backgroundColor: accent + '08' }
-            : { borderColor: '#1C2D40', borderWidth: 1.5, backgroundColor: '#0B1525' },
-        ]}
-      >
-        {selected && <View style={[pc.topBar, { backgroundColor: accent }]} />}
+    <View style={[pc.card, { borderColor: ACCENT, borderWidth: 2, backgroundColor: ACCENT + '08' }]}>
+      <View style={[pc.topBar, { backgroundColor: ACCENT }]} />
 
-        {isProPlus && (
-          <View style={[pc.popularTag, { backgroundColor: accent }]}>
-            <Text style={pc.popularTxt}>{t.subMostPopular}</Text>
+      <View style={pc.row}>
+        <View style={pc.info}>
+          <View style={[pc.badge, { backgroundColor: ACCENT + '1A', borderColor: ACCENT + '35' }]}>
+            <Feather name="zap" size={10} color={ACCENT} style={{ marginRight: 4 }} />
+            <Text style={[pc.badgeTxt, { color: ACCENT }]}>PRO</Text>
           </View>
-        )}
-
-        <View style={pc.row}>
-          <View style={pc.info}>
-            <View style={[pc.badge, { backgroundColor: accent + '1A', borderColor: accent + '35' }]}>
-              <Feather name={planKey === 'pro' ? 'star' : 'zap'} size={10} color={accent} style={{ marginRight: 4 }} />
-              <Text style={[pc.badgeTxt, { color: accent }]}>{planKey === 'pro' ? 'PRO' : 'PRO+'}</Text>
-            </View>
-            <Text style={pc.price}>{price}</Text>
-            {perMonth && <Text style={pc.sub}>{perMonth}</Text>}
-          </View>
-          <View style={[pc.radio, { borderColor: selected ? accent : '#2A3D52' }]}>
-            {selected && <View style={[pc.dot, { backgroundColor: accent }]} />}
-          </View>
+          <Text style={pc.price}>{price}</Text>
+          {perMonth && <Text style={pc.sub}>{perMonth}</Text>}
         </View>
-      </Pressable>
-    </Animated.View>
+        <View style={[pc.radio, { borderColor: ACCENT }]}>
+          <View style={[pc.dot, { backgroundColor: ACCENT }]} />
+        </View>
+      </View>
+    </View>
   );
 }
 
 const pc = StyleSheet.create({
   card: { borderRadius: 20, overflow: 'hidden' },
   topBar: { height: 2, position: 'absolute', top: 0, left: 0, right: 0 },
-  popularTag: {
-    position: 'absolute', top: 14, right: 14,
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
-  },
-  popularTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', color: '#000', letterSpacing: 0.5 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 22 },
   info: { gap: 6 },
   badge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
@@ -155,20 +126,13 @@ const pc = StyleSheet.create({
 
 // ─── Feature row ──────────────────────────────────────────────────────────────
 
-function FeatureRow({ icon, label, accent, dim }: {
-  icon: string; label: string; accent: string; dim?: boolean;
-}) {
+function FeatureRow({ icon, label }: { icon: string; label: string }) {
   return (
     <View style={frow.row}>
-      <View style={[frow.icon, { backgroundColor: accent + '18' }]}>
-        <Feather name={icon as any} size={13} color={dim ? '#4A5568' : accent} />
+      <View style={[frow.icon, { backgroundColor: ACCENT + '18' }]}>
+        <Feather name={icon as any} size={13} color={ACCENT} />
       </View>
-      <Text style={[frow.label, dim && { color: '#4A5568' }]}>{label}</Text>
-      {dim && (
-        <View style={[frow.plusTag, { borderColor: '#A47FCA40' }]}>
-          <Text style={frow.plusTxt}>PRO+</Text>
-        </View>
-      )}
+      <Text style={frow.label}>{label}</Text>
     </View>
   );
 }
@@ -177,8 +141,6 @@ const frow = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
   icon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   label: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', color: '#C0CDD8' },
-  plusTag: { borderWidth: 1, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
-  plusTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', color: '#A47FCA', letterSpacing: 0.4 },
 });
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -186,31 +148,26 @@ const frow = StyleSheet.create({
 interface SubscriptionScreenProps {
   visible: boolean;
   onClose: () => void;
-  initialPlan?: 'pro' | 'pro_plus';
 }
 
-export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: SubscriptionScreenProps) {
+export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps) {
   const insets = useSafeAreaInsets();
   const { offerings, purchase, restore, isPurchasing, isRestoring, launchAccess } = useSubscription();
   const t = useT();
 
-  const PRO_FEATURES = [
+  const FEATURES = [
     { icon: 'layers',      label: t.subUnlimitedInvestments },
     { icon: 'tool',        label: t.subAllCalculators       },
     { icon: 'globe',       label: t.subMarketIntelligence   },
     { icon: 'bar-chart-2', label: t.subPortfolioAnalytics   },
     { icon: 'moon',        label: t.subZakat                },
-  ];
-
-  const PRO_PLUS_EXTRAS = [
-    { icon: 'activity',    label: t.subAdvancedCharts  },
-    { icon: 'zap',         label: t.subEgxRealtime     },
-    { icon: 'download',    label: t.subCsvExport        },
-    { icon: 'headphones',  label: t.subPrioritySupport  },
+    { icon: 'activity',    label: t.subAdvancedCharts       },
+    { icon: 'zap',         label: t.subEgxRealtime          },
+    { icon: 'download',    label: t.subCsvExport            },
+    { icon: 'headphones',  label: t.subPrioritySupport      },
   ];
 
   const [period, setPeriod] = useState<BillingPeriod>('annual');
-  const [selectedPlan, setSelectedPlan] = useState<'pro' | 'pro_plus'>(initialPlan);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const slideY = useRef(new Animated.Value(700)).current;
@@ -218,7 +175,6 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
 
   useEffect(() => {
     if (visible) {
-      setSelectedPlan(initialPlan);
       Animated.parallel([
         Animated.spring(slideY, {
           toValue: 0, damping: 26, stiffness: 230,
@@ -230,10 +186,9 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
       slideY.setValue(700);
       bgOpacity.setValue(0);
     }
-  }, [visible, initialPlan]);
+  }, [visible]);
 
-  const accent = selectedPlan === 'pro' ? '#D4AC0D' : '#A47FCA';
-  const product = selectedPlan === 'pro' ? offerings.pro : offerings.proPlus;
+  const product = offerings.pro;
   const currentPrice = period === 'monthly'
     ? `${product.priceString}/${t.subMonth}`
     : `${product.annualPriceString}/${t.subYear}`;
@@ -244,7 +199,7 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
     // original user-gesture window). No-op on native.
     const webPopup = openWebPopup();
     try {
-      await purchase(selectedPlan, period, webPopup);
+      await purchase(period, webPopup);
       setShowConfirm(false);
       onClose();
     } catch {
@@ -291,7 +246,11 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
             <View style={sw.glow2} />
             <View style={sw.glow1} />
             <View style={sw.iconWrap}>
-              <Feather name="star" size={32} color="#D4AC0D" />
+              {Platform.OS === 'ios' ? (
+                <SymbolView name="rosette" tintColor={ACCENT} size={32} />
+              ) : (
+                <Feather name="award" size={32} color={ACCENT} />
+              )}
             </View>
             <Text style={sw.heroTitle}>Investry Pro</Text>
             <Text style={sw.heroSub}>{t.subHeroSub}</Text>
@@ -320,43 +279,34 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
             </Pressable>
           </View>
 
-          {/* ── Plan cards ──────────────────────────────────── */}
+          {/* ── Plan card ───────────────────────────────────── */}
           <View style={sw.plans}>
-            <PlanCard planKey="pro"      selected={selectedPlan === 'pro'}      period={period} onSelect={() => setSelectedPlan('pro')}      />
-            <PlanCard planKey="pro_plus" selected={selectedPlan === 'pro_plus'} period={period} onSelect={() => setSelectedPlan('pro_plus')} />
+            <PlanCard period={period} />
           </View>
 
           {/* ── Features ────────────────────────────────────── */}
           <View style={sw.featureCard}>
             <Text style={sw.featureTitle}>{t.subWhatsIncluded}</Text>
-            {PRO_FEATURES.map(f => (
-              <FeatureRow key={f.label} icon={f.icon} label={f.label} accent={accent} />
-            ))}
-            <View style={sw.featureDivider} />
-            {PRO_PLUS_EXTRAS.map(f => (
-              <FeatureRow
-                key={f.label} icon={f.icon} label={f.label}
-                accent="#A47FCA"
-                dim={selectedPlan === 'pro'}
-              />
+            {FEATURES.map(f => (
+              <FeatureRow key={f.label} icon={f.icon} label={f.label} />
             ))}
           </View>
 
           {/* ── CTA ─────────────────────────────────────────── */}
           {launchAccess ? (
-            <LaunchBadge accent={accent} style={sw.cta} />
+            <LaunchBadge accent={ACCENT} style={sw.cta} />
           ) : (
             <Pressable
               onPress={() => setShowConfirm(true)}
               disabled={isPurchasing}
-              style={({ pressed }) => [sw.cta, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
+              style={({ pressed }) => [sw.cta, { backgroundColor: ACCENT, opacity: pressed ? 0.88 : 1 }]}
             >
               {isPurchasing ? (
                 <ActivityIndicator color="#000" />
               ) : (
                 <View style={sw.ctaRow}>
                   <View>
-                    <Text style={sw.ctaTop}>{t.subContinueWith} {selectedPlan === 'pro' ? 'Pro' : 'Pro+'}</Text>
+                    <Text style={sw.ctaTop}>{t.subContinueWith} Pro</Text>
                     <Text style={sw.ctaBottom}>{currentPrice}</Text>
                   </View>
                   <View style={sw.ctaArrow}>
@@ -394,7 +344,6 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
         visible={showConfirm}
         planLabel={product.title}
         priceString={currentPrice}
-        accent={accent}
         onConfirm={handleConfirm}
         onCancel={() => setShowConfirm(false)}
         isPurchasing={isPurchasing}
@@ -432,21 +381,21 @@ const sw = StyleSheet.create({
   glow3: {
     position: 'absolute', top: 18,
     width: 200, height: 200, borderRadius: 100,
-    backgroundColor: '#D4AC0D', opacity: 0.04,
+    backgroundColor: '#A47FCA', opacity: 0.04,
   },
   glow2: {
     position: 'absolute', top: 36,
     width: 140, height: 140, borderRadius: 70,
-    backgroundColor: '#D4AC0D', opacity: 0.07,
+    backgroundColor: '#A47FCA', opacity: 0.07,
   },
   glow1: {
     position: 'absolute', top: 50,
     width: 90, height: 90, borderRadius: 45,
-    backgroundColor: '#D4AC0D', opacity: 0.12,
+    backgroundColor: '#A47FCA', opacity: 0.12,
   },
   iconWrap: {
     width: 80, height: 80, borderRadius: 28,
-    backgroundColor: '#D4AC0D12', borderWidth: 1, borderColor: '#D4AC0D35',
+    backgroundColor: '#A47FCA12', borderWidth: 1, borderColor: '#A47FCA35',
     alignItems: 'center', justifyContent: 'center',
   },
   heroTitle: { fontSize: 30, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: -1 },
@@ -481,7 +430,6 @@ const sw = StyleSheet.create({
     fontSize: 11, fontFamily: 'Inter_700Bold', color: '#3A4D62',
     letterSpacing: 1, marginBottom: 8,
   },
-  featureDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#1C2D40', marginVertical: 6 },
 
   // CTA
   cta: {

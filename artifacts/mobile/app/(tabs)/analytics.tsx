@@ -671,7 +671,6 @@ export default function AnalyticsScreen() {
       {/* ══ SECTION 2: Market Intelligence ══════════════════════════ */}
       <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
       <PremiumGate
-        requiredPlan="pro"
         feature="Market Intelligence"
         description="Live USD/EGP rate, gold & silver prices by karat, and personalized portfolio signals — updated in real time."
       >
@@ -763,7 +762,6 @@ export default function AnalyticsScreen() {
       {/* ══ SECTION 3: Portfolio Analytics ═══════════════════════════ */}
       <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
       <PremiumGate
-        requiredPlan="pro"
         feature="Portfolio Analytics"
         description="Portfolio health score, performance chart, asset allocation, top performers, and smart insights."
       >
