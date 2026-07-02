@@ -169,6 +169,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return { plan: data.plan, billingPeriod: data.billingPeriod, launchAccess: data.launchAccess ?? false };
   }, [getToken]);
 
+  // `getToken` (and therefore `fetchSubscription`/`cachePlan`, which close
+  // over it) gets a new identity from Clerk on many renders. If the sign-in
+  // effect below depended on those callbacks directly, each fetch would
+  // trigger a state update → re-render → new callback identity → the effect
+  // re-running → another fetch, forever (this is what caused the runaway
+  // `/api/subscription` polling and the "Maximum call stack size exceeded"
+  // crash). Keep the latest versions in refs instead so the effect can call
+  // them without depending on their identity.
+  const fetchSubscriptionRef = useRef(fetchSubscription);
+  fetchSubscriptionRef.current = fetchSubscription;
+  const cachePlanRef = useRef(cachePlan);
+  cachePlanRef.current = cachePlan;
+
   // ── React to userId changes (sign-in, sign-out, account switch) ───────────
   useEffect(() => {
     if (!userId) {
@@ -219,7 +232,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       })
       .catch(() => null);
 
-    fetchSubscription(capturedUserId)
+    fetchSubscriptionRef.current(capturedUserId)
       .then((data) => {
         if (!active || loadedUserRef.current !== capturedUserId) return;
         const resolvedPlan = data?.plan ?? 'free';
@@ -227,7 +240,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         setPlan(resolvedPlan);
         setBillingPeriod(resolvedPeriod);
         setLaunchAccess(data?.launchAccess ?? false);
-        cachePlan(capturedUserId, resolvedPlan, resolvedPeriod).catch(() => null);
+        cachePlanRef.current(capturedUserId, resolvedPlan, resolvedPeriod).catch(() => null);
       })
       .catch(() => {
         // Network/backend error: keep whatever was loaded from cache (or free).
@@ -239,7 +252,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       });
 
     return () => { active = false; };
-  }, [userId, fetchSubscription, cachePlan]);
+    // Intentionally NOT depending on fetchSubscription/cachePlan: they close
+    // over Clerk's `getToken`, which is not referentially stable across
+    // renders. Depending on them here caused an infinite fetch loop (see
+    // comment above `fetchSubscriptionRef`). We always call the latest
+    // version via the refs instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const getPriceId = useCallback(async (period: BillingPeriod): Promise<string> => {
     const token = await getToken();
