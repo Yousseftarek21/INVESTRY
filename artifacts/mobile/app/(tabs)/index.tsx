@@ -139,10 +139,18 @@ function buildPoints(gainPct: number, filter: TimeFilter, seed: number, n = 22):
   const scale = TIME_SCALE[filter];
   let r = (seed || 7) % 99991;
   const rand = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
-  let v = 100;
+
+  const total = gainPct * scale;
+  // Noise stays small: proportional to signal + tiny floor so flat portfolios aren't dead-straight
+  const noiseAmp = Math.abs(total) * 0.06 + 0.35;
+
   return Array.from({ length: n }, (_, i) => {
-    v += (gainPct / 100) * scale * (i / n) + (rand() - 0.47) * 2.5;
-    return v;
+    const t = i / (n - 1);
+    // Smooth ease-in-out so the line starts gentle, moves, then settles at the right end
+    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const trend = 100 + total * eased;
+    const noise = (rand() - 0.5) * noiseAmp;
+    return trend + noise;
   });
 }
 
@@ -287,14 +295,30 @@ export default function HomeScreen() {
             <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>{' '}EGP</Text>
           </Text>
 
-          {/* Total invested — only when there's a cost basis */}
+          {/* Invested · Current · Return strip */}
           {summary.totalCost > 0 && (
-            <View style={styles.investedRow}>
-              <Feather name="arrow-up-circle" size={12} color={colors.mutedForeground} />
-              <Text style={[styles.investedLabel, { color: colors.mutedForeground }]}>Total Invested</Text>
-              <Text style={[styles.investedValue, { color: colors.mutedForeground }]}>
-                {fmtCompact(summary.totalCost)} EGP
-              </Text>
+            <View style={[styles.iStrip, { backgroundColor: colors.muted + '80', borderColor: colors.border }]}>
+              <View style={styles.iCell}>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>INVESTED</Text>
+                <Text style={[styles.iCellValue, { color: colors.text }]}>{fmtCompact(summary.totalCost)}</Text>
+                <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>
+              </View>
+              <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.iCell}>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>CURRENT</Text>
+                <Text style={[styles.iCellValue, { color: colors.text }]}>{fmtCompact(summary.totalValue)}</Text>
+                <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>
+              </View>
+              <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.iCell}>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>RETURN</Text>
+                <Text style={[styles.iCellValue, { color: gainColor }]}>
+                  {isGain ? '+' : ''}{summary.gainPct.toFixed(1)}%
+                </Text>
+                <Text style={[styles.iCellCur, { color: gainColor + '99' }]}>
+                  {isGain ? '▲' : '▼'}
+                </Text>
+              </View>
             </View>
           )}
 
@@ -472,9 +496,12 @@ const styles = StyleSheet.create({
   heroValue: { fontSize: 44, fontFamily: 'Inter_700Bold', letterSpacing: -1.5 },
   heroCurrency: { fontSize: 18, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
 
-  investedRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -4 },
-  investedLabel: { fontSize: 12, fontFamily: 'Inter_400Regular', flex: 1 },
-  investedValue: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  iStrip: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginTop: 2 },
+  iCell: { flex: 1, alignItems: 'center', paddingVertical: 10, gap: 2 },
+  iCellLabel: { fontSize: 8, fontFamily: 'Inter_700Bold', letterSpacing: 1.3 },
+  iCellValue: { fontSize: 14, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
+  iCellCur: { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  iDivider: { width: StyleSheet.hairlineWidth, marginVertical: 10 },
 
   plRow: { flexDirection: 'row', gap: 8 },
   plChip: { flex: 1, flexDirection: 'column', gap: 4, borderRadius: 12, borderWidth: 1, padding: 10 },
