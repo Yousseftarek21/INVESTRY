@@ -423,7 +423,33 @@ export default function MarketsScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('metals');
 
   const isLoading = lP;
-  const refetch = () => { rP(); };
+
+  // Track previous gold price to detect changes after a manual refresh
+  const prevGoldUsd  = useRef<number | undefined>(undefined);
+  const followUpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didManualRefresh = useRef(false);
+
+  // When prices update, if this came from a manual refresh and gold changed → re-fetch once after 1 s
+  useEffect(() => {
+    const newGold = prices?.goldUsd;
+    if (
+      didManualRefresh.current &&
+      newGold !== undefined &&
+      prevGoldUsd.current !== undefined &&
+      newGold !== prevGoldUsd.current
+    ) {
+      followUpTimer.current = setTimeout(() => { rP(); }, 1000);
+    }
+    if (newGold !== undefined) prevGoldUsd.current = newGold;
+    didManualRefresh.current = false;
+    return () => { if (followUpTimer.current) clearTimeout(followUpTimer.current); };
+  }, [prices?.goldUsd]);
+
+  const refetch = () => {
+    didManualRefresh.current = true;
+    prevGoldUsd.current = prices?.goldUsd;
+    rP();
+  };
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
