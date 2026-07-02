@@ -5,6 +5,15 @@ import { stripeService } from "../lib/stripeService";
 
 const router: IRouter = Router();
 
+// Growth-phase promo: grant everyone a plan for free, without touching Stripe
+// or the checkout/webhook wiring. Set FREE_ACCESS_PLAN=pro or pro_plus to turn
+// this on; unset it (or set to "off") once you're ready to start charging —
+// real Stripe subscriptions immediately take back over with no code changes.
+const FREE_ACCESS_PLAN = (() => {
+  const raw = (process.env.FREE_ACCESS_PLAN ?? "off").trim().toLowerCase();
+  return raw === "pro" || raw === "pro_plus" ? raw : null;
+})();
+
 // Require a valid Clerk session for all subscription/checkout routes
 router.use(clerkMiddleware(), (req, res, next) => {
   const { userId } = getAuth(req);
@@ -35,6 +44,13 @@ router.get("/stripe/prices", async (req, res) => {
 router.get("/subscription", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  if (FREE_ACCESS_PLAN) {
+    // Growth-phase promo is on — report everyone as subscribed without
+    // touching Stripe or the users table.
+    res.json({ plan: FREE_ACCESS_PLAN, billingPeriod: "monthly", status: "promo" });
+    return;
+  }
 
   try {
     const user = await stripeStorage.getUser(userId);
