@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useClerk, useUser } from '@clerk/expo';
 import { useRouter } from 'expo-router';
@@ -263,8 +264,21 @@ function ProfileHero({
       onPress={onPress} activeOpacity={0.75}
       style={[ph.card, { backgroundColor: colors.card, borderColor: colors.border }]}
     >
-      {/* Gold accent line at top of card */}
-      <View style={[ph.accentBar, { backgroundColor: colors.primary }]} />
+      {/* Purple accent glow at top of card (matches Pro badge color) */}
+      <View style={ph.accentGlow} pointerEvents="none">
+        <ExpoLinearGradient
+          colors={['#A47FCA00', '#A47FCA40', '#A47FCA00']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+      <ExpoLinearGradient
+        colors={['#A47FCA00', '#A47FCACC', '#A47FCA00']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={ph.accentBar}
+      />
 
       <View style={ph.inner}>
         {/* Avatar */}
@@ -315,7 +329,8 @@ function ProfileHero({
 }
 const ph = StyleSheet.create({
   card: { borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  accentBar: { height: 3, width: '100%' },
+  accentGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 16 },
+  accentBar: { height: 1.5, width: '100%' },
   inner: { flexDirection: 'row', alignItems: 'flex-start', padding: 18, gap: 15 },
   avatarArea: { flexShrink: 0, position: 'relative' },
   avatarRing: { width: 74, height: 74, borderRadius: 37, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
