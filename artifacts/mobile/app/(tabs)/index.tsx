@@ -376,7 +376,7 @@ export default function HomeScreen() {
                 }}
               >
                 <Sparkline
-                  gainPct={timeFilter === '1D' ? summary.todayPct : summary.gainPct}
+                  gainPct={(prices?.goldChangePercent ?? 0) * TIME_SCALE[timeFilter]}
                   filter={timeFilter}
                   seed={sparkSeed}
                   width={sparkWidth}
