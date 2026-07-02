@@ -15,7 +15,7 @@ const en = {
   // Home
   totalPortfolioValue: 'Total Portfolio Value',
   allocation: 'Allocation',
-  topHoldings: 'TOP INVESTMENTS',
+  topHoldings: 'ALL INVESTMENTS',
   noInvestmentsYet: 'No investments yet',
   addFromHoldingsTab: 'Tap the + button below to add your first investment',
   liveRates: 'LIVE RATES',
@@ -159,7 +159,7 @@ const ar: typeof en = {
   // Home
   totalPortfolioValue: 'إجمالي قيمة المحفظة',
   allocation: 'توزيع الأصول',
-  topHoldings: 'أهم الاستثمارات',
+  topHoldings: 'جميع الاستثمارات',
   noInvestmentsYet: 'لا توجد استثمارات بعد',
   addFromHoldingsTab: 'اضغط على زر + أدناه لإضافة أول استثمار',
   liveRates: 'الأسعار المباشرة',
