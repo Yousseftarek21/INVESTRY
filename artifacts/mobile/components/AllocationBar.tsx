@@ -22,36 +22,40 @@ interface Props {
 }
 
 // ─── Animated overview bar ───────────────────────────────────────────────────
-// Always receives the full segments array (even zero-value ones) so the
-// useRef anims array length never changes between renders.
-
-const MAX_SEGMENTS = 4;
-const INIT_ANIMS = Array.from({ length: MAX_SEGMENTS }, () => new Animated.Value(0));
+// Segments are keyed by label (not index) so adding a new asset class never
+// leaves a stale-length array with a missing entry — that used to crash
+// Animated.timing with "Cannot read property 'stopTracking' of undefined"
+// whenever the number of segments exceeded a hardcoded max.
 
 function OverviewBar({ segments, total }: { segments: AllocationSegment[]; total: number }) {
   const colors = useColors();
-  // Fixed-length ref — never reallocated even if segment count changes
-  const anims = useRef(INIT_ANIMS).current;
+  const animsRef = useRef<Record<string, Animated.Value>>({});
 
   useEffect(() => {
     Animated.stagger(
       60,
-      segments.map((seg, i) =>
-        Animated.timing(anims[i], {
+      segments.map((seg, i) => {
+        if (!animsRef.current[seg.label]) {
+          animsRef.current[seg.label] = new Animated.Value(0);
+        }
+        return Animated.timing(animsRef.current[seg.label], {
           toValue: total > 0 ? (seg.value / total) * 100 : 0,
           duration: 700,
           delay: 100,
           useNativeDriver: false,
-        })
-      )
+        });
+      })
     ).start();
   }, [segments.map(s => s.value).join(',')]);
 
   return (
     <View style={[bar.track, { backgroundColor: colors.muted }]}>
-      {segments.map((seg, i) => {
+      {segments.map(seg => {
         if (total === 0 || seg.value <= 0) return null;
-        const width = anims[i].interpolate({
+        if (!animsRef.current[seg.label]) {
+          animsRef.current[seg.label] = new Animated.Value(0);
+        }
+        const width = animsRef.current[seg.label].interpolate({
           inputRange: [0, 100],
           outputRange: ['0%', `${((seg.value / total) * 100).toFixed(4)}%`],
         });
