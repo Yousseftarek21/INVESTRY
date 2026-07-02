@@ -184,6 +184,27 @@ export function useMarketPrices() {
   });
 }
 
+export function useGoldHistory(range: string) {
+  return useQuery<number[] | null>({
+    queryKey: ['gold-history', range],
+    queryFn: async () => {
+      try {
+        const res = await fetch(`${API_BASE}/markets/gold-history?range=${encodeURIComponent(range)}`, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const pts = data?.points;
+        return Array.isArray(pts) && pts.length >= 2 ? (pts as number[]) : null;
+      } catch { return null; }
+    },
+    staleTime: range === '1D' ? 5 * 60_000 : 60 * 60_000,
+    refetchInterval: range === '1D' ? 5 * 60_000 : false,
+    retry: 1,
+    placeholderData: null,
+  });
+}
+
 export function useEGXStocks() {
   return useQuery({
     queryKey: ['egx-stocks'],

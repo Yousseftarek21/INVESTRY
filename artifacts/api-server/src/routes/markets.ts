@@ -361,6 +361,71 @@ async function fetchStocks(): Promise<EGXStockResponse[]> {
   });
 }
 
+// ─── Gold history (sparkline) ─────────────────────────────────────────────────
+
+const HISTORY_CFG: Record<string, { totalDays: number; count: number; ttlMs: number }> = {
+  '1D':  { totalDays: 1,    count: 0,  ttlMs: 5  * 60_000 },  // special: derived from cache
+  '1W':  { totalDays: 7,    count: 7,  ttlMs: 30 * 60_000 },
+  '1M':  { totalDays: 30,   count: 10, ttlMs: 60 * 60_000 },
+  '3M':  { totalDays: 90,   count: 12, ttlMs: 3  * 3600_000 },
+  '1Y':  { totalDays: 365,  count: 12, ttlMs: 6  * 3600_000 },
+  'ALL': { totalDays: 1825, count: 18, ttlMs: 24 * 3600_000 },
+};
+
+const histCaches: Record<string, ReturnType<typeof makeCache<number[]>>> = Object.fromEntries(
+  Object.entries(HISTORY_CFG).map(([k, v]) => [k, makeCache<number[]>(v.ttlMs)])
+);
+
+/** Generate `count` evenly-spaced business-day dates going back `totalDays`. */
+function sampledDates(totalDays: number, count: number): string[] {
+  const now = new Date();
+  const result: string[] = [];
+  for (let i = count; i >= 1; i--) {
+    const daysBack = Math.round((i / count) * totalDays);
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() - daysBack);
+    const dow = d.getUTCDay();
+    if (dow === 0) d.setUTCDate(d.getUTCDate() - 2); // Sun → Fri
+    if (dow === 6) d.setUTCDate(d.getUTCDate() - 1); // Sat → Fri
+    result.push(d.toISOString().slice(0, 10));
+  }
+  return result;
+}
+
+async function fetchOneClose(date: string, key: string): Promise<number | null> {
+  const url = `${COMMODITY_API_BASE}/rates/historical?apiKey=${key}&symbols=XAU&date=${date}`;
+  const data = await safeJson<CommodityHistoricalResponse>(await safeFetch(url));
+  const c = data?.rates?.XAU?.close;
+  return c && c > 0 ? c : null;
+}
+
+async function buildGoldHistory(range: string): Promise<number[]> {
+  const cached = histCaches[range]?.get();
+  if (cached) return cached;
+
+  if (range === '1D') {
+    // Reuse already-fetched yesterday close + today's current price — no extra API calls
+    const [hist, latest] = await Promise.all([fetchCommodityHistorical(), fetchCommodityLatest()]);
+    if (!hist || !latest) return [];
+    const pts = [hist.xauClose, latest.xau];
+    histCaches['1D'].set(pts);
+    return pts;
+  }
+
+  const key = process.env.COMMODITY_API_KEY;
+  if (!key) return [];
+  const cfg = HISTORY_CFG[range];
+  if (!cfg) return [];
+
+  const dates = sampledDates(cfg.totalDays, cfg.count);
+  const closes = await Promise.all(dates.map(d => fetchOneClose(d, key)));
+  const valid = closes.filter((c): c is number => c !== null);
+  if (valid.length < 2) return [];
+
+  histCaches[range].set(valid);
+  return valid;
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 router.get("/markets/prices", async (req, res) => {
@@ -374,6 +439,18 @@ router.get("/markets/prices", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch market prices");
     res.status(500).json({ error: "Failed to fetch prices" });
+  }
+});
+
+router.get("/markets/gold-history", async (req, res) => {
+  const range = String(req.query.range ?? '1D');
+  if (!HISTORY_CFG[range]) { res.status(400).json({ error: "Invalid range" }); return; }
+  try {
+    const points = await buildGoldHistory(range);
+    res.json({ points, range });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch gold history");
+    res.status(500).json({ error: "Failed to fetch gold history" });
   }
 });
 

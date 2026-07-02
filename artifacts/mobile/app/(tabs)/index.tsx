@@ -10,7 +10,7 @@ import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
-import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { useMarketPrices, useGoldHistory, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding, MarketPrices } from '@/types';
@@ -133,48 +133,21 @@ const liveSt = StyleSheet.create({
 
 const TIME_FILTERS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
 type TimeFilter = typeof TIME_FILTERS[number];
-const TIME_SCALE: Record<TimeFilter, number> = { '1D': 0.2, '1W': 0.5, '1M': 1, '3M': 2, '1Y': 4, 'ALL': 6 };
 
-function buildPoints(gainPct: number, filter: TimeFilter, seed: number, n = 22): number[] {
-  let r = (seed || 7) % 99991;
-  const rand = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
-
-  // Anchor endpoints explicitly so direction is ALWAYS correct:
-  // first = 100, last = 100 + gainPct (the actual return, no scaling)
-  const start = 100;
-  const end = 100 + gainPct;
-
-  // Tiny noise — at most 3 % of the distance between start and end, so it
-  // never overwhelms or inverts the trend. Flat portfolios get a small floor.
-  const noiseAmp = Math.max(Math.abs(gainPct) * 0.03, 0.18);
-
-  return Array.from({ length: n }, (_, i) => {
-    if (i === 0)     return start;
-    if (i === n - 1) return end;
-    const t = i / (n - 1);
-    // ease-in-out interpolation between start and end
-    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    const trend = start + (end - start) * eased;
-    const noise = (rand() - 0.5) * noiseAmp;
-    return trend + noise;
-  });
-}
-
-function Sparkline({ gainPct, filter, seed, width, height = 58 }: {
-  gainPct: number; filter: TimeFilter; seed: number; width: number; height?: number;
+function Sparkline({ prices, width, height = 58 }: {
+  prices: number[] | null; width: number; height?: number;
 }) {
   const colors = useColors();
-  if (width < 10) return <View style={{ height }} />;
+  if (width < 10 || !prices || prices.length < 2) return <View style={{ height }} />;
 
-  const data = buildPoints(gainPct, filter, seed);
-  const color = gainPct >= 0 ? colors.green : colors.red;
-  const minV = Math.min(...data);
-  const maxV = Math.max(...data);
+  const color = prices[prices.length - 1] >= prices[0] ? colors.green : colors.red;
+  const minV = Math.min(...prices);
+  const maxV = Math.max(...prices);
   const range = maxV - minV || 1;
   const vPad = 4;
 
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * width;
+  const pts = prices.map((v, i) => {
+    const x = (i / (prices.length - 1)) * width;
     const y = vPad + ((maxV - v) / range) * (height - vPad * 2);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
@@ -208,8 +181,9 @@ export default function HomeScreen() {
   const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const isLoading = pricesLoading || holdingsLoading;
 
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('ALL');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
   const [sparkWidth, setSparkWidth] = useState(0);
+  const { data: goldHistory } = useGoldHistory(timeFilter);
 
   // ── Portfolio maths ────────────────────────────────────────────────────────
   const summary = useMemo(() => {
@@ -376,9 +350,7 @@ export default function HomeScreen() {
                 }}
               >
                 <Sparkline
-                  gainPct={(prices?.goldChangePercent ?? 0) * TIME_SCALE[timeFilter]}
-                  filter={timeFilter}
-                  seed={sparkSeed}
+                  prices={goldHistory ?? null}
                   width={sparkWidth}
                   height={58}
                 />
