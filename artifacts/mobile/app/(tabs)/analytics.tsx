@@ -14,6 +14,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { Holding, MarketPrices } from '@/types';
+import { FinancialTools } from '@/components/FinancialTools';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -589,6 +590,34 @@ export default function AnalyticsScreen() {
   const liveGoldG = prices ? (prices.goldUsd * prices.usdToEgp) / 31.1035 : undefined;
   const liveSilverG = prices ? (prices.silverUsd * prices.usdToEgp) / 31.1035 : undefined;
 
+  // ── Market Intelligence data ──────────────────────────────────────────────────
+  const marketInsights = useMemo(() => {
+    type MI = { icon: keyof typeof Feather.glyphMap; color: string; text: string };
+    const items: MI[] = [];
+    if (!holdings.length) return items;
+    const metalVal = sm.goldV + sm.silverV;
+    const metalPct = sm.totalValue > 0 ? (metalVal / sm.totalValue) * 100 : 0;
+    if (metalPct > 0) items.push({ icon: 'shield', color: colors.primary, text: `Precious metals represent ${metalPct.toFixed(0)}% of your portfolio — a strong inflation hedge against EGP depreciation.` });
+    if (sm.goldV > 0 && sm.gain > 0) {
+      const goldContrib = sm.totalValue > 0 ? (sm.goldV / sm.totalValue) * 100 : 0;
+      items.push({ icon: 'award', color: colors.primary, text: `Gold is your largest contributor at ${goldContrib.toFixed(0)}% of total portfolio value.` });
+    }
+    if (sm.stockV > 0) {
+      const stockPct = sm.totalValue > 0 ? (sm.stockV / sm.totalValue) * 100 : 0;
+      items.push({ icon: 'bar-chart-2', color: '#4A9EFF', text: `EGX stocks make up ${stockPct.toFixed(0)}% of your portfolio. Consider monitoring market volatility.` });
+    }
+    if (sm.gainPct > 10) {
+      items.push({ icon: 'trending-up', color: colors.green, text: `Your portfolio is up ${sm.gainPct.toFixed(1)}% overall — significantly outpacing traditional savings rates.` });
+    } else if (sm.gainPct < -5) {
+      items.push({ icon: 'trending-down', color: colors.red, text: `Portfolio is down ${Math.abs(sm.gainPct).toFixed(1)}%. Dollar-cost averaging can reduce the impact of short-term volatility.` });
+    }
+    if (prices?.goldChangePercent && Math.abs(prices.goldChangePercent) > 0.5) {
+      const dir = prices.goldChangePercent > 0 ? 'up' : 'down';
+      items.push({ icon: 'zap', color: '#F59E0B', text: `Gold is ${dir} ${Math.abs(prices.goldChangePercent).toFixed(2)}% today — ${dir === 'up' ? 'your metals holdings are gaining.' : 'a potential buy opportunity.'}` });
+    }
+    return items.slice(0, 4);
+  }, [holdings, sm, prices, colors]);
+
   const sparkSeed = holdings.reduce((s, h) => s + h.id.charCodeAt(0), 1);
   const hasHoldings = holdings.length > 0;
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
@@ -743,6 +772,111 @@ export default function AnalyticsScreen() {
           )}
         </>
       )}
+
+      {/* ══ SECTION 2: Market Intelligence ══════════════════════════ */}
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      <View style={s.sectionHeader}>
+        <View style={[s.sectionIconWrap, { backgroundColor: '#4A9EFF18' }]}>
+          <Feather name="globe" size={15} color="#4A9EFF" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>Market Intelligence</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Live market data & portfolio signals</Text>
+        </View>
+        <LiveDot />
+      </View>
+
+      {/* Market Summary Cards */}
+      <View style={s.marketRow}>
+        {/* USD/EGP */}
+        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>USD / EGP</Text>
+          <Text style={[s.mktPrice, { color: colors.text }]}>
+            {prices?.usdToEgp ? prices.usdToEgp.toFixed(2) : '—'}
+          </Text>
+          <View style={[s.mktBadge, { backgroundColor: '#4A9EFF18' }]}>
+            <Text style={[s.mktBadgeTxt, { color: '#4A9EFF' }]}>LIVE RATE</Text>
+          </View>
+        </View>
+
+        {/* Gold 21K */}
+        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}>
+          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Gold 21K / g</Text>
+          <Text style={[s.mktPrice, { color: colors.primary }]}>
+            {prices ? Math.round(goldPricePerGram(prices, '21k')).toLocaleString('en-EG') : '—'}
+          </Text>
+          {prices?.goldChangePercent !== undefined && (
+            <View style={[s.mktBadge, { backgroundColor: prices.goldChangePercent >= 0 ? colors.green + '18' : colors.red + '18' }]}>
+              <Text style={[s.mktBadgeTxt, { color: prices.goldChangePercent >= 0 ? colors.green : colors.red }]}>
+                {prices.goldChangePercent >= 0 ? '+' : ''}{prices.goldChangePercent.toFixed(2)}%
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Silver */}
+        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Silver / g</Text>
+          <Text style={[s.mktPrice, { color: colors.silverColor }]}>
+            {prices ? Math.round(silverPricePerGram(prices)).toLocaleString('en-EG') : '—'}
+          </Text>
+          {prices?.silverChangePercent !== undefined && (
+            <View style={[s.mktBadge, { backgroundColor: prices.silverChangePercent >= 0 ? colors.green + '18' : colors.red + '18' }]}>
+              <Text style={[s.mktBadgeTxt, { color: prices.silverChangePercent >= 0 ? colors.green : colors.red }]}>
+                {prices.silverChangePercent >= 0 ? '+' : ''}{prices.silverChangePercent.toFixed(2)}%
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Gold karat breakdown strip */}
+      {prices && (
+        <View style={[s.karatStrip, { backgroundColor: colors.card, borderColor: colors.primary + '25' }]}>
+          <Text style={[s.karatStripLabel, { color: colors.mutedForeground }]}>GOLD PRICES (EGP/g)</Text>
+          <View style={s.karatRow}>
+            {(['24k', '22k', '21k', '18k'] as const).map(k => (
+              <View key={k} style={s.karatCol}>
+                <Text style={[s.karatVal, { color: colors.primary }]}>
+                  {Math.round(goldPricePerGram(prices, k)).toLocaleString('en-EG')}
+                </Text>
+                <Text style={[s.karatKey, { color: colors.mutedForeground }]}>{k.toUpperCase()}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Personalized Market Insights */}
+      {marketInsights.length > 0 && (
+        <View style={s.section}>
+          <SLabel icon="cpu" title="Personalized Insights" sub="Based on your portfolio" />
+          <View style={s.insightsList}>
+            {marketInsights.map((ins, i) => (
+              <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
+            ))}
+          </View>
+          <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
+            Insights are informational only — not financial advice.
+          </Text>
+        </View>
+      )}
+
+      {/* ══ SECTION 3: Financial Tools ════════════════════════════ */}
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      <View style={s.sectionHeader}>
+        <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
+          <Feather name="tool" size={15} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>Financial Tools</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Calculators & smart tools</Text>
+        </View>
+      </View>
+      <FinancialTools />
+      <Text style={[s.disclaimer, { color: colors.mutedForeground, textAlign: 'center' }]}>
+        All calculations use live market prices where available.
+      </Text>
     </ScrollView>
   );
 }
@@ -781,4 +915,27 @@ const s = StyleSheet.create({
   section: { gap: 14 },
   performersList: { gap: 4 },
   insightsList: { gap: 10 },
+
+  // Section dividers (between Portfolio / Market / Tools)
+  sectionDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: -20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sectionIconWrap: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
+  sectionSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+
+  // Market Intelligence cards
+  marketRow: { flexDirection: 'row', gap: 10 },
+  mktCard: { flex: 1, borderRadius: 18, borderWidth: 1, padding: 14, gap: 6, alignItems: 'center' },
+  mktLabel: { fontSize: 10, fontFamily: 'Inter_500Medium', letterSpacing: 0.3, textAlign: 'center' },
+  mktPrice: { fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.5, textAlign: 'center' },
+  mktBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  mktBadgeTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
+
+  // Karat strip
+  karatStrip: { borderRadius: 18, borderWidth: 1, padding: 14, gap: 10 },
+  karatStripLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 1.5 },
+  karatRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  karatCol: { alignItems: 'center', gap: 3 },
+  karatVal: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  karatKey: { fontSize: 10, fontFamily: 'Inter_500Medium' },
 });

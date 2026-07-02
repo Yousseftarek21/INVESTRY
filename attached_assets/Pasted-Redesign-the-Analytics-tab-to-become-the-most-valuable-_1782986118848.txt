@@ -1,0 +1,79 @@
+Redesign the Analytics tab to become the most valuable and intelligent section of Investry. The Analytics tab should not feel like a collection of charts; instead, it should act as a Financial Intelligence Center that helps users understand their investments, monitor performance, access financial tools, and generate meaningful reports.
+The design must follow the latest Apple Human Interface Guidelines (HIG), App Store Review Guidelines, Google Material Design 3, and Google Play Developer Policies. The experience should support Light Mode, Dark Mode, Dynamic Type, VoiceOver, RTL (Arabic), and smooth native animations.
+The Analytics tab should be divided into four clear sections.
+📊 Portfolio Analytics
+Display comprehensive portfolio performance including:
+Total Return
+Total Return %
+Today's Performance
+Monthly Performance
+Yearly Performance
+Lifetime Performance
+Interactive Portfolio Growth Chart
+Asset Allocation (Animated Donut Chart)
+Portfolio Diversification
+Portfolio Health Score
+Risk Overview
+Best Performing Investment
+Worst Performing Investment
+Largest Holding
+Monthly Performance Heatmap
+Investment Timeline
+Portfolio Milestones
+Charts should be interactive, smooth, and support multiple time ranges (1D, 1W, 1M, 3M, YTD, 1Y, ALL).
+📈 Market Intelligence
+Provide market insights relevant to the user's tracked assets.
+Include:
+Gold Market Summary
+Silver Market Summary
+EGX Market Summary
+EGX30 Performance
+USD/EGP Trend
+Inflation Overview
+Interest Rate Overview
+Market Correlation
+AI-generated Market Insights
+Personalized Portfolio Insights
+Examples:
+Gold generated 78% of your lifetime gains.
+Your portfolio outperformed EGX30 this year.
+Precious metals currently represent 82% of your holdings.
+Insights should always be informational and never financial advice.
+🧮 Financial Tools
+Create a dedicated Financial Tools section using modern cards or a responsive grid.
+Include:
+🕌 Smart Zakat Calculator
+🪙 Gold Value Calculator
+🥈 Silver Value Calculator
+💱 Currency Converter
+📈 ROI Calculator
+📊 Inflation Calculator
+📅 Investment Growth Calculator
+💰 Compound Growth Calculator
+⚖️ Gold Purity Converter (24K, 22K, 21K, 18K)
+📏 Gram ↔ Troy Ounce Converter
+Each calculator should open in a dedicated page or bottom sheet with a clean native interface.
+🕌 Smart Zakat Calculator
+The Zakat Calculator should automatically use the user's tracked investments instead of requiring manual entry.
+Automatically detect eligible assets from the portfolio such as:
+Gold
+Silver
+Cash
+Foreign Currency
+EGX Stocks (optional according to user preference)
+Investment Funds
+Other eligible investment assets
+Allow users to configure their preferred calculation methodology, including:
+Gold Nisab
+Silver Nisab
+Include or exclude stocks
+Include investment funds
+Deduct eligible short-term liabilities
+Save calculation preferences
+Display:
+Eligible Assets
+Total Zakatable Wealth
+Current Nisab Value
+Estimated Zakat Due (2.5%)
+Calculation Breakdown
+Include a disclaimer stating that calculations are estimates and may vary according to the user's circumstances and chosen scholarly opinion.
