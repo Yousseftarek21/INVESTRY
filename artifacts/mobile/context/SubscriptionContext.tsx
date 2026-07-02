@@ -83,7 +83,9 @@ function subscriptionKey(userId: string) {
 
 // In development builds all Pro+ features are unlocked automatically so the
 // developer never hits the paywall. In production this is always false.
-const DEV_UNLOCKED = __DEV__;
+// TEMPORARILY forced to false to test the real Stripe checkout/portal flow
+// from the dev preview. Restore to `__DEV__` afterwards.
+const DEV_UNLOCKED = false;
 
 interface PriceCatalogEntry {
   priceId: string;
