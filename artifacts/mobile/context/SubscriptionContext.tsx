@@ -77,6 +77,16 @@ export interface SubscriptionContextValue {
   isSubscribed: boolean;
   isPro: boolean;
   isProPlus: boolean;
+  /**
+   * Single source of truth for "Launch Access" mode. Sourced from the
+   * backend (`GET /api/subscription`), which itself reads one env flag
+   * (`FREE_ACCESS_PLAN`). All UI that needs to know whether purchases are
+   * currently disabled (paywalls, upgrade buttons, manage-subscription
+   * entry points) must read this flag from here — never re-derive it from
+   * `plan` or duplicate the check elsewhere. Flipping the backend flag off
+   * restores real Stripe/IAP purchase flows everywhere with no UI changes.
+   */
+  launchAccess: boolean;
   isLoading: boolean;
   isPurchasing: boolean;
   isRestoring: boolean;
@@ -144,6 +154,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const { userId, getToken } = useAuth();
   const [plan, setPlan] = useState<Plan>('free');
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const [launchAccess, setLaunchAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -153,13 +164,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     await AsyncStorage.setItem(subscriptionKey(uid), JSON.stringify({ plan: p, billingPeriod: bp }));
   }, []);
 
-  const fetchSubscription = useCallback(async (uid: string): Promise<{ plan: Plan; billingPeriod: BillingPeriod } | null> => {
+  const fetchSubscription = useCallback(async (uid: string): Promise<{ plan: Plan; billingPeriod: BillingPeriod; launchAccess: boolean } | null> => {
     const token = await getToken();
     if (!token) return null;
     const res = await apiFetch('/api/subscription', token);
     if (!res.ok) throw new Error(`GET /api/subscription failed: ${res.status}`);
-    const data = (await res.json()) as { plan: Plan; billingPeriod: BillingPeriod };
-    return data;
+    const data = (await res.json()) as { plan: Plan; billingPeriod: BillingPeriod; launchAccess?: boolean };
+    return { plan: data.plan, billingPeriod: data.billingPeriod, launchAccess: data.launchAccess ?? false };
   }, [getToken]);
 
   // ── React to userId changes (sign-in, sign-out, account switch) ───────────
@@ -168,6 +179,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       const prevUserId = loadedUserRef.current;
       setPlan('free');
       setBillingPeriod('monthly');
+      setLaunchAccess(false);
       setIsLoading(false);
       loadedUserRef.current = null;
 
@@ -218,6 +230,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         const resolvedPeriod = data?.billingPeriod ?? 'monthly';
         setPlan(resolvedPlan);
         setBillingPeriod(resolvedPeriod);
+        setLaunchAccess(data?.launchAccess ?? false);
         cachePlan(capturedUserId, resolvedPlan, resolvedPeriod).catch(() => null);
       })
       .catch(() => {
@@ -255,6 +268,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setPlan(targetPlan);
       setBillingPeriod(period);
       await cachePlan(userId, targetPlan, period);
+      return;
+    }
+
+    if (launchAccess) {
+      // Launch Access is on — everyone already has Pro+, purchase UI is
+      // replaced with a non-clickable badge, but guard here too in case
+      // anything still calls this directly.
       return;
     }
 
@@ -300,10 +320,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     } finally {
       setIsPurchasing(false);
     }
-  }, [userId, getToken, getPriceId, fetchSubscription, cachePlan]);
+  }, [userId, getToken, getPriceId, fetchSubscription, cachePlan, launchAccess]);
 
   const manageSubscription = useCallback(async (webPopup?: Window | null) => {
-    if (!userId || DEV_UNLOCKED) return;
+    if (!userId || DEV_UNLOCKED || launchAccess) return;
     const token = await getToken();
     if (!token) throw new Error('Not signed in');
 
@@ -324,7 +344,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setBillingPeriod(data.billingPeriod);
       await cachePlan(userId, data.plan, data.billingPeriod);
     }
-  }, [userId, getToken, fetchSubscription, cachePlan]);
+  }, [userId, getToken, fetchSubscription, cachePlan, launchAccess]);
 
   const restore = useCallback(async () => {
     if (!userId) return;
@@ -359,6 +379,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       plan, billingPeriod,
       isSubscribed: isPro,
       isPro, isProPlus,
+      launchAccess,
       isLoading, isPurchasing, isRestoring,
       offerings: OFFERINGS,
       purchase, restore, manageSubscription, showPaywall, _devSetPlan,

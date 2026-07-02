@@ -20,6 +20,7 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
 import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
+import { LaunchBadge } from '@/components/LaunchAccess';
 
 const APP_VERSION = '1.0.0';
 const BUILD = '100';
@@ -565,7 +566,7 @@ export default function SettingsScreen() {
   const haptic  = useHaptic();
   const { signOut } = useClerk();
   const { user } = useUser();
-  const { plan, isPro, isProPlus, showPaywall, manageSubscription } = useSubscription();
+  const { plan, isPro, isProPlus, launchAccess, showPaywall, manageSubscription } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, notifications,
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setNotification,
@@ -695,6 +696,23 @@ export default function SettingsScreen() {
             </View>
             <Feather name="chevron-right" size={16} color="#000" />
           </Pressable>
+        ) : launchAccess ? (
+          <View
+            style={[sc.proBanner, { backgroundColor: colors.card, borderColor: isProPlus ? '#A47FCA40' : '#D4AC0D40' }]}
+          >
+            <View style={[sc.proBannerIcon, { backgroundColor: isProPlus ? '#A47FCA18' : '#D4AC0D18' }]}>
+              <Feather name="star" size={18} color={isProPlus ? '#A47FCA' : '#D4AC0D'} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[sc.proBannerTitle, { color: colors.text }]}>
+                {isProPlus ? 'Investry Pro+' : 'Investry Pro'}
+              </Text>
+              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>
+                {isProPlus ? 'All features unlocked' : 'Analytics & tools unlocked'}
+              </Text>
+            </View>
+            <LaunchBadge accent={isProPlus ? '#A47FCA' : '#D4AC0D'} style={sc.launchTag} />
+          </View>
         ) : (
           <Pressable
             onPress={() => {
@@ -954,4 +972,5 @@ const sc = StyleSheet.create({
   proBannerSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   activeTag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
   activeTagTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  launchTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
 });

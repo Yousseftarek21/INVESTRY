@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useSubscription, openWebPopup, BillingPeriod } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
+import { LaunchBadge, LaunchBanner } from '@/components/LaunchAccess';
 
 // ─── Confirm modal ─────────────────────────────────────────────────────────────
 
@@ -190,7 +191,7 @@ interface SubscriptionScreenProps {
 
 export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: SubscriptionScreenProps) {
   const insets = useSafeAreaInsets();
-  const { offerings, purchase, restore, isPurchasing, isRestoring } = useSubscription();
+  const { offerings, purchase, restore, isPurchasing, isRestoring, launchAccess } = useSubscription();
   const t = useT();
 
   const PRO_FEATURES = [
@@ -282,6 +283,8 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
           bounces={false}
           contentContainerStyle={sw.scroll}
         >
+          {launchAccess && <LaunchBanner />}
+
           {/* ── Hero ────────────────────────────────────────── */}
           <View style={sw.hero}>
             <View style={sw.glow3} />
@@ -340,32 +343,40 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
           </View>
 
           {/* ── CTA ─────────────────────────────────────────── */}
-          <Pressable
-            onPress={() => setShowConfirm(true)}
-            disabled={isPurchasing}
-            style={({ pressed }) => [sw.cta, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
-          >
-            {isPurchasing ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <View style={sw.ctaRow}>
-                <View>
-                  <Text style={sw.ctaTop}>{t.subContinueWith} {selectedPlan === 'pro' ? 'Pro' : 'Pro+'}</Text>
-                  <Text style={sw.ctaBottom}>{currentPrice}</Text>
+          {launchAccess ? (
+            <LaunchBadge accent={accent} style={sw.cta} />
+          ) : (
+            <Pressable
+              onPress={() => setShowConfirm(true)}
+              disabled={isPurchasing}
+              style={({ pressed }) => [sw.cta, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
+            >
+              {isPurchasing ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <View style={sw.ctaRow}>
+                  <View>
+                    <Text style={sw.ctaTop}>{t.subContinueWith} {selectedPlan === 'pro' ? 'Pro' : 'Pro+'}</Text>
+                    <Text style={sw.ctaBottom}>{currentPrice}</Text>
+                  </View>
+                  <View style={sw.ctaArrow}>
+                    <Feather name="arrow-right" size={17} color="#000" />
+                  </View>
                 </View>
-                <View style={sw.ctaArrow}>
-                  <Feather name="arrow-right" size={17} color="#000" />
-                </View>
-              </View>
-            )}
-          </Pressable>
+              )}
+            </Pressable>
+          )}
 
           {/* ── Footer ──────────────────────────────────────── */}
           <View style={sw.footer}>
-            <Pressable onPress={() => restore()} disabled={isRestoring}>
-              <Text style={sw.footerTxt}>{isRestoring ? t.subRestoring : t.subRestorePurchases}</Text>
-            </Pressable>
-            <View style={sw.dot} />
+            {!launchAccess && (
+              <>
+                <Pressable onPress={() => restore()} disabled={isRestoring}>
+                  <Text style={sw.footerTxt}>{isRestoring ? t.subRestoring : t.subRestorePurchases}</Text>
+                </Pressable>
+                <View style={sw.dot} />
+              </>
+            )}
             <Pressable onPress={() => Linking.openURL('https://investry.app/terms')}>
               <Text style={sw.footerTxt}>{t.subTerms}</Text>
             </Pressable>

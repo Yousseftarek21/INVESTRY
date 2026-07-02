@@ -39,6 +39,11 @@ Egypt's first investment tracking mobile app (Expo / React Native). Slogan: "Kno
 - **Theme & language in context**: `AppSettingsContext` persists user preferences in AsyncStorage. `useColors()` reads the resolved theme. `useT()` returns the active language's translation object.
 - **Single translation object**: `i18n/index.ts` exports `translations.en` and `translations.ar`. Adding a new string requires updating both. TypeScript ensures parity via `typeof en`.
 - **No RTL layout flip**: Arabic mode changes text strings only. Full RTL layout (via `I18nManager.forceRTL`) would need an app restart and is not implemented yet.
+- **Launch Access mode (Stripe payments disabled)**: The app currently runs in a "launch" mode where every signed-in user gets free Pro+ access and no real payment is ever collected — Stripe checkout, EGX subscription upgrades, and Apple IAP are all fully wired but dormant behind a single server-side flag. This is not backed by Firebase (this stack has no Firebase); it reuses the existing Postgres/Express backend and an env var instead.
+  - Server: `FREE_ACCESS_PLAN` env var on `artifacts/api-server` (`pro` or `pro_plus`) makes `GET /api/subscription` return that plan plus `launchAccess: true` for every authenticated user, bypassing Stripe lookups entirely.
+  - Client: `SubscriptionContext` exposes a single `launchAccess: boolean` used everywhere premium status is checked (`isPro`/`isProPlus`/`plan` already flow from the same source, so `PremiumGate` and holdings-limit checks need no changes). `purchase()`/`manageSubscription()` no-op when `launchAccess` is true as a defensive guard.
+  - UI: `components/LaunchAccess.tsx` exports `LaunchBadge` (non-clickable "Included During Launch" pill) and `LaunchBanner` (pricing-screen launch banner). Pricing plan cards and copy are untouched; only the CTA button/manage-subscription controls are swapped for the badge when `launchAccess` is true.
+  - **To re-enable real payments later**: unset (or change) `FREE_ACCESS_PLAN` on the API server. No client code changes are needed — the app will automatically fall back to the real Stripe/IAP purchase flow since that code path was never removed, only bypassed.
 
 ## Product
 
