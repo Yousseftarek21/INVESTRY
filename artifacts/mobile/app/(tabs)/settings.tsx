@@ -609,10 +609,6 @@ export default function SettingsScreen() {
 
         {/* ── ACCOUNT & SECURITY ─────────────────────────── */}
         <Sect label="ACCOUNT & SECURITY">
-          <NavRow icon="user"    iconBg="#3B82F6" label="Profile"
-            sublabel={email || 'No email linked'}
-            badge={verified ? { text: 'Verified', color: colors.green } : { text: 'Pending', color: colors.red }}
-            onPress={() => showModal('Profile', `Full name: ${fullName}\nEmail: ${email}\nVerification: ${verified ? 'Email verified ✓' : 'Email not yet verified'}`)} />
           <NavRow icon="lock"    iconBg="#1D4ED8" label="Change Password"    onPress={() => showModal('Change Password', 'To change your password, sign out and use "Forgot Password" on the sign-in screen. Password management is handled securely by Clerk authentication.')} />
           <NavRow icon="eye"     iconBg="#047857" label="Face ID / Biometrics" value="Off"
             onPress={() => showModal('Biometrics', 'Biometric app lock coming soon. Configure face or fingerprint unlock to protect your portfolio without re-entering your password.')} />
