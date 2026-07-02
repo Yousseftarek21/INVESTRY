@@ -467,7 +467,7 @@ function EmptyState() {
       </View>
       <Text style={[em.title, { color: colors.text }]}>No analytics yet</Text>
       <Text style={[em.sub, { color: colors.mutedForeground }]}>
-        Add investments in the Holdings tab and your portfolio analytics will appear here.
+        Add investments in the Investments tab and your portfolio analytics will appear here.
       </Text>
     </View>
   );
@@ -582,7 +582,7 @@ export default function AnalyticsScreen() {
       items.push({ icon: 'shield', color: '#A47FCA', text: 'Gold & silver hedge against EGP inflation. A 10–20% metals allocation is a common strategy.' });
     }
     if ((prices?.goldChangePercent ?? 0) > 1) {
-      items.push({ icon: 'award', color: colors.primary, text: `Gold up ${prices?.goldChangePercent.toFixed(2)}% today — your metals holdings are appreciating.` });
+      items.push({ icon: 'award', color: colors.primary, text: `Gold up ${prices?.goldChangePercent.toFixed(2)}% today — your metals investments are appreciating.` });
     }
     return items.slice(0, 4);
   }, [holdings, performers, typeCount, sm, prices, colors]);
@@ -614,7 +614,7 @@ export default function AnalyticsScreen() {
     }
     if (prices?.goldChangePercent && Math.abs(prices.goldChangePercent) > 0.5) {
       const dir = prices.goldChangePercent > 0 ? 'up' : 'down';
-      items.push({ icon: 'zap', color: '#F59E0B', text: `Gold is ${dir} ${Math.abs(prices.goldChangePercent).toFixed(2)}% today — ${dir === 'up' ? 'your metals holdings are gaining.' : 'a potential buy opportunity.'}` });
+      items.push({ icon: 'zap', color: '#F59E0B', text: `Gold is ${dir} ${Math.abs(prices.goldChangePercent).toFixed(2)}% today — ${dir === 'up' ? 'your metals investments are gaining.' : 'a potential buy opportunity.'}` });
     }
     return items.slice(0, 4);
   }, [holdings, sm, prices, colors]);
@@ -831,7 +831,7 @@ export default function AnalyticsScreen() {
             {/* ── Performers ───────────────────────────────────────────── */}
             {performers.length > 0 && (
               <View style={s.section}>
-                <SLabel icon="award" title="Performers" sub={`${performers.length} holdings`} />
+                <SLabel icon="award" title="Performers" sub={`${performers.length} investments`} />
                 <View style={s.performersList}>
                   {performers.slice(0, 5).map((p, i) => (
                     <PodiumRow

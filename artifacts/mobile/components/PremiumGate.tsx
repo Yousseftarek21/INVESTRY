@@ -75,7 +75,7 @@ export function PremiumGate({ requiredPlan, feature, description, children }: Pr
           </Pressable>
 
           <Text style={[g.unlockHint, { color: accent + '80' }]}>
-            {requiredPlan === 'pro' ? 'From 1,999 EGP/year' : 'From 3,999 EGP/year'}
+            {requiredPlan === 'pro' ? 'From 399.99 EGP/year' : 'From 559.99 EGP/year'}
           </Text>
         </View>
       </View>

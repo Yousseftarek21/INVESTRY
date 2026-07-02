@@ -10,7 +10,7 @@ import { useSubscription, BillingPeriod } from '@/context/SubscriptionContext';
 // ─── Feature lists ─────────────────────────────────────────────────────────────
 
 const PRO_FEATURES = [
-  { icon: 'layers',      label: 'Unlimited holdings'           },
+  { icon: 'layers',      label: 'Unlimited investments'        },
   { icon: 'tool',        label: 'All 8 financial calculators'  },
   { icon: 'globe',       label: 'Market Intelligence'          },
   { icon: 'bar-chart-2', label: 'Portfolio Analytics'          },

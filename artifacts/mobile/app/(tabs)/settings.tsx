@@ -298,7 +298,7 @@ function ProfileHero({
             )}
             <View style={[ph.tag, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '38' }]}>
               <Feather name="briefcase" size={9} color={colors.primary} />
-              <Text style={[ph.tagTxt, { color: colors.primary }]}>{holdingsCount} Holdings</Text>
+              <Text style={[ph.tagTxt, { color: colors.primary }]}>{holdingsCount} Investments</Text>
             </View>
           </View>
         </View>
@@ -668,7 +668,7 @@ export default function SettingsScreen() {
             initials={initials} fullName={fullName} email={email}
             verified={verified} holdingsCount={holdings.length}
             onPress={() => showModal('Account Details',
-              `Name: ${fullName}\nEmail: ${email}\nVerified: ${verified ? 'Yes ✓' : 'Pending'}\n\nHoldings: ${holdings.length} investment${holdings.length !== 1 ? 's' : ''}\nStorage: Locally on your device only\n\nFor account changes, sign out and sign in with updated credentials.`
+              `Name: ${fullName}\nEmail: ${email}\nVerified: ${verified ? 'Yes ✓' : 'Pending'}\n\nInvestments: ${holdings.length} investment${holdings.length !== 1 ? 's' : ''}\nStorage: Locally on your device only\n\nFor account changes, sign out and sign in with updated credentials.`
             )}
           />
         )}
@@ -690,7 +690,7 @@ export default function SettingsScreen() {
                     <Text style={sc.proBadgeTxt}>FREE</Text>
                   </View>
                 </View>
-                <Text style={sc.upgradeSub}>Unlock analytics, all tools & unlimited holdings</Text>
+                <Text style={sc.upgradeSub}>Unlock analytics, all tools & unlimited investments</Text>
               </View>
             </View>
             <Feather name="chevron-right" size={16} color="#000" />
@@ -720,7 +720,7 @@ export default function SettingsScreen() {
           <NavRow icon="eye"     iconBg="#047857" label="Face ID / Biometrics" value="Off"
             onPress={() => showModal('Biometrics', 'Biometric app lock coming soon. Configure face or fingerprint unlock to protect your portfolio without re-entering your password.')} />
           <NavRow icon="link"    iconBg="#6366F1" label="Connected Accounts" value="Coming Soon"
-            onPress={() => showModal('Connected Accounts', 'Link bank accounts, brokerage accounts, and other financial services to automatically import holdings. Coming in a future update.')} last />
+            onPress={() => showModal('Connected Accounts', 'Link bank accounts, brokerage accounts, and other financial services to automatically import investments. Coming in a future update.')} last />
         </Sect>
 
         {/* ── APPEARANCE ───────────────────────────────────── */}
@@ -838,7 +838,7 @@ export default function SettingsScreen() {
           <ToggleRow icon="zap"          iconBg="#FBBF24" label="Haptic Feedback"   sublabel="Vibration on interactions"               value={hapticsEnabled}   onChange={v => setHapticsEnabled(v)} />
           <NavRow icon="shield"   iconBg="#047857" label="Privacy Settings"  sublabel="Device-level permissions" onPress={() => Linking.openSettings()} />
           <NavRow icon="download" iconBg="#0EA5E9" label="Export My Data"
-            sublabel={`${holdings.length} holding${holdings.length !== 1 ? 's' : ''} ready`}
+            sublabel={`${holdings.length} investment${holdings.length !== 1 ? 's' : ''} ready`}
             onPress={() => showModal('Export My Data', `You have ${holdings.length} investment${holdings.length !== 1 ? 's' : ''} saved.\n\nFull CSV/JSON export is coming soon in a future update.`)} />
           <NavRow icon="trash-2"  iconBg={colors.red} label="Delete All Data" sublabel="Permanently remove all investments" onPress={handleDeleteAll} destructive last />
         </Sect>
@@ -857,7 +857,7 @@ export default function SettingsScreen() {
         {/* ── LEGAL ────────────────────────────────────────── */}
         <Sect label="LEGAL">
           <NavRow icon="file-text"    iconBg="#374151" label="Terms of Service" onPress={() =>
-            showModal('Terms of Service', 'Last updated: July 2025\n\nINVSTRY is provided for informational purposes only. Nothing in this app constitutes financial advice, investment advice, or a recommendation to buy or sell any asset.\n\nAll investment data is sourced from third-party providers and may not be 100% accurate or up to date. Past performance does not guarantee future results.\n\nYou agree to use this app at your own risk. We are not liable for any financial decisions made based on information displayed in this app.\n\nAll holdings data is stored locally on your device and is never transmitted to our servers.')} />
+            showModal('Terms of Service', 'Last updated: July 2025\n\nINVSTRY is provided for informational purposes only. Nothing in this app constitutes financial advice, investment advice, or a recommendation to buy or sell any asset.\n\nAll investment data is sourced from third-party providers and may not be 100% accurate or up to date. Past performance does not guarantee future results.\n\nYou agree to use this app at your own risk. We are not liable for any financial decisions made based on information displayed in this app.\n\nAll investment data is stored locally on your device and is never transmitted to our servers.')} />
           <NavRow icon="lock"         iconBg="#4B5563" label="Privacy Policy"   onPress={() =>
             showModal('Privacy Policy', 'Last updated: July 2025\n\nINVSTRY does not collect or store any personal data on external servers. All portfolio data is stored locally on your device using AsyncStorage.\n\nThird-Party Services\nWe fetch live market prices from:\n• api.gold-api.com\n• Yahoo Finance\n• open.er-api.com\n\nAnalytics (optional): Anonymized usage data only. No personally identifiable information is collected.\n\nContact: privacy@invstry.app')} />
           <NavRow icon="alert-circle" iconBg="#7C3AED" label="Regulatory Disclaimer" onPress={() =>
