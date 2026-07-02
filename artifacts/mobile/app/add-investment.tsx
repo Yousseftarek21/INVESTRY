@@ -12,11 +12,27 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { GoldKarat, Holding, MetalForm, PropertyType } from '@/types';
+import { GoldKarat, Holding, MetalForm, PersonalAssetCategory, PersonalAssetCurrency, PropertyType } from '@/types';
 
 const FREE_LIMIT = 5;
 
-type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate';
+type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset';
+
+const PERSONAL_ASSET_CATEGORIES: { key: PersonalAssetCategory; icon: keyof typeof Feather.glyphMap }[] = [
+  { key: 'watches', icon: 'watch' },
+  { key: 'jewelry', icon: 'gift' },
+  { key: 'artwork', icon: 'image' },
+  { key: 'collectibles', icon: 'archive' },
+  { key: 'luxury', icon: 'star' },
+  { key: 'electronics', icon: 'monitor' },
+  { key: 'furniture', icon: 'home' },
+  { key: 'instruments', icon: 'music' },
+  { key: 'other', icon: 'package' },
+];
+
+const PERSONAL_ASSET_ICONS: (keyof typeof Feather.glyphMap)[] = [
+  'watch', 'gift', 'image', 'archive', 'star', 'monitor', 'home', 'music', 'package', 'briefcase',
+];
 
 // ─── All major EGX listed stocks (deduplicated by symbol) ─────────────────────
 const EGX_SYMBOLS_RAW = [
@@ -278,6 +294,12 @@ export default function AddInvestmentScreen() {
   const [purchasePrice, setPurchasePrice] = useState('');
   const [currentValue, setCurrentValue] = useState('');
   const [notes, setNotes] = useState('');
+  const [assetName, setAssetName] = useState('');
+  const [assetCategory, setAssetCategory] = useState<PersonalAssetCategory>('watches');
+  const [assetIcon, setAssetIcon] = useState<string>('watch');
+  const [assetCurrency, setAssetCurrency] = useState<PersonalAssetCurrency>('EGP');
+  const [assetPurchaseDate, setAssetPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [assetIconTouched, setAssetIconTouched] = useState(false);
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -304,8 +326,24 @@ export default function AddInvestmentScreen() {
       setLocation(editingHolding.location);
       setPurchasePrice(String(editingHolding.purchasePrice));
       setCurrentValue(String(editingHolding.currentValue));
+    } else if (editingHolding.type === 'personal_asset') {
+      setAssetName(editingHolding.name);
+      setAssetCategory(editingHolding.category);
+      setAssetIcon(editingHolding.icon);
+      setAssetIconTouched(true);
+      setPurchasePrice(String(editingHolding.purchasePrice));
+      setCurrentValue(String(editingHolding.currentValue));
+      setAssetCurrency(editingHolding.currency);
+      setAssetPurchaseDate(editingHolding.purchaseDate);
     }
   }, [holdingId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-pick a default icon for the selected category until the user overrides it
+  useEffect(() => {
+    if (assetIconTouched) return;
+    const match = PERSONAL_ASSET_CATEGORIES.find(c => c.key === assetCategory);
+    if (match) setAssetIcon(match.icon);
+  }, [assetCategory, assetIconTouched]);
 
   const inputStyle = [styles.input, { backgroundColor: colors.cardSecondary, borderColor: colors.border, color: colors.text }];
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
@@ -317,7 +355,20 @@ export default function AddInvestmentScreen() {
     { key: 'silver', label: t.silver, icon: 'circle', color: colors.silverColor },
     { key: 'stock', label: t.egxStock, icon: 'bar-chart-2', color: '#4A9EFF' },
     { key: 'real_estate', label: t.realEstate, icon: 'home', color: '#A47FCA' },
+    { key: 'personal_asset', label: t.personalAsset, icon: 'star', color: '#E08E45' },
   ];
+
+  const CATEGORY_LABELS: Record<PersonalAssetCategory, string> = {
+    watches: t.catWatches,
+    jewelry: t.catJewelry,
+    artwork: t.catArtwork,
+    collectibles: t.catCollectibles,
+    luxury: t.catLuxury,
+    electronics: t.catElectronics,
+    furniture: t.catFurniture,
+    instruments: t.catInstruments,
+    other: t.catOther,
+  };
 
   const Chip = ({ value, selected, onPress, label }: { value: string; selected: boolean; onPress: () => void; label?: string }) => (
     <TouchableOpacity
@@ -368,6 +419,16 @@ export default function AddInvestmentScreen() {
     } else if (type === 'real_estate') {
       if (!purchasePrice || !currentValue) { Alert.alert(t.missingFields, t.enterPrices); return; }
       holding = { id, type: 'real_estate', propertyType, location, purchasePrice: parseFloat(purchasePrice), currentValue: parseFloat(currentValue), purchaseDate: today, notes };
+    } else if (type === 'personal_asset') {
+      if (!assetName.trim() || !purchasePrice) { Alert.alert(t.missingFields, t.enterAssetDetails); return; }
+      const parsedPurchasePrice = parseFloat(purchasePrice);
+      const parsedCurrentValue = currentValue ? parseFloat(currentValue) : parsedPurchasePrice;
+      holding = {
+        id, type: 'personal_asset',
+        name: assetName.trim(), category: assetCategory, icon: assetIcon,
+        purchasePrice: parsedPurchasePrice, currentValue: parsedCurrentValue,
+        currency: assetCurrency, purchaseDate: assetPurchaseDate || today, notes,
+      };
     }
 
     if (!holding) return;
@@ -572,6 +633,68 @@ export default function AddInvestmentScreen() {
             </View>
           </>)}
 
+          {/* Personal Asset */}
+          {type === 'personal_asset' && (<>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.assetName}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. Rolex Submariner" placeholderTextColor={colors.mutedForeground}
+                value={assetName} onChangeText={setAssetName} />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.category}</Text>
+              <View style={styles.chips}>
+                {PERSONAL_ASSET_CATEGORIES.map(c => (
+                  <Chip key={c.key} value={c.key} selected={assetCategory === c.key}
+                    onPress={() => setAssetCategory(c.key)} label={CATEGORY_LABELS[c.key]} />
+                ))}
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.icon}</Text>
+              <View style={styles.chips}>
+                {PERSONAL_ASSET_ICONS.map(ic => {
+                  const isActive = assetIcon === ic;
+                  return (
+                    <TouchableOpacity
+                      key={ic}
+                      style={[styles.iconOption, {
+                        backgroundColor: isActive ? colors.primary : colors.muted,
+                        borderColor: isActive ? colors.primary : colors.border,
+                      }]}
+                      onPress={() => { setAssetIcon(ic); setAssetIconTouched(true); }}
+                    >
+                      <Feather name={ic} size={17} color={isActive ? colors.primaryForeground : colors.text} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.purchasePrice}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 250000" placeholderTextColor={colors.mutedForeground}
+                value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.currentEstimatedValue}</Text>
+              <TextInput style={inputStyle} placeholder="Defaults to purchase price if left blank"
+                placeholderTextColor={colors.mutedForeground}
+                value={currentValue} onChangeText={setCurrentValue} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.assetCurrency}</Text>
+              <View style={styles.chips}>
+                {(['EGP', 'USD'] as PersonalAssetCurrency[]).map(c => (
+                  <Chip key={c} value={c} selected={assetCurrency === c} onPress={() => setAssetCurrency(c)} />
+                ))}
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.purchaseDate}</Text>
+              <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
+                value={assetPurchaseDate} onChangeText={setAssetPurchaseDate} />
+            </View>
+          </>)}
+
           {/* Notes */}
           <View style={styles.section}>
             <Text style={labelStyle}>{t.notes}</Text>
@@ -614,6 +737,7 @@ const styles = StyleSheet.create({
   typeLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  iconOption: { width: 40, height: 40, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
   notesInput: { minHeight: 80, textAlignVertical: 'top' },

@@ -20,20 +20,33 @@ import { Holding, MarketPrices } from '@/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function personalAssetValueEGP(h: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
+  const v = h.currentValue ?? h.purchasePrice;
+  if (h.currency === 'USD' && prices) return v * prices.usdToEgp;
+  return v;
+}
+
+function personalAssetCostEGP(h: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
+  if (h.currency === 'USD' && prices) return h.purchasePrice * prices.usdToEgp;
+  return h.purchasePrice;
+}
+
 function computeValue(h: Holding, prices?: MarketPrices): number {
   if (!prices) return 0;
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
   if (h.type === 'real_estate') return h.currentValue;
+  if (h.type === 'personal_asset') return personalAssetValueEGP(h, prices);
   return 0;
 }
 
-function computeCost(h: Holding): number {
+function computeCost(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'gold') return h.grams * h.purchasePricePerGram;
   if (h.type === 'silver') return h.grams * h.purchasePricePerGram;
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
   if (h.type === 'real_estate') return h.purchasePrice;
+  if (h.type === 'personal_asset') return personalAssetCostEGP(h, prices);
   return 0;
 }
 
@@ -315,13 +328,13 @@ export default function HomeScreen() {
 
   // ── Portfolio maths ────────────────────────────────────────────────────────
   const summary = useMemo(() => {
-    let goldV = 0, silverV = 0, stockV = 0, reV = 0, totalCost = 0;
+    let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, totalCost = 0;
     let todayGold = 0, todaySilver = 0;
-    let goldGrams = 0, silverGrams = 0, stockCount = 0, reCount = 0;
+    let goldGrams = 0, silverGrams = 0, stockCount = 0, reCount = 0, paCount = 0;
 
     for (const h of holdings) {
       const v = computeValue(h, prices);
-      const c = computeCost(h);
+      const c = computeCost(h, prices);
       totalCost += c;
       if (h.type === 'gold') {
         goldV += v; goldGrams += h.grams;
@@ -331,12 +344,14 @@ export default function HomeScreen() {
         todaySilver += v * ((prices?.silverChangePercent ?? 0) / 100);
       } else if (h.type === 'stock') {
         stockV += v; stockCount++;
+      } else if (h.type === 'personal_asset') {
+        paV += v; paCount++;
       } else {
         reV += v; reCount++;
       }
     }
 
-    const totalValue = goldV + silverV + stockV + reV;
+    const totalValue = goldV + silverV + stockV + reV + paV;
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
     const todayGain = todayGold + todaySilver;
@@ -344,8 +359,8 @@ export default function HomeScreen() {
 
     return {
       totalValue, totalCost, gain, gainPct, todayGain, todayPct,
-      goldV, silverV, stockV, reV,
-      goldGrams, silverGrams, stockCount, reCount,
+      goldV, silverV, stockV, reV, paV,
+      goldGrams, silverGrams, stockCount, reCount, paCount,
     };
   }, [holdings, prices]);
 
@@ -551,6 +566,10 @@ export default function HomeScreen() {
                 {
                   label: t.realEstate, value: summary.reV,  color: '#A47FCA',
                   icon: 'home',      quantity: summary.reCount > 0 ? `${summary.reCount} propert${summary.reCount !== 1 ? 'ies' : 'y'}` : undefined,
+                },
+                {
+                  label: t.personalAsset, value: summary.paV, color: '#E08E45',
+                  icon: 'star',      quantity: summary.paCount > 0 ? `${summary.paCount} asset${summary.paCount !== 1 ? 's' : ''}` : undefined,
                 },
               ]}
             />

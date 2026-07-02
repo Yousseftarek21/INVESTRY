@@ -19,19 +19,30 @@ import { PremiumGate } from '@/components/PremiumGate';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function personalAssetValueEGP(h: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
+  const v = h.currentValue ?? h.purchasePrice;
+  if (h.currency === 'USD' && prices) return v * prices.usdToEgp;
+  return v;
+}
+function personalAssetCostEGP(h: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
+  if (h.currency === 'USD' && prices) return h.purchasePrice * prices.usdToEgp;
+  return h.purchasePrice;
+}
 function computeValue(h: Holding, prices?: MarketPrices): number {
   if (!prices) return 0;
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
   if (h.type === 'real_estate') return h.currentValue;
+  if (h.type === 'personal_asset') return personalAssetValueEGP(h, prices);
   return 0;
 }
-function computeCost(h: Holding): number {
+function computeCost(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'gold') return h.grams * h.purchasePricePerGram;
   if (h.type === 'silver') return h.grams * h.purchasePricePerGram;
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
   if (h.type === 'real_estate') return h.purchasePrice;
+  if (h.type === 'personal_asset') return personalAssetCostEGP(h, prices);
   return 0;
 }
 function holdingLabel(h: Holding): string {
@@ -39,6 +50,7 @@ function holdingLabel(h: Holding): string {
   if (h.type === 'silver') return 'Silver';
   if (h.type === 'stock') return h.symbol;
   if (h.type === 'real_estate') return h.location || 'Real Estate';
+  if (h.type === 'personal_asset') return h.name;
   return '–';
 }
 function fmtEGP(n: number): string {
@@ -493,19 +505,20 @@ export default function AnalyticsScreen() {
 
   // ── Maths ─────────────────────────────────────────────────────────────────────
   const sm = useMemo(() => {
-    let goldV = 0, silverV = 0, stockV = 0, reV = 0, totalCost = 0;
+    let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, totalCost = 0;
     let goldCost = 0, silverCost = 0;
     let totalGoldGrams = 0, totalSilverGrams = 0;
     for (const h of holdings) {
       const v = computeValue(h, prices);
-      const c = computeCost(h);
+      const c = computeCost(h, prices);
       totalCost += c;
       if (h.type === 'gold') { goldV += v; goldCost += c; totalGoldGrams += h.grams; }
       else if (h.type === 'silver') { silverV += v; silverCost += c; totalSilverGrams += h.grams; }
       else if (h.type === 'stock') { stockV += v; }
+      else if (h.type === 'personal_asset') { paV += v; }
       else { reV += v; }
     }
-    const totalValue = goldV + silverV + stockV + reV;
+    const totalValue = goldV + silverV + stockV + reV + paV;
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
     const goldGainPct = goldCost > 0 ? ((goldV - goldCost) / goldCost) * 100 : 0;
@@ -515,7 +528,7 @@ export default function AnalyticsScreen() {
     const metalPct = totalValue > 0 ? (goldV + silverV) / totalValue : 0;
     return {
       totalValue, totalCost, gain, gainPct,
-      goldV, silverV, stockV, reV,
+      goldV, silverV, stockV, reV, paV,
       goldCost, silverCost, goldGainPct, silverGainPct,
       totalGoldGrams, totalSilverGrams, goldAvgBuy, silverAvgBuy,
       metalPct,
@@ -527,7 +540,7 @@ export default function AnalyticsScreen() {
   const health = useMemo(() => {
     if (!sm.totalValue) return { score: 0, div: 0, conc: 0, hedge: 0, real: 0 };
     const div = Math.min(30, typeCount * 8);
-    const maxClass = Math.max(sm.goldV, sm.silverV, sm.stockV, sm.reV);
+    const maxClass = Math.max(sm.goldV, sm.silverV, sm.stockV, sm.reV, sm.paV);
     const maxPct = maxClass / sm.totalValue;
     const conc = maxPct > 0.8 ? 5 : maxPct > 0.6 ? 12 : maxPct > 0.4 ? 20 : 25;
     const hedge = sm.metalPct > 0.3 ? 25 : sm.metalPct > 0.15 ? 18 : sm.metalPct > 0 ? 10 : 0;
@@ -540,7 +553,7 @@ export default function AnalyticsScreen() {
   const performers = useMemo(() =>
     holdings.map(h => {
       const v = computeValue(h, prices);
-      const c = computeCost(h);
+      const c = computeCost(h, prices);
       return { h, v, gainPct: c > 0 ? ((v - c) / c) * 100 : 0, label: holdingLabel(h) };
     }).sort((a, b) => b.gainPct - a.gainPct),
     [holdings, prices]
@@ -553,6 +566,7 @@ export default function AnalyticsScreen() {
       { label: 'Silver', value: sm.silverV, color: colors.silverColor },
       { label: 'EGX Stocks', value: sm.stockV, color: '#4A9EFF' },
       { label: 'Real Estate', value: sm.reV, color: '#A47FCA' },
+      { label: 'Personal Assets', value: sm.paV, color: '#E08E45' },
     ].filter(s => s.value > 0);
     return raw.map(s => ({ ...s, pct: sm.totalValue > 0 ? (s.value / sm.totalValue) * 100 : 0 }));
   }, [sm, colors]);

@@ -12,20 +12,33 @@ interface HoldingCardProps {
   onEdit?: () => void;
 }
 
+function personalAssetValueEGP(holding: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
+  const v = holding.currentValue ?? holding.purchasePrice;
+  if (holding.currency === 'USD' && prices) return v * prices.usdToEgp;
+  return v;
+}
+
+function personalAssetCostEGP(holding: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
+  if (holding.currency === 'USD' && prices) return holding.purchasePrice * prices.usdToEgp;
+  return holding.purchasePrice;
+}
+
 function computeCurrentValue(holding: Holding, prices?: MarketPrices): number {
   if (!prices) return 0;
   if (holding.type === 'gold') return holding.grams * goldPricePerGram(prices, holding.karat);
   if (holding.type === 'silver') return holding.grams * silverPricePerGram(prices);
   if (holding.type === 'stock') return holding.shares * holding.purchasePricePerShare;
   if (holding.type === 'real_estate') return holding.currentValue;
+  if (holding.type === 'personal_asset') return personalAssetValueEGP(holding, prices);
   return 0;
 }
 
-function computeCost(holding: Holding): number {
+function computeCost(holding: Holding, prices?: MarketPrices): number {
   if (holding.type === 'gold') return holding.grams * holding.purchasePricePerGram;
   if (holding.type === 'silver') return holding.grams * holding.purchasePricePerGram;
   if (holding.type === 'stock') return holding.shares * holding.purchasePricePerShare;
   if (holding.type === 'real_estate') return holding.purchasePrice;
+  if (holding.type === 'personal_asset') return personalAssetCostEGP(holding, prices);
   return 0;
 }
 
@@ -33,6 +46,7 @@ function getIcon(holding: Holding): keyof typeof Feather.glyphMap {
   if (holding.type === 'gold') return 'award';
   if (holding.type === 'silver') return 'circle';
   if (holding.type === 'stock') return 'bar-chart-2';
+  if (holding.type === 'personal_asset') return (holding.icon as keyof typeof Feather.glyphMap) || 'star';
   return 'home';
 }
 
@@ -40,6 +54,7 @@ function getTitle(holding: Holding): string {
   if (holding.type === 'gold') return `Gold ${holding.karat}`;
   if (holding.type === 'silver') return 'Silver';
   if (holding.type === 'stock') return holding.symbol;
+  if (holding.type === 'personal_asset') return holding.name || 'Personal Asset';
   return holding.location || 'Real Estate';
 }
 
@@ -47,6 +62,10 @@ function getSubtitle(holding: Holding): string {
   if (holding.type === 'gold') return `${holding.grams.toLocaleString()} g · ${holding.form}`;
   if (holding.type === 'silver') return `${holding.grams.toLocaleString()} g · ${holding.form}`;
   if (holding.type === 'stock') return `${holding.shares.toLocaleString()} shares · ${holding.companyName}`;
+  if (holding.type === 'personal_asset') {
+    const c = holding.category;
+    return c.charAt(0).toUpperCase() + c.slice(1);
+  }
   const t = holding.propertyType;
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
@@ -56,12 +75,13 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   silver: '#C0C8D4',
   stock: '#4A9EFF',
   real_estate: '#A47FCA',
+  personal_asset: '#E08E45',
 };
 
 export function HoldingCard({ holding, prices, onDelete, onEdit }: HoldingCardProps) {
   const colors = useColors();
   const currentValue = computeCurrentValue(holding, prices);
-  const cost = computeCost(holding);
+  const cost = computeCost(holding, prices);
   const gain = currentValue - cost;
   const gainPercent = cost > 0 ? (gain / cost) * 100 : 0;
   const isPositive = gain >= 0;
@@ -89,12 +109,19 @@ export function HoldingCard({ holding, prices, onDelete, onEdit }: HoldingCardPr
               {currentValue.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
               <Text style={[styles.valueUnit, { color: colors.mutedForeground }]}> EGP</Text>
             </Text>
-            <View style={[styles.gainPill, { backgroundColor: gainColor + '18' }]}>
-              <Feather name={isPositive ? 'arrow-up' : 'arrow-down'} size={9} color={gainColor} />
-              <Text style={[styles.gainText, { color: gainColor }]}>
-                {isPositive ? '+' : ''}{gainPercent.toFixed(1)}%
-              </Text>
-            </View>
+            {holding.type === 'personal_asset' ? (
+              <View style={[styles.manualPill, { backgroundColor: colors.mutedForeground + '18' }]}>
+                <Feather name="edit-3" size={9} color={colors.mutedForeground} />
+                <Text style={[styles.manualText, { color: colors.mutedForeground }]}>Manual Value</Text>
+              </View>
+            ) : (
+              <View style={[styles.gainPill, { backgroundColor: gainColor + '18' }]}>
+                <Feather name={isPositive ? 'arrow-up' : 'arrow-down'} size={9} color={gainColor} />
+                <Text style={[styles.gainText, { color: gainColor }]}>
+                  {isPositive ? '+' : ''}{gainPercent.toFixed(1)}%
+                </Text>
+              </View>
+            )}
           </>
         ) : (
           <View style={[styles.skeleton, { backgroundColor: colors.muted }]} />
@@ -189,6 +216,18 @@ const styles = StyleSheet.create({
   gainText: {
     fontSize: 11,
     fontFamily: 'Inter_700Bold',
+  },
+  manualPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 7,
+  },
+  manualText: {
+    fontSize: 10,
+    fontFamily: 'Inter_600SemiBold',
   },
   skeleton: {
     width: 80,

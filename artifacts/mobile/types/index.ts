@@ -1,6 +1,10 @@
 export type GoldKarat = '24k' | '22k' | '21k' | '18k';
 export type MetalForm = 'physical' | 'digital';
 export type PropertyType = 'apartment' | 'villa' | 'land' | 'commercial';
+export type PersonalAssetCategory =
+  | 'watches' | 'jewelry' | 'artwork' | 'collectibles'
+  | 'luxury' | 'electronics' | 'furniture' | 'instruments' | 'other';
+export type PersonalAssetCurrency = 'EGP' | 'USD';
 
 export interface GoldHolding {
   id: string;
@@ -45,7 +49,21 @@ export interface RealEstateHolding {
   notes?: string;
 }
 
-export type Holding = GoldHolding | SilverHolding | StockHolding | RealEstateHolding;
+export interface PersonalAssetHolding {
+  id: string;
+  type: 'personal_asset';
+  name: string;
+  category: PersonalAssetCategory;
+  icon: string;
+  purchasePrice: number;
+  currentValue: number;
+  currency: PersonalAssetCurrency;
+  purchaseDate: string;
+  notes?: string;
+  photos?: string[];
+}
+
+export type Holding = GoldHolding | SilverHolding | StockHolding | RealEstateHolding | PersonalAssetHolding;
 
 export interface MarketPrices {
   goldUsd: number;

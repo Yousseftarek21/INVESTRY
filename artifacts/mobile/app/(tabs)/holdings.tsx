@@ -11,13 +11,14 @@ import { useMarketPrices } from '@/hooks/usePrices';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding } from '@/types';
 
-const TYPE_ORDER: Holding['type'][] = ['gold', 'silver', 'stock', 'real_estate'];
+const TYPE_ORDER: Holding['type'][] = ['gold', 'silver', 'stock', 'real_estate', 'personal_asset'];
 
 const TYPE_ICONS: Record<Holding['type'], keyof typeof Feather.glyphMap> = {
   gold: 'award',
   silver: 'circle',
   stock: 'bar-chart-2',
   real_estate: 'home',
+  personal_asset: 'star',
 };
 
 const TYPE_COLORS: Record<Holding['type'], string> = {
@@ -25,6 +26,7 @@ const TYPE_COLORS: Record<Holding['type'], string> = {
   silver: '#C0C8D4',
   stock: '#4A9EFF',
   real_estate: '#A47FCA',
+  personal_asset: '#E08E45',
 };
 
 export default function HoldingsScreen() {
@@ -39,6 +41,7 @@ export default function HoldingsScreen() {
     silver: t.silverGroup,
     stock: t.stockGroup,
     real_estate: t.realEstateGroup,
+    personal_asset: t.personalAssetGroup,
   };
 
   const grouped = holdings.reduce<Record<string, Holding[]>>((acc, h) => {
