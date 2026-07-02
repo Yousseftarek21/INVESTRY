@@ -177,22 +177,32 @@ export default function WelcomeScreen() {
       </Animated.View>
 
       <View style={[styles.footer, { paddingBottom: botPad + 32 }]}>
-        <View style={styles.dots}>
-          {SLIDES.map((s, i) => (
-            <Dot key={s.id} active={i === currentIndex} color={colors.primary} />
-          ))}
+        <View style={styles.dotsRow}>
+          <View style={styles.dots}>
+            {SLIDES.map((s, i) => (
+              <Dot key={s.id} active={i === currentIndex} color={colors.primary} />
+            ))}
+          </View>
+
+          {currentIndex < SLIDES.length - 1 && (
+            <Pressable
+              style={[styles.nextBtn, { backgroundColor: colors.primary }]}
+              onPress={handleNext}
+            >
+              <Feather name="arrow-right" size={22} color={colors.primaryForeground} />
+            </Pressable>
+          )}
         </View>
 
-        <Pressable
-          style={[styles.nextBtn, { backgroundColor: colors.primary }]}
-          onPress={handleNext}
-        >
-          {currentIndex < SLIDES.length - 1 ? (
-            <Feather name="arrow-right" size={22} color={colors.primaryForeground} />
-          ) : (
-            <Text style={[styles.nextBtnText, { color: colors.primaryForeground }]}>Get Started</Text>
-          )}
-        </Pressable>
+        {currentIndex === SLIDES.length - 1 && (
+          <Pressable
+            style={[styles.getStartedBtn, { backgroundColor: colors.primary }]}
+            onPress={handleNext}
+          >
+            <Text style={[styles.getStartedText, { color: colors.primaryForeground }]}>Get Started</Text>
+            <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
+          </Pressable>
+        )}
       </View>
     </Animated.View>
   );
@@ -216,15 +226,19 @@ const styles = StyleSheet.create({
   slideTitle: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.8, textAlign: 'center' },
   slideSubtitle: { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 24, textAlign: 'center' },
 
-  footer: { paddingHorizontal: 32, gap: 28, alignItems: 'center' },
+  footer: { paddingHorizontal: 32, gap: 20, alignItems: 'center' },
+  dotsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' },
   dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   dot: { height: 7, borderRadius: 4 },
   nextBtn: {
-    width: 60, height: 60, borderRadius: 30,
+    width: 56, height: 56, borderRadius: 28,
     alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 16,
   },
-  nextBtnText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  getStartedBtn: {
+    width: '100%', height: 56, borderRadius: 18,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  getStartedText: { fontSize: 16, fontFamily: 'Inter_700Bold' },
 
   welcomeInner: { flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'space-between' },
   logoWrap: { alignItems: 'center', justifyContent: 'center', marginTop: 20 },
