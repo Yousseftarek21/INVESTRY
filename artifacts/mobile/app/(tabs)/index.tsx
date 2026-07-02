@@ -271,12 +271,12 @@ export default function HomeScreen() {
 
         <View style={styles.heroBody}>
           {/* Label */}
-          <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
+          <Text style={[styles.heroLabel, { color: colors.mutedForeground, textAlign: 'center' }]}>
             {t.totalPortfolioValue}
           </Text>
 
           {/* Big value */}
-          <View style={styles.heroValueRow}>
+          <View style={[styles.heroValueRow, { justifyContent: 'center' }]}>
             <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
               {displayValue}
             </Text>
