@@ -34,6 +34,12 @@ function computeCost(h: Holding): number {
   return 0;
 }
 
+function fmtCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(n >= 100_000 ? 0 : 1)}K`;
+  return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
+}
+
 // ─── Animated number display ──────────────────────────────────────────────────
 
 function useCounterDisplay(target: number): string {
@@ -284,10 +290,10 @@ export default function HomeScreen() {
           {/* Total invested — only when there's a cost basis */}
           {summary.totalCost > 0 && (
             <View style={styles.investedRow}>
-              <Feather name="arrow-down-circle" size={12} color={colors.mutedForeground} />
+              <Feather name="arrow-up-circle" size={12} color={colors.mutedForeground} />
               <Text style={[styles.investedLabel, { color: colors.mutedForeground }]}>Total Invested</Text>
               <Text style={[styles.investedValue, { color: colors.mutedForeground }]}>
-                {summary.totalCost.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                {fmtCompact(summary.totalCost)} EGP
               </Text>
             </View>
           )}
