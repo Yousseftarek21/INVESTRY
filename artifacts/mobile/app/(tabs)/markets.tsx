@@ -506,7 +506,7 @@ const s = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 20 },
   header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   eyebrow: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
-  title: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
+  title: { fontSize: 19, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   tsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   ts: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });

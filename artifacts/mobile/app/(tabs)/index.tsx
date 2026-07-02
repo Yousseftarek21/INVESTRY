@@ -630,10 +630,10 @@ const styles = StyleSheet.create({
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
   headerLeft:  { gap: 6 },
   headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
-  brandBlock:  { gap: 1, alignItems: 'flex-start' },
+  brandBlock:  { gap: 1, alignItems: 'center' },
   appLabel:    { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 5 },
   sloganText:  { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 1.8, opacity: 0.6, alignSelf: 'center' },
-  screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
+  screenTitle: { fontSize: 19, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },

@@ -937,7 +937,7 @@ const sc = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 26 },
 
   pageHeader: { marginBottom: 2 },
-  pageTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
+  pageTitle: { fontSize: 19, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
 
   themeLabel: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
   themeLabelIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
