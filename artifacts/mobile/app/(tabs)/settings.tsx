@@ -19,7 +19,7 @@ import { useAppSettings, ThemeMode, WeightUnit } from '@/context/AppSettingsCont
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
-import { useSubscription } from '@/context/SubscriptionContext';
+import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
 
 const APP_VERSION = '1.0.0';
 const BUILD = '100';
@@ -699,9 +699,13 @@ export default function SettingsScreen() {
           <Pressable
             onPress={() => {
               haptic();
-              manageSubscription().catch(() =>
-                showModal('Could not open billing portal', 'Please check your internet connection and try again.'),
-              );
+              // Must be called synchronously, before any `await`, so the
+              // popup isn't blocked by the browser. No-op on native.
+              const webPopup = openWebPopup();
+              manageSubscription(webPopup).catch(() => {
+                webPopup?.close();
+                showModal('Could not open billing portal', 'Please check your internet connection and try again.');
+              });
             }}
             style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: isProPlus ? '#A47FCA40' : '#D4AC0D40', opacity: pressed ? 0.88 : 1 }]}
           >

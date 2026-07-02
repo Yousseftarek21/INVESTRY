@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { useSubscription, BillingPeriod } from '@/context/SubscriptionContext';
+import { useSubscription, openWebPopup, BillingPeriod } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
 
 // ─── Confirm modal ─────────────────────────────────────────────────────────────
@@ -238,11 +238,16 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
     : `${product.annualPriceString}/${t.subYear}`;
 
   const handleConfirm = async () => {
+    // Must be called synchronously, before any `await`, so the popup isn't
+    // blocked by the browser (it needs to happen inside the click's
+    // original user-gesture window). No-op on native.
+    const webPopup = openWebPopup();
     try {
-      await purchase(selectedPlan, period);
+      await purchase(selectedPlan, period, webPopup);
       setShowConfirm(false);
       onClose();
     } catch {
+      webPopup?.close();
       setShowConfirm(false);
       Alert.alert(
         t.subPurchaseUnavailableTitle,

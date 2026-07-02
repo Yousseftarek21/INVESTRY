@@ -16,20 +16,39 @@ import * as Linking from 'expo-linking';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '../utils/api';
 
-// On web, `WebBrowser.openAuthSessionAsync` opens the checkout URL via
-// `window.open`, which browsers silently block unless it happens
-// synchronously inside the click handler. Since we `await` several async
-// calls (token, price lookup, checkout session creation) before we ever get
-// the URL, the click's "user gesture" window has already expired by the time
-// we try to open it — so the popup gets blocked with no visible error, and
-// nothing appears to happen. Top-level navigation (`window.location`) has no
-// such restriction, so we use that on web instead of a popup.
-async function openCheckoutUrl(url: string, redirectUrl: string): Promise<{ type: 'success' | 'cancel' }> {
+// On web this app itself is often embedded in an iframe (e.g. the canvas
+// preview). Stripe Checkout refuses to render inside ANY iframe (it sends
+// frame-ancestors / X-Frame-Options headers to prevent clickjacking), so
+// navigating the iframe's own location to the checkout URL silently fails —
+// nothing visibly happens. It must be opened in a real top-level browser tab
+// instead.
+//
+// Opening that tab has its own trap: `window.open` is only exempt from
+// popup blockers when called *synchronously* inside the click's call stack.
+// Since we need to `await` several requests (token, price lookup, checkout
+// session creation) before we know the URL, opening the window after those
+// awaits gets silently blocked. The fix is the standard workaround: open a
+// blank tab synchronously (before any `await`), then point it at the real
+// URL once we have it. `openWebPopup` must be called as the very first line
+// of a click handler for this to work.
+export function openWebPopup(): Window | null {
+  return Platform.OS === 'web' ? window.open('', '_blank') : null;
+}
+
+async function openCheckoutUrl(
+  url: string,
+  redirectUrl: string,
+  popup?: Window | null,
+): Promise<{ type: 'success' | 'cancel' }> {
   if (Platform.OS === 'web') {
-    window.location.assign(url);
-    // Navigation is about to replace the page, so this never really
-    // resolves in the "success" sense — but return a placeholder so
-    // callers don't hang if navigation is somehow prevented.
+    if (popup && !popup.closed) {
+      popup.location.href = url;
+    } else {
+      // Popup was blocked or unavailable — fall back to a same-tab
+      // top-level redirect. If we're inside an iframe this still fails to
+      // render Stripe's page, but it's the best available fallback.
+      window.location.assign(url);
+    }
     return { type: 'success' };
   }
   const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
@@ -65,9 +84,9 @@ export interface SubscriptionContextValue {
     pro: MockProduct;
     proPlus: MockProduct;
   };
-  purchase: (plan: 'pro' | 'pro_plus', period: BillingPeriod) => Promise<void>;
+  purchase: (plan: 'pro' | 'pro_plus', period: BillingPeriod, webPopup?: Window | null) => Promise<void>;
   restore: () => Promise<void>;
-  manageSubscription: () => Promise<void>;
+  manageSubscription: (webPopup?: Window | null) => Promise<void>;
   showPaywall: (requiredPlan?: 'pro' | 'pro_plus') => void;
   _devSetPlan: (plan: Plan) => void;
 }
@@ -224,7 +243,11 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return match.priceId;
   }, [getToken]);
 
-  const purchase = useCallback(async (targetPlan: 'pro' | 'pro_plus', period: BillingPeriod) => {
+  const purchase = useCallback(async (
+    targetPlan: 'pro' | 'pro_plus',
+    period: BillingPeriod,
+    webPopup?: Window | null,
+  ) => {
     if (!userId) throw new Error('Not signed in');
 
     if (DEV_UNLOCKED) {
@@ -256,7 +279,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       if (!res.ok) throw new Error(`POST /api/stripe/checkout failed: ${res.status}`);
       const { url } = (await res.json()) as { url: string };
 
-      const result = await openCheckoutUrl(url, redirectUrl);
+      const result = await openCheckoutUrl(url, redirectUrl, webPopup);
       if (result.type !== 'success') {
         // User cancelled or dismissed the Checkout sheet — no entitlement change.
         return;
@@ -279,7 +302,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     }
   }, [userId, getToken, getPriceId, fetchSubscription, cachePlan]);
 
-  const manageSubscription = useCallback(async () => {
+  const manageSubscription = useCallback(async (webPopup?: Window | null) => {
     if (!userId || DEV_UNLOCKED) return;
     const token = await getToken();
     if (!token) throw new Error('Not signed in');
@@ -292,7 +315,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (!res.ok) throw new Error(`POST /api/stripe/portal failed: ${res.status}`);
     const { url } = (await res.json()) as { url: string };
 
-    await openCheckoutUrl(url, returnUrl);
+    await openCheckoutUrl(url, returnUrl, webPopup);
 
     // The user may have downgraded/cancelled in the portal — refresh state.
     const data = await fetchSubscription(userId).catch(() => null);
