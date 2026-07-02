@@ -74,6 +74,12 @@ const OFFERINGS: SubscriptionContextValue['offerings'] = {
 
 const STORAGE_KEY = '@invstry_subscription';
 
+// ─── Dev unlock ──────────────────────────────────────────────────────────────
+// In development builds (__DEV__ === true) all Pro+ features are unlocked
+// automatically so the developer never hits the paywall. In production builds
+// this constant is false and users see the normal subscription flow.
+const DEV_UNLOCKED = __DEV__;
+
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
@@ -135,12 +141,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     savePlan(p, billingPeriod);
   }, [savePlan, billingPeriod]);
 
-  const isPro = plan === 'pro' || plan === 'pro_plus';
-  const isProPlus = plan === 'pro_plus';
+  const effectivePlan: Plan = DEV_UNLOCKED ? 'pro_plus' : plan;
+  const isPro = effectivePlan === 'pro' || effectivePlan === 'pro_plus';
+  const isProPlus = effectivePlan === 'pro_plus';
 
   return (
     <SubscriptionContext.Provider value={{
-      plan, billingPeriod,
+      plan: effectivePlan, billingPeriod,
       isSubscribed: isPro,
       isPro, isProPlus,
       isLoading, isPurchasing, isRestoring,
