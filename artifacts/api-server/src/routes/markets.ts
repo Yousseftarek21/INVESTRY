@@ -404,10 +404,32 @@ async function buildGoldHistory(range: string): Promise<number[]> {
   if (cached) return cached;
 
   if (range === '1D') {
-    // Reuse already-fetched yesterday close + today's current price — no extra API calls
-    const [hist, latest] = await Promise.all([fetchCommodityHistorical(), fetchCommodityLatest()]);
-    if (!hist || !latest) return [];
-    const pts = [hist.xauClose, latest.xau];
+    // Reuse already-fetched yesterday close + today's current price — no extra API calls.
+    // Tolerate either call failing individually (unlike a strict Promise.all) so a single
+    // flaky/rate-limited leg doesn't blank out the whole 1D chart.
+    const [histResult, latestResult] = await Promise.allSettled([
+      fetchCommodityHistorical(),
+      fetchCommodityLatest(),
+    ]);
+    const hist = histResult.status === 'fulfilled' ? histResult.value : null;
+    const latest = latestResult.status === 'fulfilled' ? latestResult.value : null;
+
+    let pts: number[] | null = null;
+    if (hist && latest) {
+      pts = [hist.xauClose, latest.xau];
+    } else {
+      // Fall back to the cached prices response (populated by /markets/prices) so we
+      // still have *some* today value, and/or the tail of the 1W series for yesterday.
+      const cachedPrices = pricesCache.get();
+      const weekly = histCaches['1W']?.get();
+      const yesterdayClose = hist?.xauClose ?? (weekly && weekly.length >= 2 ? weekly[weekly.length - 2] : null);
+      const todayValue = latest?.xau ?? cachedPrices?.goldUsd ?? null;
+      if (yesterdayClose != null && todayValue != null) {
+        pts = [yesterdayClose, todayValue];
+      }
+    }
+
+    if (!pts) return [];
     histCaches['1D'].set(pts);
     return pts;
   }

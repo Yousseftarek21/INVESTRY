@@ -216,7 +216,17 @@ function InteractiveChart({ prices, width, height = 78, timeFilter }: {
     }).start();
   }, [pricesKey]);
 
-  if (!prices || prices.length < 2 || width < 10) return <View style={{ height: height + 28 }} />;
+  if (!prices || prices.length < 2 || width < 10) {
+    return (
+      <View style={{ height: height + 28, alignItems: 'center', justifyContent: 'center' }}>
+        {prices !== null && (
+          <Text style={{ fontSize: 12, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>
+            Chart unavailable — pull to refresh
+          </Text>
+        )}
+      </View>
+    );
+  }
 
   const color = prices[prices.length - 1] >= prices[0] ? colors.green : colors.red;
   const minV = Math.min(...prices);
