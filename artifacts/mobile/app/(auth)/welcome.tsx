@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
-  Animated, Dimensions, FlatList, Platform, Pressable,
-  StyleSheet, Text, View, ViewToken,
+  Animated, Platform, Pressable,
+  StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,7 +9,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 
-const { width: W, height: H } = Dimensions.get('window');
 const ONBOARDING_KEY = '@invstry_onboarding_done';
 
 const SLIDES = [
@@ -56,28 +55,50 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
-  const flatRef = useRef<FlatList>(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(1)).current;
+  const screenAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then(done => {
       if (done) setShowWelcome(true);
     });
-    Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: Platform.OS !== 'web' }).start();
+    Animated.timing(screenAnim, {
+      toValue: 1, duration: 600,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
   }, []);
 
   const markDone = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
   };
 
+  const goToSlide = (nextIndex: number) => {
+    Animated.timing(slideAnim, {
+      toValue: 0, duration: 150,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start(() => {
+      setCurrentIndex(nextIndex);
+      Animated.timing(slideAnim, {
+        toValue: 1, duration: 220,
+        useNativeDriver: Platform.OS !== 'web',
+      }).start();
+    });
+  };
+
   const handleNext = async () => {
     if (currentIndex < SLIDES.length - 1) {
-      flatRef.current?.scrollToOffset({ offset: (currentIndex + 1) * W, animated: true });
+      goToSlide(currentIndex + 1);
     } else {
       await markDone();
-      Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: Platform.OS !== 'web' }).start(() => {
+      Animated.timing(screenAnim, {
+        toValue: 0, duration: 300,
+        useNativeDriver: Platform.OS !== 'web',
+      }).start(() => {
         setShowWelcome(true);
-        Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: Platform.OS !== 'web' }).start();
+        Animated.timing(screenAnim, {
+          toValue: 1, duration: 400,
+          useNativeDriver: Platform.OS !== 'web',
+        }).start();
       });
     }
   };
@@ -87,18 +108,15 @@ export default function WelcomeScreen() {
     setShowWelcome(true);
   };
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    if (viewableItems[0]) setCurrentIndex(viewableItems[0].index ?? 0);
-  }).current;
-
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
+  const slide = SLIDES[currentIndex];
+
   if (showWelcome) {
     return (
-      <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+      <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenAnim }]}>
         <View style={[styles.welcomeInner, { paddingTop: topPad + 40, paddingBottom: botPad + 20 }]}>
-          {/* Logo mark */}
           <View style={styles.logoWrap}>
             <View style={[styles.logoRing2, { borderColor: colors.primary + '14' }]} />
             <View style={[styles.logoRing1, { borderColor: colors.primary + '28' }]} />
@@ -143,37 +161,21 @@ export default function WelcomeScreen() {
   }
 
   return (
-    <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim }]}>
-      {/* Skip button */}
+    <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenAnim }]}>
       <View style={[styles.skipRow, { paddingTop: topPad + 12 }]}>
         <Pressable onPress={handleSkip} style={[styles.skipBtn, { backgroundColor: colors.muted }]}>
           <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
         </Pressable>
       </View>
 
-      {/* Slides */}
-      <FlatList
-        ref={flatRef}
-        data={SLIDES}
-        keyExtractor={item => item.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
-        renderItem={({ item }) => (
-          <View style={[styles.slide, { width: W }]}>
-            <View style={[styles.slideIconWrap, { backgroundColor: item.iconBg, borderColor: item.iconColor + '30' }]}>
-              <Feather name={item.icon} size={48} color={item.iconColor} />
-            </View>
-            <Text style={[styles.slideTitle, { color: colors.text }]}>{item.title}</Text>
-            <Text style={[styles.slideSubtitle, { color: colors.mutedForeground }]}>{item.subtitle}</Text>
-          </View>
-        )}
-      />
+      <Animated.View style={[styles.slide, { opacity: slideAnim }]}>
+        <View style={[styles.slideIconWrap, { backgroundColor: slide.iconBg, borderColor: slide.iconColor + '30' }]}>
+          <Feather name={slide.icon} size={48} color={slide.iconColor} />
+        </View>
+        <Text style={[styles.slideTitle, { color: colors.text }]}>{slide.title}</Text>
+        <Text style={[styles.slideSubtitle, { color: colors.mutedForeground }]}>{slide.subtitle}</Text>
+      </Animated.View>
 
-      {/* Dots + Next */}
       <View style={[styles.footer, { paddingBottom: botPad + 32 }]}>
         <View style={styles.dots}>
           {SLIDES.map((s, i) => (
@@ -199,10 +201,10 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  // Onboarding
   skipRow: { alignItems: 'flex-end', paddingHorizontal: 24 },
   skipBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
   skipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+
   slide: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 40, gap: 24,
@@ -213,6 +215,7 @@ const styles = StyleSheet.create({
   },
   slideTitle: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.8, textAlign: 'center' },
   slideSubtitle: { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 24, textAlign: 'center' },
+
   footer: { paddingHorizontal: 32, gap: 28, alignItems: 'center' },
   dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   dot: { height: 7, borderRadius: 4 },
@@ -223,7 +226,6 @@ const styles = StyleSheet.create({
   },
   nextBtnText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
 
-  // Welcome
   welcomeInner: { flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'space-between' },
   logoWrap: { alignItems: 'center', justifyContent: 'center', marginTop: 20 },
   logoRing1: {
