@@ -20,6 +20,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HoldingsProvider } from "@/context/HoldingsContext";
 import { AppSettingsProvider } from "@/context/AppSettingsContext";
+import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
+import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -55,12 +57,32 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="add-investment"
-        options={{
-          presentation: "modal",
-          headerShown: false,
-        }}
+        options={{ presentation: "modal", headerShown: false }}
       />
     </Stack>
+  );
+}
+
+function AppWithPaywall({ children }: { children: React.ReactNode }) {
+  const [paywallVisible, setPaywallVisible] = React.useState(false);
+  const [paywallPlan, setPaywallPlan] = React.useState<'pro' | 'pro_plus'>('pro');
+
+  React.useEffect(() => {
+    _registerPaywallCallback((requiredPlan) => {
+      setPaywallPlan(requiredPlan ?? 'pro');
+      setPaywallVisible(true);
+    });
+  }, []);
+
+  return (
+    <>
+      {children}
+      <SubscriptionScreen
+        visible={paywallVisible}
+        initialPlan={paywallPlan}
+        onClose={() => setPaywallVisible(false)}
+      />
+    </>
   );
 }
 
@@ -87,13 +109,17 @@ export default function RootLayout() {
           <ErrorBoundary>
             <AppSettingsProvider>
               <QueryClientProvider client={queryClient}>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <KeyboardProvider>
-                    <HoldingsProvider>
-                      <RootLayoutNav />
-                    </HoldingsProvider>
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
+                <SubscriptionProvider>
+                  <GestureHandlerRootView style={{ flex: 1 }}>
+                    <KeyboardProvider>
+                      <HoldingsProvider>
+                        <AppWithPaywall>
+                          <RootLayoutNav />
+                        </AppWithPaywall>
+                      </HoldingsProvider>
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </SubscriptionProvider>
               </QueryClientProvider>
             </AppSettingsProvider>
           </ErrorBoundary>

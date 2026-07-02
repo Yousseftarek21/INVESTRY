@@ -19,6 +19,7 @@ import { useAppSettings, ThemeMode, WeightUnit } from '@/context/AppSettingsCont
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
+import { useSubscription } from '@/context/SubscriptionContext';
 
 const APP_VERSION = '1.0.0';
 const BUILD = '100';
@@ -564,6 +565,7 @@ export default function SettingsScreen() {
   const haptic  = useHaptic();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { plan, isPro, isProPlus, showPaywall } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, notifications,
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setNotification,
@@ -669,6 +671,47 @@ export default function SettingsScreen() {
               `Name: ${fullName}\nEmail: ${email}\nVerified: ${verified ? 'Yes ✓' : 'Pending'}\n\nHoldings: ${holdings.length} investment${holdings.length !== 1 ? 's' : ''}\nStorage: Locally on your device only\n\nFor account changes, sign out and sign in with updated credentials.`
             )}
           />
+        )}
+
+        {/* ── SUBSCRIPTION ─────────────────────────────────── */}
+        {!isPro ? (
+          <Pressable
+            onPress={() => showPaywall('pro')}
+            style={({ pressed }) => [sc.upgradeCard, { opacity: pressed ? 0.88 : 1 }]}
+          >
+            <View style={sc.upgradeLeft}>
+              <View style={sc.upgradeIcon}>
+                <Feather name="star" size={18} color="#000" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={sc.upgradeTitle}>Investry Pro</Text>
+                  <View style={sc.proBadge}>
+                    <Text style={sc.proBadgeTxt}>FREE</Text>
+                  </View>
+                </View>
+                <Text style={sc.upgradeSub}>Unlock analytics, all tools & unlimited holdings</Text>
+              </View>
+            </View>
+            <Feather name="chevron-right" size={16} color="#000" />
+          </Pressable>
+        ) : (
+          <View style={[sc.proBanner, { backgroundColor: colors.card, borderColor: isProPlus ? '#A47FCA40' : '#D4AC0D40' }]}>
+            <View style={[sc.proBannerIcon, { backgroundColor: isProPlus ? '#A47FCA18' : '#D4AC0D18' }]}>
+              <Feather name="star" size={18} color={isProPlus ? '#A47FCA' : '#D4AC0D'} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[sc.proBannerTitle, { color: colors.text }]}>
+                {isProPlus ? 'Investry Pro+' : 'Investry Pro'}
+              </Text>
+              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>
+                {isProPlus ? 'All features unlocked' : 'Analytics & tools unlocked'}
+              </Text>
+            </View>
+            <View style={[sc.activeTag, { backgroundColor: (isProPlus ? '#A47FCA' : '#D4AC0D') + '18' }]}>
+              <Text style={[sc.activeTagTxt, { color: isProPlus ? '#A47FCA' : '#D4AC0D' }]}>ACTIVE</Text>
+            </View>
+          </View>
         )}
 
         {/* ── ACCOUNT & SECURITY ─────────────────────────── */}
@@ -878,4 +921,25 @@ const sc = StyleSheet.create({
   signInText: { flex: 1, gap: 3 },
   signInTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   signInSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+
+  // Subscription card (free user)
+  upgradeCard: {
+    borderRadius: 18, backgroundColor: '#D4AC0D',
+    flexDirection: 'row', alignItems: 'center',
+    padding: 18, gap: 14,
+  },
+  upgradeLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  upgradeIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: 'rgba(0,0,0,0.15)', alignItems: 'center', justifyContent: 'center' },
+  upgradeTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#000' },
+  upgradeSub: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#000', opacity: 0.7, marginTop: 2 },
+  proBadge: { backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
+  proBadgeTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', color: '#000', letterSpacing: 0.5 },
+
+  // Subscription banner (subscribed user)
+  proBanner: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
+  proBannerIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  proBannerTitle: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  proBannerSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  activeTag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  activeTagTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
 });

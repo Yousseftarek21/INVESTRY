@@ -15,6 +15,7 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
+import { PremiumGate } from '@/components/PremiumGate';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -656,190 +657,86 @@ export default function AnalyticsScreen() {
 
       {/* ══ SECTION 2: Market Intelligence ══════════════════════════ */}
       <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: '#4A9EFF18' }]}>
-          <Feather name="globe" size={15} color="#4A9EFF" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>Market Intelligence</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Live rates & portfolio signals</Text>
-        </View>
-        <LiveDot />
-      </View>
-
-      {/* Market Summary Cards — 3-up row */}
-      <View style={s.marketRow}>
-        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>USD / EGP</Text>
-          <Text style={[s.mktPrice, { color: colors.text }]}>
-            {prices?.usdToEgp ? prices.usdToEgp.toFixed(2) : '—'}
-          </Text>
-          <View style={[s.mktBadge, { backgroundColor: '#4A9EFF18' }]}>
-            <Text style={[s.mktBadgeTxt, { color: '#4A9EFF' }]}>LIVE</Text>
+      <PremiumGate
+        requiredPlan="pro"
+        feature="Market Intelligence"
+        description="Live USD/EGP rate, gold & silver prices by karat, and personalized portfolio signals — updated in real time."
+      >
+        <View style={s.sectionHeader}>
+          <View style={[s.sectionIconWrap, { backgroundColor: '#4A9EFF18' }]}>
+            <Feather name="globe" size={15} color="#4A9EFF" />
           </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>Market Intelligence</Text>
+            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Live rates & portfolio signals</Text>
+          </View>
+          <LiveDot />
         </View>
 
-        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}>
-          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Gold 21K / g</Text>
-          <Text style={[s.mktPrice, { color: colors.primary }]}>
-            {prices ? Math.round(goldPricePerGram(prices, '21k')).toLocaleString('en-EG') : '—'}
-          </Text>
-          {prices?.goldChangePercent !== undefined && (
-            <View style={[s.mktBadge, { backgroundColor: (prices.goldChangePercent >= 0 ? colors.green : colors.red) + '18' }]}>
-              <Text style={[s.mktBadgeTxt, { color: prices.goldChangePercent >= 0 ? colors.green : colors.red }]}>
-                {prices.goldChangePercent >= 0 ? '+' : ''}{prices.goldChangePercent.toFixed(2)}%
-              </Text>
+        {/* Market Summary Cards — 3-up row */}
+        <View style={s.marketRow}>
+          <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>USD / EGP</Text>
+            <Text style={[s.mktPrice, { color: colors.text }]}>
+              {prices?.usdToEgp ? prices.usdToEgp.toFixed(2) : '—'}
+            </Text>
+            <View style={[s.mktBadge, { backgroundColor: '#4A9EFF18' }]}>
+              <Text style={[s.mktBadgeTxt, { color: '#4A9EFF' }]}>LIVE</Text>
             </View>
-          )}
-        </View>
+          </View>
 
-        <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Silver / g</Text>
-          <Text style={[s.mktPrice, { color: colors.silverColor }]}>
-            {prices ? Math.round(silverPricePerGram(prices)).toLocaleString('en-EG') : '—'}
-          </Text>
-          {prices?.silverChangePercent !== undefined && (
-            <View style={[s.mktBadge, { backgroundColor: (prices.silverChangePercent >= 0 ? colors.green : colors.red) + '18' }]}>
-              <Text style={[s.mktBadgeTxt, { color: prices.silverChangePercent >= 0 ? colors.green : colors.red }]}>
-                {prices.silverChangePercent >= 0 ? '+' : ''}{prices.silverChangePercent.toFixed(2)}%
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Gold karat strip */}
-      {prices && (
-        <View style={[s.karatStrip, { backgroundColor: colors.card, borderColor: colors.primary + '25' }]}>
-          <Text style={[s.karatStripLabel, { color: colors.mutedForeground }]}>GOLD PRICES (EGP/g)</Text>
-          <View style={s.karatRow}>
-            {(['24k', '22k', '21k', '18k'] as const).map(k => (
-              <View key={k} style={s.karatCol}>
-                <Text style={[s.karatVal, { color: colors.primary }]}>
-                  {Math.round(goldPricePerGram(prices, k)).toLocaleString('en-EG')}
+          <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}>
+            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Gold 21K / g</Text>
+            <Text style={[s.mktPrice, { color: colors.primary }]}>
+              {prices ? Math.round(goldPricePerGram(prices, '21k')).toLocaleString('en-EG') : '—'}
+            </Text>
+            {prices?.goldChangePercent !== undefined && (
+              <View style={[s.mktBadge, { backgroundColor: (prices.goldChangePercent >= 0 ? colors.green : colors.red) + '18' }]}>
+                <Text style={[s.mktBadgeTxt, { color: prices.goldChangePercent >= 0 ? colors.green : colors.red }]}>
+                  {prices.goldChangePercent >= 0 ? '+' : ''}{prices.goldChangePercent.toFixed(2)}%
                 </Text>
-                <Text style={[s.karatKey, { color: colors.mutedForeground }]}>{k.toUpperCase()}</Text>
               </View>
-            ))}
+            )}
           </View>
-        </View>
-      )}
 
-      {/* Personalized signals */}
-      {marketInsights.length > 0 && (
-        <View style={s.section}>
-          <SLabel icon="cpu" title="Personalized Insights" sub="Based on your portfolio" />
-          <View style={s.insightsList}>
-            {marketInsights.map((ins, i) => (
-              <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
-            ))}
-          </View>
-          <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-            Insights are informational only — not financial advice.
-          </Text>
-        </View>
-      )}
-
-      {/* ══ SECTION 3: Portfolio Analytics ═══════════════════════════ */}
-      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
-          <Feather name="bar-chart-2" size={15} color={colors.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>Portfolio Analytics</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Performance, health & allocation</Text>
-        </View>
-      </View>
-
-      {!hasHoldings ? (
-        <EmptyState />
-      ) : (
-        <>
-          {/* ── Health hero ──────────────────────────────────────────── */}
-          <View style={[s.healthHero, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.heroSectionLabel, { color: colors.mutedForeground }]}>PORTFOLIO HEALTH</Text>
-            <View style={s.healthArcWrap}>
-              <HealthArc score={health.score} size={168} />
-            </View>
-            <View style={s.scoreBarsWrap}>
-              <ScoreBar label="Diversification" score={health.div} max={30} color={colors.primary} icon="layers" />
-              <ScoreBar label="Balance" score={health.conc} max={25} color="#4A9EFF" icon="sliders" />
-              <ScoreBar label="Inflation Hedge" score={health.hedge} max={25} color="#F59E0B" icon="shield" />
-              <ScoreBar label="Real Assets" score={health.real} max={20} color="#A47FCA" icon="home" />
-            </View>
-            <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-              Informational only — not financial advice.
+          <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Silver / g</Text>
+            <Text style={[s.mktPrice, { color: colors.silverColor }]}>
+              {prices ? Math.round(silverPricePerGram(prices)).toLocaleString('en-EG') : '—'}
             </Text>
-          </View>
-
-          {/* ── Performance chart ────────────────────────────────────── */}
-          <View style={s.chartSection}>
-            <SLabel icon="activity" title="Performance" sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
-            <View
-              onLayout={(e: LayoutChangeEvent) => {
-                const w = e.nativeEvent.layout.width;
-                if (w > 0) setChartWidth(w);
-              }}
-              style={s.chartArea}
-            >
-              <PerfChart gainPct={sm.gainPct} period={period} seed={sparkSeed} width={chartWidth} height={110} />
-            </View>
-            <View style={s.periodRow}>
-              {PERIODS.map(p => {
-                const active = p === period;
-                return (
-                  <Pressable
-                    key={p}
-                    onPress={() => setPeriod(p)}
-                    style={[s.periodPill, {
-                      backgroundColor: active ? colors.primary : colors.muted,
-                    }]}
-                  >
-                    <Text style={[s.periodTxt, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
-                      {p}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={[s.chartNote, { color: colors.mutedForeground }]}>
-              Simulated trend based on your portfolio's actual return
-            </Text>
-          </View>
-
-          {/* ── Allocation bars ──────────────────────────────────────── */}
-          {allocSegs.length > 0 && (
-            <View style={s.section}>
-              <SLabel icon="pie-chart" title="Asset Allocation" sub={`${allocSegs.length} classes`} />
-              <AllocationBars segs={allocSegs} />
-            </View>
-          )}
-
-          {/* ── Performers ───────────────────────────────────────────── */}
-          {performers.length > 0 && (
-            <View style={s.section}>
-              <SLabel icon="award" title="Performers" sub={`${performers.length} holdings`} />
-              <View style={s.performersList}>
-                {performers.slice(0, 5).map((p, i) => (
-                  <PodiumRow
-                    key={p.h.id}
-                    rank={i + 1}
-                    label={p.label}
-                    gainPct={p.gainPct}
-                    value={p.v}
-                    isFirst={i === 0}
-                  />
-                ))}
+            {prices?.silverChangePercent !== undefined && (
+              <View style={[s.mktBadge, { backgroundColor: (prices.silverChangePercent >= 0 ? colors.green : colors.red) + '18' }]}>
+                <Text style={[s.mktBadgeTxt, { color: prices.silverChangePercent >= 0 ? colors.green : colors.red }]}>
+                  {prices.silverChangePercent >= 0 ? '+' : ''}{prices.silverChangePercent.toFixed(2)}%
+                </Text>
               </View>
-            </View>
-          )}
+            )}
+          </View>
+        </View>
 
-          {/* ── Smart insights ───────────────────────────────────────── */}
+        {/* Gold karat strip */}
+        {prices && (
+          <View style={[s.karatStrip, { backgroundColor: colors.card, borderColor: colors.primary + '25' }]}>
+            <Text style={[s.karatStripLabel, { color: colors.mutedForeground }]}>GOLD PRICES (EGP/g)</Text>
+            <View style={s.karatRow}>
+              {(['24k', '22k', '21k', '18k'] as const).map(k => (
+                <View key={k} style={s.karatCol}>
+                  <Text style={[s.karatVal, { color: colors.primary }]}>
+                    {Math.round(goldPricePerGram(prices, k)).toLocaleString('en-EG')}
+                  </Text>
+                  <Text style={[s.karatKey, { color: colors.mutedForeground }]}>{k.toUpperCase()}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Personalized signals */}
+        {marketInsights.length > 0 && (
           <View style={s.section}>
-            <SLabel icon="zap" title="Smart Insights" sub={`${insights.length} observations`} />
+            <SLabel icon="cpu" title="Personalized Insights" sub="Based on your portfolio" />
             <View style={s.insightsList}>
-              {insights.map((ins, i) => (
+              {marketInsights.map((ins, i) => (
                 <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
               ))}
             </View>
@@ -847,40 +744,156 @@ export default function AnalyticsScreen() {
               Insights are informational only — not financial advice.
             </Text>
           </View>
+        )}
+      </PremiumGate>
 
-          {/* ── Gold spotlight ───────────────────────────────────────── */}
-          {sm.goldV > 0 && (
-            <View style={s.section}>
-              <SLabel icon="star" title="Gold Breakdown" />
-              <MetalSpotlight
-                title="GOLD HOLDINGS"
-                grams={sm.totalGoldGrams}
-                value={sm.goldV}
-                avgBuy={sm.goldAvgBuy}
-                gainPct={sm.goldGainPct}
-                livePrice={liveGoldG}
-                tintColor={colors.primary}
-              />
-            </View>
-          )}
+      {/* ══ SECTION 3: Portfolio Analytics ═══════════════════════════ */}
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      <PremiumGate
+        requiredPlan="pro"
+        feature="Portfolio Analytics"
+        description="Portfolio health score, performance chart, asset allocation, top performers, and smart insights."
+      >
+        <View style={s.sectionHeader}>
+          <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
+            <Feather name="bar-chart-2" size={15} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>Portfolio Analytics</Text>
+            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Performance, health & allocation</Text>
+          </View>
+        </View>
 
-          {/* ── Silver spotlight ─────────────────────────────────────── */}
-          {sm.silverV > 0 && (
-            <View style={s.section}>
-              <SLabel icon="circle" title="Silver Breakdown" />
-              <MetalSpotlight
-                title="SILVER HOLDINGS"
-                grams={sm.totalSilverGrams}
-                value={sm.silverV}
-                avgBuy={sm.silverAvgBuy}
-                gainPct={sm.silverGainPct}
-                livePrice={liveSilverG}
-                tintColor={colors.silverColor}
-              />
+        {!hasHoldings ? (
+          <EmptyState />
+        ) : (
+          <>
+            {/* ── Health hero ──────────────────────────────────────────── */}
+            <View style={[s.healthHero, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[s.heroSectionLabel, { color: colors.mutedForeground }]}>PORTFOLIO HEALTH</Text>
+              <View style={s.healthArcWrap}>
+                <HealthArc score={health.score} size={168} />
+              </View>
+              <View style={s.scoreBarsWrap}>
+                <ScoreBar label="Diversification" score={health.div} max={30} color={colors.primary} icon="layers" />
+                <ScoreBar label="Balance" score={health.conc} max={25} color="#4A9EFF" icon="sliders" />
+                <ScoreBar label="Inflation Hedge" score={health.hedge} max={25} color="#F59E0B" icon="shield" />
+                <ScoreBar label="Real Assets" score={health.real} max={20} color="#A47FCA" icon="home" />
+              </View>
+              <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
+                Informational only — not financial advice.
+              </Text>
             </View>
-          )}
-        </>
-      )}
+
+            {/* ── Performance chart ────────────────────────────────────── */}
+            <View style={s.chartSection}>
+              <SLabel icon="activity" title="Performance" sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
+              <View
+                onLayout={(e: LayoutChangeEvent) => {
+                  const w = e.nativeEvent.layout.width;
+                  if (w > 0) setChartWidth(w);
+                }}
+                style={s.chartArea}
+              >
+                <PerfChart gainPct={sm.gainPct} period={period} seed={sparkSeed} width={chartWidth} height={110} />
+              </View>
+              <View style={s.periodRow}>
+                {PERIODS.map(p => {
+                  const active = p === period;
+                  return (
+                    <Pressable
+                      key={p}
+                      onPress={() => setPeriod(p)}
+                      style={[s.periodPill, {
+                        backgroundColor: active ? colors.primary : colors.muted,
+                      }]}
+                    >
+                      <Text style={[s.periodTxt, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
+                        {p}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={[s.chartNote, { color: colors.mutedForeground }]}>
+                Simulated trend based on your portfolio's actual return
+              </Text>
+            </View>
+
+            {/* ── Allocation bars ──────────────────────────────────────── */}
+            {allocSegs.length > 0 && (
+              <View style={s.section}>
+                <SLabel icon="pie-chart" title="Asset Allocation" sub={`${allocSegs.length} classes`} />
+                <AllocationBars segs={allocSegs} />
+              </View>
+            )}
+
+            {/* ── Performers ───────────────────────────────────────────── */}
+            {performers.length > 0 && (
+              <View style={s.section}>
+                <SLabel icon="award" title="Performers" sub={`${performers.length} holdings`} />
+                <View style={s.performersList}>
+                  {performers.slice(0, 5).map((p, i) => (
+                    <PodiumRow
+                      key={p.h.id}
+                      rank={i + 1}
+                      label={p.label}
+                      gainPct={p.gainPct}
+                      value={p.v}
+                      isFirst={i === 0}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ── Smart insights ───────────────────────────────────────── */}
+            <View style={s.section}>
+              <SLabel icon="zap" title="Smart Insights" sub={`${insights.length} observations`} />
+              <View style={s.insightsList}>
+                {insights.map((ins, i) => (
+                  <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
+                ))}
+              </View>
+              <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
+                Insights are informational only — not financial advice.
+              </Text>
+            </View>
+
+            {/* ── Gold spotlight ───────────────────────────────────────── */}
+            {sm.goldV > 0 && (
+              <View style={s.section}>
+                <SLabel icon="star" title="Gold Breakdown" />
+                <MetalSpotlight
+                  title="GOLD HOLDINGS"
+                  grams={sm.totalGoldGrams}
+                  value={sm.goldV}
+                  avgBuy={sm.goldAvgBuy}
+                  gainPct={sm.goldGainPct}
+                  livePrice={liveGoldG}
+                  tintColor={colors.primary}
+                />
+              </View>
+            )}
+
+            {/* ── Silver spotlight ─────────────────────────────────────── */}
+            {sm.silverV > 0 && (
+              <View style={s.section}>
+                <SLabel icon="circle" title="Silver Breakdown" />
+                <MetalSpotlight
+                  title="SILVER HOLDINGS"
+                  grams={sm.totalSilverGrams}
+                  value={sm.silverV}
+                  avgBuy={sm.silverAvgBuy}
+                  gainPct={sm.silverGainPct}
+                  livePrice={liveSilverG}
+                  tintColor={colors.silverColor}
+                />
+              </View>
+            )}
+          </>
+        )}
+      </PremiumGate>
     </ScrollView>
   );
 }
