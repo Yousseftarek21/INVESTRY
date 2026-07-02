@@ -455,8 +455,8 @@ const styles = StyleSheet.create({
   appLabel: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
   screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
 
-  heroCard: { borderRadius: 26, borderWidth: 1 },
-  heroAccent: { height: 3, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
+  heroCard: { borderRadius: 26, borderWidth: 1, overflow: 'hidden' },
+  heroAccent: { height: 3 },
   heroBody: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 22, gap: 14 },
 
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
