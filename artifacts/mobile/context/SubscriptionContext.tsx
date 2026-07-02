@@ -9,11 +9,32 @@
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '../utils/api';
+
+// On web, `WebBrowser.openAuthSessionAsync` opens the checkout URL via
+// `window.open`, which browsers silently block unless it happens
+// synchronously inside the click handler. Since we `await` several async
+// calls (token, price lookup, checkout session creation) before we ever get
+// the URL, the click's "user gesture" window has already expired by the time
+// we try to open it — so the popup gets blocked with no visible error, and
+// nothing appears to happen. Top-level navigation (`window.location`) has no
+// such restriction, so we use that on web instead of a popup.
+async function openCheckoutUrl(url: string, redirectUrl: string): Promise<{ type: 'success' | 'cancel' }> {
+  if (Platform.OS === 'web') {
+    window.location.assign(url);
+    // Navigation is about to replace the page, so this never really
+    // resolves in the "success" sense — but return a placeholder so
+    // callers don't hang if navigation is somehow prevented.
+    return { type: 'success' };
+  }
+  const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+  return { type: result.type === 'success' ? 'success' : 'cancel' };
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -235,7 +256,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       if (!res.ok) throw new Error(`POST /api/stripe/checkout failed: ${res.status}`);
       const { url } = (await res.json()) as { url: string };
 
-      const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+      const result = await openCheckoutUrl(url, redirectUrl);
       if (result.type !== 'success') {
         // User cancelled or dismissed the Checkout sheet — no entitlement change.
         return;
@@ -271,7 +292,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (!res.ok) throw new Error(`POST /api/stripe/portal failed: ${res.status}`);
     const { url } = (await res.json()) as { url: string };
 
-    await WebBrowser.openAuthSessionAsync(url, returnUrl);
+    await openCheckoutUrl(url, returnUrl);
 
     // The user may have downgraded/cancelled in the portal — refresh state.
     const data = await fetchSubscription(userId).catch(() => null);
