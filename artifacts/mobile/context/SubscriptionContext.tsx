@@ -6,11 +6,12 @@
  *   2. Replace this file with the RevenueCat version from the skill reference
  *      (lib/revenuecat.tsx template). The hook shape is identical.
  *   3. Set EXPO_PUBLIC_REVENUECAT_* env vars.
- *   4. Remove SUBSCRIPTION_STORAGE_KEY from AsyncStorage.
+ *   4. Remove per-user subscription keys from AsyncStorage.
  */
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@clerk/expo';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +73,13 @@ const OFFERINGS: SubscriptionContextValue['offerings'] = {
   },
 };
 
-const STORAGE_KEY = '@invstry_subscription';
+/**
+ * Returns the per-user AsyncStorage key so that one account's subscription
+ * is never inherited by a different account on the same device.
+ */
+function subscriptionKey(userId: string) {
+  return `@invstry_subscription_${userId}`;
+}
 
 // ─── Dev unlock ──────────────────────────────────────────────────────────────
 // In development builds (__DEV__ === true) all Pro+ features are unlocked
@@ -91,29 +98,83 @@ export function _registerPaywallCallback(cb: (requiredPlan?: 'pro' | 'pro_plus')
 }
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
+  const { userId } = useAuth();
   const [plan, setPlan] = useState<Plan>('free');
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  // Tracks which userId's entitlement is currently held in memory.
+  const loadedUserRef = useRef<string | null>(null);
 
+  // ── React to userId changes (sign-in, sign-out, account switch) ───────────
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then(v => {
-      if (v) {
-        try {
-          const saved = JSON.parse(v) as { plan: Plan; billingPeriod: BillingPeriod };
-          setPlan(saved.plan ?? 'free');
-          setBillingPeriod(saved.billingPeriod ?? 'monthly');
-        } catch { /* ignore */ }
+    if (!userId) {
+      // Signed out: clear the previous user's entitlement from memory AND
+      // delete their persisted key so the next user cannot inherit it.
+      const prevUserId = loadedUserRef.current;
+      setPlan('free');
+      setBillingPeriod('monthly');
+      setIsLoading(false);
+      loadedUserRef.current = null;
+
+      if (prevUserId) {
+        AsyncStorage.removeItem(subscriptionKey(prevUserId)).catch(() => null);
       }
-    }).finally(() => setIsLoading(false));
-  }, []);
+      return;
+    }
+
+    // Account switch without a full sign-out: wipe the previous user's
+    // entitlement before loading the new user's data.
+    if (loadedUserRef.current && loadedUserRef.current !== userId) {
+      const prevUserId = loadedUserRef.current;
+      setPlan('free');
+      setBillingPeriod('monthly');
+      AsyncStorage.removeItem(subscriptionKey(prevUserId)).catch(() => null);
+    }
+
+    loadedUserRef.current = userId;
+
+    // Capture which userId this closure is loading for. The staleness guard
+    // below prevents a slow AsyncStorage read that resolves after a sign-out
+    // or account switch from writing prior-user entitlements into state.
+    const capturedUserId = userId;
+    let active = true;
+
+    setIsLoading(true);
+
+    AsyncStorage.getItem(subscriptionKey(capturedUserId))
+      .then(v => {
+        // Guard: bail if the effect was cancelled or the user changed
+        if (!active || loadedUserRef.current !== capturedUserId) return;
+
+        if (v) {
+          try {
+            const saved = JSON.parse(v) as { plan: Plan; billingPeriod: BillingPeriod };
+            setPlan(saved.plan ?? 'free');
+            setBillingPeriod(saved.billingPeriod ?? 'monthly');
+          } catch { /* ignore */ }
+        } else {
+          // No saved plan for this user — start as free.
+          setPlan('free');
+          setBillingPeriod('monthly');
+        }
+      })
+      .finally(() => {
+        if (active && loadedUserRef.current === capturedUserId) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => { active = false; };
+  }, [userId]);
 
   const savePlan = useCallback(async (p: Plan, bp: BillingPeriod) => {
+    if (!userId) return;
     setPlan(p);
     setBillingPeriod(bp);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ plan: p, billingPeriod: bp }));
-  }, []);
+    await AsyncStorage.setItem(subscriptionKey(userId), JSON.stringify({ plan: p, billingPeriod: bp }));
+  }, [userId]);
 
   const purchase = useCallback(async (targetPlan: 'pro' | 'pro_plus', period: BillingPeriod) => {
     setIsPurchasing(true);
