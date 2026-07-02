@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Animated, Linking, Modal, Platform, Pressable,
+  Alert, Animated, Linking, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, View, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -238,9 +238,17 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
     : `${product.annualPriceString}/${t.subYear}`;
 
   const handleConfirm = async () => {
-    await purchase(selectedPlan, period);
-    setShowConfirm(false);
-    onClose();
+    try {
+      await purchase(selectedPlan, period);
+      setShowConfirm(false);
+      onClose();
+    } catch {
+      setShowConfirm(false);
+      Alert.alert(
+        t.subPurchaseUnavailableTitle,
+        t.subPurchaseUnavailableBody,
+      );
+    }
   };
 
   if (!visible) return null;

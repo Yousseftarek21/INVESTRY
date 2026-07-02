@@ -135,6 +135,18 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     loadedUserRef.current = userId;
 
+    // In production builds, AsyncStorage is untrusted for entitlement state:
+    // there is no verified billing provider writing to it, so any premium
+    // value stored there is either a stale dev-build artifact or a tampering
+    // attempt. Always start as free in production; real entitlements will be
+    // sourced from the billing provider (RevenueCat) once integrated.
+    if (!DEV_UNLOCKED) {
+      setPlan('free');
+      setBillingPeriod('monthly');
+      setIsLoading(false);
+      return;
+    }
+
     // Capture which userId this closure is loading for. The staleness guard
     // below prevents a slow AsyncStorage read that resolves after a sign-out
     // or account switch from writing prior-user entitlements into state.
@@ -171,12 +183,21 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const savePlan = useCallback(async (p: Plan, bp: BillingPeriod) => {
     if (!userId) return;
+    // In production, never persist premium entitlements to untrusted local
+    // storage. Premium state must originate from a verified billing provider.
+    if (!DEV_UNLOCKED && p !== 'free') return;
     setPlan(p);
     setBillingPeriod(bp);
     await AsyncStorage.setItem(subscriptionKey(userId), JSON.stringify({ plan: p, billingPeriod: bp }));
   }, [userId]);
 
   const purchase = useCallback(async (targetPlan: 'pro' | 'pro_plus', period: BillingPeriod) => {
+    // In production, purchasing requires a verified billing provider (RevenueCat).
+    // This mock implementation does not perform real payment processing and must
+    // not grant premium entitlements on its own.
+    if (!DEV_UNLOCKED) {
+      throw new Error('A billing provider is required to complete purchases.');
+    }
     setIsPurchasing(true);
     try {
       // Mock: simulate network delay
@@ -199,6 +220,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const _devSetPlan = useCallback((p: Plan) => {
+    if (!DEV_UNLOCKED) return;
     savePlan(p, billingPeriod);
   }, [savePlan, billingPeriod]);
 
