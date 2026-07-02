@@ -1,3 +1,4 @@
 - [EGX Market Architecture](egx-market-arch.md) — static company DB + batched Yahoo Finance fetch; lives in data/egx-companies.ts + hooks/useEGXMarket.ts + components/EGXMarket.tsx
 - [HoldingsContext sync key](holdings-sync.md) — cache key must stay @istithmarak_holdings (original); API migration logic runs on first sign-in when API is empty but local has data
 - [Subscription system](subscription-system.md) — mock RevenueCat context; paywall in components/SubscriptionScreen.tsx (NOT app/); paywall callback pattern via _registerPaywallCallback
+- [Stripe connector settings field names](stripe-connector-settings.md) — use settings.secret / settings.publishable, not secret_key/publishable_key; no separate webhook_secret field

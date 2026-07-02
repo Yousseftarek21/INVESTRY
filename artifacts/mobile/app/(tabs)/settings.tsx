@@ -565,7 +565,7 @@ export default function SettingsScreen() {
   const haptic  = useHaptic();
   const { signOut } = useClerk();
   const { user } = useUser();
-  const { plan, isPro, isProPlus, showPaywall } = useSubscription();
+  const { plan, isPro, isProPlus, showPaywall, manageSubscription } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, notifications,
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setNotification,
@@ -696,7 +696,15 @@ export default function SettingsScreen() {
             <Feather name="chevron-right" size={16} color="#000" />
           </Pressable>
         ) : (
-          <View style={[sc.proBanner, { backgroundColor: colors.card, borderColor: isProPlus ? '#A47FCA40' : '#D4AC0D40' }]}>
+          <Pressable
+            onPress={() => {
+              haptic();
+              manageSubscription().catch(() =>
+                showModal('Could not open billing portal', 'Please check your internet connection and try again.'),
+              );
+            }}
+            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: isProPlus ? '#A47FCA40' : '#D4AC0D40', opacity: pressed ? 0.88 : 1 }]}
+          >
             <View style={[sc.proBannerIcon, { backgroundColor: isProPlus ? '#A47FCA18' : '#D4AC0D18' }]}>
               <Feather name="star" size={18} color={isProPlus ? '#A47FCA' : '#D4AC0D'} />
             </View>
@@ -705,13 +713,13 @@ export default function SettingsScreen() {
                 {isProPlus ? 'Investry Pro+' : 'Investry Pro'}
               </Text>
               <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>
-                {isProPlus ? 'All features unlocked' : 'Analytics & tools unlocked'}
+                {isProPlus ? 'All features unlocked · Tap to manage' : 'Analytics & tools unlocked · Tap to manage'}
               </Text>
             </View>
             <View style={[sc.activeTag, { backgroundColor: (isProPlus ? '#A47FCA' : '#D4AC0D') + '18' }]}>
               <Text style={[sc.activeTagTxt, { color: isProPlus ? '#A47FCA' : '#D4AC0D' }]}>ACTIVE</Text>
             </View>
-          </View>
+          </Pressable>
         )}
 
         {/* ── ACCOUNT & SECURITY ─────────────────────────── */}

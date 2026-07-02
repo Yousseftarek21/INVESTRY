@@ -1,17 +1,19 @@
 /**
- * SubscriptionContext — Mock implementation, API-compatible with RevenueCat.
+ * SubscriptionContext — real Stripe-backed implementation.
  *
- * TO CONNECT REVENUECAT LATER:
- *   1. Install `react-native-purchases` (already done)
- *   2. Replace this file with the RevenueCat version from the skill reference
- *      (lib/revenuecat.tsx template). The hook shape is identical.
- *   3. Set EXPO_PUBLIC_REVENUECAT_* env vars.
- *   4. Remove per-user subscription keys from AsyncStorage.
+ * In development builds (`__DEV__`) all Pro+ features stay unlocked locally
+ * so the developer never hits the paywall. In production builds, entitlement
+ * is sourced from the backend (`GET /api/subscription`), which itself is the
+ * authoritative record synced from Stripe via webhooks. AsyncStorage is only
+ * used as a display cache — it is never trusted to grant entitlements.
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { useAuth } from '@clerk/expo';
+import { apiFetch } from '../utils/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,15 +46,16 @@ export interface SubscriptionContextValue {
   };
   purchase: (plan: 'pro' | 'pro_plus', period: BillingPeriod) => Promise<void>;
   restore: () => Promise<void>;
+  manageSubscription: () => Promise<void>;
   showPaywall: (requiredPlan?: 'pro' | 'pro_plus') => void;
   _devSetPlan: (plan: Plan) => void;
 }
 
-// ─── Offerings ───────────────────────────────────────────────────────────────
+// ─── Offerings (display copy only — real price IDs come from the backend) ────
 
 const OFFERINGS: SubscriptionContextValue['offerings'] = {
   pro: {
-    identifier: 'investry_pro_monthly',
+    identifier: 'pro',
     priceString: '49.99 EGP',
     annualPriceString: '399.99 EGP',
     price: 49.99,
@@ -62,7 +65,7 @@ const OFFERINGS: SubscriptionContextValue['offerings'] = {
     description: 'Unlimited investments, all tools & analytics',
   },
   proPlus: {
-    identifier: 'investry_pro_plus_monthly',
+    identifier: 'pro_plus',
     priceString: '69.99 EGP',
     annualPriceString: '559.99 EGP',
     price: 69.99,
@@ -73,45 +76,55 @@ const OFFERINGS: SubscriptionContextValue['offerings'] = {
   },
 };
 
-/**
- * Returns the per-user AsyncStorage key so that one account's subscription
- * is never inherited by a different account on the same device.
- */
+/** Per-user AsyncStorage key — a display cache only, never a trust source. */
 function subscriptionKey(userId: string) {
   return `@invstry_subscription_${userId}`;
 }
 
-// ─── Dev unlock ──────────────────────────────────────────────────────────────
-// In development builds (__DEV__ === true) all Pro+ features are unlocked
-// automatically so the developer never hits the paywall. In production builds
-// this constant is false and users see the normal subscription flow.
+// In development builds all Pro+ features are unlocked automatically so the
+// developer never hits the paywall. In production this is always false.
 const DEV_UNLOCKED = __DEV__;
+
+interface PriceCatalogEntry {
+  priceId: string;
+  plan: 'pro' | 'pro_plus';
+  billingPeriod: BillingPeriod;
+}
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 
-// Paywall navigation callback — set by the root layout
 let _paywallCallback: ((requiredPlan?: 'pro' | 'pro_plus') => void) | null = null;
 export function _registerPaywallCallback(cb: (requiredPlan?: 'pro' | 'pro_plus') => void) {
   _paywallCallback = cb;
 }
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
   const [plan, setPlan] = useState<Plan>('free');
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  // Tracks which userId's entitlement is currently held in memory.
   const loadedUserRef = useRef<string | null>(null);
+
+  const cachePlan = useCallback(async (uid: string, p: Plan, bp: BillingPeriod) => {
+    await AsyncStorage.setItem(subscriptionKey(uid), JSON.stringify({ plan: p, billingPeriod: bp }));
+  }, []);
+
+  const fetchSubscription = useCallback(async (uid: string): Promise<{ plan: Plan; billingPeriod: BillingPeriod } | null> => {
+    const token = await getToken();
+    if (!token) return null;
+    const res = await apiFetch('/api/subscription', token);
+    if (!res.ok) throw new Error(`GET /api/subscription failed: ${res.status}`);
+    const data = (await res.json()) as { plan: Plan; billingPeriod: BillingPeriod };
+    return data;
+  }, [getToken]);
 
   // ── React to userId changes (sign-in, sign-out, account switch) ───────────
   useEffect(() => {
     if (!userId) {
-      // Signed out: clear the previous user's entitlement from memory AND
-      // delete their persisted key so the next user cannot inherit it.
       const prevUserId = loadedUserRef.current;
       setPlan('free');
       setBillingPeriod('monthly');
@@ -124,8 +137,6 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       return;
     }
 
-    // Account switch without a full sign-out: wipe the previous user's
-    // entitlement before loading the new user's data.
     if (loadedUserRef.current && loadedUserRef.current !== userId) {
       const prevUserId = loadedUserRef.current;
       setPlan('free');
@@ -135,42 +146,42 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     loadedUserRef.current = userId;
 
-    // In production builds, AsyncStorage is untrusted for entitlement state:
-    // there is no verified billing provider writing to it, so any premium
-    // value stored there is either a stale dev-build artifact or a tampering
-    // attempt. Always start as free in production; real entitlements will be
-    // sourced from the billing provider (RevenueCat) once integrated.
-    if (!DEV_UNLOCKED) {
-      setPlan('free');
+    if (DEV_UNLOCKED) {
+      setPlan('pro_plus');
       setBillingPeriod('monthly');
       setIsLoading(false);
       return;
     }
 
-    // Capture which userId this closure is loading for. The staleness guard
-    // below prevents a slow AsyncStorage read that resolves after a sign-out
-    // or account switch from writing prior-user entitlements into state.
     const capturedUserId = userId;
     let active = true;
 
     setIsLoading(true);
 
+    // Show the cached value immediately (fast paint), then reconcile against
+    // the authoritative backend record.
     AsyncStorage.getItem(subscriptionKey(capturedUserId))
-      .then(v => {
-        // Guard: bail if the effect was cancelled or the user changed
-        if (!active || loadedUserRef.current !== capturedUserId) return;
+      .then((v) => {
+        if (!active || loadedUserRef.current !== capturedUserId || !v) return;
+        try {
+          const cached = JSON.parse(v) as { plan: Plan; billingPeriod: BillingPeriod };
+          setPlan(cached.plan ?? 'free');
+          setBillingPeriod(cached.billingPeriod ?? 'monthly');
+        } catch { /* ignore */ }
+      })
+      .catch(() => null);
 
-        if (v) {
-          try {
-            const saved = JSON.parse(v) as { plan: Plan; billingPeriod: BillingPeriod };
-            setPlan(saved.plan ?? 'free');
-            setBillingPeriod(saved.billingPeriod ?? 'monthly');
-          } catch { /* ignore */ }
-        } else {
-          // No saved plan for this user — start as free.
-          setPlan('free');
-          setBillingPeriod('monthly');
-        }
+    fetchSubscription(capturedUserId)
+      .then((data) => {
+        if (!active || loadedUserRef.current !== capturedUserId) return;
+        const resolvedPlan = data?.plan ?? 'free';
+        const resolvedPeriod = data?.billingPeriod ?? 'monthly';
+        setPlan(resolvedPlan);
+        setBillingPeriod(resolvedPeriod);
+        cachePlan(capturedUserId, resolvedPlan, resolvedPeriod).catch(() => null);
+      })
+      .catch(() => {
+        // Network/backend error: keep whatever was loaded from cache (or free).
       })
       .finally(() => {
         if (active && loadedUserRef.current === capturedUserId) {
@@ -179,63 +190,134 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       });
 
     return () => { active = false; };
-  }, [userId]);
+  }, [userId, fetchSubscription, cachePlan]);
 
-  const savePlan = useCallback(async (p: Plan, bp: BillingPeriod) => {
-    if (!userId) return;
-    // In production, never persist premium entitlements to untrusted local
-    // storage. Premium state must originate from a verified billing provider.
-    if (!DEV_UNLOCKED && p !== 'free') return;
-    setPlan(p);
-    setBillingPeriod(bp);
-    await AsyncStorage.setItem(subscriptionKey(userId), JSON.stringify({ plan: p, billingPeriod: bp }));
-  }, [userId]);
+  const getPriceId = useCallback(async (targetPlan: 'pro' | 'pro_plus', period: BillingPeriod): Promise<string> => {
+    const token = await getToken();
+    if (!token) throw new Error('Not signed in');
+    const res = await apiFetch('/api/stripe/prices', token);
+    if (!res.ok) throw new Error(`GET /api/stripe/prices failed: ${res.status}`);
+    const data = (await res.json()) as { prices: PriceCatalogEntry[] };
+    const match = data.prices.find((p) => p.plan === targetPlan && p.billingPeriod === period);
+    if (!match) throw new Error(`No Stripe price found for ${targetPlan}/${period}`);
+    return match.priceId;
+  }, [getToken]);
 
   const purchase = useCallback(async (targetPlan: 'pro' | 'pro_plus', period: BillingPeriod) => {
-    // In production, purchasing requires a verified billing provider (RevenueCat).
-    // This mock implementation does not perform real payment processing and must
-    // not grant premium entitlements on its own.
-    if (!DEV_UNLOCKED) {
-      throw new Error('A billing provider is required to complete purchases.');
+    if (!userId) throw new Error('Not signed in');
+
+    if (DEV_UNLOCKED) {
+      // Dev builds skip real checkout entirely — Pro+ is always unlocked.
+      setPlan(targetPlan);
+      setBillingPeriod(period);
+      await cachePlan(userId, targetPlan, period);
+      return;
     }
+
     setIsPurchasing(true);
     try {
-      // Mock: simulate network delay
-      await new Promise(r => setTimeout(r, 800));
-      await savePlan(targetPlan, period);
+      const token = await getToken();
+      if (!token) throw new Error('Not signed in');
+
+      const priceId = await getPriceId(targetPlan, period);
+      const redirectUrl = Linking.createURL('subscription/checkout-complete');
+
+      const res = await apiFetch('/api/stripe/checkout', token, {
+        method: 'POST',
+        body: JSON.stringify({
+          priceId,
+          plan: targetPlan,
+          billingPeriod: period,
+          successUrl: redirectUrl,
+          cancelUrl: redirectUrl,
+        }),
+      });
+      if (!res.ok) throw new Error(`POST /api/stripe/checkout failed: ${res.status}`);
+      const { url } = (await res.json()) as { url: string };
+
+      const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
+      if (result.type !== 'success') {
+        // User cancelled or dismissed the Checkout sheet — no entitlement change.
+        return;
+      }
+
+      // Stripe webhooks are async, so poll briefly for the subscription to
+      // land before giving up on refreshing local state.
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const data = await fetchSubscription(userId).catch(() => null);
+        if (data && data.plan !== 'free') {
+          setPlan(data.plan);
+          setBillingPeriod(data.billingPeriod);
+          await cachePlan(userId, data.plan, data.billingPeriod);
+          break;
+        }
+      }
     } finally {
       setIsPurchasing(false);
     }
-  }, [savePlan]);
+  }, [userId, getToken, getPriceId, fetchSubscription, cachePlan]);
+
+  const manageSubscription = useCallback(async () => {
+    if (!userId || DEV_UNLOCKED) return;
+    const token = await getToken();
+    if (!token) throw new Error('Not signed in');
+
+    const returnUrl = Linking.createURL('settings');
+    const res = await apiFetch('/api/stripe/portal', token, {
+      method: 'POST',
+      body: JSON.stringify({ returnUrl }),
+    });
+    if (!res.ok) throw new Error(`POST /api/stripe/portal failed: ${res.status}`);
+    const { url } = (await res.json()) as { url: string };
+
+    await WebBrowser.openAuthSessionAsync(url, returnUrl);
+
+    // The user may have downgraded/cancelled in the portal — refresh state.
+    const data = await fetchSubscription(userId).catch(() => null);
+    if (data) {
+      setPlan(data.plan);
+      setBillingPeriod(data.billingPeriod);
+      await cachePlan(userId, data.plan, data.billingPeriod);
+    }
+  }, [userId, getToken, fetchSubscription, cachePlan]);
 
   const restore = useCallback(async () => {
+    if (!userId) return;
     setIsRestoring(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setIsRestoring(false);
-    // Mock: restore does nothing — real RevenueCat will restore from receipt
-  }, []);
+    try {
+      const data = await fetchSubscription(userId).catch(() => null);
+      if (data) {
+        setPlan(data.plan);
+        setBillingPeriod(data.billingPeriod);
+        await cachePlan(userId, data.plan, data.billingPeriod);
+      }
+    } finally {
+      setIsRestoring(false);
+    }
+  }, [userId, fetchSubscription, cachePlan]);
 
   const showPaywall = useCallback((requiredPlan?: 'pro' | 'pro_plus') => {
     _paywallCallback?.(requiredPlan);
   }, []);
 
   const _devSetPlan = useCallback((p: Plan) => {
-    if (!DEV_UNLOCKED) return;
-    savePlan(p, billingPeriod);
-  }, [savePlan, billingPeriod]);
+    if (!DEV_UNLOCKED || !userId) return;
+    setPlan(p);
+    cachePlan(userId, p, billingPeriod).catch(() => null);
+  }, [userId, billingPeriod, cachePlan]);
 
-  const effectivePlan: Plan = DEV_UNLOCKED ? 'pro_plus' : plan;
-  const isPro = effectivePlan === 'pro' || effectivePlan === 'pro_plus';
-  const isProPlus = effectivePlan === 'pro_plus';
+  const isPro = plan === 'pro' || plan === 'pro_plus';
+  const isProPlus = plan === 'pro_plus';
 
   return (
     <SubscriptionContext.Provider value={{
-      plan: effectivePlan, billingPeriod,
+      plan, billingPeriod,
       isSubscribed: isPro,
       isPro, isProPlus,
       isLoading, isPurchasing, isRestoring,
       offerings: OFFERINGS,
-      purchase, restore, showPaywall, _devSetPlan,
+      purchase, restore, manageSubscription, showPaywall, _devSetPlan,
     }}>
       {children}
     </SubscriptionContext.Provider>
