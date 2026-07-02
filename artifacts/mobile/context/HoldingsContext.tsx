@@ -4,7 +4,8 @@ import { useAuth } from '@clerk/expo';
 import { Holding } from '@/types';
 import { apiFetch } from '@/utils/api';
 
-const CACHE_KEY = '@istithmarak_holdings_cache';
+// Keep the original key so existing locally-stored data is still found
+const LOCAL_KEY = '@istithmarak_holdings';
 
 interface HoldingsContextValue {
   holdings: Holding[];
@@ -23,15 +24,16 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  const cache = useCallback(async (data: Holding[]) => {
-    try { await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
+  // Persist to local storage (same key as always)
+  const persist = useCallback(async (data: Holding[]) => {
+    try { await AsyncStorage.setItem(LOCAL_KEY, JSON.stringify(data)); } catch { /* ignore */ }
   }, []);
 
   const token = useCallback(async (): Promise<string | null> => {
     try { return await getToken(); } catch { return null; }
   }, [getToken]);
 
-  // Load on sign-in: API first, local cache fallback
+  // ── Load on sign-in ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSignedIn) { setIsLoading(false); return; }
 
@@ -39,56 +41,75 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setSyncError(null);
 
-      // Show cached data immediately so the UI is not blank
+      // 1. Show local data immediately so the UI is never blank
+      let localData: Holding[] = [];
       try {
-        const cached = await AsyncStorage.getItem(CACHE_KEY);
-        if (cached) setHoldings(JSON.parse(cached));
+        const raw = await AsyncStorage.getItem(LOCAL_KEY);
+        if (raw) { localData = JSON.parse(raw); setHoldings(localData); }
       } catch { /* ignore */ }
 
-      // Fetch authoritative data from the API
+      // 2. Fetch authoritative data from API
       try {
         const t = await token();
-        if (t) {
-          const res = await apiFetch('/api/holdings', t);
-          if (res.ok) {
-            const data: Holding[] = await res.json();
-            setHoldings(data);
-            await cache(data);
+        if (!t) { setIsLoading(false); return; }
+
+        const res = await apiFetch('/api/holdings', t);
+        if (res.ok) {
+          const apiData: Holding[] = await res.json();
+
+          // One-time migration: if the API is empty but we have local data,
+          // push everything up so the user doesn't lose their holdings.
+          if (apiData.length === 0 && localData.length > 0) {
+            await Promise.all(
+              localData.map(h => apiFetch('/api/holdings', t, {
+                method: 'POST',
+                body: JSON.stringify(h),
+              }).catch(() => null))
+            );
+            // Local data is now the source of truth for this session
+            setHoldings(localData);
           } else {
-            setSyncError('Could not sync with server.');
+            setHoldings(apiData);
+            await persist(apiData);
           }
+        } else {
+          // API failed — keep local data showing
+          setSyncError('Offline — showing local data.');
         }
       } catch {
-        setSyncError('Offline — showing cached data.');
+        setSyncError('Offline — showing local data.');
       } finally {
         setIsLoading(false);
       }
     })();
   }, [isSignedIn]);
 
+  // ── Add (optimistic) ──────────────────────────────────────────────────────
   const addHolding = useCallback(async (holding: Holding) => {
-    setHoldings(prev => { const next = [...prev, holding]; cache(next); return next; });
+    setHoldings(prev => { const next = [...prev, holding]; persist(next); return next; });
     try {
       const t = await token();
       if (t) await apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(holding) });
     } catch { setSyncError('Saved locally — will sync when online.'); }
-  }, [token, cache]);
+  }, [token, persist]);
 
+  // ── Remove (optimistic) ───────────────────────────────────────────────────
   const removeHolding = useCallback(async (id: string) => {
-    setHoldings(prev => { const next = prev.filter(h => h.id !== id); cache(next); return next; });
+    setHoldings(prev => { const next = prev.filter(h => h.id !== id); persist(next); return next; });
     try {
       const t = await token();
       if (t) await apiFetch(`/api/holdings/${id}`, t, { method: 'DELETE' });
     } catch { setSyncError('Removed locally — will sync when online.'); }
-  }, [token, cache]);
+  }, [token, persist]);
 
+  // ── Update (optimistic) ───────────────────────────────────────────────────
   const updateHolding = useCallback(async (holding: Holding) => {
-    setHoldings(prev => { const next = prev.map(h => h.id === holding.id ? holding : h); cache(next); return next; });
+    setHoldings(prev => { const next = prev.map(h => h.id === holding.id ? holding : h); persist(next); return next; });
     try {
       const t = await token();
       if (t) await apiFetch(`/api/holdings/${holding.id}`, t, { method: 'PUT', body: JSON.stringify(holding) });
     } catch { setSyncError('Updated locally — will sync when online.'); }
-  }, [token, cache]);
+  }, [token, persist]);
 
   return (
     <HoldingsContext.Provider value={{ holdings, addHolding, removeHolding, updateHolding, isLoading, syncError }}>

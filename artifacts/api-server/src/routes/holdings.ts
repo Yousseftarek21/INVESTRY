@@ -1,12 +1,16 @@
 import { Router, type IRouter } from "express";
-import { requireAuth, getAuth } from "@clerk/express";
+import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, holdingsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-// All holdings routes require a signed-in Clerk session
-router.use(requireAuth());
+// Require a valid Clerk session for all holdings routes
+router.use(clerkMiddleware(), (req, res, next) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  next();
+});
 
 // GET /api/holdings — fetch all holdings for the current user
 router.get("/holdings", async (req, res) => {
