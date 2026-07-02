@@ -10,7 +10,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { GoldKarat, Holding, MetalForm, PropertyType } from '@/types';
+
+const FREE_LIMIT = 5;
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate';
 
@@ -252,6 +255,7 @@ export default function AddInvestmentScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { addHolding, updateHolding, holdings } = useHoldings();
+  const { isPro, showPaywall } = useSubscription();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
 
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
@@ -328,6 +332,12 @@ export default function AddInvestmentScreen() {
   );
 
   const handleSave = async () => {
+    // Free tier: max 5 investments
+    if (!isEditing && !isPro && holdings.length >= FREE_LIMIT) {
+      showPaywall('pro');
+      return;
+    }
+
     let holding: Holding | null = null;
     const today = editingHolding?.purchaseDate ?? new Date().toISOString().split('T')[0];
     const id = editingHolding?.id ?? generateId();
