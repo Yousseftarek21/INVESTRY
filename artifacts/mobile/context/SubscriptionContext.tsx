@@ -131,9 +131,17 @@ function subscriptionKey(userId: string) {
   return `@invstry_subscription_${userId}`;
 }
 
-// In development builds all Pro+ features are unlocked automatically so the
-// developer never hits the paywall. In production this is always false.
-const DEV_UNLOCKED = __DEV__;
+// Historically, development builds force-unlocked Pro+ locally so the
+// developer never hit the paywall. Now that the backend grants free Pro+ to
+// every signed-in user via Launch Access (`FREE_ACCESS_PLAN`), that local
+// override is redundant and actively harmful: it sets `plan='pro_plus'` but
+// skips the real `/api/subscription` fetch, so `launchAccess` never becomes
+// true. That mismatch makes screens like Settings render the real
+// "manage subscription" button instead of the non-interactive Launch Access
+// badge, which then opens a blank Stripe-portal popup that silently no-ops.
+// Keep this flag false so dev/preview always goes through the same fetch as
+// production and reflects the real `launchAccess` state.
+const DEV_UNLOCKED = false;
 
 interface PriceCatalogEntry {
   priceId: string;
