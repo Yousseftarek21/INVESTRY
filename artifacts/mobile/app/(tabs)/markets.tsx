@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { useMarketPrices, useEGXStocks, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { EGXMarket } from '@/components/EGXMarket';
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -392,30 +393,13 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
   );
 }
 
-function EGXTab({ stocks }: { stocks: ReturnType<typeof useEGXStocks>['data'] }) {
-  const colors = useColors();
-  const list = stocks ?? [];
+function EGXTab() {
   return (
     <View style={tab.group}>
-      <View style={tab.section}>
-        <SLabel icon="bar-chart-2" title="EGYPTIAN EXCHANGE" />
-        <TableCard>
-          <View style={[egxHdr.row, { borderBottomColor: colors.border }]}>
-            <Text style={[egxHdr.txt, { color: colors.mutedForeground }]}>STOCK</Text>
-            <Text style={[egxHdr.txt, { color: colors.mutedForeground }]}>PRICE / CHG</Text>
-          </View>
-          {list.map((s, i) => (
-            <StockRow key={s.symbol} {...s} index={i} total={list.length} />
-          ))}
-        </TableCard>
-      </View>
+      <EGXMarket />
     </View>
   );
 }
-const egxHdr = StyleSheet.create({
-  row: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth },
-  txt: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
-});
 
 const tab = StyleSheet.create({
   group: { gap: 24 },
@@ -429,11 +413,10 @@ export default function MarketsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
-  const { data: stocks, isLoading: lS, refetch: rS } = useEGXStocks();
   const [activeTab, setActiveTab] = useState<TabKey>('metals');
 
-  const isLoading = lP || lS;
-  const refetch = () => { rP(); rS(); };
+  const isLoading = lP;
+  const refetch = () => { rP(); };
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -442,7 +425,7 @@ export default function MarketsScreen() {
     switch (activeTab) {
       case 'metals':      return <MetalsTab prices={prices} />;
       case 'currencies':  return <CurrenciesTab prices={prices} />;
-      case 'egx':         return <EGXTab stocks={stocks} />;
+      case 'egx':         return <EGXTab />;
       case 'stocks':
         return <ComingSoon icon="trending-up" title="Global Stocks"    description="Live prices for international equities — S&P 500, NASDAQ, and more." />;
       case 'global':
