@@ -11,6 +11,14 @@ export class StripeStorage {
     return user;
   }
 
+  async getUserByStripeCustomerId(customerId: string) {
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.stripeCustomerId, customerId));
+    return user;
+  }
+
   async upsertUser(id: string, email: string | null) {
     const [user] = await db
       .insert(usersTable)
@@ -33,6 +41,57 @@ export class StripeStorage {
       .where(eq(usersTable.id, userId))
       .returning();
     return user;
+  }
+
+  /**
+   * Called from the webhook handler whenever a Stripe subscription is
+   * created/updated/deleted. Links the subscription to our `users` row
+   * (matched by Stripe customer ID) and derives plan/billingPeriod from the
+   * subscribed price's metadata (set by scripts/src/seed-products.ts).
+   * This is the ONLY place that grants/revokes plan entitlement — the raw
+   * `stripe.*` sync tables are not queried directly by the client.
+   */
+  async syncSubscriptionFromStripe(subscription: {
+    id: string;
+    customer: string | { id: string };
+    status: string;
+    items: { data: Array<{ price: { id: string } }> };
+  }) {
+    const customerId = typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer.id;
+
+    const user = await this.getUserByStripeCustomerId(customerId);
+    if (!user) return;
+
+    const activeStatuses = new Set(["active", "trialing"]);
+    if (!activeStatuses.has(subscription.status)) {
+      await this.updateUserStripeInfo(user.id, {
+        stripeSubscriptionId: null,
+        plan: "free",
+      });
+      return;
+    }
+
+    const priceId = subscription.items.data[0]?.price?.id;
+    let planKey: string | undefined;
+    let billingPeriod: string | undefined;
+
+    if (priceId) {
+      const result = await db.execute(
+        sql`SELECT metadata->>'planKey' AS plan_key, metadata->>'billingPeriod' AS billing_period
+            FROM stripe.prices WHERE id = ${priceId}`,
+      );
+      const row = result.rows[0] as { plan_key?: string; billing_period?: string } | undefined;
+      planKey = row?.plan_key;
+      billingPeriod = row?.billing_period;
+    }
+
+    await this.updateUserStripeInfo(user.id, {
+      stripeSubscriptionId: subscription.id,
+      plan: planKey ?? user.plan ?? "pro",
+      billingPeriod: billingPeriod ?? user.billingPeriod ?? "monthly",
+    });
   }
 
   async getSubscription(subscriptionId: string) {
