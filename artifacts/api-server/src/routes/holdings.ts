@@ -50,13 +50,18 @@ router.post("/holdings", async (req, res) => {
       userId,
       type: type as string,
       data: rest,
-    }).onConflictDoUpdate({
-      target: holdingsTable.id,
-      set: { data: rest, updatedAt: new Date() },
     });
 
     res.status(201).json({ id, type, ...rest });
-  } catch (err) {
+  } catch (err: unknown) {
+    // Unique-constraint violation on the primary key — the supplied ID already
+    // exists. Return 409 so the caller can regenerate an ID rather than
+    // silently overwriting a row that may belong to a different user.
+    const pg = err as { code?: string };
+    if (pg.code === "23505") {
+      res.status(409).json({ error: "A holding with that ID already exists" });
+      return;
+    }
     req.log.error({ err }, "POST /holdings failed");
     res.status(500).json({ error: "Failed to create holding" });
   }
