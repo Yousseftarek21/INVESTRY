@@ -125,10 +125,11 @@ const cb = StyleSheet.create({
 
 function MetalRow({
   accentColor, label, sublabel, price, unit = 'EGP/g',
-  changePercent, isLast, bold,
+  usdPrice, changePercent, isLast, bold,
 }: {
   accentColor: string; label: string; sublabel?: string;
-  price: number; unit?: string; changePercent?: number; isLast?: boolean; bold?: boolean;
+  price: number; unit?: string; usdPrice?: number;
+  changePercent?: number; isLast?: boolean; bold?: boolean;
 }) {
   const colors = useColors();
   return (
@@ -150,6 +151,11 @@ function MetalRow({
           {price.toLocaleString('en-EG', { maximumFractionDigits: price < 10 ? 2 : 0 })}
           <Text style={[mr.unit, { color: colors.mutedForeground }]}> {unit}</Text>
         </Text>
+        {usdPrice !== undefined && usdPrice > 0 && (
+          <Text style={[mr.usdLine, { color: colors.mutedForeground }]}>
+            ${usdPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
+          </Text>
+        )}
         {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
       </View>
     </View>
@@ -167,10 +173,11 @@ const mr = StyleSheet.create({
   label: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   labelBold: { fontFamily: 'Inter_700Bold' },
   sub: { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  right: { alignItems: 'flex-end', gap: 5, flexShrink: 0 },
+  right: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
   price: { fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.2 },
   priceBold: { fontSize: 17 },
   unit: { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
+  usdLine: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });
 
 // ─── Table card ───────────────────────────────────────────────────────────────
@@ -356,7 +363,7 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
           <MetalRow accentColor={colors.primary} label="22K Gold"           sublabel="91.67% · Per gram"   price={gold22} />
           <MetalRow accentColor={colors.primary} label="21K Gold"           sublabel="87.5% · Per gram"    price={gold21} />
           <MetalRow accentColor={colors.goldDark ?? '#A68700'} label="18K Gold" sublabel="75.0% · Per gram" price={gold18} />
-          <MetalRow accentColor={colors.primary} label="Gold · Troy Ounce"  sublabel="31.10 g · XAU/EGP"   price={goldOz}   unit="EGP" changePercent={prices?.goldChangePercent} isLast bold />
+          <MetalRow accentColor={colors.primary} label="Gold · Troy Ounce"  sublabel="31.10 g · XAU/EGP"   price={goldOz}   unit="EGP" usdPrice={prices?.goldUsd} changePercent={prices?.goldChangePercent} isLast bold />
         </TableCard>
       </View>
       <View style={tab.section}>
