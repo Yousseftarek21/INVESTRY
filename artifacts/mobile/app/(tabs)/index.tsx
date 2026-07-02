@@ -136,19 +136,25 @@ type TimeFilter = typeof TIME_FILTERS[number];
 const TIME_SCALE: Record<TimeFilter, number> = { '1D': 0.2, '1W': 0.5, '1M': 1, '3M': 2, '1Y': 4, 'ALL': 6 };
 
 function buildPoints(gainPct: number, filter: TimeFilter, seed: number, n = 22): number[] {
-  const scale = TIME_SCALE[filter];
   let r = (seed || 7) % 99991;
   const rand = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
 
-  const total = gainPct * scale;
-  // Noise stays small: proportional to signal + tiny floor so flat portfolios aren't dead-straight
-  const noiseAmp = Math.abs(total) * 0.06 + 0.35;
+  // Anchor endpoints explicitly so direction is ALWAYS correct:
+  // first = 100, last = 100 + gainPct (the actual return, no scaling)
+  const start = 100;
+  const end = 100 + gainPct;
+
+  // Tiny noise — at most 3 % of the distance between start and end, so it
+  // never overwhelms or inverts the trend. Flat portfolios get a small floor.
+  const noiseAmp = Math.max(Math.abs(gainPct) * 0.03, 0.18);
 
   return Array.from({ length: n }, (_, i) => {
+    if (i === 0)     return start;
+    if (i === n - 1) return end;
     const t = i / (n - 1);
-    // Smooth ease-in-out so the line starts gentle, moves, then settles at the right end
+    // ease-in-out interpolation between start and end
     const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    const trend = 100 + total * eased;
+    const trend = start + (end - start) * eased;
     const noise = (rand() - 0.5) * noiseAmp;
     return trend + noise;
   });
