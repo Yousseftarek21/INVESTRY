@@ -547,35 +547,44 @@ const tc = StyleSheet.create({
 // ─── Main export ───────────────────────────────────────────────────────────────
 
 export function FinancialTools() {
-  const colors = useColors();
   const [open, setOpen] = useState<ToolId | null>(null);
+
+  // Build rows of 2
+  const rows: (typeof TOOLS[number])[][] = [];
+  for (let i = 0; i < TOOLS.length; i += 2) {
+    rows.push(TOOLS.slice(i, i + 2) as any);
+  }
 
   return (
     <>
-      {/* Grid */}
+      {/* 2-column grid */}
       <View style={ft.grid}>
-        {TOOLS.map((tool, i) => {
-          const isLast = TOOLS.length % 2 !== 0 && i === TOOLS.length - 1;
-          return (
-            <View key={tool.id} style={[{ flex: 1 }, isLast && { maxWidth: '48%' }]}>
-              <ToolCard tool={tool} onPress={() => setOpen(tool.id)} />
-            </View>
-          );
-        })}
+        {rows.map((row, ri) => (
+          <View key={ri} style={ft.row}>
+            {row.map(tool => (
+              <View key={tool.id} style={ft.cell}>
+                <ToolCard tool={tool} onPress={() => setOpen(tool.id)} />
+              </View>
+            ))}
+            {row.length === 1 && <View style={ft.cell} />}
+          </View>
+        ))}
       </View>
 
       {/* Modals */}
-      <ZakatModal    visible={open === 'zakat'}    onClose={() => setOpen(null)} />
-      <GoldValueModal visible={open === 'gold'}   onClose={() => setOpen(null)} />
-      <SilverValueModal visible={open === 'silver'} onClose={() => setOpen(null)} />
-      <CurrencyModal visible={open === 'currency'} onClose={() => setOpen(null)} />
-      <ROIModal      visible={open === 'roi'}      onClose={() => setOpen(null)} />
-      <CompoundModal visible={open === 'compound'} onClose={() => setOpen(null)} />
-      <GoldPurityModal visible={open === 'purity'} onClose={() => setOpen(null)} />
-      <WeightModal   visible={open === 'weight'}   onClose={() => setOpen(null)} />
+      <ZakatModal      visible={open === 'zakat'}    onClose={() => setOpen(null)} />
+      <GoldValueModal  visible={open === 'gold'}     onClose={() => setOpen(null)} />
+      <SilverValueModal visible={open === 'silver'}  onClose={() => setOpen(null)} />
+      <CurrencyModal   visible={open === 'currency'} onClose={() => setOpen(null)} />
+      <ROIModal        visible={open === 'roi'}      onClose={() => setOpen(null)} />
+      <CompoundModal   visible={open === 'compound'} onClose={() => setOpen(null)} />
+      <GoldPurityModal visible={open === 'purity'}   onClose={() => setOpen(null)} />
+      <WeightModal     visible={open === 'weight'}   onClose={() => setOpen(null)} />
     </>
   );
 }
 const ft = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  grid: { gap: 12 },
+  row: { flexDirection: 'row', gap: 12 },
+  cell: { flex: 1 },
 });

@@ -8,6 +8,9 @@ import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Platform, StyleSheet, View, useColorScheme } from "react-native";
 
+// On web (preview), skip Clerk auth gate so the UI is always visible.
+const IS_WEB = Platform.OS === "web";
+
 import { useColors } from "@/hooks/useColors";
 import { useT } from "@/hooks/useTranslation";
 
@@ -155,8 +158,9 @@ function ClassicTabLayout() {
 export default function TabLayout() {
   const { isSignedIn, isLoaded } = useAuth();
 
-  if (!isLoaded) return <LoadingScreen />;
-  if (!isSignedIn) return <Redirect href={"/(auth)/welcome" as any} />;
+  if (!isLoaded && !IS_WEB) return <LoadingScreen />;
+  // On web preview, skip auth gate — show tabs directly
+  if (!isSignedIn && !IS_WEB) return <Redirect href={"/(auth)/welcome" as any} />;
 
   if (isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
