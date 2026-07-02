@@ -670,7 +670,7 @@ export default function SettingsScreen() {
         {/* ── SUBSCRIPTION ─────────────────────────────────── */}
         {!isPro ? (
           <Pressable
-            onPress={() => showPaywall('pro')}
+            onPress={() => (user ? showPaywall('pro') : router.push('/(auth)/sign-in' as any))}
             style={({ pressed }) => [sc.upgradeCard, { opacity: pressed ? 0.88 : 1 }]}
           >
             <View style={sc.upgradeLeft}>
@@ -684,7 +684,9 @@ export default function SettingsScreen() {
                     <Text style={sc.proBadgeTxt}>FREE</Text>
                   </View>
                 </View>
-                <Text style={sc.upgradeSub}>Unlock analytics, all tools & unlimited investments</Text>
+                <Text style={sc.upgradeSub}>
+                  {user ? 'Unlock analytics, all tools & unlimited investments' : 'Sign in to unlock — included free during launch'}
+                </Text>
               </View>
             </View>
             <Feather name="chevron-right" size={16} color="#000" />
