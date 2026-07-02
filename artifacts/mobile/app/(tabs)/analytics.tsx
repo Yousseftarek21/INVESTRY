@@ -635,7 +635,7 @@ export default function AnalyticsScreen() {
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={s.header}>
         <View>
-          <Text style={[s.eyebrow, { color: colors.primary }]}>INVSTRY</Text>
+          <Text style={[s.eyebrow, { color: colors.primary }]}>INVESTRY</Text>
           <Text style={[s.pageTitle, { color: colors.text }]}>Analytics</Text>
         </View>
         <LiveDot />

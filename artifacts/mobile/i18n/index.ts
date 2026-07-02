@@ -2,8 +2,8 @@ export type Language = 'en' | 'ar';
 
 const en = {
   // App
-  appName: 'INVSTRY',
-  appTagline: 'Your Investment Tracker',
+  appName: 'INVESTRY',
+  appTagline: 'Know Your Wealth',
 
   // Tabs
   portfolio: 'Portfolio',
@@ -146,8 +146,8 @@ const en = {
 
 const ar: typeof en = {
   // App
-  appName: 'INVSTRY',
-  appTagline: 'متابع استثماراتك',
+  appName: 'استثمارك',
+  appTagline: 'اعرف ثروتك',
 
   // Tabs
   portfolio: 'المحفظة',

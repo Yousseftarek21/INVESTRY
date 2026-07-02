@@ -126,9 +126,9 @@ export default function WelcomeScreen() {
           </View>
 
           <View style={styles.welcomeText}>
-            <Text style={[styles.welcomeApp, { color: colors.primary }]}>INVSTRY</Text>
+            <Text style={[styles.welcomeApp, { color: colors.primary }]}>INVESTRY</Text>
             <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-              Your Egypt Investment Tracker
+              Know Your Wealth
             </Text>
             <Text style={[styles.welcomeDesc, { color: colors.mutedForeground }]}>
               Track gold, silver, EGX stocks and real estate — live prices in Egyptian pounds.

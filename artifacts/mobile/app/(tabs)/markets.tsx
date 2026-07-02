@@ -479,7 +479,7 @@ export default function MarketsScreen() {
     >
       <View style={s.header}>
         <View>
-          <Text style={[s.eyebrow, { color: colors.primary }]}>INVSTRY</Text>
+          <Text style={[s.eyebrow, { color: colors.primary }]}>INVESTRY</Text>
           <Text style={[s.title, { color: colors.text }]}>Markets</Text>
         </View>
         <LiveDot />

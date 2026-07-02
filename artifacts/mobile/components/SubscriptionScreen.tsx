@@ -353,11 +353,11 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
               <Text style={sw.footerTxt}>{isRestoring ? t.subRestoring : t.subRestorePurchases}</Text>
             </Pressable>
             <View style={sw.dot} />
-            <Pressable onPress={() => Linking.openURL('https://invstry.app/terms')}>
+            <Pressable onPress={() => Linking.openURL('https://investry.app/terms')}>
               <Text style={sw.footerTxt}>{t.subTerms}</Text>
             </Pressable>
             <View style={sw.dot} />
-            <Pressable onPress={() => Linking.openURL('https://invstry.app/privacy')}>
+            <Pressable onPress={() => Linking.openURL('https://investry.app/privacy')}>
               <Text style={sw.footerTxt}>{t.subPrivacy}</Text>
             </Pressable>
           </View>

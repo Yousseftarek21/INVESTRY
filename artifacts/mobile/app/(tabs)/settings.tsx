@@ -518,8 +518,8 @@ function SmartFooter({ lastUpdate }: { lastUpdate: string }) {
   const colors = useColors();
   return (
     <View style={[sf.wrap, { borderTopColor: colors.border }]}>
-      <Text style={[sf.brand, { color: colors.primary }]}>INVSTRY</Text>
-      <Text style={[sf.tagline, { color: colors.mutedForeground }]}>Egypt Investment Tracker</Text>
+      <Text style={[sf.brand, { color: colors.primary }]}>INVESTRY</Text>
+      <Text style={[sf.tagline, { color: colors.mutedForeground }]}>Know Your Wealth</Text>
       <View style={sf.meta}>
         <View style={sf.metaRow}>
           <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>Version</Text>
@@ -535,7 +535,7 @@ function SmartFooter({ lastUpdate }: { lastUpdate: string }) {
         </View>
       </View>
       <Text style={[sf.copy, { color: colors.mutedForeground }]}>
-        © {COPYRIGHT_YEAR} INVSTRY. All rights reserved.
+        © {COPYRIGHT_YEAR} INVESTRY. All rights reserved.
       </Text>
       <Text style={[sf.disc, { color: colors.mutedForeground }]}>
         Market data is for informational purposes only and does not constitute financial advice. Prices may be delayed or inaccurate. Past performance does not indicate future results.
@@ -846,22 +846,22 @@ export default function SettingsScreen() {
         {/* ── SUPPORT ──────────────────────────────────────── */}
         <Sect label="SUPPORT">
           <NavRow icon="help-circle" iconBg="#0EA5E9" label="Help Center" onPress={() =>
-            showModal('Help Center', 'INVSTRY tracks your gold, silver, EGX stocks, and real estate in one place.\n\n• Pull down to refresh prices\n• Tap + on the Investments tab to add a holding\n• Swipe left on a holding to delete it\n• Toggle Arabic in Settings → Language & Region\n\nFor support: support@invstry.app')} />
-          <NavRow icon="mail"   iconBg="#10B981" label="Contact Support"    onPress={() => openURL('mailto:support@invstry.app?subject=INVSTRY Support')} />
-          <NavRow icon="flag"   iconBg="#F59E0B" label="Report a Bug"       onPress={() => openURL(`mailto:bugs@invstry.app?subject=Bug Report — INVSTRY v${APP_VERSION}`)} />
-          <NavRow icon="edit-2" iconBg="#8B5CF6" label="Request a Feature"  onPress={() => openURL('mailto:feedback@invstry.app?subject=Feature Request')} />
+            showModal('Help Center', 'INVESTRY tracks your gold, silver, EGX stocks, and real estate in one place.\n\n• Pull down to refresh prices\n• Tap + on the Investments tab to add a holding\n• Swipe left on a holding to delete it\n• Toggle Arabic in Settings → Language & Region\n\nFor support: support@investry.app')} />
+          <NavRow icon="mail"   iconBg="#10B981" label="Contact Support"    onPress={() => openURL('mailto:support@investry.app?subject=INVESTRY Support')} />
+          <NavRow icon="flag"   iconBg="#F59E0B" label="Report a Bug"       onPress={() => openURL(`mailto:bugs@investry.app?subject=Bug Report — INVESTRY v${APP_VERSION}`)} />
+          <NavRow icon="edit-2" iconBg="#8B5CF6" label="Request a Feature"  onPress={() => openURL('mailto:feedback@investry.app?subject=Feature Request')} />
           <NavRow icon="star"   iconBg="#EF4444" label="Rate on App Store"  onPress={() =>
-            showModal('Rate INVSTRY', 'Thank you for your support! App Store rating will be available once the app is published.')} last />
+            showModal('Rate INVESTRY', 'Thank you for your support! App Store rating will be available once the app is published.')} last />
         </Sect>
 
         {/* ── LEGAL ────────────────────────────────────────── */}
         <Sect label="LEGAL">
           <NavRow icon="file-text"    iconBg="#374151" label="Terms of Service" onPress={() =>
-            showModal('Terms of Service', 'Last updated: July 2025\n\nINVSTRY is provided for informational purposes only. Nothing in this app constitutes financial advice, investment advice, or a recommendation to buy or sell any asset.\n\nAll investment data is sourced from third-party providers and may not be 100% accurate or up to date. Past performance does not guarantee future results.\n\nYou agree to use this app at your own risk. We are not liable for any financial decisions made based on information displayed in this app.\n\nAll investment data is stored locally on your device and is never transmitted to our servers.')} />
+            showModal('Terms of Service', 'Last updated: July 2025\n\nINVESTRY is provided for informational purposes only. Nothing in this app constitutes financial advice, investment advice, or a recommendation to buy or sell any asset.\n\nAll investment data is sourced from third-party providers and may not be 100% accurate or up to date. Past performance does not guarantee future results.\n\nYou agree to use this app at your own risk. We are not liable for any financial decisions made based on information displayed in this app.\n\nAll investment data is stored locally on your device and is never transmitted to our servers.')} />
           <NavRow icon="lock"         iconBg="#4B5563" label="Privacy Policy"   onPress={() =>
-            showModal('Privacy Policy', 'Last updated: July 2025\n\nINVSTRY does not collect or store any personal data on external servers. All portfolio data is stored locally on your device using AsyncStorage.\n\nThird-Party Services\nWe fetch live market prices from:\n• api.gold-api.com\n• Yahoo Finance\n• open.er-api.com\n\nAnalytics (optional): Anonymized usage data only. No personally identifiable information is collected.\n\nContact: privacy@invstry.app')} />
+            showModal('Privacy Policy', 'Last updated: July 2025\n\nINVESTRY does not collect or store any personal data on external servers. All portfolio data is stored locally on your device using AsyncStorage.\n\nThird-Party Services\nWe fetch live market prices from:\n• api.gold-api.com\n• Yahoo Finance\n• open.er-api.com\n\nAnalytics (optional): Anonymized usage data only. No personally identifiable information is collected.\n\nContact: privacy@investry.app')} />
           <NavRow icon="alert-circle" iconBg="#7C3AED" label="Regulatory Disclaimer" onPress={() =>
-            showModal('Regulatory Disclaimer', 'INVSTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nAlways verify prices with a certified financial professional before making investment decisions.')} />
+            showModal('Regulatory Disclaimer', 'INVESTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nAlways verify prices with a certified financial professional before making investment decisions.')} />
           <NavRow icon="code"         iconBg="#6B7280" label="Open Source Licenses" onPress={() =>
             showModal('Open Source', 'Built with open source software:\n\n• Expo SDK 54 (MIT)\n• React Native 0.81 (MIT)\n• @tanstack/react-query (MIT)\n• AsyncStorage (MIT)\n• expo-haptics (MIT)\n• Inter font (OFL)\n• @expo/vector-icons (MIT)\n• Clerk SDK (Commercial)\n• react-native-svg (MIT)')} last />
         </Sect>

@@ -212,7 +212,7 @@ export default function SignUpScreen() {
           </Pressable>
 
           <View style={styles.headerWrap}>
-            <Text style={[styles.appLabel, { color: colors.primary }]}>INVSTRY</Text>
+            <Text style={[styles.appLabel, { color: colors.primary }]}>INVESTRY</Text>
             <Text style={[styles.title, { color: colors.text }]}>Create account</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               Start tracking your investments today

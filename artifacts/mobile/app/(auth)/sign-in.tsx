@@ -171,7 +171,7 @@ export default function SignInScreen() {
 
           {/* Header */}
           <View style={styles.headerWrap}>
-            <Text style={[styles.appLabel, { color: colors.primary }]}>INVSTRY</Text>
+            <Text style={[styles.appLabel, { color: colors.primary }]}>INVESTRY</Text>
             <Text style={[styles.title, { color: colors.text }]}>Welcome back</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               Sign in to your account
