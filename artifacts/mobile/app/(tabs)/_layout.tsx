@@ -1,12 +1,12 @@
 import { useAuth } from "@clerk/expo";
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, router } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 // On web (preview), skip Clerk auth gate so the UI is always visible.
 const IS_WEB = Platform.OS === "web";
@@ -36,8 +36,8 @@ function NativeTabLayout() {
         <Label>{t.markets}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="holdings">
-        <Icon sf={{ default: "briefcase", selected: "briefcase.fill" }} />
-        <Label>{t.holdings}</Label>
+        <Icon sf={{ default: "plus.circle.fill", selected: "plus.circle.fill" }} />
+        <Label>{t.addTab}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="analytics">
         <Icon sf={{ default: "chart.xyaxis.line", selected: "chart.xyaxis.line" }} />
@@ -118,13 +118,19 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="holdings"
         options={{
-          title: t.holdings,
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="briefcase.fill" tintColor={color} size={22} />
-            ) : (
-              <Feather name="briefcase" size={22} color={color} />
-            ),
+          title: t.addTab,
+          tabBarButton: () => (
+            <Pressable
+              onPress={() => router.push('/add-investment')}
+              style={tabStyles.addWrap}
+              accessibilityLabel={t.addInvestment}
+            >
+              <View style={[tabStyles.addBtn, { backgroundColor: colors.primary }]}>
+                <Feather name="plus" size={26} color="#000" />
+              </View>
+              <Text style={[tabStyles.addLabel, { color: colors.primary }]}>{t.addTab}</Text>
+            </Pressable>
+          ),
         }}
       />
       <Tabs.Screen
@@ -154,6 +160,33 @@ function ClassicTabLayout() {
     </Tabs>
   );
 }
+
+const tabStyles = StyleSheet.create({
+  addWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 0 : 4,
+  },
+  addBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -14,
+    shadowColor: '#D4AC0D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  addLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter_600SemiBold',
+    marginTop: 3,
+  },
+});
 
 export default function TabLayout() {
   const { isSignedIn, isLoaded } = useAuth();

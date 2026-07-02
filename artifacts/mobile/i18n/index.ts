@@ -52,6 +52,9 @@ const en = {
   stockGroup: 'EGX STOCKS',
   realEstateGroup: 'REAL ESTATE',
 
+  // Add tab
+  addTab: 'Add',
+
   // Add Investment
   addInvestment: 'Add Investment',
   investmentType: 'Investment Type',
@@ -192,6 +195,9 @@ const ar: typeof en = {
   silverGroup: 'الفضة',
   stockGroup: 'الأسهم',
   realEstateGroup: 'العقارات',
+
+  // Add tab
+  addTab: 'إضافة',
 
   // Add Investment
   addInvestment: 'إضافة استثمار',
