@@ -372,13 +372,11 @@ export default function HomeScreen() {
       {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.appLabel, { color: colors.primary }]}>{t.appName}</Text>
-          <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
-          <View style={styles.sloganRow}>
-            <View style={[styles.sloganLine, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.sloganText, { color: colors.primary }]}>KNOW YOUR WEALTH</Text>
-            <View style={[styles.sloganLine, { backgroundColor: colors.primary }]} />
+          <View style={styles.brandBlock}>
+            <Text style={[styles.appLabel, { color: colors.primary }]}>{t.appName}</Text>
+            <Text style={[styles.sloganText, { color: colors.primary }]}>Know Your Wealth</Text>
           </View>
+          <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
         </View>
         <View style={styles.headerRight}>
           <RefreshButton onPress={refetch} loading={isLoading} />
@@ -625,13 +623,12 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 20 },
 
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
-  headerLeft:  { gap: 2 },
-  headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 8 },
-  appLabel:    { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5 },
-  screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2, marginBottom: 2 },
-  sloganRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
-  sloganLine:  { flex: 1, height: StyleSheet.hairlineWidth, maxWidth: 28, opacity: 0.55 },
-  sloganText:  { fontSize: 9, fontFamily: 'Inter_600SemiBold', letterSpacing: 2.2, opacity: 0.7 },
+  headerLeft:  { gap: 6 },
+  headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
+  brandBlock:  { gap: 1 },
+  appLabel:    { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 5 },
+  sloganText:  { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 1.8, opacity: 0.6 },
+  screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   heroAccent: { height: 2.5 },
