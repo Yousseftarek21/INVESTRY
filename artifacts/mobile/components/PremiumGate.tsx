@@ -28,10 +28,14 @@ function hasAccess(userPlan: Plan, required: 'pro' | 'pro_plus'): boolean {
 }
 
 export function PremiumGate({ requiredPlan, feature, description, children }: PremiumGateProps) {
-  const { plan, showPaywall } = useSubscription();
+  const { plan, launchAccess, showPaywall } = useSubscription();
   const t = useT();
 
-  if (hasAccess(plan, requiredPlan)) return <>{children}</>;
+  // Launch Access is the single source of truth for "is everything unlocked
+  // right now" — never rely on `plan` alone here, since it could momentarily
+  // be stale/unresolved (loading, cache, network hiccup) even though the
+  // backend has already granted everyone access.
+  if (launchAccess || hasAccess(plan, requiredPlan)) return <>{children}</>;
 
   const accent = ACCENT[requiredPlan];
   const badge = BADGE[requiredPlan];

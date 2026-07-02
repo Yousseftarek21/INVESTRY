@@ -479,18 +479,11 @@ function MarketStatusCard({ onRefresh }: { onRefresh: () => void }) {
 
       <View style={msc.grid}>
         <StatusPair label="Last Update"   value={lastUpdate} />
-        <StatusPair label="Gold Source"   value="gold-api.com" />
-        <StatusPair label="FX Provider"   value="er-api.com" />
         <StatusPair label="USD/EGP Rate"  value={prices ? prices.usdToEgp.toFixed(3) : '—'} />
         <StatusPair
           label="EGX Market"
           value={egxOpen ? 'Open Now' : 'Closed'}
           color={egxOpen ? colors.green : colors.mutedForeground}
-        />
-        <StatusPair
-          label="API Health"
-          value={ok ? 'Healthy' : 'Degraded'}
-          color={ok ? colors.green : colors.red}
         />
       </View>
     </View>
