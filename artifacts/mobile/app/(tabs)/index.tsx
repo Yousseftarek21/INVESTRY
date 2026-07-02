@@ -379,7 +379,6 @@ export default function HomeScreen() {
           <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
         </View>
         <View style={styles.headerRight}>
-          <RefreshButton onPress={refetch} loading={isLoading} />
           <LiveChip lastUpdated={prices?.lastUpdated ?? null} />
         </View>
       </View>
@@ -625,9 +624,9 @@ const styles = StyleSheet.create({
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
   headerLeft:  { gap: 6 },
   headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
-  brandBlock:  { gap: 1 },
+  brandBlock:  { gap: 1, alignItems: 'flex-start' },
   appLabel:    { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 5 },
-  sloganText:  { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 1.8, opacity: 0.6 },
+  sloganText:  { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 1.8, opacity: 0.6, alignSelf: 'center' },
   screenTitle: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
