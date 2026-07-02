@@ -163,33 +163,71 @@ function ToggleRow({
   );
 }
 
-// ─── Detail modal ──────────────────────────────────────────────────────────────
+// ─── Detail modal (works on web + native) ──────────────────────────────────────
 
 function DetailModal({ visible, title, content, onClose }: {
   visible: boolean; title: string; content: string; onClose: () => void;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  if (!visible) return null;
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[mo.container, { backgroundColor: colors.background }]}>
-        <View style={[mo.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={mo.backdrop} onPress={onClose} />
+      <View style={[mo.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]}>
+        <View style={[mo.handle, { backgroundColor: colors.border }]} />
+        <View style={[mo.header, { borderBottomColor: colors.border }]}>
           <Text style={[mo.title, { color: colors.text }]}>{title}</Text>
           <TouchableOpacity onPress={onClose} style={[mo.close, { backgroundColor: colors.muted }]}>
             <Feather name="x" size={16} color={colors.mutedForeground} />
           </TouchableOpacity>
         </View>
-        <ScrollView contentContainerStyle={[mo.body, { paddingBottom: insets.bottom + 40 }]}>
+        <ScrollView contentContainerStyle={mo.body} showsVerticalScrollIndicator={false}>
           <Text style={[mo.content, { color: colors.textSecondary }]}>{content}</Text>
         </ScrollView>
       </View>
     </Modal>
   );
 }
+
+// ─── Confirm modal (replaces Alert.alert on web) ────────────────────────────
+
+function ConfirmModal({ visible, title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onCancel }: {
+  visible: boolean; title: string; message: string;
+  confirmLabel?: string; danger?: boolean;
+  onConfirm: () => void; onCancel: () => void;
+}) {
+  const colors = useColors();
+  if (!visible) return null;
+  return (
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
+      <View style={cm.overlay}>
+        <View style={[cm.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[cm.title, { color: colors.text }]}>{title}</Text>
+          <Text style={[cm.msg, { color: colors.mutedForeground }]}>{message}</Text>
+          <View style={cm.row}>
+            <TouchableOpacity onPress={onCancel} style={[cm.btn, { backgroundColor: colors.muted }]}>
+              <Text style={[cm.btnTxt, { color: colors.mutedForeground }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onConfirm}
+              style={[cm.btn, { backgroundColor: danger ? colors.red + '18' : colors.primary + '18', borderWidth: 1, borderColor: danger ? colors.red + '40' : colors.primary + '40' }]}
+            >
+              <Text style={[cm.btnTxt, { color: danger ? colors.red : colors.primary, fontFamily: 'Inter_600SemiBold' }]}>{confirmLabel}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const mo = StyleSheet.create({
-  container: { flex: 1 },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
+  handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 4 },
   header: {
-    paddingHorizontal: 20, paddingBottom: 16,
+    paddingHorizontal: 20, paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
@@ -197,6 +235,15 @@ const mo = StyleSheet.create({
   close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   body: { padding: 24 },
   content: { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 26 },
+});
+const cm = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card: { borderRadius: 20, borderWidth: 1, padding: 24, width: '100%', gap: 16 },
+  title: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  msg: { fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 22 },
+  row: { flexDirection: 'row', gap: 10 },
+  btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
+  btnTxt: { fontSize: 14, fontFamily: 'Inter_500Medium' },
 });
 
 // ─── Profile hero card ────────────────────────────────────────────────────────
@@ -525,6 +572,7 @@ export default function SettingsScreen() {
   const { data: prices, dataUpdatedAt, refetch: refetchPrices } = useMarketPrices();
 
   const [modal, setModal]         = useState<{ title: string; content: string } | null>(null);
+  const [confirm, setConfirm]     = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
   const [langOpen, setLangOpen]   = useState(false);
   const [hideValues, setHideValues] = useState(false);
 
@@ -550,7 +598,7 @@ export default function SettingsScreen() {
     : 'Never';
 
   const showModal = (title: string, content: string) => { haptic(); setModal({ title, content }); };
-  const openURL   = (url: string) => { haptic(); Linking.openURL(url).catch(() => Alert.alert('Could not open link')); };
+  const openURL   = (url: string) => { haptic(); Linking.openURL(url).catch(() => showModal('Could not open link', 'Please check your internet connection and try again.')); };
 
   const handleHideValues = async (v: boolean) => {
     haptic(); setHideValues(v);
@@ -559,31 +607,28 @@ export default function SettingsScreen() {
 
   const handleDeleteAll = () => {
     haptic(Haptics.ImpactFeedbackStyle.Heavy);
-    Alert.alert('Delete All Data',
-      'Permanently removes all investments and preferences. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete Everything', style: 'destructive', onPress: async () => {
-          for (const h of holdings) removeHolding(h.id);
-          await AsyncStorage.multiRemove([
-            '@invstry_theme', '@invstry_lang', '@invstry_weight',
-            '@invstry_haptics', '@invstry_analytics', '@invstry_notif', '@invstry_hide_values',
-          ]);
-          if (hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        }},
-      ]
-    );
+    setConfirm({ id: 'delete', title: 'Delete All Data', message: 'Permanently removes all investments and preferences. This cannot be undone.', label: 'Delete Everything', danger: true });
   };
 
   const handleSignOut = () => {
     haptic(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: async () => {
-        await signOut();
-        router.replace('/(auth)/welcome' as any);
-      }},
-    ]);
+    setConfirm({ id: 'signout', title: 'Sign Out', message: 'Are you sure you want to sign out?', label: 'Sign Out', danger: true });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirm) return;
+    if (confirm.id === 'delete') {
+      for (const h of holdings) removeHolding(h.id);
+      await AsyncStorage.multiRemove([
+        '@invstry_theme', '@invstry_lang', '@invstry_weight',
+        '@invstry_haptics', '@invstry_analytics', '@invstry_notif', '@invstry_hide_values',
+      ]);
+      if (hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } else if (confirm.id === 'signout') {
+      await signOut();
+      router.replace('/(auth)/welcome' as any);
+    }
+    setConfirm(null);
   };
 
   return (
@@ -751,7 +796,7 @@ export default function SettingsScreen() {
           <NavRow icon="shield"   iconBg="#047857" label="Privacy Settings"  sublabel="Device-level permissions" onPress={() => Linking.openSettings()} />
           <NavRow icon="download" iconBg="#0EA5E9" label="Export My Data"
             sublabel={`${holdings.length} holding${holdings.length !== 1 ? 's' : ''} ready`}
-            onPress={() => { haptic(); Alert.alert('Export Data', `${holdings.length} investment${holdings.length !== 1 ? 's' : ''}.\n\nFull CSV/JSON export coming soon.`, [{ text: 'OK' }]); }} />
+            onPress={() => showModal('Export My Data', `You have ${holdings.length} investment${holdings.length !== 1 ? 's' : ''} saved.\n\nFull CSV/JSON export is coming soon in a future update.`)} />
           <NavRow icon="trash-2"  iconBg={colors.red} label="Delete All Data" sublabel="Permanently remove all investments" onPress={handleDeleteAll} destructive last />
         </Sect>
 
@@ -793,6 +838,17 @@ export default function SettingsScreen() {
 
       {modal && (
         <DetailModal visible title={modal.title} content={modal.content} onClose={() => setModal(null)} />
+      )}
+      {confirm && (
+        <ConfirmModal
+          visible
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.label}
+          danger={confirm.danger}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirm(null)}
+        />
       )}
     </>
   );
