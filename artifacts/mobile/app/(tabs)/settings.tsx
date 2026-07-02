@@ -598,14 +598,33 @@ export default function SettingsScreen() {
           <Text style={[sc.pageTitle, { color: colors.text }]}>{t.settings}</Text>
         </View>
 
+        {/* ── SIGN-IN PROMPT (web, not signed in) ─────────── */}
+        {!user && (
+          <Pressable
+            onPress={() => router.push('/(auth)/sign-in' as any)}
+            style={({ pressed }) => [sc.signInCard, { backgroundColor: colors.card, borderColor: '#D4AC0D40', opacity: pressed ? 0.85 : 1 }]}
+          >
+            <View style={sc.signInIconWrap}>
+              <Feather name="user" size={22} color="#D4AC0D" />
+            </View>
+            <View style={sc.signInText}>
+              <Text style={[sc.signInTitle, { color: colors.text }]}>Sign in to your account</Text>
+              <Text style={[sc.signInSub, { color: colors.mutedForeground }]}>Load your saved investments & sync data</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color="#D4AC0D" />
+          </Pressable>
+        )}
+
         {/* ── PROFILE HERO ─────────────────────────────────── */}
-        <ProfileHero
-          initials={initials} fullName={fullName} email={email}
-          verified={verified} holdingsCount={holdings.length}
-          onPress={() => showModal('Account Details',
-            `Name: ${fullName}\nEmail: ${email}\nVerified: ${verified ? 'Yes ✓' : 'Pending'}\n\nHoldings: ${holdings.length} investment${holdings.length !== 1 ? 's' : ''}\nStorage: Locally on your device only\n\nFor account changes, sign out and sign in with updated credentials.`
-          )}
-        />
+        {user && (
+          <ProfileHero
+            initials={initials} fullName={fullName} email={email}
+            verified={verified} holdingsCount={holdings.length}
+            onPress={() => showModal('Account Details',
+              `Name: ${fullName}\nEmail: ${email}\nVerified: ${verified ? 'Yes ✓' : 'Pending'}\n\nHoldings: ${holdings.length} investment${holdings.length !== 1 ? 's' : ''}\nStorage: Locally on your device only\n\nFor account changes, sign out and sign in with updated credentials.`
+            )}
+          />
+        )}
 
         {/* ── ACCOUNT & SECURITY ─────────────────────────── */}
         <Sect label="ACCOUNT & SECURITY">
@@ -797,4 +816,10 @@ const sc = StyleSheet.create({
 
   signOut: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 17, gap: 10 },
   signOutTxt: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+
+  signInCard: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
+  signInIconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#D4AC0D18', alignItems: 'center', justifyContent: 'center' },
+  signInText: { flex: 1, gap: 3 },
+  signInTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  signInSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
 });
