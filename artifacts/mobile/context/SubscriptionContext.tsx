@@ -52,8 +52,8 @@ export interface SubscriptionContextValue {
 const OFFERINGS: SubscriptionContextValue['offerings'] = {
   pro: {
     identifier: 'investry_pro_monthly',
-    priceString: '49.99 EGP/شهر',
-    annualPriceString: '399.99 EGP/سنة',
+    priceString: '49.99 EGP',
+    annualPriceString: '399.99 EGP',
     price: 49.99,
     annualPrice: 399.99,
     annualSavingsPct: 33,
@@ -62,8 +62,8 @@ const OFFERINGS: SubscriptionContextValue['offerings'] = {
   },
   proPlus: {
     identifier: 'investry_pro_plus_monthly',
-    priceString: '69.99 EGP/شهر',
-    annualPriceString: '559.99 EGP/سنة',
+    priceString: '69.99 EGP',
+    annualPriceString: '559.99 EGP',
     price: 69.99,
     annualPrice: 559.99,
     annualSavingsPct: 33,

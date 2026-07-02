@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useSubscription, Plan } from '@/context/SubscriptionContext';
+import { useT } from '@/hooks/useTranslation';
 
 interface PremiumGateProps {
   requiredPlan: 'pro' | 'pro_plus';
@@ -28,6 +29,7 @@ function hasAccess(userPlan: Plan, required: 'pro' | 'pro_plus'): boolean {
 
 export function PremiumGate({ requiredPlan, feature, description, children }: PremiumGateProps) {
   const { plan, showPaywall } = useSubscription();
+  const t = useT();
 
   if (hasAccess(plan, requiredPlan)) return <>{children}</>;
 
@@ -71,11 +73,11 @@ export function PremiumGate({ requiredPlan, feature, description, children }: Pr
             style={({ pressed }) => [g.btn, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
           >
             <Feather name="zap" size={14} color="#000" style={{ marginRight: 7 }} />
-            <Text style={g.btnTxt}>Upgrade to {badge}</Text>
+            <Text style={g.btnTxt}>{t.subUpgradeTo} {badge}</Text>
           </Pressable>
 
           <Text style={[g.unlockHint, { color: accent + '80' }]}>
-            {requiredPlan === 'pro' ? 'From 399.99 EGP/year' : 'From 559.99 EGP/year'}
+            {requiredPlan === 'pro' ? t.subFromYearlyPro : t.subFromYearlyProPlus}
           </Text>
         </View>
       </View>

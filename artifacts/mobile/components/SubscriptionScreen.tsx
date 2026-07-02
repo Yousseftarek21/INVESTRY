@@ -6,23 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useSubscription, BillingPeriod } from '@/context/SubscriptionContext';
-
-// ─── Feature lists ─────────────────────────────────────────────────────────────
-
-const PRO_FEATURES = [
-  { icon: 'layers',      label: 'Unlimited investments'        },
-  { icon: 'tool',        label: 'All 8 financial calculators'  },
-  { icon: 'globe',       label: 'Market Intelligence'          },
-  { icon: 'bar-chart-2', label: 'Portfolio Analytics'          },
-  { icon: 'moon',        label: 'Zakat auto-calculation'       },
-] as const;
-
-const PRO_PLUS_EXTRAS = [
-  { icon: 'activity',    label: 'Advanced performance charts'  },
-  { icon: 'zap',         label: 'EGX real-time data'           },
-  { icon: 'download',    label: 'CSV / JSON export'            },
-  { icon: 'headphones',  label: 'Priority support'             },
-] as const;
+import { useT } from '@/hooks/useTranslation';
 
 // ─── Confirm modal ─────────────────────────────────────────────────────────────
 
@@ -32,6 +16,7 @@ function ConfirmPurchase({
   visible: boolean; planLabel: string; priceString: string;
   onConfirm: () => void; onCancel: () => void; isPurchasing: boolean; accent: string;
 }) {
+  const t = useT();
   if (!visible) return null;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
@@ -40,11 +25,11 @@ function ConfirmPurchase({
           <View style={[cm.iconWrap, { backgroundColor: accent + '15', borderColor: accent + '30' }]}>
             <Feather name="star" size={28} color={accent} />
           </View>
-          <Text style={cm.title}>Confirm Subscription</Text>
+          <Text style={cm.title}>{t.subConfirmTitle}</Text>
           <Text style={cm.msg}>
-            {'Subscribing to\n'}
+            {t.subSubscribingTo + '\n'}
             <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold' }}>{planLabel}</Text>
-            {'\nat '}
+            {'\n' + t.subAt + ' '}
             <Text style={{ color: accent, fontFamily: 'Inter_700Bold' }}>{priceString}</Text>
           </Text>
           <Pressable
@@ -54,15 +39,13 @@ function ConfirmPurchase({
           >
             {isPurchasing
               ? <ActivityIndicator size="small" color="#000" />
-              : <Text style={cm.confirmTxt}>Subscribe Now</Text>
+              : <Text style={cm.confirmTxt}>{t.subSubscribeNow}</Text>
             }
           </Pressable>
           <Pressable onPress={onCancel} style={cm.cancelBtn}>
-            <Text style={cm.cancelTxt}>Cancel</Text>
+            <Text style={cm.cancelTxt}>{t.subCancel}</Text>
           </Pressable>
-          <Text style={cm.legalTxt}>
-            Auto-renews. Cancel anytime in your App Store / Google Play settings.
-          </Text>
+          <Text style={cm.legalTxt}>{t.subAutoRenews}</Text>
         </View>
       </View>
     </Modal>
@@ -94,12 +77,15 @@ function PlanCard({
   planKey: 'pro' | 'pro_plus'; selected: boolean; period: BillingPeriod; onSelect: () => void;
 }) {
   const { offerings } = useSubscription();
+  const t = useT();
   const product = planKey === 'pro' ? offerings.pro : offerings.proPlus;
   const accent = planKey === 'pro' ? '#D4AC0D' : '#A47FCA';
   const isProPlus = planKey === 'pro_plus';
-  const price = period === 'monthly' ? product.priceString : product.annualPriceString;
+  const price = period === 'monthly'
+    ? `${product.priceString}/${t.subMonth}`
+    : `${product.annualPriceString}/${t.subYear}`;
   const perMonth = period === 'annual'
-    ? `≈ ${Math.round(product.annualPrice / 12).toLocaleString('en-EG')} EGP/شهر`
+    ? `≈ ${Math.round(product.annualPrice / 12).toLocaleString('en-EG')} EGP/${t.subMonth}`
     : null;
 
   const scale = useRef(new Animated.Value(1)).current;
@@ -126,7 +112,7 @@ function PlanCard({
 
         {isProPlus && (
           <View style={[pc.popularTag, { backgroundColor: accent }]}>
-            <Text style={pc.popularTxt}>MOST POPULAR</Text>
+            <Text style={pc.popularTxt}>{t.subMostPopular}</Text>
           </View>
         )}
 
@@ -205,6 +191,22 @@ interface SubscriptionScreenProps {
 export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: SubscriptionScreenProps) {
   const insets = useSafeAreaInsets();
   const { offerings, purchase, restore, isPurchasing, isRestoring } = useSubscription();
+  const t = useT();
+
+  const PRO_FEATURES = [
+    { icon: 'layers',      label: t.subUnlimitedInvestments },
+    { icon: 'tool',        label: t.subAllCalculators       },
+    { icon: 'globe',       label: t.subMarketIntelligence   },
+    { icon: 'bar-chart-2', label: t.subPortfolioAnalytics   },
+    { icon: 'moon',        label: t.subZakat                },
+  ];
+
+  const PRO_PLUS_EXTRAS = [
+    { icon: 'activity',    label: t.subAdvancedCharts  },
+    { icon: 'zap',         label: t.subEgxRealtime     },
+    { icon: 'download',    label: t.subCsvExport        },
+    { icon: 'headphones',  label: t.subPrioritySupport  },
+  ];
 
   const [period, setPeriod] = useState<BillingPeriod>('annual');
   const [selectedPlan, setSelectedPlan] = useState<'pro' | 'pro_plus'>(initialPlan);
@@ -231,7 +233,9 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
 
   const accent = selectedPlan === 'pro' ? '#D4AC0D' : '#A47FCA';
   const product = selectedPlan === 'pro' ? offerings.pro : offerings.proPlus;
-  const currentPrice = period === 'monthly' ? product.priceString : product.annualPriceString;
+  const currentPrice = period === 'monthly'
+    ? `${product.priceString}/${t.subMonth}`
+    : `${product.annualPriceString}/${t.subYear}`;
 
   const handleConfirm = async () => {
     await purchase(selectedPlan, period);
@@ -274,7 +278,7 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
               <Feather name="star" size={32} color="#D4AC0D" />
             </View>
             <Text style={sw.heroTitle}>Investry Pro</Text>
-            <Text style={sw.heroSub}>Unlock your full financial potential</Text>
+            <Text style={sw.heroSub}>{t.subHeroSub}</Text>
           </View>
 
           {/* ── Billing toggle ──────────────────────────────── */}
@@ -284,7 +288,7 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
               style={[sw.toggleBtn, period === 'monthly' && sw.toggleBtnActive]}
             >
               <Text style={[sw.toggleTxt, period === 'monthly' ? sw.toggleTxtOn : sw.toggleTxtOff]}>
-                Monthly
+                {t.subMonthly}
               </Text>
             </Pressable>
             <Pressable
@@ -292,10 +296,10 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
               style={[sw.toggleBtn, period === 'annual' && sw.toggleBtnActive]}
             >
               <Text style={[sw.toggleTxt, period === 'annual' ? sw.toggleTxtOn : sw.toggleTxtOff]}>
-                Annual
+                {t.subAnnual}
               </Text>
               <View style={sw.saveBadge}>
-                <Text style={sw.saveBadgeTxt}>SAVE 33%</Text>
+                <Text style={sw.saveBadgeTxt}>{t.subSave33}</Text>
               </View>
             </Pressable>
           </View>
@@ -308,7 +312,7 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
 
           {/* ── Features ────────────────────────────────────── */}
           <View style={sw.featureCard}>
-            <Text style={sw.featureTitle}>WHAT'S INCLUDED</Text>
+            <Text style={sw.featureTitle}>{t.subWhatsIncluded}</Text>
             {PRO_FEATURES.map(f => (
               <FeatureRow key={f.label} icon={f.icon} label={f.label} accent={accent} />
             ))}
@@ -333,7 +337,7 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
             ) : (
               <View style={sw.ctaRow}>
                 <View>
-                  <Text style={sw.ctaTop}>Continue with {selectedPlan === 'pro' ? 'Pro' : 'Pro+'}</Text>
+                  <Text style={sw.ctaTop}>{t.subContinueWith} {selectedPlan === 'pro' ? 'Pro' : 'Pro+'}</Text>
                   <Text style={sw.ctaBottom}>{currentPrice}</Text>
                 </View>
                 <View style={sw.ctaArrow}>
@@ -346,21 +350,19 @@ export function SubscriptionScreen({ visible, onClose, initialPlan = 'pro' }: Su
           {/* ── Footer ──────────────────────────────────────── */}
           <View style={sw.footer}>
             <Pressable onPress={() => restore()} disabled={isRestoring}>
-              <Text style={sw.footerTxt}>{isRestoring ? 'Restoring…' : 'Restore Purchases'}</Text>
+              <Text style={sw.footerTxt}>{isRestoring ? t.subRestoring : t.subRestorePurchases}</Text>
             </Pressable>
             <View style={sw.dot} />
             <Pressable onPress={() => Linking.openURL('https://invstry.app/terms')}>
-              <Text style={sw.footerTxt}>Terms</Text>
+              <Text style={sw.footerTxt}>{t.subTerms}</Text>
             </Pressable>
             <View style={sw.dot} />
             <Pressable onPress={() => Linking.openURL('https://invstry.app/privacy')}>
-              <Text style={sw.footerTxt}>Privacy</Text>
+              <Text style={sw.footerTxt}>{t.subPrivacy}</Text>
             </Pressable>
           </View>
 
-          <Text style={sw.disclaimer}>
-            Subscriptions auto-renew. Cancel anytime in your App Store or Google Play settings.
-          </Text>
+          <Text style={sw.disclaimer}>{t.subDisclaimer}</Text>
         </ScrollView>
       </Animated.View>
 
