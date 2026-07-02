@@ -168,11 +168,19 @@ function AllocationBars({ segs }: {
   segs: { label: string; value: number; color: string; pct: number }[];
 }) {
   const colors = useColors();
-  const widths = useRef(segs.map(() => new Animated.Value(0))).current;
+  // Keyed by label (not index) so adding/removing an asset class between
+  // renders can't leave a stale-length array with missing entries — that
+  // used to crash Animated.timing with "Cannot read property 'stopTracking'
+  // of undefined" whenever the number of active asset classes changed
+  // (e.g. adding the first Personal Asset holding).
+  const widthsRef = useRef<Record<string, Animated.Value>>({});
 
   useEffect(() => {
     segs.forEach((seg, i) => {
-      Animated.timing(widths[i], {
+      if (!widthsRef.current[seg.label]) {
+        widthsRef.current[seg.label] = new Animated.Value(0);
+      }
+      Animated.timing(widthsRef.current[seg.label], {
         toValue: seg.pct,
         duration: 700 + i * 100,
         useNativeDriver: false,
@@ -184,29 +192,35 @@ function AllocationBars({ segs }: {
 
   return (
     <View style={ab.container}>
-      {segs.map((seg, i) => (
-        <View key={seg.label} style={ab.row}>
-          <View style={ab.meta}>
-            <View style={[ab.dot, { backgroundColor: seg.color }]} />
-            <Text style={[ab.label, { color: colors.text }]}>{seg.label}</Text>
-            <Text style={[ab.value, { color: colors.mutedForeground }]}>{fmtK(seg.value)} EGP</Text>
+      {segs.map((seg, i) => {
+        if (!widthsRef.current[seg.label]) {
+          widthsRef.current[seg.label] = new Animated.Value(0);
+        }
+        const width = widthsRef.current[seg.label];
+        return (
+          <View key={seg.label} style={ab.row}>
+            <View style={ab.meta}>
+              <View style={[ab.dot, { backgroundColor: seg.color }]} />
+              <Text style={[ab.label, { color: colors.text }]}>{seg.label}</Text>
+              <Text style={[ab.value, { color: colors.mutedForeground }]}>{fmtK(seg.value)} EGP</Text>
+            </View>
+            <View style={[ab.track, { backgroundColor: colors.muted }]}>
+              <Animated.View
+                style={[
+                  ab.fill,
+                  {
+                    backgroundColor: seg.color,
+                    width: width.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) as any,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={[ab.pct, { color: seg.color }]}>
+              {seg.pct.toFixed(1)}%
+            </Text>
           </View>
-          <View style={[ab.track, { backgroundColor: colors.muted }]}>
-            <Animated.View
-              style={[
-                ab.fill,
-                {
-                  backgroundColor: seg.color,
-                  width: widths[i].interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) as any,
-                },
-              ]}
-            />
-          </View>
-          <Text style={[ab.pct, { color: seg.color }]}>
-            {seg.pct.toFixed(1)}%
-          </Text>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }

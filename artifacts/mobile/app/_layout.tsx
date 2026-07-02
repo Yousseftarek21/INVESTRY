@@ -103,8 +103,8 @@ export default function RootLayout() {
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
       <ClerkLoaded>
         <SafeAreaProvider>
-          <ErrorBoundary>
-            <AppSettingsProvider>
+          <AppSettingsProvider>
+            <ErrorBoundary>
               <QueryClientProvider client={queryClient}>
                 <SubscriptionProvider>
                   <GestureHandlerRootView style={{ flex: 1 }}>
@@ -118,8 +118,8 @@ export default function RootLayout() {
                   </GestureHandlerRootView>
                 </SubscriptionProvider>
               </QueryClientProvider>
-            </AppSettingsProvider>
-          </ErrorBoundary>
+            </ErrorBoundary>
+          </AppSettingsProvider>
         </SafeAreaProvider>
       </ClerkLoaded>
     </ClerkProvider>
