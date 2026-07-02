@@ -141,6 +141,9 @@ const en = {
   subFromYearlyProPlus: 'From 559.99 EGP/year',
   subPurchaseUnavailableTitle: 'Purchase Unavailable',
   subPurchaseUnavailableBody: 'In-app purchases are not yet available. Please check back soon.',
+  subSignInToUnlock: 'Sign In to Unlock',
+  subSignInToUnlockDesc: 'Included free during launch — just sign in to access this feature.',
+  subSignInButton: 'Sign In',
 
   // Footer
   footerTagline: 'Egypt · Live Market Data · 2024',
@@ -287,6 +290,9 @@ const ar: typeof en = {
   subFromYearlyProPlus: 'من 559.99 جنيه/سنة',
   subPurchaseUnavailableTitle: 'الشراء غير متاح',
   subPurchaseUnavailableBody: 'المشتريات داخل التطبيق غير متاحة حالياً. يرجى المحاولة لاحقاً.',
+  subSignInToUnlock: 'سجّل الدخول للوصول',
+  subSignInToUnlockDesc: 'متاحة مجاناً خلال الإطلاق — فقط سجّل الدخول لاستخدام هذه الميزة.',
+  subSignInButton: 'تسجيل الدخول',
 
   // Footer
   footerTagline: 'مصر · بيانات حية · ٢٠٢٤',

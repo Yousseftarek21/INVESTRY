@@ -6,6 +6,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
+import { useAuth } from '@clerk/expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -256,6 +257,7 @@ export default function AddInvestmentScreen() {
   const insets = useSafeAreaInsets();
   const { addHolding, updateHolding, holdings } = useHoldings();
   const { isPro, launchAccess, showPaywall } = useSubscription();
+  const { isSignedIn } = useAuth();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
 
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
@@ -335,6 +337,15 @@ export default function AddInvestmentScreen() {
     // Free tier: max 5 investments. Launch Access always overrides this,
     // even if `isPro` hasn't resolved yet (loading/cache/network hiccup).
     if (!isEditing && !isPro && !launchAccess && holdings.length >= FREE_LIMIT) {
+      // Signed-out users just need an account to get free Launch Access —
+      // don't send them to a pay prompt, send them to sign in.
+      if (!isSignedIn) {
+        Alert.alert(t.subSignInToUnlock, t.subSignInToUnlockDesc, [
+          { text: t.subCancel, style: 'cancel' },
+          { text: t.subSignInButton, onPress: () => router.push('/(auth)/welcome' as any) },
+        ]);
+        return;
+      }
       showPaywall('pro');
       return;
     }

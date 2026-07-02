@@ -15,3 +15,10 @@ Premium status is fully centralized through `SubscriptionContext` on the client 
 
 ## Testing gotcha: Clerk e2e sign-in requires an explicit flag
 When calling `runTest()` with a `[Clerk Auth] Sign in as ...` step, you must also pass `testClerkAuth: true` in the `runTest()` call itself. Without it, the test falls back to trying to interact with Clerk's real sign-in UI (which fails since there's no known password) instead of signing in programmatically.
+
+## Signed-out users still see a paywall, and that's a UX bug not a logic bug
+`launchAccess`/`plan` are derived per-authenticated-user (`GET /api/subscription` requires a Clerk session), so a signed-out visitor always has `plan='free'`, `launchAccess=false` — regardless of `FREE_ACCESS_PLAN`. `(tabs)/_layout.tsx` intentionally skips the sign-in redirect on web (`if (!isSignedIn && !IS_WEB) return <Redirect .../>`), so anonymous users can reach premium screens directly in the web/canvas preview.
+
+**Why it matters:** `PremiumGate` originally couldn't distinguish "needs to pay" from "needs to sign in (then gets it free)", so anonymous users saw a confusing "Upgrade to PRO" paywall during Launch Access.
+
+**How to apply:** gate components should check `useAuth().isSignedIn` from `@clerk/expo` first — if signed out, show a "Sign In" CTA (routes to `/(auth)/welcome`) instead of the pay prompt; only fall through to the real paywall once signed in and still lacking access.

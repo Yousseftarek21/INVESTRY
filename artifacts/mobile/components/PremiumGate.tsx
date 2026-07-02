@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useAuth } from '@clerk/expo';
+import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useSubscription, Plan } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
@@ -29,6 +31,7 @@ function hasAccess(userPlan: Plan, required: 'pro' | 'pro_plus'): boolean {
 
 export function PremiumGate({ requiredPlan, feature, description, children }: PremiumGateProps) {
   const { plan, launchAccess, showPaywall } = useSubscription();
+  const { isSignedIn } = useAuth();
   const t = useT();
 
   // Launch Access is the single source of truth for "is everything unlocked
@@ -39,6 +42,51 @@ export function PremiumGate({ requiredPlan, feature, description, children }: Pr
 
   const accent = ACCENT[requiredPlan];
   const badge = BADGE[requiredPlan];
+
+  // Signed-out visitors aren't missing a paid plan — they're missing an
+  // account. During Launch Access every signed-in user gets this feature
+  // for free, so prompt them to sign in instead of showing a pay prompt.
+  if (!isSignedIn) {
+    return (
+      <View style={[g.wrapper, { marginHorizontal: 20, marginVertical: 8 }]}>
+        <View style={[g.glowRingOuter, { borderColor: accent + '18' }]} />
+        <View style={[g.glowRingInner, { borderColor: accent + '28' }]} />
+
+        <View style={[g.card, { borderColor: accent + '30', backgroundColor: '#060D1A' }]}>
+          <View style={[g.topBar, { backgroundColor: accent }]} />
+
+          <View style={g.body}>
+            <View style={g.headerRow}>
+              <View style={[g.badge, { backgroundColor: accent + '15', borderColor: accent + '35' }]}>
+                <Feather name="user" size={10} color={accent} style={{ marginRight: 5 }} />
+                <Text style={[g.badgeTxt, { color: accent }]}>{badge}</Text>
+              </View>
+              <View style={[g.lockCircle, { backgroundColor: accent + '12', borderColor: accent + '25' }]}>
+                <Feather name="lock" size={13} color={accent} />
+              </View>
+            </View>
+
+            <Text style={g.featureName}>{feature}</Text>
+            <Text style={g.featureDesc}>{description}</Text>
+
+            <View style={[g.divider, { backgroundColor: accent + '20' }]} />
+
+            <Pressable
+              onPress={() => router.push('/(auth)/welcome' as any)}
+              style={({ pressed }) => [g.btn, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
+            >
+              <Feather name="log-in" size={14} color="#000" style={{ marginRight: 7 }} />
+              <Text style={g.btnTxt}>{t.subSignInButton}</Text>
+            </Pressable>
+
+            <Text style={[g.unlockHint, { color: accent + '80' }]}>
+              {t.subSignInToUnlockDesc}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[g.wrapper, { marginHorizontal: 20, marginVertical: 8 }]}>
