@@ -14,8 +14,8 @@ import { GoldKarat, Holding, MetalForm, PropertyType } from '@/types';
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate';
 
-// ─── All major EGX listed stocks ──────────────────────────────────────────────
-const EGX_SYMBOLS = [
+// ─── All major EGX listed stocks (deduplicated by symbol) ─────────────────────
+const EGX_SYMBOLS_RAW = [
   { symbol: 'COMI', name: 'Commercial International Bank' },
   { symbol: 'HRHO', name: 'EFG Hermes Holding' },
   { symbol: 'TMGH', name: 'Talaat Moustafa Group' },
@@ -31,7 +31,6 @@ const EGX_SYMBOLS = [
   { symbol: 'ALEX', name: 'Alexandria Mineral Oils' },
   { symbol: 'AMOC', name: 'Alexandria Petroleum' },
   { symbol: 'AMER', name: 'Americana Restaurants' },
-  { symbol: 'AMOC', name: 'Alexandria Mineral Oils Company' },
   { symbol: 'ARAB', name: 'Arab Bank Egypt' },
   { symbol: 'ARKI', name: 'Ark Investment & Real Estate' },
   { symbol: 'ASCM', name: 'Alexandria Spinning & Weaving' },
@@ -64,7 +63,7 @@ const EGX_SYMBOLS = [
   { symbol: 'ELWS', name: 'El Wady Ceramics' },
   { symbol: 'EMFD', name: 'Egypt Foods Group' },
   { symbol: 'EMIC', name: 'Egyptian Media Production City' },
-  { symbol: 'ENPI', name: 'Egyptian Nat\'l Posts' },
+  { symbol: 'ENPI', name: "Egyptian Nat'l Posts" },
   { symbol: 'ESRS', name: 'Ezz Steel' },
   { symbol: 'ETRS', name: 'Egyptian Transport' },
   { symbol: 'EXPA', name: 'Export Development Bank' },
@@ -98,7 +97,6 @@ const EGX_SYMBOLS = [
   { symbol: 'NTGL', name: 'National Textile' },
   { symbol: 'OCDI', name: 'Orascom Development Egypt' },
   { symbol: 'ORAM', name: 'Orascom Media' },
-  { symbol: 'ORAS', name: 'Orascom Construction' },
   { symbol: 'ORHD', name: 'Orascom Hotels & Development' },
   { symbol: 'ORPD', name: 'Orascom Development' },
   { symbol: 'PHDC', name: 'Palm Hills Developments' },
@@ -124,6 +122,14 @@ const EGX_SYMBOLS = [
   { symbol: 'ZCAP', name: 'Zap Capital' },
   { symbol: 'ZNHO', name: 'Zahraa Nasr City' },
 ];
+
+// Deduplicate by symbol — keeps first occurrence
+const seen = new Set<string>();
+const EGX_SYMBOLS = EGX_SYMBOLS_RAW.filter(s => {
+  if (seen.has(s.symbol)) return false;
+  seen.add(s.symbol);
+  return true;
+});
 
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -194,7 +200,7 @@ function StockPickerModal({
         {/* List */}
         <FlatList
           data={filtered}
-          keyExtractor={item => item.symbol}
+          keyExtractor={(item, index) => `${item.symbol}_${index}`}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
           renderItem={({ item, index }) => {

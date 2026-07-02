@@ -22,10 +22,16 @@ interface Props {
 }
 
 // ─── Animated overview bar ───────────────────────────────────────────────────
+// Always receives the full segments array (even zero-value ones) so the
+// useRef anims array length never changes between renders.
+
+const MAX_SEGMENTS = 4;
+const INIT_ANIMS = Array.from({ length: MAX_SEGMENTS }, () => new Animated.Value(0));
 
 function OverviewBar({ segments, total }: { segments: AllocationSegment[]; total: number }) {
   const colors = useColors();
-  const anims = useRef(segments.map(() => new Animated.Value(0))).current;
+  // Fixed-length ref — never reallocated even if segment count changes
+  const anims = useRef(INIT_ANIMS).current;
 
   useEffect(() => {
     Animated.stagger(
@@ -51,7 +57,7 @@ function OverviewBar({ segments, total }: { segments: AllocationSegment[]; total
         });
         return (
           <Animated.View
-            key={i}
+            key={seg.label}
             style={[bar.segment, { backgroundColor: seg.color, width }]}
           />
         );
@@ -144,7 +150,8 @@ export function AllocationBar({ segments }: Props) {
 
   return (
     <View style={styles.container}>
-      <OverviewBar segments={active} total={total} />
+      {/* Pass ALL segments so the fixed-size anims ref stays stable */}
+      <OverviewBar segments={segments} total={total} />
 
       <View
         style={styles.rows}
