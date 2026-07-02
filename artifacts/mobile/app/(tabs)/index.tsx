@@ -1,11 +1,12 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import {
   Animated, LayoutChangeEvent, Platform, Pressable, RefreshControl,
-  ScrollView, StyleSheet, Text, View,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Polyline, Defs, LinearGradient, Stop, Polygon } from 'react-native-svg';
+import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
@@ -386,11 +387,23 @@ export default function HomeScreen() {
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
             {topHoldings.length > 0 ? t.topHoldings : t.holdings.toUpperCase()}
           </Text>
-          {holdings.length > 0 && (
-            <View style={[styles.countBadge, { backgroundColor: colors.muted }]}>
-              <Text style={[styles.countText, { color: colors.mutedForeground }]}>{holdings.length}</Text>
-            </View>
-          )}
+          <View style={styles.sectionRowRight}>
+            {holdings.length > 0 && (
+              <View style={[styles.countBadge, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.countText, { color: colors.mutedForeground }]}>{holdings.length}</Text>
+              </View>
+            )}
+            {holdings.length > 0 && (
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/holdings')}
+                hitSlop={8}
+                style={styles.manageBtn}
+              >
+                <Text style={[styles.manageTxt, { color: colors.primary }]}>Manage</Text>
+                <Feather name="chevron-right" size={12} color={colors.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {topHoldings.length === 0 ? (
@@ -405,7 +418,25 @@ export default function HomeScreen() {
           </View>
         ) : (
           <View style={styles.holdingsList}>
-            {topHoldings.map(h => <HoldingCard key={h.id} holding={h} prices={prices} />)}
+            {topHoldings.map(h => (
+              <HoldingCard
+                key={h.id}
+                holding={h}
+                prices={prices}
+                onEdit={() => router.push(`/add-investment?holdingId=${h.id}` as any)}
+              />
+            ))}
+            {holdings.length > 5 && (
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/holdings')}
+                style={[styles.seeAllBtn, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.seeAllTxt, { color: colors.mutedForeground }]}>
+                  See all {holdings.length} investments
+                </Text>
+                <Feather name="arrow-right" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -456,10 +487,18 @@ const styles = StyleSheet.create({
 
   holdingsSection: { gap: 12 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2 },
+  sectionLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2, flex: 1 },
+  sectionRowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   countBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
   countText: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  manageBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  manageTxt: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   holdingsList: { gap: 8 },
+  seeAllBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 14, borderRadius: 16, borderWidth: 1,
+  },
+  seeAllTxt: { fontSize: 13, fontFamily: 'Inter_500Medium' },
 
   empty: { borderRadius: 24, paddingVertical: 52, paddingHorizontal: 24, borderWidth: 1, alignItems: 'center', gap: 8, overflow: 'hidden' },
   emptyRing1: { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 1, top: 14, alignSelf: 'center' },

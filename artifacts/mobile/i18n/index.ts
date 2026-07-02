@@ -17,7 +17,7 @@ const en = {
   allocation: 'Allocation',
   topHoldings: 'TOP INVESTMENTS',
   noInvestmentsYet: 'No investments yet',
-  addFromHoldingsTab: 'Add your first investment from the Investments tab',
+  addFromHoldingsTab: 'Tap the + button below to add your first investment',
   liveRates: 'LIVE RATES',
 
   // Markets
@@ -161,7 +161,7 @@ const ar: typeof en = {
   allocation: 'توزيع الأصول',
   topHoldings: 'أهم الاستثمارات',
   noInvestmentsYet: 'لا توجد استثمارات بعد',
-  addFromHoldingsTab: 'أضف أول استثمار من تبويب استثماراتي',
+  addFromHoldingsTab: 'اضغط على زر + أدناه لإضافة أول استثمار',
   liveRates: 'الأسعار المباشرة',
 
   // Markets
