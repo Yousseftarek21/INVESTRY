@@ -72,7 +72,7 @@ export default function WelcomeScreen() {
 
   const handleNext = async () => {
     if (currentIndex < SLIDES.length - 1) {
-      flatRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+      flatRef.current?.scrollToOffset({ offset: (currentIndex + 1) * W, animated: true });
     } else {
       await markDone();
       Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: Platform.OS !== 'web' }).start(() => {
