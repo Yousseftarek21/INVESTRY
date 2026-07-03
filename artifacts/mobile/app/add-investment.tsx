@@ -402,19 +402,24 @@ export default function AddInvestmentScreen() {
     </TouchableOpacity>
   );
 
+  const promptSignInToSave = () => {
+    Alert.alert(t.subSignInToUnlock, t.subSignInToUnlockDesc, [
+      { text: t.subCancel, style: 'cancel' },
+      { text: t.subSignInButton, onPress: () => router.push('/(auth)/welcome' as any) },
+    ]);
+  };
+
   const handleSave = async () => {
+    // Without a signed-in account there is nowhere to persist this holding —
+    // catch it here before any validation so we never silently drop it.
+    if (!isSignedIn) {
+      promptSignInToSave();
+      return;
+    }
+
     // Free tier: max 5 investments. Launch Access always overrides this,
     // even if `isPro` hasn't resolved yet (loading/cache/network hiccup).
     if (!isEditing && !isPro && !launchAccess && holdings.length >= FREE_LIMIT) {
-      // Signed-out users just need an account to get free Launch Access —
-      // don't send them to a pay prompt, send them to sign in.
-      if (!isSignedIn) {
-        Alert.alert(t.subSignInToUnlock, t.subSignInToUnlockDesc, [
-          { text: t.subCancel, style: 'cancel' },
-          { text: t.subSignInButton, onPress: () => router.push('/(auth)/welcome' as any) },
-        ]);
-        return;
-      }
       showPaywall();
       return;
     }
@@ -460,6 +465,14 @@ export default function AddInvestmentScreen() {
   };
 
   const handleSaveCash = async () => {
+    // Without a signed-in account there is nowhere to persist this cash
+    // account — catch it here before any validation so we never silently
+    // drop it (the form would otherwise appear to save and then vanish).
+    if (!isSignedIn) {
+      promptSignInToSave();
+      return;
+    }
+
     if (!cashAccountName.trim() || !cashBalance) {
       Alert.alert(t.missingFields, t.enterAccountDetails);
       return;
