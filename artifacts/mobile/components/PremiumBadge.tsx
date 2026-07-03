@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Platform } from 'react-native';
+import { Animated, Platform, StyleSheet, Text } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Feather } from '@expo/vector-icons';
 
@@ -10,7 +10,7 @@ export function PremiumBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
 
-  const iconSize = size === 'sm' ? 14 : 17;
+  const iconSize = size === 'sm' ? 12 : 15;
 
   useEffect(() => {
     Animated.parallel([
@@ -41,12 +41,39 @@ export function PremiumBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] });
 
   return (
-    <Animated.View style={{ opacity: Animated.multiply(opacity, glowOpacity), transform: [{ scale }] }}>
+    <Animated.View
+      style={[
+        styles.pill,
+        size === 'sm' ? styles.pillSm : styles.pillMd,
+        { opacity: Animated.multiply(opacity, glowOpacity), transform: [{ scale }] },
+      ]}
+    >
       {isIOS ? (
         <SymbolView name="rosette" tintColor={PURPLE} size={iconSize} />
       ) : (
         <Feather name="award" size={iconSize} color={PURPLE} />
       )}
+      <Text style={[styles.pillText, size === 'sm' ? styles.pillTextSm : styles.pillTextMd]}>PRO</Text>
     </Animated.View>
   );
 }
+
+const styles = StyleSheet.create({
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: PURPLE + '40',
+    backgroundColor: PURPLE + '16',
+  },
+  pillSm: { gap: 3, paddingHorizontal: 7, paddingVertical: 3 },
+  pillMd: { gap: 4, paddingHorizontal: 9, paddingVertical: 4 },
+  pillText: {
+    fontFamily: 'Inter_700Bold',
+    color: PURPLE,
+    letterSpacing: 0.6,
+  },
+  pillTextSm: { fontSize: 10 },
+  pillTextMd: { fontSize: 11 },
+});

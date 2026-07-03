@@ -254,11 +254,9 @@ export default function CashAccountsScreen() {
             ) : (
               <View style={styles.list}>
                 {cashAccounts.map(a => (
-                  <TouchableOpacity
+                  <View
                     key={a.id}
                     style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                    onPress={() => openEdit(a)}
-                    activeOpacity={0.8}
                   >
                     <View style={[styles.accountIconWrap, { backgroundColor: colors.green + '1A' }]}>
                       <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.green} />
@@ -266,16 +264,29 @@ export default function CashAccountsScreen() {
                     <View style={styles.accountInfo}>
                       <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{a.accountName}</Text>
                       <Text style={[styles.accountType, { color: colors.mutedForeground }]}>{TYPE_LABELS[a.type]}</Text>
-                    </View>
-                    <View style={styles.accountRight}>
                       <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
                         {a.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
                       </Text>
-                      <TouchableOpacity onPress={() => handleDelete(a.id)} hitSlop={10} style={{ marginTop: 4 }}>
-                        <Feather name="trash-2" size={15} color={colors.red} />
+                    </View>
+                    <View style={styles.accountActions}>
+                      <TouchableOpacity
+                        onPress={() => openEdit(a)}
+                        style={[styles.actionBtn, { backgroundColor: colors.primary + '14' }]}
+                        hitSlop={8}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="edit-2" size={14} color={colors.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(a.id)}
+                        style={[styles.actionBtn, { backgroundColor: colors.red + '12' }]}
+                        hitSlop={8}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="trash-2" size={14} color={colors.red} />
                       </TouchableOpacity>
                     </View>
-                  </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             )}
@@ -316,11 +327,12 @@ const styles = StyleSheet.create({
     borderRadius: 16, borderWidth: 1, padding: 14,
   },
   accountIconWrap: { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  accountInfo: { flex: 1, gap: 2 },
+  accountInfo: { flex: 1, gap: 3 },
   accountName: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   accountType: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  accountRight: { alignItems: 'flex-end' },
-  accountBalance: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  accountBalance: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: -0.2, marginTop: 1 },
+  accountActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  actionBtn: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   empty: {
     borderRadius: 24, padding: 40, borderWidth: 1,
     alignItems: 'center', gap: 10, marginTop: 20,
