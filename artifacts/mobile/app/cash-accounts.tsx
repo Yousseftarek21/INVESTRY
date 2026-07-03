@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Platform, ScrollView,
+  Alert, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -30,17 +30,18 @@ export default function CashAccountsScreen() {
   const [accountName, setAccountName] = useState('');
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('EGP');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const CASH_TYPES: { key: CashAccountType; icon: keyof typeof Feather.glyphMap; label: string }[] = [
     { key: 'bank', icon: 'credit-card', label: t.bankAccount },
-    { key: 'cash_home', icon: 'home', label: t.cashAtHome },
-    { key: 'foreign_currency', icon: 'globe', label: t.foreignCurrency },
+    { key: 'cash_home', icon: 'lock', label: t.cashAtHome },
+    { key: 'foreign_currency', icon: 'repeat', label: t.foreignCurrency },
   ];
 
   const TYPE_ICONS: Record<CashAccountType, keyof typeof Feather.glyphMap> = {
     bank: 'credit-card',
-    cash_home: 'home',
-    foreign_currency: 'globe',
+    cash_home: 'lock',
+    foreign_currency: 'repeat',
   };
 
   const TYPE_LABELS: Record<CashAccountType, string> = {
@@ -96,6 +97,13 @@ export default function CashAccountsScreen() {
   };
 
   const handleDelete = (id: string) => {
+    if (Platform.OS === 'web') {
+      // react-native-web's Alert.alert only shows the message and does not
+      // reliably invoke custom button callbacks, so the "Delete" action never
+      // fired. Use an explicit modal instead so delete works on web too.
+      setPendingDeleteId(id);
+      return;
+    }
     Alert.alert(t.deleteCashAccount, t.deleteCashAccountConfirm, [
       { text: t.cancel, style: 'cancel' },
       {
@@ -107,6 +115,14 @@ export default function CashAccountsScreen() {
         },
       },
     ]);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    removeCashAccount(id);
   };
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
@@ -237,8 +253,8 @@ export default function CashAccountsScreen() {
 
             {cashAccounts.length === 0 ? (
               <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={[styles.emptyIconWrap, { backgroundColor: colors.muted }]}>
-                  <Feather name="dollar-sign" size={32} color={colors.mutedForeground} />
+                <View style={[styles.emptyIconWrap, { backgroundColor: colors.primary + '14' }]}>
+                  <Feather name="briefcase" size={30} color={colors.primary} />
                 </View>
                 <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noCashAccounts}</Text>
                 <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAddCash}</Text>
@@ -258,8 +274,8 @@ export default function CashAccountsScreen() {
                     key={a.id}
                     style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   >
-                    <View style={[styles.accountIconWrap, { backgroundColor: colors.green + '1A' }]}>
-                      <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.green} />
+                    <View style={[styles.accountIconWrap, { backgroundColor: colors.primary + '16' }]}>
+                      <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.primary} />
                     </View>
                     <View style={styles.accountInfo}>
                       <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{a.accountName}</Text>
@@ -293,6 +309,31 @@ export default function CashAccountsScreen() {
           </>
         )}
       </ScrollView>
+
+      <Modal visible={!!pendingDeleteId} animationType="fade" transparent onRequestClose={() => setPendingDeleteId(null)}>
+        <View style={confirmStyles.overlay}>
+          <View style={[confirmStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[confirmStyles.title, { color: colors.text }]}>{t.deleteCashAccount}</Text>
+            <Text style={[confirmStyles.msg, { color: colors.mutedForeground }]}>{t.deleteCashAccountConfirm}</Text>
+            <View style={confirmStyles.row}>
+              <TouchableOpacity
+                onPress={() => setPendingDeleteId(null)}
+                style={[confirmStyles.btn, { backgroundColor: colors.muted }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[confirmStyles.btnTxt, { color: colors.mutedForeground }]}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmDelete}
+                style={[confirmStyles.btn, { backgroundColor: colors.red + '18', borderWidth: 1, borderColor: colors.red + '40' }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[confirmStyles.btnTxt, { color: colors.red, fontFamily: 'Inter_600SemiBold' }]}>{t.delete}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -352,4 +393,14 @@ const styles = StyleSheet.create({
     borderRadius: 16, marginTop: 8,
   },
   inlineBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+});
+
+const confirmStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card: { borderRadius: 20, borderWidth: 1, padding: 24, width: '100%', maxWidth: 360, gap: 16 },
+  title: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  msg: { fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 22 },
+  row: { flexDirection: 'row', gap: 10 },
+  btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
+  btnTxt: { fontSize: 14, fontFamily: 'Inter_500Medium' },
 });
