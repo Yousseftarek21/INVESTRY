@@ -15,8 +15,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     resizeMode: 'contain',
     backgroundColor: '#060D1A',
   },
-  ios: { supportsTablet: false },
-  android: {},
+  ios: { supportsTablet: false, bundleIdentifier: 'com.investry.app' },
+  android: { package: 'com.investry.app' },
   web: { favicon: './assets/images/icon.png' },
   plugins: [
     ['expo-router', { origin: 'https://replit.com/' }],
