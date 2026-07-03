@@ -84,6 +84,36 @@ const en = {
   land: 'Land',
   commercial: 'Commercial',
 
+  // Add screen — Investment vs Cash chooser
+  whatToAdd: 'What would you like to add?',
+  addInvestmentOption: 'Investment',
+  addInvestmentOptionDesc: 'Gold, silver, stocks, real estate & more',
+  addCashOption: 'Cash',
+  addCashOptionDesc: 'Bank accounts, cash at home, foreign currency',
+  back: 'Back',
+
+  // Cash accounts
+  addCashAccount: 'Add Cash Account',
+  editCashAccount: 'Edit Cash Account',
+  cashAccountType: 'Account Type',
+  bankAccount: 'Bank Account',
+  cashAtHome: 'Cash at Home',
+  foreignCurrency: 'Foreign Currency',
+  accountName: 'Account Name',
+  accountNamePlaceholder: 'e.g. CIB Current Account',
+  balance: 'Balance',
+  accountCurrency: 'Currency',
+  enterAccountDetails: 'Please enter an account name and balance.',
+  cash: 'Cash',
+  totalCash: 'Total Cash',
+  cashAccounts: 'Cash Accounts',
+  noCashAccounts: 'No cash accounts yet',
+  tapToAddCash: 'Tap + to add your first cash account',
+  deleteCashAccount: 'Delete Cash Account',
+  deleteCashAccountConfirm: 'Are you sure you want to delete this cash account?',
+  delete: 'Delete',
+  cancel: 'Cancel',
+
   // Types
   gold: 'Gold',
   silver: 'Silver',
@@ -250,6 +280,36 @@ const ar: typeof en = {
   villa: 'فيلا',
   land: 'أرض',
   commercial: 'تجاري',
+
+  // Add screen — Investment vs Cash chooser
+  whatToAdd: 'ماذا تريد أن تضيف؟',
+  addInvestmentOption: 'استثمار',
+  addInvestmentOptionDesc: 'ذهب، فضة، أسهم، عقارات والمزيد',
+  addCashOption: 'نقد',
+  addCashOptionDesc: 'حسابات بنكية، نقد بالمنزل، عملات أجنبية',
+  back: 'رجوع',
+
+  // Cash accounts
+  addCashAccount: 'إضافة حساب نقدي',
+  editCashAccount: 'تعديل حساب نقدي',
+  cashAccountType: 'نوع الحساب',
+  bankAccount: 'حساب بنكي',
+  cashAtHome: 'نقد بالمنزل',
+  foreignCurrency: 'عملة أجنبية',
+  accountName: 'اسم الحساب',
+  accountNamePlaceholder: 'مثال: حساب البنك التجاري الدولي',
+  balance: 'الرصيد',
+  accountCurrency: 'العملة',
+  enterAccountDetails: 'الرجاء إدخال اسم الحساب والرصيد.',
+  cash: 'النقد',
+  totalCash: 'إجمالي النقد',
+  cashAccounts: 'الحسابات النقدية',
+  noCashAccounts: 'لا توجد حسابات نقدية بعد',
+  tapToAddCash: 'اضغط + لإضافة أول حساب نقدي',
+  deleteCashAccount: 'حذف الحساب النقدي',
+  deleteCashAccountConfirm: 'هل أنت متأكد من حذف هذا الحساب النقدي؟',
+  delete: 'حذف',
+  cancel: 'إلغاء',
 
   // Types
   gold: 'ذهب',

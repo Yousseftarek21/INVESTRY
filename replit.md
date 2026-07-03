@@ -22,9 +22,11 @@ Egypt's first investment tracking mobile app (Expo / React Native). Slogan: "Kno
 
 - `artifacts/mobile/` — the Expo app
 - `artifacts/mobile/app/(tabs)/` — tab screens (index, markets, holdings, settings)
-- `artifacts/mobile/app/add-investment.tsx` — modal for adding new holdings
+- `artifacts/mobile/app/add-investment.tsx` — modal for adding new holdings; also hosts the Investment/Cash chooser (`screenMode: 'choose' | 'investment' | 'cash'`) and the Cash form
+- `artifacts/mobile/app/cash-accounts.tsx` — modal to view, add, edit, and delete cash accounts (bank, cash at home, foreign currency)
 - `artifacts/mobile/constants/colors.ts` — light + dark color themes
 - `artifacts/mobile/context/HoldingsContext.tsx` — AsyncStorage CRUD for user's holdings
+- `artifacts/mobile/context/CashContext.tsx` — mirrors `HoldingsContext.tsx` for cash accounts (per-user AsyncStorage cache + `/api/cash-accounts` sync); exposes `cashAccounts`, `addCashAccount`, `updateCashAccount`, `removeCashAccount`, `totalCash`
 - `artifacts/mobile/context/AppSettingsContext.tsx` — theme (light/dark/system) + language (en/ar)
 - `artifacts/mobile/hooks/usePrices.ts` — live market data fetching
 - `artifacts/mobile/hooks/useColors.ts` — resolves active theme from AppSettings
@@ -45,13 +47,15 @@ Egypt's first investment tracking mobile app (Expo / React Native). Slogan: "Kno
   - Client: `SubscriptionContext` exposes a single `launchAccess: boolean` used everywhere premium status is checked (`isPro`/`plan` already flow from the same source, so `PremiumGate` and holdings-limit checks need no changes). `purchase()`/`manageSubscription()` no-op when `launchAccess` is true as a defensive guard.
   - UI: `components/LaunchAccess.tsx` exports `LaunchBadge` (non-clickable "Included During Launch" pill) and `LaunchBanner` (pricing-screen launch banner). Pricing plan cards and copy are untouched; only the CTA button/manage-subscription controls are swapped for the badge when `launchAccess` is true.
   - **To re-enable real payments later**: unset (or change) `FREE_ACCESS_PLAN` on the API server. No client code changes are needed — the app will automatically fall back to the real Stripe/IAP purchase flow since that code path was never removed, only bypassed.
+- **Cash accounts follow the Holdings pattern**: `cash_accounts` is a separate Drizzle table (`lib/db/src/schema/cashAccounts.ts`) with the same shape as `holdings` (jsonb `data` column, per-row `userId`). `artifacts/api-server/src/routes/cash.ts` mirrors `holdings.ts` — Clerk-authenticated, ownership enforced server-side on every query. `CashContext` mirrors `HoldingsContext` exactly (per-user AsyncStorage key, optimistic CRUD, first-sign-in migration from local cache to the API).
 
 ## Product
 
-- **Portfolio tab**: Total portfolio value in EGP, gain/loss %, asset allocation bar, top 5 holdings
+- **Portfolio tab**: Total portfolio value in EGP, gain/loss %, asset allocation bar, top 5 holdings, and a Cash card below the hero card (only shown once the user has at least one cash account) showing total cash and linking to the cash accounts screen
 - **Markets tab**: Live USD/EGP rate, gold (18k/21k/24k per gram + per oz), silver (per gram + per oz), 8 EGX stocks with live prices and change %
 - **Holdings tab**: All investments grouped by type (Gold, Silver, Stocks, Real Estate), delete with haptic feedback, FAB to add
-- **Add Investment modal**: Gold (karat, form, grams, price), Silver (form, grams, price), EGX Stock (symbol picker + custom, shares, price), Real Estate (type, location, buy/current value)
+- **Add screen**: Opens with an Investment/Cash chooser. "Investment" leads to the unchanged investment flow — Gold (karat, form, grams, price), Silver (form, grams, price), EGX Stock (symbol picker + custom, shares, price), Real Estate (type, location, buy/current value). "Cash" leads to a form for Bank Account, Cash at Home, or Foreign Currency — each with Account Name, Balance, and Currency
+- **Cash accounts screen**: Lists all cash accounts with a total, tap to edit, delete with confirmation, "+" to add another
 - **Settings tab**: Light/Dark/System theme selector, English/Arabic language toggle, about info
 
 ## User preferences

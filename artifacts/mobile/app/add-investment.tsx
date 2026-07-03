@@ -11,12 +11,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
+import { useCash } from '@/context/CashContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { GoldKarat, Holding, MetalForm, PersonalAssetCategory, PersonalAssetCurrency, PropertyType } from '@/types';
+import { CashAccount, CashAccountType, GoldKarat, Holding, MetalForm, PersonalAssetCategory, PersonalAssetCurrency, PropertyType } from '@/types';
 
 const FREE_LIMIT = 5;
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset';
+type AddScreenMode = 'choose' | 'investment' | 'cash';
+
+const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
 const PERSONAL_ASSET_CATEGORIES: { key: PersonalAssetCategory; icon: keyof typeof Feather.glyphMap }[] = [
   { key: 'watches', icon: 'watch' },
@@ -272,12 +276,20 @@ export default function AddInvestmentScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { addHolding, updateHolding, holdings } = useHoldings();
+  const { addCashAccount } = useCash();
   const { isPro, launchAccess, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
 
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
   const isEditing = editingHolding !== null;
+
+  const [screenMode, setScreenMode] = useState<AddScreenMode>(isEditing ? 'investment' : 'choose');
+
+  const [cashType, setCashType] = useState<CashAccountType>('bank');
+  const [cashAccountName, setCashAccountName] = useState('');
+  const [cashBalance, setCashBalance] = useState('');
+  const [cashCurrency, setCashCurrency] = useState('EGP');
 
   const [type, setType] = useState<InvestmentType>('gold');
   const [karat, setKarat] = useState<GoldKarat>('21k');
@@ -356,6 +368,12 @@ export default function AddInvestmentScreen() {
     { key: 'stock', label: t.egxStock, icon: 'bar-chart-2', color: '#4A9EFF' },
     { key: 'real_estate', label: t.realEstate, icon: 'home', color: '#A47FCA' },
     { key: 'personal_asset', label: t.personalAsset, icon: 'star', color: '#E08E45' },
+  ];
+
+  const CASH_TYPES: { key: CashAccountType; label: string; icon: keyof typeof Feather.glyphMap; color: string }[] = [
+    { key: 'bank', label: t.bankAccount, icon: 'credit-card', color: '#4A9EFF' },
+    { key: 'cash_home', label: t.cashAtHome, icon: 'home', color: colors.primary },
+    { key: 'foreign_currency', label: t.foreignCurrency, icon: 'globe', color: '#A47FCA' },
   ];
 
   const CATEGORY_LABELS: Record<PersonalAssetCategory, string> = {
@@ -441,6 +459,23 @@ export default function AddInvestmentScreen() {
     router.back();
   };
 
+  const handleSaveCash = async () => {
+    if (!cashAccountName.trim() || !cashBalance) {
+      Alert.alert(t.missingFields, t.enterAccountDetails);
+      return;
+    }
+    const account: CashAccount = {
+      id: generateId(),
+      type: cashType,
+      accountName: cashAccountName.trim(),
+      balance: parseFloat(cashBalance),
+      currency: cashCurrency,
+    };
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await addCashAccount(account);
+    router.back();
+  };
+
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
@@ -462,10 +497,16 @@ export default function AddInvestmentScreen() {
           <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </TouchableOpacity>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>{isEditing ? 'Edit Investment' : t.addInvestment}</Text>
-          <TouchableOpacity onPress={handleSave}>
-            <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
-          </TouchableOpacity>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            {screenMode === 'choose' ? t.whatToAdd : screenMode === 'cash' ? t.addCashAccount : (isEditing ? 'Edit Investment' : t.addInvestment)}
+          </Text>
+          {screenMode === 'choose' ? (
+            <View style={{ width: 22 }} />
+          ) : (
+            <TouchableOpacity onPress={screenMode === 'cash' ? handleSaveCash : handleSave}>
+              <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView
@@ -473,6 +514,104 @@ export default function AddInvestmentScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {!isEditing && screenMode !== 'choose' && (
+            <TouchableOpacity
+              style={styles.backRow}
+              onPress={() => setScreenMode('choose')}
+              hitSlop={8}
+            >
+              <Feather name="chevron-left" size={16} color={colors.mutedForeground} />
+              <Text style={[styles.backRowText, { color: colors.mutedForeground }]}>{t.back}</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Choose: Investment vs Cash */}
+          {screenMode === 'choose' && (
+            <View style={styles.chooseWrap}>
+              <TouchableOpacity
+                style={[styles.chooseCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setScreenMode('investment'); }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.chooseIconWrap, { backgroundColor: colors.primary + '20' }]}>
+                  <Feather name="trending-up" size={22} color={colors.primary} />
+                </View>
+                <View style={styles.chooseInfo}>
+                  <Text style={[styles.chooseTitle, { color: colors.text }]}>{t.addInvestmentOption}</Text>
+                  <Text style={[styles.chooseDesc, { color: colors.mutedForeground }]}>{t.addInvestmentOptionDesc}</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.chooseCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setScreenMode('cash'); }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.chooseIconWrap, { backgroundColor: '#4CAF5020' }]}>
+                  <Feather name="dollar-sign" size={22} color="#4CAF50" />
+                </View>
+                <View style={styles.chooseInfo}>
+                  <Text style={[styles.chooseTitle, { color: colors.text }]}>{t.addCashOption}</Text>
+                  <Text style={[styles.chooseDesc, { color: colors.mutedForeground }]}>{t.addCashOptionDesc}</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Cash */}
+          {screenMode === 'cash' && (<>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.cashAccountType}</Text>
+              <View style={styles.typeGrid}>
+                {CASH_TYPES.map(ct => {
+                  const isActive = cashType === ct.key;
+                  return (
+                    <TouchableOpacity
+                      key={ct.key}
+                      style={[styles.typeCard, {
+                        backgroundColor: isActive ? ct.color + '22' : colors.card,
+                        borderColor: isActive ? ct.color : colors.border,
+                      }]}
+                      onPress={() => setCashType(ct.key)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name={ct.icon} size={20} color={isActive ? ct.color : colors.mutedForeground} />
+                      <Text style={[styles.typeLabel, { color: isActive ? ct.color : colors.text }]}>{ct.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.accountName}</Text>
+              <TextInput style={inputStyle} placeholder={t.accountNamePlaceholder} placeholderTextColor={colors.mutedForeground}
+                value={cashAccountName} onChangeText={setCashAccountName} />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.balance}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 25000" placeholderTextColor={colors.mutedForeground}
+                value={cashBalance} onChangeText={setCashBalance} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.accountCurrency}</Text>
+              <View style={styles.chips}>
+                {CURRENCIES.map(c => (
+                  <Chip key={c} value={c} selected={cashCurrency === c} onPress={() => setCashCurrency(c)} />
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]}
+              onPress={handleSaveCash} activeOpacity={0.85}>
+              <Feather name="check" size={20} color={colors.primaryForeground} />
+              <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>{t.addCashAccount}</Text>
+            </TouchableOpacity>
+          </>)}
+
+          {/* Investment */}
+          {screenMode === 'investment' && (<>
           {/* Type */}
           <View style={styles.section}>
             <Text style={labelStyle}>{t.investmentType}</Text>
@@ -707,6 +846,7 @@ export default function AddInvestmentScreen() {
             <Feather name="check" size={20} color={colors.primaryForeground} />
             <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>{isEditing ? 'Save Changes' : t.addInvestment}</Text>
           </TouchableOpacity>
+          </>)}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -743,6 +883,18 @@ const styles = StyleSheet.create({
   notesInput: { minHeight: 80, textAlignVertical: 'top' },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16, marginTop: 8 },
   saveButtonText: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  // Choose screen
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16, alignSelf: 'flex-start' },
+  backRowText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  chooseWrap: { gap: 12, marginTop: 8 },
+  chooseCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderRadius: 16, borderWidth: 1.5, padding: 16,
+  },
+  chooseIconWrap: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  chooseInfo: { flex: 1 },
+  chooseTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 3 },
+  chooseDesc: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   // Dropdown
   dropdownTrigger: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

@@ -65,6 +65,17 @@ export interface PersonalAssetHolding {
 
 export type Holding = GoldHolding | SilverHolding | StockHolding | RealEstateHolding | PersonalAssetHolding;
 
+export type CashAccountType = 'bank' | 'cash_home' | 'foreign_currency';
+
+export interface CashAccount {
+  id: string;
+  type: CashAccountType;
+  accountName: string;
+  balance: number;
+  currency: string;
+  notes?: string;
+}
+
 export interface MarketPrices {
   goldUsd: number;
   silverUsd: number;

@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
+import { useCash } from '@/context/CashContext';
 import { useMarketPrices, useGoldHistory, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { AllocationBar } from '@/components/AllocationBar';
@@ -329,6 +330,7 @@ export default function HomeScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { holdings, isLoading: holdingsLoading } = useHoldings();
+  const { cashAccounts, totalCash } = useCash();
   const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { plan, isPro } = useSubscription();
   const isLoading = pricesLoading || holdingsLoading;
@@ -593,6 +595,26 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {/* ── Cash Card ───────────────────────────────────────────── */}
+      {cashAccounts.length > 0 && (
+        <TouchableOpacity
+          style={[styles.cashCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => router.push('/cash-accounts' as any)}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
+            <Feather name="dollar-sign" size={20} color={colors.green} />
+          </View>
+          <View style={styles.cashInfo}>
+            <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
+            <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+              {totalCash.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
+
       {/* ── Top Investments ─────────────────────────────────────── */}
       <View style={styles.holdingsSection}>
         <View style={styles.sectionRow}>
@@ -674,6 +696,16 @@ const styles = StyleSheet.create({
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   heroAccent: { height: 1.25 },
   heroBody:   { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 16 },
+
+  cashCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderRadius: 20, borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 18, paddingVertical: 16, marginTop: 14,
+  },
+  cashIconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cashInfo: { flex: 1, gap: 2 },
+  cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  cashValue: { fontSize: 18, fontFamily: 'Inter_600SemiBold' },
 
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
   heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },

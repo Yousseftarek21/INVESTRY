@@ -19,6 +19,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { HoldingsProvider } from "@/context/HoldingsContext";
+import { CashProvider } from "@/context/CashContext";
 import { AppSettingsProvider } from "@/context/AppSettingsContext";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
@@ -57,6 +58,10 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="add-investment"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="cash-accounts"
         options={{ presentation: "modal", headerShown: false }}
       />
     </Stack>
@@ -110,9 +115,11 @@ export default function RootLayout() {
                   <GestureHandlerRootView style={{ flex: 1 }}>
                     <KeyboardProvider>
                       <HoldingsProvider>
-                        <AppWithPaywall>
-                          <RootLayoutNav />
-                        </AppWithPaywall>
+                        <CashProvider>
+                          <AppWithPaywall>
+                            <RootLayoutNav />
+                          </AppWithPaywall>
+                        </CashProvider>
                       </HoldingsProvider>
                     </KeyboardProvider>
                   </GestureHandlerRootView>
