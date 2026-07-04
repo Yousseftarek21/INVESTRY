@@ -24,13 +24,24 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      ["expo-router", { "origin": "https://replit.com/" }],
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
       "expo-font",
       "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "739f2bab-aa1e-418e-9e8b-a382f0f250d1"
+      }
+    },
+    "owner": "yousseftesting"
   }
 }
