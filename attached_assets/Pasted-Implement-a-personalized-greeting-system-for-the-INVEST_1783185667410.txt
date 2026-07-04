@@ -1,0 +1,37 @@
+Implement a personalized greeting system for the INVESTRY app while preserving the existing premium UI and layout.
+Home Screen
+Remove the slogan currently displayed below the INVESTRY logo.
+In its place, add a small personalized greeting directly above the INVESTRY logo, aligned with the left edge of the logo. The greeting should become the first element in the header section.
+The order should be:
+Personalized greeting
+INVESTRY logo/app name
+Portfolio title
+Do not change the position of the LIVE status indicator or any other header elements. Maintain the current spacing and overall header height as much as possible.
+The greeting should:
+Use the user's display name if available.
+Change automatically based on the device's local time (Morning, Afternoon, Evening).
+If no display name has been set, display only the greeting without a trailing comma or placeholder.
+The greeting should be visually subtle:
+Smaller than the logo.
+Medium font weight.
+Secondary text color that matches the existing design system.
+It should complement the branding rather than compete with it.
+Profile Settings
+Inside Settings → Profile, add a new editable field named Display Name.
+Place this field beneath the profile picture (if present) and above the email field.
+Requirements:
+Allow the user to edit and save their display name.
+Persist the display name in the user's profile data.
+Load it automatically whenever the user signs in.
+Update the home screen greeting immediately after changes are saved without requiring the app to restart.
+Data
+Store the display name as part of the user's profile model. This field is separate from the authentication name and email and should be used exclusively for personalization throughout the app.
+Greeting Logic
+Create a reusable utility/function that determines the correct greeting based on the user's local device time and combines it with the stored display name when available.
+This utility should be reusable across the application for future personalization features.
+Technical Requirements
+Use the existing state management and profile architecture.
+Keep the implementation modular and maintainable.
+Follow the project's current coding style.
+Do not modify any existing functionality unrelated to this feature.
+Ensure all changes integrate seamlessly with the current premium dark theme and overall INVESTRY design language.

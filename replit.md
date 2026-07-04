@@ -60,6 +60,7 @@ Egypt's first investment tracking mobile app (Expo / React Native). Slogan: "Kno
 - **Add screen**: Opens with an Investment/Cash chooser. "Investment" leads to the unchanged investment flow — Gold (karat, form, grams, price), Silver (form, grams, price), EGX Stock (symbol picker + custom, shares, price), Real Estate (type, location, buy/current value). "Cash" leads to a form for Bank Account, Cash at Home, or Foreign Currency — each with Account Name, Balance, and Currency
 - **Cash accounts screen**: Lists all cash accounts with a total, tap to edit, delete with confirmation, "+" to add another
 - **Settings tab**: Light/Dark/System theme selector, English/Arabic language toggle, about info
+- **Personalized greeting**: Home screen header shows a left-aligned, time-of-day greeting ("Good morning/afternoon/evening") above the INVESTRY logo, optionally combined with the user's Display Name (e.g. "Good afternoon, Nadia"). The old "Know Your Wealth" slogan was removed from the home header to make room for it. Display Name is set via Settings → tap the profile hero → Edit Profile modal (avatar, editable Display Name field with hint text, read-only email below), stored in Clerk's `user.unsafeMetadata.displayName` — updates the greeting immediately everywhere via `useUser()` reactivity, no restart needed. Shared logic lives in `utils/greeting.ts` (`getTimeOfDayGreeting` / `getPersonalizedGreeting`), with i18n keys `greetingMorning/Afternoon/Evening`, `displayName`, `displayNamePlaceholder`, `displayNameHint` added to both `en`/`ar`.
 
 ## User preferences
 

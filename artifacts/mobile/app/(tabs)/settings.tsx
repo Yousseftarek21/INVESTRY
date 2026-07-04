@@ -4,8 +4,8 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Alert, Animated, Linking, Modal, Platform, Pressable,
-  ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View,
+  Alert, Animated, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
+  ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -337,6 +337,106 @@ const ph = StyleSheet.create({
   tagTxt: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
 });
 
+// ─── Edit profile modal ────────────────────────────────────────────────────────
+
+function EditProfileModal({
+  visible, initials, email, initialDisplayName, saving, onSave, onClose,
+}: {
+  visible: boolean; initials: string; email: string; initialDisplayName: string;
+  saving: boolean; onSave: (name: string) => void; onClose: () => void;
+}) {
+  const colors = useColors();
+  const t = useT();
+  const insets = useSafeAreaInsets();
+  const [value, setValue] = useState(initialDisplayName);
+
+  useEffect(() => {
+    if (visible) setValue(initialDisplayName);
+  }, [visible, initialDisplayName]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={mo.backdrop} onPress={onClose} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={[epm.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]}
+      >
+        <View style={[mo.handle, { backgroundColor: colors.border }]} />
+        <View style={[mo.header, { borderBottomColor: colors.border }]}>
+          <Text style={[mo.title, { color: colors.text }]}>Edit Profile</Text>
+          <TouchableOpacity onPress={onClose} style={[mo.close, { backgroundColor: colors.muted }]}>
+            <Feather name="x" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={epm.body}>
+          {/* Profile picture (initials avatar) */}
+          <View style={epm.avatarRow}>
+            <View style={[epm.avatarRing, { borderColor: colors.primary }]}>
+              <View style={[epm.avatarCircle, { backgroundColor: colors.primary + '1A' }]}>
+                <Text style={[epm.avatarText, { color: colors.primary }]}>{initials}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Display Name field */}
+          <View style={epm.field}>
+            <Text style={[epm.fieldLabel, { color: colors.mutedForeground }]}>{t.displayName}</Text>
+            <TextInput
+              value={value}
+              onChangeText={setValue}
+              placeholder={t.displayNamePlaceholder}
+              placeholderTextColor={colors.mutedForeground}
+              style={[epm.input, { color: colors.text, backgroundColor: colors.card, borderColor: colors.border }]}
+              maxLength={40}
+              autoCapitalize="words"
+              returnKeyType="done"
+              onSubmitEditing={() => onSave(value)}
+            />
+            <Text style={[epm.hint, { color: colors.mutedForeground }]}>{t.displayNameHint}</Text>
+          </View>
+
+          {/* Email (read-only) */}
+          <View style={epm.field}>
+            <Text style={[epm.fieldLabel, { color: colors.mutedForeground }]}>Email</Text>
+            <View style={[epm.readonlyRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <Text style={[epm.readonlyText, { color: colors.mutedForeground }]} numberOfLines={1}>{email}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => onSave(value)}
+            disabled={saving}
+            style={[epm.saveBtn, { backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 }]}
+          >
+            <Text style={[epm.saveBtnTxt, { color: colors.primaryForeground }]}>
+              {saving ? 'Saving…' : t.save}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+const epm = StyleSheet.create({
+  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
+  body: { padding: 24, gap: 18 },
+  avatarRow: { alignItems: 'center', marginBottom: 4 },
+  avatarRing: { width: 74, height: 74, borderRadius: 37, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  avatarCircle: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
+  field: { gap: 7 },
+  fieldLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2, marginLeft: 2 },
+  input: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
+  hint: { fontSize: 11, fontFamily: 'Inter_400Regular', marginLeft: 2, lineHeight: 16 },
+  readonlyRow: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 12 },
+  readonlyText: { fontSize: 15, fontFamily: 'Inter_400Regular' },
+  saveBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 6 },
+  saveBtnTxt: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+});
+
 // ─── Theme preview cards ───────────────────────────────────────────────────────
 
 function ThemeMiniPreview({ mode }: { mode: ThemeMode }) {
@@ -582,6 +682,8 @@ export default function SettingsScreen() {
   const [confirm, setConfirm]     = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
   const [langOpen, setLangOpen]   = useState(false);
   const [hideValues, setHideValues] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem('@invstry_hide_values').then(v => {
@@ -599,6 +701,7 @@ export default function SettingsScreen() {
   const email     = user?.emailAddresses?.[0]?.emailAddress ?? '';
   const verified  = user?.hasVerifiedEmailAddress ?? false;
   const initials  = ([firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase()) || email[0]?.toUpperCase() || 'I';
+  const displayName = (user?.unsafeMetadata?.displayName as string | undefined) ?? '';
 
   const lastUpdate = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -620,6 +723,20 @@ export default function SettingsScreen() {
   const handleSignOut = () => {
     haptic(Haptics.ImpactFeedbackStyle.Medium);
     setConfirm({ id: 'signout', title: 'Sign Out', message: 'Are you sure you want to sign out?', label: 'Sign Out', danger: true });
+  };
+
+  const handleSaveProfile = async (name: string) => {
+    if (!user) return;
+    haptic();
+    setSavingProfile(true);
+    try {
+      await user.update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), displayName: name.trim() } });
+      setEditProfileOpen(false);
+    } catch {
+      showModal('Could not save', 'Please check your internet connection and try again.');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const handleConfirm = async () => {
@@ -673,9 +790,7 @@ export default function SettingsScreen() {
             initials={initials} fullName={fullName} email={email}
             verified={verified} holdingsCount={holdings.length}
             plan={plan === 'pro' ? plan : null}
-            onPress={() => showModal('Account Details',
-              `Name: ${fullName}\nEmail: ${email}\nVerified: ${verified ? 'Yes ✓' : 'Pending'}\n\nInvestments: ${holdings.length} investment${holdings.length !== 1 ? 's' : ''}\nStorage: Locally on your device only\n\nFor account changes, sign out and sign in with updated credentials.`
-            )}
+            onPress={() => { haptic(); setEditProfileOpen(true); }}
           />
         )}
 
@@ -924,6 +1039,15 @@ export default function SettingsScreen() {
           onCancel={() => setConfirm(null)}
         />
       )}
+      <EditProfileModal
+        visible={editProfileOpen}
+        initials={initials}
+        email={email}
+        initialDisplayName={displayName}
+        saving={savingProfile}
+        onSave={handleSaveProfile}
+        onClose={() => setEditProfileOpen(false)}
+      />
     </>
   );
 }

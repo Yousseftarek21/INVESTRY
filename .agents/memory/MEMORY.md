@@ -6,3 +6,4 @@
 - [Launch Access mode](launch-access-mode.md) — free Pro+ via FREE_ACCESS_PLAN env flag; DEV_UNLOCKED bypass hides it in dev preview; Clerk e2e tests need testClerkAuth: true
 - [expo-symbols SF Symbol naming](expo-symbols-naming.md) — SymbolView name strings come from sf-symbols-typescript's type, not Apple's catalog names (e.g. "rosette" not "rosette.fill")
 - [Animated.Value fixed-length ref pitfall](animated-fixed-length-refs.md) — sizing an Animated.Value[] ref off a dynamic/filtered list's initial length crashes later; key by stable ID instead
+- [Clerk unsafeMetadata for lightweight user prefs](clerk-unsafe-metadata-prefs.md) — store small client-editable user fields (e.g. display name) in user.unsafeMetadata instead of adding a DB column/table
