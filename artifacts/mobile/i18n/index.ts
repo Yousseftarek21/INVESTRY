@@ -196,15 +196,10 @@ const en = {
   // Footer
   footerTagline: 'Egypt · Live Market Data · 2024',
 
-  // Greeting
-  greetingMorning: 'Good morning',
-  greetingAfternoon: 'Good afternoon',
-  greetingEvening: 'Good evening',
-
   // Profile
   displayName: 'Display Name',
   displayNamePlaceholder: 'Enter your name',
-  displayNameHint: 'This name is used to personalize your greeting.',
+  displayNameHint: 'Used to personalize your experience.',
 };
 
 const ar: typeof en = {
@@ -403,15 +398,10 @@ const ar: typeof en = {
   // Footer
   footerTagline: 'مصر · بيانات حية · ٢٠٢٤',
 
-  // Greeting
-  greetingMorning: 'صباح الخير',
-  greetingAfternoon: 'مساء الخير',
-  greetingEvening: 'مساء الخير',
-
   // Profile
   displayName: 'الاسم المعروض',
   displayNamePlaceholder: 'أدخل اسمك',
-  displayNameHint: 'يُستخدم هذا الاسم لتخصيص التحية الخاصة بك.',
+  displayNameHint: 'يُستخدم لتخصيص تجربتك.',
 };
 
 export const translations = { en, ar };

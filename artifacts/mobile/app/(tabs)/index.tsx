@@ -15,12 +15,10 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices, useGoldHistory, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { useUser } from '@clerk/expo';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
 import { PremiumBadge } from '@/components/PremiumBadge';
 import { Holding, MarketPrices } from '@/types';
-import { getPersonalizedGreeting } from '@/utils/greeting';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -331,15 +329,11 @@ export default function HomeScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { user } = useUser();
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { cashAccounts, totalCash } = useCash();
   const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { plan, isPro } = useSubscription();
   const isLoading = pricesLoading || holdingsLoading;
-
-  const displayName = (user?.unsafeMetadata?.displayName as string | undefined) ?? null;
-  const greeting = useMemo(() => getPersonalizedGreeting(t, displayName), [t, displayName]);
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
   const [sparkWidth, setSparkWidth] = useState(0);
@@ -409,7 +403,6 @@ export default function HomeScreen() {
       {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.greetingText, { color: colors.mutedForeground }]}>{greeting}</Text>
           <View style={styles.brandBlock}>
             <Text style={[styles.appLabel, { color: colors.primary }]}>{t.appName}</Text>
           </View>
@@ -691,9 +684,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 20 },
 
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
-  headerLeft:  { gap: 6, alignItems: 'flex-start' },
+  headerLeft:  { gap: 12, alignItems: 'flex-start' },
   headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
-  greetingText: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.1 },
   brandBlock:  { gap: 1, alignItems: 'flex-start' },
   appLabel:    { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 5 },
   screenTitle: { fontSize: 19, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
