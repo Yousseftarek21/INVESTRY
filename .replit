@@ -27,4 +27,4 @@ packages = ["eas-cli"]
 [userenv]
 
 [userenv.shared]
-FREE_ACCESS_PLAN = "pro_plus"
+FREE_ACCESS_PLAN = "pro"
