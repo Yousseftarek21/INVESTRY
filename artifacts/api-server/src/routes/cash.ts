@@ -6,7 +6,7 @@ import { eq, and } from "drizzle-orm";
 const router: IRouter = Router();
 
 // Require a valid Clerk session for all cash account routes
-router.use(clerkMiddleware(), (req, res, next) => {
+router.use("/cash-accounts", clerkMiddleware(), (req, res, next) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   next();

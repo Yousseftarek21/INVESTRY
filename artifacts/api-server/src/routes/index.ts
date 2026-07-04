@@ -4,6 +4,7 @@ import marketsRouter from "./markets";
 import holdingsRouter from "./holdings";
 import cashRouter from "./cash";
 import stripeRouter from "./stripe";
+import legalRouter from "./legal";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(marketsRouter);
 router.use(holdingsRouter);
 router.use(cashRouter);
 router.use(stripeRouter);
+router.use(legalRouter);
 
 export default router;
