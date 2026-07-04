@@ -27,4 +27,6 @@ packages = ["eas-cli"]
 [userenv]
 
 [userenv.shared]
-FREE_ACCESS_PLAN = "pro"
+FREE_ACCESS_PLAN = "off"
+LAUNCH_ACCESS_UNTIL = "2026-12-31T23:59:59Z"
+PERMANENT_FREE_EMAILS = "yousseftarek2772@gmail.com,youssefabdallaa007@gmail.com"

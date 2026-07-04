@@ -4,7 +4,9 @@ description: How INVESTRY grants free Pro+ access during launch, and a testing g
 ---
 
 ## What it is
-Premium status is fully centralized through `SubscriptionContext` on the client and `GET /api/subscription` on the server. A single server-side env var (`FREE_ACCESS_PLAN`, set to `pro`/`pro_plus`) makes the endpoint return that plan plus `launchAccess: true` for every authenticated user, bypassing Stripe entirely. See `replit.md` "Architecture decisions" for the full breakdown of files involved.
+Premium status is fully centralized through `SubscriptionContext` on the client and `GET /api/subscription` on the server. Three independent, combinable server-side rules can each grant free `plan: "pro"` + `launchAccess: true`, checked before any Stripe lookup: a time-boxed `LAUNCH_ACCESS_UNTIL` date (free for everyone until that date), a `PERMANENT_FREE_EMAILS` allowlist (free forever for specific emails, checked via live Clerk lookup), and `FREE_ACCESS_PLAN=pro` as a manual unconditional override/kill-switch. See `replit.md` "Architecture decisions" for the full breakdown of files and current values.
+
+**Why it matters:** `FREE_ACCESS_PLAN` does strict-equality string matching (`raw === "pro"`) — any other value (e.g. a leftover `"pro_plus"` from an old pricing-tier name) silently fails closed with no error, so a misconfigured value looks identical to "off". Always verify the exact value, not just that it's set.
 
 ## Testing gotcha: DEV_UNLOCKED masks the real flow
 `SubscriptionContext.tsx` has a `DEV_UNLOCKED = __DEV__` bypass that force-sets `plan = 'pro_plus'` locally and **skips the backend fetch entirely** whenever running in a dev build (which includes the Expo web preview used for e2e testing here).

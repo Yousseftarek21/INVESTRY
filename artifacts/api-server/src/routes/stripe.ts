@@ -6,16 +6,49 @@ import { stripeService } from "../lib/stripeService";
 const router: IRouter = Router();
 
 // Launch Access mode: grant everyone a plan for free, without touching
-// Stripe or the checkout/webhook wiring. Set FREE_ACCESS_PLAN=pro to turn
-// this on; unset it (or set to "off") once you're ready to start
-// charging — real Stripe subscriptions immediately take back over with no
-// code changes on either the server or the client. This is the single
-// source of truth for "Launch Access" — the client never derives
-// entitlement any other way, it always reads it from this endpoint.
+// Stripe or the checkout/webhook wiring. This is the single source of
+// truth for "Launch Access" — the client never derives entitlement any
+// other way, it always reads it from this endpoint.
+//
+// Two independent free-access paths:
+//   1. Time-boxed for everyone: LAUNCH_ACCESS_UNTIL is an ISO date/time.
+//      While `now < LAUNCH_ACCESS_UNTIL`, every signed-in user gets Pro
+//      for free. Once that date passes, this path stops applying on its
+//      own — no code change needed, real Stripe subscriptions take back
+//      over automatically.
+//   2. Permanent allowlist: PERMANENT_FREE_EMAILS is a comma-separated
+//      list of emails (developers/team) that always get Pro for free,
+//      regardless of the launch window or date.
+// Set FREE_ACCESS_PLAN=pro as a manual override/kill-switch if you ever
+// want to force free access for everyone regardless of the two rules
+// above (e.g. to reinstate launch access early).
 const FREE_ACCESS_PLAN = (() => {
   const raw = (process.env.FREE_ACCESS_PLAN ?? "off").trim().toLowerCase();
   return raw === "pro" ? raw : null;
 })();
+
+const LAUNCH_ACCESS_UNTIL = (() => {
+  const raw = process.env.LAUNCH_ACCESS_UNTIL?.trim();
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+})();
+
+const PERMANENT_FREE_EMAILS = (process.env.PERMANENT_FREE_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+function isLaunchWindowActive(): boolean {
+  return LAUNCH_ACCESS_UNTIL !== null && new Date() < LAUNCH_ACCESS_UNTIL;
+}
+
+async function isPermanentFreeUser(userId: string): Promise<boolean> {
+  if (PERMANENT_FREE_EMAILS.length === 0) return false;
+  const clerkUser = await clerkClient.users.getUser(userId);
+  const email = clerkUser.emailAddresses[0]?.emailAddress?.toLowerCase();
+  return !!email && PERMANENT_FREE_EMAILS.includes(email);
+}
 
 // Require a valid Clerk session for all subscription/checkout routes
 router.use("/stripe", clerkMiddleware(), (req, res, next) => {
@@ -49,15 +82,21 @@ router.get("/subscription", async (req, res) => {
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   if (FREE_ACCESS_PLAN) {
-    // Launch Access is on — report everyone as subscribed without touching
-    // Stripe or the users table. `launchAccess: true` is the explicit flag
-    // the client uses to swap purchase UI for the "Included During Launch"
-    // badge; `status: "promo"` is kept for backward compatibility.
+    // Manual kill-switch override is on — report everyone as subscribed
+    // without touching Stripe or the users table. `launchAccess: true` is
+    // the explicit flag the client uses to swap purchase UI for the
+    // "Included During Launch" badge; `status: "promo"` is kept for
+    // backward compatibility.
     res.json({ plan: FREE_ACCESS_PLAN, billingPeriod: "monthly", status: "promo", launchAccess: true });
     return;
   }
 
   try {
+    if (isLaunchWindowActive() || (await isPermanentFreeUser(userId))) {
+      res.json({ plan: "pro", billingPeriod: "monthly", status: "promo", launchAccess: true });
+      return;
+    }
+
     const user = await stripeStorage.getUser(userId);
     if (!user || !user.stripeSubscriptionId) {
       res.json({ plan: "free", billingPeriod: "monthly", status: null, launchAccess: false });
