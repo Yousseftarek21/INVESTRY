@@ -35,6 +35,7 @@ export default function SignInScreen() {
   const [showPass, setShowPass] = useState(false);
   const [code, setCode] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -97,6 +98,24 @@ export default function SignInScreen() {
       setGlobalError(err?.message ?? 'Google sign-in failed');
     } finally {
       setGoogleLoading(false);
+    }
+  }, [startSSOFlow]);
+
+  const handleApple = useCallback(async () => {
+    setGlobalError('');
+    setAppleLoading(true);
+    try {
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy: 'oauth_apple',
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
+      if (createdSessionId) {
+        await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
+      }
+    } catch (err: any) {
+      setGlobalError(err?.message ?? 'Apple sign-in failed');
+    } finally {
+      setAppleLoading(false);
     }
   }, [startSSOFlow]);
 
@@ -177,6 +196,23 @@ export default function SignInScreen() {
               Sign in to your account
             </Text>
           </View>
+
+          {/* Apple (iOS only, satisfies App Store guideline 4.8) */}
+          {Platform.OS === 'ios' && (
+            <Pressable
+              style={[styles.socialBtn, { backgroundColor: colors.text, borderColor: colors.text, marginBottom: 10 }]}
+              onPress={handleApple}
+              disabled={appleLoading}
+            >
+              {appleLoading
+                ? <ActivityIndicator color={colors.background} />
+                : <>
+                    <Feather name="command" size={17} color={colors.background} />
+                    <Text style={[styles.socialBtnText, { color: colors.background }]}>Continue with Apple</Text>
+                  </>
+              }
+            </Pressable>
+          )}
 
           {/* Google */}
           <Pressable
