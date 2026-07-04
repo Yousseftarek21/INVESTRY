@@ -49,7 +49,7 @@ function holdingLabel(h: Holding): string {
   if (h.type === 'gold') return `${h.karat.toUpperCase()} Gold`;
   if (h.type === 'silver') return 'Silver';
   if (h.type === 'stock') return h.symbol;
-  if (h.type === 'real_estate') return h.location || 'Real Estate';
+  if (h.type === 'real_estate') return h.propertyName || 'Real Estate';
   if (h.type === 'personal_asset') return h.name;
   return '–';
 }

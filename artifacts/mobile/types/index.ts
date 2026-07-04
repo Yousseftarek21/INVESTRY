@@ -1,6 +1,10 @@
 export type GoldKarat = '24k' | '22k' | '21k' | '18k';
 export type MetalForm = 'physical' | 'digital';
-export type PropertyType = 'apartment' | 'villa' | 'land' | 'commercial';
+export type PropertyType =
+  | 'apartment' | 'villa' | 'duplex' | 'penthouse' | 'townhouse' | 'chalet'
+  | 'land' | 'office' | 'retail_shop' | 'commercial' | 'medical_clinic' | 'warehouse';
+export type ValuationSource = 'manual' | 'developer' | 'broker';
+export type PropertyStatus = 'owner_occupied' | 'rented' | 'vacant' | 'under_construction';
 export type PersonalAssetCategory =
   | 'watches' | 'jewelry' | 'artwork' | 'collectibles'
   | 'luxury' | 'electronics' | 'furniture' | 'instruments' | 'other';
@@ -41,11 +45,41 @@ export interface StockHolding {
 export interface RealEstateHolding {
   id: string;
   type: 'real_estate';
+  propertyName: string;
   propertyType: PropertyType;
-  location: string;
-  purchasePrice: number;
+
+  // Location
+  governorate: string;
+  city: string;
+  district: string;
+
+  area: number;
+
+  // Valuation — currentValue is derived (area × currentMarketPricePerM2) but
+  // stored so downstream consumers can keep reading it directly.
+  currentMarketPricePerM2: number;
   currentValue: number;
+  lastValuationDate?: string;
+  valuationSource?: ValuationSource;
+
+  // Purchase info
+  purchasePrice: number;
   purchaseDate: string;
+  developer?: string;
+  compoundName?: string;
+  unitNumber?: string;
+
+  // Installment plan (optional)
+  hasInstallmentPlan?: boolean;
+  downPayment?: number;
+  remainingBalance?: number;
+  monthlyInstallment?: number;
+  installmentEndDate?: string;
+
+  // Rental info (optional)
+  monthlyRent?: number;
+  propertyStatus?: PropertyStatus;
+
   notes?: string;
 }
 

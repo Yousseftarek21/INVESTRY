@@ -55,7 +55,7 @@ function getTitle(holding: Holding): string {
   if (holding.type === 'silver') return 'Silver';
   if (holding.type === 'stock') return holding.symbol;
   if (holding.type === 'personal_asset') return holding.name || 'Personal Asset';
-  return holding.location || 'Real Estate';
+  return holding.propertyName || 'Real Estate';
 }
 
 function getSubtitle(holding: Holding): string {
@@ -66,8 +66,9 @@ function getSubtitle(holding: Holding): string {
     const c = holding.category;
     return c.charAt(0).toUpperCase() + c.slice(1);
   }
-  const t = holding.propertyType;
-  return t.charAt(0).toUpperCase() + t.slice(1);
+  const typeLabel = holding.propertyType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const place = [holding.district, holding.city].filter(Boolean).join(', ');
+  return place ? `${typeLabel} · ${place}` : typeLabel;
 }
 
 const ICON_COLORS: Record<Holding['type'], string> = {

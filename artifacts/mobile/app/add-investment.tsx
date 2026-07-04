@@ -13,7 +13,8 @@ import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { CashAccount, CashAccountType, GoldKarat, Holding, MetalForm, PersonalAssetCategory, PersonalAssetCurrency, PropertyType } from '@/types';
+import { CashAccount, CashAccountType, GoldKarat, Holding, MetalForm, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
+import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 
 const FREE_LIMIT = 5;
 
@@ -269,6 +270,113 @@ function StockPickerModal({
   );
 }
 
+// ─── Generic search picker modal (Governorate / City / District) ──────────────
+
+function SearchPickerModal({
+  visible,
+  title,
+  options,
+  selected,
+  onSelect,
+  onClose,
+  otherLabel,
+}: {
+  visible: boolean;
+  title: string;
+  options: string[];
+  selected: string;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+  otherLabel: string;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(o => o.toLowerCase().includes(q));
+  }, [query, options]);
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={[pickerStyles.container, { backgroundColor: colors.background }]}>
+        <View style={[pickerStyles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
+          <Text style={[pickerStyles.title, { color: colors.text }]}>{title}</Text>
+          <TouchableOpacity onPress={onClose} style={[pickerStyles.closeBtn, { backgroundColor: colors.muted }]}>
+            <Feather name="x" size={15} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[pickerStyles.searchWrap, { borderBottomColor: colors.border }]}>
+          <View style={[pickerStyles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="search" size={15} color={colors.mutedForeground} />
+            <TextInput
+              style={[pickerStyles.searchInput, { color: colors.text }]}
+              placeholder="Search..."
+              placeholderTextColor={colors.mutedForeground}
+              value={query}
+              onChangeText={setQuery}
+              returnKeyType="search"
+            />
+            {query.length > 0 && (
+              <TouchableOpacity onPress={() => setQuery('')}>
+                <Feather name="x-circle" size={15} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <FlatList
+          data={filtered}
+          keyExtractor={(item, index) => `${item}_${index}`}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          ListFooterComponent={
+            query.trim().length > 0 ? (
+              <TouchableOpacity
+                style={[pickerStyles.stockRow, { borderBottomColor: colors.border }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(query.trim()); onClose(); }}
+                activeOpacity={0.65}
+              >
+                <View style={[pickerStyles.avatar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Feather name="edit-3" size={16} color={colors.mutedForeground} />
+                </View>
+                <View style={pickerStyles.stockInfo}>
+                  <Text style={[pickerStyles.symbol, { color: colors.text }]}>{otherLabel}</Text>
+                  <Text style={[pickerStyles.stockName, { color: colors.mutedForeground }]} numberOfLines={1}>"{query.trim()}"</Text>
+                </View>
+              </TouchableOpacity>
+            ) : null
+          }
+          renderItem={({ item, index }) => {
+            const isSelected = selected === item;
+            const isLast = index === filtered.length - 1;
+            return (
+              <TouchableOpacity
+                style={[
+                  pickerStyles.stockRow,
+                  { borderBottomColor: colors.border },
+                  !isLast && pickerStyles.stockRowBorder,
+                  isSelected && { backgroundColor: colors.primary + '10' },
+                ]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(item); onClose(); }}
+                activeOpacity={0.65}
+              >
+                <View style={pickerStyles.stockInfo}>
+                  <Text style={[pickerStyles.symbol, { color: colors.text }]}>{item}</Text>
+                </View>
+                {isSelected && <Feather name="check-circle" size={18} color={colors.primary} />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function AddInvestmentScreen() {
@@ -302,7 +410,32 @@ export default function AddInvestmentScreen() {
   const [shares, setShares] = useState('');
   const [purchasePricePerShare, setPurchasePricePerShare] = useState('');
   const [propertyType, setPropertyType] = useState<PropertyType>('apartment');
-  const [location, setLocation] = useState('');
+  const [propertyName, setPropertyName] = useState('');
+  const [governorate, setGovernorate] = useState('');
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
+  const [governoratePickerVisible, setGovernoratePickerVisible] = useState(false);
+  const [cityPickerVisible, setCityPickerVisible] = useState(false);
+  const [districtPickerVisible, setDistrictPickerVisible] = useState(false);
+  const [area, setArea] = useState('');
+  const [currentMarketPricePerM2, setCurrentMarketPricePerM2] = useState('');
+  const [lastValuationDate, setLastValuationDate] = useState(new Date().toISOString().split('T')[0]);
+  const [valuationSource, setValuationSource] = useState<ValuationSource>('manual');
+  const [developer, setDeveloper] = useState('');
+  const [compoundName, setCompoundName] = useState('');
+  const [unitNumber, setUnitNumber] = useState('');
+  const [hasInstallmentPlan, setHasInstallmentPlan] = useState(false);
+  const [installmentExpanded, setInstallmentExpanded] = useState(false);
+  const [downPayment, setDownPayment] = useState('');
+  const [remainingBalance, setRemainingBalance] = useState('');
+  const [monthlyInstallment, setMonthlyInstallment] = useState('');
+  const [installmentEndDate, setInstallmentEndDate] = useState('');
+  const [hasRentalInfo, setHasRentalInfo] = useState(false);
+  const [rentalExpanded, setRentalExpanded] = useState(false);
+  const [monthlyRent, setMonthlyRent] = useState('');
+  const [annualRent, setAnnualRent] = useState('');
+  const [propertyStatus, setPropertyStatus] = useState<PropertyStatus>('owner_occupied');
+  const [realEstatePurchaseDate, setRealEstatePurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [purchasePrice, setPurchasePrice] = useState('');
   const [currentValue, setCurrentValue] = useState('');
   const [notes, setNotes] = useState('');
@@ -335,9 +468,32 @@ export default function AddInvestmentScreen() {
       setPurchasePricePerShare(String(editingHolding.purchasePricePerShare));
     } else if (editingHolding.type === 'real_estate') {
       setPropertyType(editingHolding.propertyType);
-      setLocation(editingHolding.location);
+      setPropertyName(editingHolding.propertyName);
+      setGovernorate(editingHolding.governorate);
+      setCity(editingHolding.city);
+      setDistrict(editingHolding.district);
+      setArea(String(editingHolding.area));
+      setCurrentMarketPricePerM2(String(editingHolding.currentMarketPricePerM2));
+      setLastValuationDate(editingHolding.lastValuationDate ?? new Date().toISOString().split('T')[0]);
+      setValuationSource(editingHolding.valuationSource ?? 'manual');
       setPurchasePrice(String(editingHolding.purchasePrice));
-      setCurrentValue(String(editingHolding.currentValue));
+      setRealEstatePurchaseDate(editingHolding.purchaseDate);
+      setDeveloper(editingHolding.developer ?? '');
+      setCompoundName(editingHolding.compoundName ?? '');
+      setUnitNumber(editingHolding.unitNumber ?? '');
+      const hasInstallment = !!editingHolding.hasInstallmentPlan;
+      setHasInstallmentPlan(hasInstallment);
+      setInstallmentExpanded(hasInstallment);
+      setDownPayment(editingHolding.downPayment != null ? String(editingHolding.downPayment) : '');
+      setRemainingBalance(editingHolding.remainingBalance != null ? String(editingHolding.remainingBalance) : '');
+      setMonthlyInstallment(editingHolding.monthlyInstallment != null ? String(editingHolding.monthlyInstallment) : '');
+      setInstallmentEndDate(editingHolding.installmentEndDate ?? '');
+      const hasRental = editingHolding.monthlyRent != null;
+      setHasRentalInfo(hasRental);
+      setRentalExpanded(hasRental);
+      setMonthlyRent(editingHolding.monthlyRent != null ? String(editingHolding.monthlyRent) : '');
+      setAnnualRent(editingHolding.monthlyRent != null ? String(editingHolding.monthlyRent * 12) : '');
+      setPropertyStatus(editingHolding.propertyStatus ?? 'owner_occupied');
     } else if (editingHolding.type === 'personal_asset') {
       setAssetName(editingHolding.name);
       setAssetCategory(editingHolding.category);
@@ -387,6 +543,43 @@ export default function AddInvestmentScreen() {
     instruments: t.catInstruments,
     other: t.catOther,
   };
+
+  const PROPERTY_TYPES: { key: PropertyType; label: string }[] = [
+    { key: 'apartment', label: t.apartment },
+    { key: 'villa', label: t.villa },
+    { key: 'duplex', label: t.duplex },
+    { key: 'penthouse', label: t.penthouse },
+    { key: 'townhouse', label: t.townhouse },
+    { key: 'chalet', label: t.chalet },
+    { key: 'land', label: t.land },
+    { key: 'office', label: t.office },
+    { key: 'retail_shop', label: t.retailShop },
+    { key: 'commercial', label: t.commercial },
+    { key: 'medical_clinic', label: t.medicalClinic },
+    { key: 'warehouse', label: t.warehouse },
+  ];
+
+  const VALUATION_SOURCES: { key: ValuationSource; label: string }[] = [
+    { key: 'manual', label: t.valuationManual },
+    { key: 'developer', label: t.valuationDeveloper },
+    { key: 'broker', label: t.valuationBroker },
+  ];
+
+  const PROPERTY_STATUSES: { key: PropertyStatus; label: string }[] = [
+    { key: 'owner_occupied', label: t.statusOwnerOccupied },
+    { key: 'rented', label: t.statusRented },
+    { key: 'vacant', label: t.statusVacant },
+    { key: 'under_construction', label: t.statusUnderConstruction },
+  ];
+
+  const reAreaNum = parseFloat(area) || 0;
+  const rePricePerM2Num = parseFloat(currentMarketPricePerM2) || 0;
+  const rePurchasePriceNum = parseFloat(purchasePrice) || 0;
+  const reCurrentValue = reAreaNum * rePricePerM2Num;
+  const rePurchasePricePerM2 = reAreaNum > 0 ? rePurchasePriceNum / reAreaNum : 0;
+  const reGainLoss = reCurrentValue - rePurchasePriceNum;
+  const reAppreciationPct = rePurchasePriceNum > 0 ? (reGainLoss / rePurchasePriceNum) * 100 : 0;
+  const reShowSummary = reAreaNum > 0 && rePricePerM2Num > 0 && rePurchasePriceNum > 0;
 
   const Chip = ({ value, selected, onPress, label }: { value: string; selected: boolean; onPress: () => void; label?: string }) => (
     <TouchableOpacity
@@ -440,8 +633,45 @@ export default function AddInvestmentScreen() {
       const name = customSymbol.trim() ? customSymbol.trim().toUpperCase() : selectedStock.name;
       holding = { id, type: 'stock', symbol: sym, companyName: name, shares: parseFloat(shares), purchasePricePerShare: parseFloat(purchasePricePerShare), purchaseDate: today, notes };
     } else if (type === 'real_estate') {
-      if (!purchasePrice || !currentValue) { Alert.alert(t.missingFields, t.enterPrices); return; }
-      holding = { id, type: 'real_estate', propertyType, location, purchasePrice: parseFloat(purchasePrice), currentValue: parseFloat(currentValue), purchaseDate: today, notes };
+      const finalGovernorate = governorate.trim();
+      const finalCity = city.trim();
+      const finalDistrict = district.trim();
+      if (
+        !propertyName.trim() || !finalGovernorate || !finalCity || !finalDistrict ||
+        !area || !purchasePrice || !realEstatePurchaseDate || !currentMarketPricePerM2
+      ) {
+        Alert.alert(t.missingFields, t.enterRealEstateRequired);
+        return;
+      }
+      const parsedArea = parseFloat(area);
+      const parsedPricePerM2 = parseFloat(currentMarketPricePerM2);
+      const computedCurrentValue = parsedArea * parsedPricePerM2;
+      holding = {
+        id, type: 'real_estate',
+        propertyName: propertyName.trim(),
+        propertyType,
+        governorate: finalGovernorate,
+        city: finalCity,
+        district: finalDistrict,
+        area: parsedArea,
+        currentMarketPricePerM2: parsedPricePerM2,
+        currentValue: computedCurrentValue,
+        lastValuationDate: lastValuationDate || undefined,
+        valuationSource,
+        purchasePrice: parseFloat(purchasePrice),
+        purchaseDate: realEstatePurchaseDate,
+        developer: developer.trim() || undefined,
+        compoundName: compoundName.trim() || undefined,
+        unitNumber: unitNumber.trim() || undefined,
+        hasInstallmentPlan: hasInstallmentPlan || undefined,
+        downPayment: hasInstallmentPlan && downPayment ? parseFloat(downPayment) : undefined,
+        remainingBalance: hasInstallmentPlan && remainingBalance ? parseFloat(remainingBalance) : undefined,
+        monthlyInstallment: hasInstallmentPlan && monthlyInstallment ? parseFloat(monthlyInstallment) : undefined,
+        installmentEndDate: hasInstallmentPlan && installmentEndDate ? installmentEndDate : undefined,
+        monthlyRent: hasRentalInfo && monthlyRent ? parseFloat(monthlyRent) : undefined,
+        propertyStatus: hasRentalInfo ? propertyStatus : undefined,
+        notes,
+      };
     } else if (type === 'personal_asset') {
       if (!assetName.trim() || !purchasePrice) { Alert.alert(t.missingFields, t.enterAssetDetails); return; }
       const parsedPurchasePrice = parseFloat(purchasePrice);
@@ -760,29 +990,231 @@ export default function AddInvestmentScreen() {
           {/* Real Estate */}
           {type === 'real_estate' && (<>
             <View style={styles.section}>
+              <Text style={labelStyle}>{t.propertyName}</Text>
+              <TextInput style={inputStyle} placeholder={t.propertyNamePlaceholder} placeholderTextColor={colors.mutedForeground}
+                value={propertyName} onChangeText={setPropertyName} />
+            </View>
+
+            <View style={styles.section}>
               <Text style={labelStyle}>{t.propertyType}</Text>
-              <View style={styles.chips}>
-                {(['apartment', 'villa', 'land', 'commercial'] as PropertyType[]).map(p => (
-                  <Chip key={p} value={p} selected={propertyType === p} onPress={() => setPropertyType(p)}
-                    label={t[p as 'apartment' | 'villa' | 'land' | 'commercial']} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+                {PROPERTY_TYPES.map(p => (
+                  <Chip key={p.key} value={p.key} selected={propertyType === p.key} onPress={() => setPropertyType(p.key)}
+                    label={p.label} />
                 ))}
-              </View>
+              </ScrollView>
+            </View>
+
+            {/* Location */}
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.governorate}</Text>
+              <TouchableOpacity
+                style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                onPress={() => setGovernoratePickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dropdownSymbol, { color: governorate ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                  {governorate || t.selectGovernorate}
+                </Text>
+                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
             </View>
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.location}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. New Cairo" placeholderTextColor={colors.mutedForeground}
-                value={location} onChangeText={setLocation} />
+              <Text style={labelStyle}>{t.city}</Text>
+              <TouchableOpacity
+                style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                onPress={() => setCityPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dropdownSymbol, { color: city ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                  {city || t.selectCity}
+                </Text>
+                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
             </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.district}</Text>
+              <TouchableOpacity
+                style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                onPress={() => setDistrictPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dropdownSymbol, { color: district ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                  {district || t.selectDistrict}
+                </Text>
+                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.area}</Text>
+              <TextInput style={inputStyle} placeholder={t.areaPlaceholder} placeholderTextColor={colors.mutedForeground}
+                value={area} onChangeText={setArea} keyboardType="decimal-pad" />
+            </View>
+
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePrice}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 3500000" placeholderTextColor={colors.mutedForeground}
                 value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.currentEstimatedValue}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 4200000" placeholderTextColor={colors.mutedForeground}
-                value={currentValue} onChangeText={setCurrentValue} keyboardType="decimal-pad" />
+              <Text style={labelStyle}>{t.purchaseDate}</Text>
+              <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
+                value={realEstatePurchaseDate} onChangeText={setRealEstatePurchaseDate} />
             </View>
+
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.currentMarketPricePerM2}</Text>
+              <TextInput style={inputStyle} placeholder={t.currentMarketPricePerM2Placeholder} placeholderTextColor={colors.mutedForeground}
+                value={currentMarketPricePerM2} onChangeText={setCurrentMarketPricePerM2} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.lastValuationDate}</Text>
+              <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
+                value={lastValuationDate} onChangeText={setLastValuationDate} />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.valuationSource}</Text>
+              <View style={styles.chips}>
+                {VALUATION_SOURCES.map(v => (
+                  <Chip key={v.key} value={v.key} selected={valuationSource === v.key} onPress={() => setValuationSource(v.key)}
+                    label={v.label} />
+                ))}
+              </View>
+            </View>
+
+            {/* Purchase info */}
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.developer}</Text>
+              <TextInput style={inputStyle} placeholder={t.developerPlaceholder} placeholderTextColor={colors.mutedForeground}
+                value={developer} onChangeText={setDeveloper} />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.compoundName}</Text>
+              <TextInput style={inputStyle} placeholder={t.compoundNamePlaceholder} placeholderTextColor={colors.mutedForeground}
+                value={compoundName} onChangeText={setCompoundName} />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.unitNumber}</Text>
+              <TextInput style={inputStyle} placeholder={t.unitNumberPlaceholder} placeholderTextColor={colors.mutedForeground}
+                value={unitNumber} onChangeText={setUnitNumber} />
+            </View>
+
+            {/* Installment plan (collapsible) */}
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={[styles.collapsibleHeader, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                onPress={() => {
+                  const next = !hasInstallmentPlan;
+                  setHasInstallmentPlan(next);
+                  setInstallmentExpanded(next);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.collapsibleTitle, { color: colors.text }]}>{t.installmentPlan}</Text>
+                  <Text style={[styles.collapsibleDesc, { color: colors.mutedForeground }]}>{t.installmentPlanDesc}</Text>
+                </View>
+                <Feather name={hasInstallmentPlan ? 'chevron-up' : 'chevron-down'} size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              {hasInstallmentPlan && installmentExpanded && (
+                <View style={styles.collapsibleBody}>
+                  <Text style={labelStyle}>{t.downPayment}</Text>
+                  <TextInput style={inputStyle} placeholder="e.g. 500000" placeholderTextColor={colors.mutedForeground}
+                    value={downPayment} onChangeText={setDownPayment} keyboardType="decimal-pad" />
+                  <Text style={[labelStyle, { marginTop: 12 }]}>{t.remainingBalance}</Text>
+                  <TextInput style={inputStyle} placeholder="e.g. 2000000" placeholderTextColor={colors.mutedForeground}
+                    value={remainingBalance} onChangeText={setRemainingBalance} keyboardType="decimal-pad" />
+                  <Text style={[labelStyle, { marginTop: 12 }]}>{t.monthlyInstallment}</Text>
+                  <TextInput style={inputStyle} placeholder="e.g. 15000" placeholderTextColor={colors.mutedForeground}
+                    value={monthlyInstallment} onChangeText={setMonthlyInstallment} keyboardType="decimal-pad" />
+                  <Text style={[labelStyle, { marginTop: 12 }]}>{t.installmentEndDate}</Text>
+                  <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
+                    value={installmentEndDate} onChangeText={setInstallmentEndDate} />
+                </View>
+              )}
+            </View>
+
+            {/* Rental info (collapsible) */}
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={[styles.collapsibleHeader, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                onPress={() => {
+                  const next = !hasRentalInfo;
+                  setHasRentalInfo(next);
+                  setRentalExpanded(next);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.collapsibleTitle, { color: colors.text }]}>{t.rentalInfo}</Text>
+                  <Text style={[styles.collapsibleDesc, { color: colors.mutedForeground }]}>{t.rentalInfoDesc}</Text>
+                </View>
+                <Feather name={hasRentalInfo ? 'chevron-up' : 'chevron-down'} size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              {hasRentalInfo && rentalExpanded && (
+                <View style={styles.collapsibleBody}>
+                  <Text style={labelStyle}>{t.monthlyRent}</Text>
+                  <TextInput style={inputStyle} placeholder="e.g. 20000" placeholderTextColor={colors.mutedForeground}
+                    value={monthlyRent}
+                    onChangeText={(v) => { setMonthlyRent(v); const n = parseFloat(v); setAnnualRent(!isNaN(n) ? String(n * 12) : ''); }}
+                    keyboardType="decimal-pad" />
+                  <Text style={[labelStyle, { marginTop: 12 }]}>{t.annualRent}</Text>
+                  <TextInput style={inputStyle} placeholder="e.g. 240000" placeholderTextColor={colors.mutedForeground}
+                    value={annualRent}
+                    onChangeText={(v) => { setAnnualRent(v); const n = parseFloat(v); setMonthlyRent(!isNaN(n) ? String(n / 12) : ''); }}
+                    keyboardType="decimal-pad" />
+                  <Text style={[labelStyle, { marginTop: 12 }]}>{t.propertyStatus}</Text>
+                  <View style={styles.chips}>
+                    {PROPERTY_STATUSES.map(s => (
+                      <Chip key={s.key} value={s.key} selected={propertyStatus === s.key} onPress={() => setPropertyStatus(s.key)}
+                        label={s.label} />
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Summary card */}
+            {reShowSummary && (
+              <View style={[styles.summaryCard, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}>
+                <Text style={[styles.summaryTitle, { color: colors.text }]}>{t.propertySummary}</Text>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.purchasePrice}</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePurchasePriceNum.toLocaleString()} EGP</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.purchasePricePerM2}</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePurchasePricePerM2.toLocaleString(undefined, { maximumFractionDigits: 0 })} EGP</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.currentMarketPricePerM2}</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePricePerM2Num.toLocaleString()} EGP</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.currentPropertyValue}</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>{reCurrentValue.toLocaleString()} EGP</Text>
+                </View>
+                <View style={[styles.summaryRow, styles.summaryDivider, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.unrealizedGainLoss}</Text>
+                  <Text style={[styles.summaryValue, { color: reGainLoss >= 0 ? colors.green : colors.red }]}>
+                    {reGainLoss >= 0 ? '+' : ''}{reGainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })} EGP
+                  </Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.appreciation}</Text>
+                  <Text style={[styles.summaryValue, { color: reAppreciationPct >= 0 ? colors.green : colors.red }]}>
+                    {reAppreciationPct >= 0 ? '+' : ''}{reAppreciationPct.toFixed(1)}%
+                  </Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.roi}</Text>
+                  <Text style={[styles.summaryValue, { color: reAppreciationPct >= 0 ? colors.green : colors.red }]}>
+                    {reAppreciationPct >= 0 ? '+' : ''}{reAppreciationPct.toFixed(1)}%
+                  </Text>
+                </View>
+              </View>
+            )}
           </>)}
 
           {/* Personal Asset */}
@@ -870,6 +1302,35 @@ export default function AddInvestmentScreen() {
         onSelect={(s) => { setSelectedStock(s); setCustomSymbol(''); }}
         onClose={() => setStockPickerVisible(false)}
       />
+
+      {/* Real Estate location picker modals */}
+      <SearchPickerModal
+        visible={governoratePickerVisible}
+        title={t.selectGovernorate}
+        options={GOVERNORATE_NAMES}
+        selected={governorate}
+        onSelect={(v) => { setGovernorate(v); setCity(''); setDistrict(''); }}
+        onClose={() => setGovernoratePickerVisible(false)}
+        otherLabel={t.enterManually}
+      />
+      <SearchPickerModal
+        visible={cityPickerVisible}
+        title={t.selectCity}
+        options={citiesForGovernorate(governorate).map(c => c.name)}
+        selected={city}
+        onSelect={(v) => { setCity(v); setDistrict(''); }}
+        onClose={() => setCityPickerVisible(false)}
+        otherLabel={t.enterManually}
+      />
+      <SearchPickerModal
+        visible={districtPickerVisible}
+        title={t.selectDistrict}
+        options={districtsForCity(governorate, city)}
+        selected={district}
+        onSelect={setDistrict}
+        onClose={() => setDistrictPickerVisible(false)}
+        otherLabel={t.enterManually}
+      />
     </>
   );
 }
@@ -924,6 +1385,21 @@ const styles = StyleSheet.create({
   customRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 12 },
   customDivider: { flex: 1, height: StyleSheet.hairlineWidth },
   customOr: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  // Collapsible sections (Real Estate — installment / rental)
+  collapsibleHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 14, borderWidth: 1.5, padding: 14,
+  },
+  collapsibleTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold', marginBottom: 3 },
+  collapsibleDesc: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  collapsibleBody: { marginTop: 12, gap: 4 },
+  // Summary card (Real Estate)
+  summaryCard: { borderRadius: 16, borderWidth: 1.5, padding: 16, marginBottom: 16 },
+  summaryTitle: { fontSize: 14, fontFamily: 'Inter_700Bold', marginBottom: 12 },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
+  summaryDivider: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 6 },
+  summaryLabel: { fontSize: 13, fontFamily: 'Inter_400Regular' },
+  summaryValue: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 });
 
 const pickerStyles = StyleSheet.create({
