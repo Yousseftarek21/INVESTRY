@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'flex-start', marginBottom: 4,
   },
-  screenTitle: { fontSize: 19, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
+  screenTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   subtitle: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 4 },
   headerAddBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,

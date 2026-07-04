@@ -931,7 +931,7 @@ const s = StyleSheet.create({
 
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   eyebrow: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
-  pageTitle: { fontSize: 19, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
+  pageTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
 
   // Health hero (centrepiece)
   healthHero: {
