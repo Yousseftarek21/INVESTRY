@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
   brandBlock:  { gap: 1, alignItems: 'flex-start' },
   appLabel:    { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: 4 },
-  screenTitle: { fontSize: 19, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
+  screenTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
