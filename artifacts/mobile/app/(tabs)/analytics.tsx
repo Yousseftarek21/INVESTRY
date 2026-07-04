@@ -267,7 +267,7 @@ function PerfChart({ gainPct, period, seed, width, height = 110 }: {
   const color = gainPct >= 0 ? colors.green : colors.red;
   const minV = Math.min(...data), maxV = Math.max(...data);
   const range = maxV - minV || 1;
-  const pad = 4;
+  const pad = 10;
   const pts: Pt[] = data.map((v, i) => {
     const x = (i / (data.length - 1)) * width;
     const y = pad + ((maxV - v) / range) * (height - pad * 2);
@@ -281,13 +281,14 @@ function PerfChart({ gainPct, period, seed, width, height = 110 }: {
     <Svg width={width} height={height}>
       <Defs>
         <LinearGradient id="cf" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity="0.28" />
+          <Stop offset="0" stopColor={color} stopOpacity="0.30" />
+          <Stop offset="0.55" stopColor={color} stopOpacity="0.08" />
           <Stop offset="1" stopColor={color} stopOpacity="0" />
         </LinearGradient>
       </Defs>
       <Path d={fillPath} fill="url(#cf)" />
       <Path d={linePath} fill="none" stroke={color}
-        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
       <Circle cx={lastPt.x} cy={lastPt.y} r="8" fill={color} fillOpacity="0.2" />
     </Svg>
