@@ -396,7 +396,7 @@ export default function HomeScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
+      contentContainerStyle={[styles.content, { paddingTop: topPad + 6, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
@@ -684,12 +684,12 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 20 },
 
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
-  headerLeft:  { gap: 12, alignItems: 'flex-start' },
+  headerLeft:  { gap: 18, alignItems: 'flex-start' },
   headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
   brandBlock:  { gap: 1, alignItems: 'flex-start' },
-  appLabel:    { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: 5 },
+  appLabel:    { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: 4 },
   screenTitle: { fontSize: 19, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   heroAccent: { height: 1.25 },
