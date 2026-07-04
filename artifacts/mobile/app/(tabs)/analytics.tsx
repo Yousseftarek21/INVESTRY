@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Svg, {
-  Polyline, Defs, LinearGradient, Stop, Polygon,
+  Defs, LinearGradient, Stop,
   Circle, Path,
 } from 'react-native-svg';
 import { useColors } from '@/hooks/useColors';
@@ -77,6 +77,26 @@ function genCurve(gainPct: number, period: Period, seed: number, n = 40): number
     v += (gainPct / 100) * s * (i / n) + (rand() - 0.47) * 1.8;
     return v;
   });
+}
+
+type Pt = { x: number; y: number; value: number };
+
+function buildSmoothPath(pts: Pt[]): string {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const t = 0.25;
+    const cp1x = p1.x + (p2.x - p0.x) * t;
+    const cp1y = p1.y + (p2.y - p0.y) * t;
+    const cp2x = p2.x - (p3.x - p1.x) * t;
+    const cp2y = p2.y - (p3.y - p1.y) * t;
+    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+  }
+  return d;
 }
 
 // ─── Animated arc ring ────────────────────────────────────────────────────────
@@ -248,13 +268,14 @@ function PerfChart({ gainPct, period, seed, width, height = 110 }: {
   const minV = Math.min(...data), maxV = Math.max(...data);
   const range = maxV - minV || 1;
   const pad = 4;
-  const pts = data.map((v, i) => {
+  const pts: Pt[] = data.map((v, i) => {
     const x = (i / (data.length - 1)) * width;
     const y = pad + ((maxV - v) / range) * (height - pad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+    return { x, y, value: v };
   });
-  const fill = `0,${height} ${pts.join(' ')} ${width},${height}`;
-  const lastPt = pts[pts.length - 1].split(',');
+  const linePath = buildSmoothPath(pts);
+  const lastPt = pts[pts.length - 1];
+  const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
 
   return (
     <Svg width={width} height={height}>
@@ -264,11 +285,11 @@ function PerfChart({ gainPct, period, seed, width, height = 110 }: {
           <Stop offset="1" stopColor={color} stopOpacity="0" />
         </LinearGradient>
       </Defs>
-      <Polygon points={fill} fill="url(#cf)" />
-      <Polyline points={pts.join(' ')} fill="none" stroke={color}
+      <Path d={fillPath} fill="url(#cf)" />
+      <Path d={linePath} fill="none" stroke={color}
         strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx={lastPt[0]} cy={lastPt[1]} r="4" fill={color} />
-      <Circle cx={lastPt[0]} cy={lastPt[1]} r="8" fill={color} fillOpacity="0.2" />
+      <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
+      <Circle cx={lastPt.x} cy={lastPt.y} r="8" fill={color} fillOpacity="0.2" />
     </Svg>
   );
 }
