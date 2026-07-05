@@ -997,7 +997,7 @@ export default function AddInvestmentScreen() {
 
             <View style={styles.section}>
               <Text style={labelStyle}>{t.propertyType}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
                 {PROPERTY_TYPES.map(p => (
                   <Chip key={p.key} value={p.key} selected={propertyType === p.key} onPress={() => setPropertyType(p.key)}
                     label={p.label} />
@@ -1350,6 +1350,7 @@ const styles = StyleSheet.create({
   typeCard: { flex: 1, minWidth: '40%', borderRadius: 12, borderWidth: 1.5, padding: 14, alignItems: 'center', gap: 6 },
   typeLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipsScroll: { flexDirection: 'row', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   iconOption: { width: 40, height: 40, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
