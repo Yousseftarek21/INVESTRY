@@ -7,7 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '@clerk/expo';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
@@ -187,6 +187,7 @@ function StockPickerModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaProvider>
       <View style={[pickerStyles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
         <View style={[pickerStyles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
@@ -266,6 +267,7 @@ function StockPickerModal({
           }}
         />
       </View>
+      </SafeAreaProvider>
     </Modal>
   );
 }
@@ -301,6 +303,7 @@ function SearchPickerModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaProvider>
       <View style={[pickerStyles.container, { backgroundColor: colors.background }]}>
         <View style={[pickerStyles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
           <Text style={[pickerStyles.title, { color: colors.text }]}>{title}</Text>
@@ -373,6 +376,7 @@ function SearchPickerModal({
           }}
         />
       </View>
+      </SafeAreaProvider>
     </Modal>
   );
 }
