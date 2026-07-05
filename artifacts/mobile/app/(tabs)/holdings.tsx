@@ -1,5 +1,5 @@
-import React from 'react';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -37,6 +37,7 @@ export default function HoldingsScreen() {
   const { holdings, removeHolding } = useHoldings();
   const { data: prices } = useMarketPrices();
   const { impact } = useHaptic();
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const TYPE_LABELS: Record<Holding['type'], string> = {
     gold: t.goldGroup,
@@ -52,7 +53,31 @@ export default function HoldingsScreen() {
     return acc;
   }, {});
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
+    if (Platform.OS === 'web') {
+      // react-native-web's Alert.alert only shows the message and does not
+      // reliably invoke custom button callbacks, so the "Delete" action
+      // never fired. Use an explicit modal instead so delete works on web.
+      setPendingDeleteId(id);
+      return;
+    }
+    Alert.alert(t.deleteHolding, t.deleteHoldingConfirm, [
+      { text: t.cancel, style: 'cancel' },
+      {
+        text: t.delete,
+        style: 'destructive',
+        onPress: async () => {
+          impact(Haptics.ImpactFeedbackStyle.Medium);
+          removeHolding(id);
+        },
+      },
+    ]);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
     impact(Haptics.ImpactFeedbackStyle.Medium);
     removeHolding(id);
   };
@@ -150,6 +175,31 @@ export default function HoldingsScreen() {
           ))
         )}
       </ScrollView>
+
+      <Modal visible={!!pendingDeleteId} animationType="fade" transparent onRequestClose={() => setPendingDeleteId(null)}>
+        <View style={confirmStyles.overlay}>
+          <View style={[confirmStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[confirmStyles.title, { color: colors.text }]}>{t.deleteHolding}</Text>
+            <Text style={[confirmStyles.msg, { color: colors.mutedForeground }]}>{t.deleteHoldingConfirm}</Text>
+            <View style={confirmStyles.row}>
+              <TouchableOpacity
+                onPress={() => setPendingDeleteId(null)}
+                style={[confirmStyles.btn, { backgroundColor: colors.muted }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[confirmStyles.btnTxt, { color: colors.mutedForeground }]}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmDelete}
+                style={[confirmStyles.btn, { backgroundColor: colors.red + '18', borderWidth: 1, borderColor: colors.red + '40' }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[confirmStyles.btnTxt, { color: colors.red, fontFamily: 'Inter_600SemiBold' }]}>{t.delete}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -196,4 +246,14 @@ const styles = StyleSheet.create({
     borderRadius: 16, marginTop: 8,
   },
   inlineBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+});
+
+const confirmStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card: { borderRadius: 20, borderWidth: 1, padding: 24, width: '100%', maxWidth: 360, gap: 16 },
+  title: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  msg: { fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 22 },
+  row: { flexDirection: 'row', gap: 10 },
+  btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
+  btnTxt: { fontSize: 14, fontFamily: 'Inter_500Medium' },
 });

@@ -130,7 +130,7 @@ export default function CashAccountsScreen() {
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
-  const totalCash = cashAccounts.reduce((sum, a) => sum + a.balance, 0);
+  const totalCash = cashAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
 
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
   const inputStyle = [styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }];
@@ -283,7 +283,7 @@ export default function CashAccountsScreen() {
                       <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{a.accountName}</Text>
                       <Text style={[styles.accountType, { color: colors.mutedForeground }]}>{TYPE_LABELS[a.type]}</Text>
                       <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
-                        {a.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
+                        {(Number(a.balance) || 0).toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
                       </Text>
                     </View>
                     <View style={styles.accountActions}>

@@ -180,6 +180,8 @@ const en = {
   tapToAddCash: 'Tap + to add your first cash account',
   deleteCashAccount: 'Delete Cash Account',
   deleteCashAccountConfirm: 'Are you sure you want to delete this cash account?',
+  deleteHolding: 'Delete Holding',
+  deleteHoldingConfirm: 'Are you sure you want to delete this holding? This cannot be undone.',
   delete: 'Delete',
   cancel: 'Cancel',
 
@@ -453,6 +455,8 @@ const ar: typeof en = {
   tapToAddCash: 'اضغط + لإضافة أول حساب نقدي',
   deleteCashAccount: 'حذف الحساب النقدي',
   deleteCashAccountConfirm: 'هل أنت متأكد من حذف هذا الحساب النقدي؟',
+  deleteHolding: 'حذف الأصل',
+  deleteHoldingConfirm: 'هل أنت متأكد من حذف هذا الأصل؟ لا يمكن التراجع عن هذا الإجراء.',
   delete: 'حذف',
   cancel: 'إلغاء',
 

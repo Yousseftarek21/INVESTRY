@@ -461,30 +461,30 @@ export default function AddInvestmentScreen() {
     if (editingHolding.type === 'gold') {
       setKarat(editingHolding.karat);
       setForm(editingHolding.form);
-      setGrams(String(editingHolding.grams));
-      setPurchasePricePerGram(String(editingHolding.purchasePricePerGram));
+      setGrams(String(editingHolding.grams ?? 0));
+      setPurchasePricePerGram(String(editingHolding.purchasePricePerGram ?? 0));
     } else if (editingHolding.type === 'silver') {
       setForm(editingHolding.form);
-      setGrams(String(editingHolding.grams));
-      setPurchasePricePerGram(String(editingHolding.purchasePricePerGram));
+      setGrams(String(editingHolding.grams ?? 0));
+      setPurchasePricePerGram(String(editingHolding.purchasePricePerGram ?? 0));
     } else if (editingHolding.type === 'stock') {
       const match = EGX_SYMBOLS.find(s => s.symbol === editingHolding.symbol);
       if (match) { setSelectedStock(match); setCustomSymbol(''); }
-      else setCustomSymbol(editingHolding.symbol);
-      setShares(String(editingHolding.shares));
-      setPurchasePricePerShare(String(editingHolding.purchasePricePerShare));
+      else setCustomSymbol(editingHolding.symbol ?? '');
+      setShares(String(editingHolding.shares ?? 0));
+      setPurchasePricePerShare(String(editingHolding.purchasePricePerShare ?? 0));
     } else if (editingHolding.type === 'real_estate') {
       setPropertyType(editingHolding.propertyType);
-      setPropertyName(editingHolding.propertyName);
+      setPropertyName(editingHolding.propertyName ?? '');
       setGovernorate(editingHolding.governorate);
       setCity(editingHolding.city);
       setDistrict(editingHolding.district);
-      setArea(String(editingHolding.area));
-      setCurrentMarketPricePerM2(String(editingHolding.currentMarketPricePerM2));
+      setArea(String(editingHolding.area ?? 0));
+      setCurrentMarketPricePerM2(String(editingHolding.currentMarketPricePerM2 ?? 0));
       setLastValuationDate(editingHolding.lastValuationDate ?? new Date().toISOString().split('T')[0]);
       setValuationSource(editingHolding.valuationSource ?? 'manual');
-      setPurchasePrice(String(editingHolding.purchasePrice));
-      setRealEstatePurchaseDate(editingHolding.purchaseDate);
+      setPurchasePrice(String(editingHolding.purchasePrice ?? 0));
+      setRealEstatePurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
       setDeveloper(editingHolding.developer ?? '');
       setCompoundName(editingHolding.compoundName ?? '');
       setUnitNumber(editingHolding.unitNumber ?? '');
@@ -502,14 +502,14 @@ export default function AddInvestmentScreen() {
       setAnnualRent(editingHolding.monthlyRent != null ? String(editingHolding.monthlyRent * 12) : '');
       setPropertyStatus(editingHolding.propertyStatus ?? 'owner_occupied');
     } else if (editingHolding.type === 'personal_asset') {
-      setAssetName(editingHolding.name);
+      setAssetName(editingHolding.name ?? '');
       setAssetCategory(editingHolding.category);
       setAssetIcon(editingHolding.icon);
       setAssetIconTouched(true);
-      setPurchasePrice(String(editingHolding.purchasePrice));
-      setCurrentValue(String(editingHolding.currentValue));
+      setPurchasePrice(String(editingHolding.purchasePrice ?? 0));
+      setCurrentValue(String(editingHolding.currentValue ?? 0));
       setAssetCurrency(editingHolding.currency);
-      setAssetPurchaseDate(editingHolding.purchaseDate);
+      setAssetPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
     }
   }, [holdingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
