@@ -7,3 +7,4 @@
 - [expo-symbols SF Symbol naming](expo-symbols-naming.md) — SymbolView name strings come from sf-symbols-typescript's type, not Apple's catalog names (e.g. "rosette" not "rosette.fill")
 - [Animated.Value fixed-length ref pitfall](animated-fixed-length-refs.md) — sizing an Animated.Value[] ref off a dynamic/filtered list's initial length crashes later; key by stable ID instead
 - [Clerk unsafeMetadata for lightweight user prefs](clerk-unsafe-metadata-prefs.md) — store small client-editable user fields (e.g. display name) in user.unsafeMetadata instead of adding a DB column/table
+- [Yahoo Finance server-side rate limiting](yahoo-finance-server-rate-limit.md) — shared sandbox IP gets "Too Many Requests" from Yahoo even server-side (not just CORS); design fetch chains with a static-price fallback regardless of client vs server.

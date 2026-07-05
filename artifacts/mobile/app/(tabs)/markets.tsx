@@ -9,6 +9,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { EGXMarket } from '@/components/EGXMarket';
+import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -459,8 +460,7 @@ export default function MarketsScreen() {
       case 'metals':      return <MetalsTab prices={prices} />;
       case 'currencies':  return <CurrenciesTab prices={prices} />;
       case 'egx':         return <EGXTab />;
-      case 'stocks':
-        return <ComingSoon icon="trending-up" title="Global Stocks"    description="Live prices for international equities — S&P 500, NASDAQ, and more." />;
+      case 'stocks':      return <GlobalStocksMarket />;
       case 'global':
         return <ComingSoon icon="globe"       title="Global Indices"   description="Track major market indices from around the world in one place." />;
       case 'real_estate':

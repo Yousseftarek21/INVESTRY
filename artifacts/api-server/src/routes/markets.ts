@@ -21,6 +21,7 @@ function makeCache<T>(ttlMs: number) {
 const pricesCache    = makeCache<MarketPricesResponse>(30_000);   // 30 s
 const historicalCache = makeCache<HistoricalRates>(86_400_000);   // 24 h
 const stocksCache    = makeCache<EGXStockResponse[]>(30_000);     // 30 s
+const globalStocksCache = makeCache<EGXStockResponse[]>(30_000);  // 30 s
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,32 @@ const EGX_TICKERS = [
   { yahoo: "SPMD.CA",  symbol: "SPMD",  name: "Speed Medical"              },
   { yahoo: "CIRA.CA",  symbol: "CIRA",  name: "CIRA Education"             },
   { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "Orascom Development Egypt"  },
+];
+
+// ─── Global stock ticker list (US-listed, via Yahoo Finance — free, no key) ───
+
+const GLOBAL_TICKERS = [
+  { yahoo: "SPY",   symbol: "SPY",   name: "S&P 500 (SPDR ETF)"       },
+  { yahoo: "QQQ",   symbol: "QQQ",   name: "NASDAQ 100 (Invesco ETF)" },
+  { yahoo: "DIA",   symbol: "DIA",   name: "Dow Jones (SPDR ETF)"     },
+  { yahoo: "AAPL",  symbol: "AAPL",  name: "Apple Inc."               },
+  { yahoo: "MSFT",  symbol: "MSFT",  name: "Microsoft Corp."          },
+  { yahoo: "GOOGL", symbol: "GOOGL", name: "Alphabet Inc."            },
+  { yahoo: "AMZN",  symbol: "AMZN",  name: "Amazon.com Inc."          },
+  { yahoo: "NVDA",  symbol: "NVDA",  name: "NVIDIA Corp."             },
+  { yahoo: "META",  symbol: "META",  name: "Meta Platforms Inc."      },
+  { yahoo: "TSLA",  symbol: "TSLA",  name: "Tesla Inc."               },
+  { yahoo: "JPM",   symbol: "JPM",   name: "JPMorgan Chase & Co."     },
+  { yahoo: "V",     symbol: "V",     name: "Visa Inc."                },
+  { yahoo: "MA",    symbol: "MA",    name: "Mastercard Inc."          },
+  { yahoo: "WMT",   symbol: "WMT",   name: "Walmart Inc."             },
+  { yahoo: "KO",    symbol: "KO",    name: "Coca-Cola Co."            },
+  { yahoo: "PG",    symbol: "PG",    name: "Procter & Gamble Co."     },
+  { yahoo: "DIS",   symbol: "DIS",   name: "Walt Disney Co."          },
+  { yahoo: "NKE",   symbol: "NKE",   name: "Nike Inc."                },
+  { yahoo: "JNJ",   symbol: "JNJ",   name: "Johnson & Johnson"        },
+  { yahoo: "PFE",   symbol: "PFE",   name: "Pfizer Inc."              },
+  { yahoo: "BA",    symbol: "BA",    name: "Boeing Co."               },
 ];
 
 const TROY_OZ = 31.1034768;  // exact grams per troy ounce
@@ -310,36 +337,35 @@ interface SparkResponse {
   };
 }
 
-async function fetchStocks(): Promise<EGXStockResponse[]> {
-  const batch1 = EGX_TICKERS.slice(0, 10).map(t => t.yahoo).join(",");
-  const batch2 = EGX_TICKERS.slice(10).map(t => t.yahoo).join(",");
+/** Fetch live quotes for a list of Yahoo tickers via the free spark endpoint, in batches of 10. */
+async function fetchTickersViaSpark(
+  tickers: { yahoo: string; symbol: string; name: string }[],
+  logLabel: string
+): Promise<EGXStockResponse[]> {
+  const batches: { yahoo: string; symbol: string; name: string }[][] = [];
+  for (let i = 0; i < tickers.length; i += 10) batches.push(tickers.slice(i, i + 10));
 
-  const [res1, res2] = await Promise.all([
-    safeJson<SparkResponse>(
-      await safeFetch(`${YF_SPARK_BASE}?symbols=${encodeURIComponent(batch1)}&range=5d&interval=1d`, {
-        headers: BASE_HEADERS,
-      })
-    ),
-    safeJson<SparkResponse>(
-      await safeFetch(`${YF_SPARK_BASE}?symbols=${encodeURIComponent(batch2)}&range=5d&interval=1d`, {
-        headers: BASE_HEADERS,
-      })
-    ),
-  ]);
+  const responses = await Promise.all(
+    batches.map(async batch =>
+      safeJson<SparkResponse>(
+        await safeFetch(
+          `${YF_SPARK_BASE}?symbols=${encodeURIComponent(batch.map(t => t.yahoo).join(","))}&range=5d&interval=1d`,
+          { headers: BASE_HEADERS }
+        )
+      )
+    )
+  );
 
-  const allResults = [
-    ...(res1?.spark?.result ?? []),
-    ...(res2?.spark?.result ?? []),
-  ];
+  const allResults = responses.flatMap(r => r?.spark?.result ?? []);
 
   if (allResults.length === 0) {
-    logger.warn("EGX stocks: Yahoo Finance spark returned no data");
+    logger.warn(`${logLabel}: Yahoo Finance spark returned no data`);
     return [];
   }
 
   const byTicker = new Map(allResults.map(r => [r.symbol, r]));
 
-  return EGX_TICKERS.map(t => {
+  return tickers.map(t => {
     const r = byTicker.get(t.yahoo);
     if (!r) return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
 
@@ -359,6 +385,14 @@ async function fetchStocks(): Promise<EGXStockResponse[]> {
 
     return { symbol: t.symbol, name: t.name, price, previousClose: prevClose, change, changePercent };
   });
+}
+
+async function fetchStocks(): Promise<EGXStockResponse[]> {
+  return fetchTickersViaSpark(EGX_TICKERS, "EGX stocks");
+}
+
+async function fetchGlobalStocks(): Promise<EGXStockResponse[]> {
+  return fetchTickersViaSpark(GLOBAL_TICKERS, "Global stocks");
 }
 
 // ─── Gold history (sparkline) ─────────────────────────────────────────────────
@@ -487,6 +521,20 @@ router.get("/markets/stocks", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch EGX stocks");
     res.status(500).json({ error: "Failed to fetch stocks" });
+  }
+});
+
+router.get("/markets/global-stocks", async (req, res) => {
+  const cached = globalStocksCache.get();
+  if (cached) { res.setHeader("X-Cache", "HIT"); res.json(cached); return; }
+  try {
+    const data = await fetchGlobalStocks();
+    globalStocksCache.set(data);
+    res.setHeader("X-Cache", "MISS");
+    res.json(data);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch global stocks");
+    res.status(500).json({ error: "Failed to fetch global stocks" });
   }
 });
 
