@@ -431,28 +431,25 @@ export default function HomeScreen() {
         <View style={styles.heroBody}>
           {/* Label */}
           <View style={styles.heroLabelRow}>
-            <View style={styles.heroLabelSpacer} />
             <Text style={[styles.heroLabel, { color: colors.mutedForeground, textAlign: 'center' }]}>
               {t.totalPortfolioValue}
             </Text>
-            <TouchableOpacity
-              onPress={() => { impact(); setHideValues(!hideValues); }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={styles.heroEyeBtn}
-              accessibilityRole="button"
-              accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
-            >
-              <Feather name={hideValues ? 'eye-off' : 'eye'} size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
           </View>
 
           {/* Big value */}
-          <View style={[styles.heroValueRow, { justifyContent: 'center' }]}>
-            <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-              {hideValues ? '••••••' : displayValue}
-            </Text>
-            <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>EGP</Text>
-          </View>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => { impact(); setHideValues(!hideValues); }}
+            accessibilityRole="button"
+            accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
+          >
+            <View style={[styles.heroValueRow, { justifyContent: 'center' }]}>
+              <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                {hideValues ? '••••••' : displayValue}
+              </Text>
+              <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>EGP</Text>
+            </View>
+          </TouchableOpacity>
 
           {/* Invested · Current · Return strip */}
           {summary.totalCost > 0 && (
@@ -723,8 +720,6 @@ const styles = StyleSheet.create({
   cashValue: { fontSize: 18, fontFamily: 'Inter_600SemiBold' },
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  heroLabelSpacer:  { width: 16 },
-  heroEyeBtn:       { width: 16, alignItems: 'center', justifyContent: 'center' },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
   heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
   heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52 },
