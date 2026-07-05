@@ -132,10 +132,10 @@ export default function RootLayout() {
                 </SubscriptionProvider>
               </QueryClientProvider>
             </ErrorBoundary>
+            {showCustomSplash && <CustomSplash />}
           </AppSettingsProvider>
         </SafeAreaProvider>
       </ClerkLoaded>
-      {showCustomSplash && <CustomSplash />}
     </ClerkProvider>
   );
 }

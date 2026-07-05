@@ -1,16 +1,20 @@
 import React from "react";
 import { Image, Platform, StyleSheet, Text, View } from "react-native";
 
+import { useColors } from "@/hooks/useColors";
+
 export function CustomSplash() {
+  const colors = useColors();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Image
-        source={require("@/assets/images/icon.png")}
+        source={require("@/assets/images/logo-mark.png")}
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.appName}>INVESTRY</Text>
-      <Text style={styles.tagline}>Know Your Wealth</Text>
+      <Text style={[styles.appName, { color: colors.primary }]}>INVESTRY</Text>
+      <Text style={[styles.tagline, { color: colors.mutedForeground }]}>Know Your Wealth</Text>
     </View>
   );
 }
@@ -18,7 +22,6 @@ export function CustomSplash() {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#060D1A",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 999,
@@ -27,19 +30,16 @@ const styles = StyleSheet.create({
   logo: {
     width: 140,
     height: 140,
-    borderRadius: 28,
   },
   appName: {
     marginTop: 24,
     fontSize: 28,
     fontWeight: "700",
-    color: "#D4AC0D",
     letterSpacing: 1.5,
   },
   tagline: {
     marginTop: 8,
     fontSize: 14,
-    color: "#B8B8BC",
     letterSpacing: 0.5,
   },
 });
