@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { HoldingCard } from '@/components/HoldingCard';
@@ -35,6 +36,7 @@ export default function HoldingsScreen() {
   const insets = useSafeAreaInsets();
   const { holdings, removeHolding } = useHoldings();
   const { data: prices } = useMarketPrices();
+  const { impact } = useHaptic();
 
   const TYPE_LABELS: Record<Holding['type'], string> = {
     gold: t.goldGroup,
@@ -51,17 +53,17 @@ export default function HoldingsScreen() {
   }, {});
 
   const handleDelete = async (id: string) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    impact(Haptics.ImpactFeedbackStyle.Medium);
     removeHolding(id);
   };
 
   const handleEdit = (id: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impact();
     router.push(`/add-investment?holdingId=${id}` as any);
   };
 
   const openAdd = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impact();
     router.push('/add-investment');
   };
 

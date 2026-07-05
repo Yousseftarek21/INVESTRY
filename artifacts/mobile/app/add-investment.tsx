@@ -4,7 +4,7 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { useHaptic } from '@/hooks/useHaptic';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '@clerk/expo';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -175,6 +175,7 @@ function StockPickerModal({
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { impact } = useHaptic();
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -241,7 +242,7 @@ function StockPickerModal({
                   isSelected && { backgroundColor: colors.primary + '10' },
                 ]}
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  impact();
                   onSelect(item);
                   onClose();
                 }}
@@ -293,6 +294,7 @@ function SearchPickerModal({
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { impact } = useHaptic();
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -340,7 +342,7 @@ function SearchPickerModal({
             query.trim().length > 0 ? (
               <TouchableOpacity
                 style={[pickerStyles.stockRow, { borderBottomColor: colors.border }]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(query.trim()); onClose(); }}
+                onPress={() => { impact(); onSelect(query.trim()); onClose(); }}
                 activeOpacity={0.65}
               >
                 <View style={[pickerStyles.avatar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -364,7 +366,7 @@ function SearchPickerModal({
                   !isLast && pickerStyles.stockRowBorder,
                   isSelected && { backgroundColor: colors.primary + '10' },
                 ]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelect(item); onClose(); }}
+                onPress={() => { impact(); onSelect(item); onClose(); }}
                 activeOpacity={0.65}
               >
                 <View style={pickerStyles.stockInfo}>
@@ -387,6 +389,7 @@ export default function AddInvestmentScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
+  const { impact, notify } = useHaptic();
   const { addHolding, updateHolding, holdings } = useHoldings();
   const { addCashAccount } = useCash();
   const { isPro, launchAccess, showPaywall } = useSubscription();
@@ -689,7 +692,7 @@ export default function AddInvestmentScreen() {
     }
 
     if (!holding) return;
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    notify();
     if (isEditing) {
       await updateHolding(holding);
     } else {
@@ -718,7 +721,7 @@ export default function AddInvestmentScreen() {
       balance: parseFloat(cashBalance),
       currency: cashCurrency,
     };
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    notify();
     await addCashAccount(account);
     router.back();
   };
@@ -777,7 +780,7 @@ export default function AddInvestmentScreen() {
             <View style={styles.chooseWrap}>
               <TouchableOpacity
                 style={[styles.chooseCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setScreenMode('investment'); }}
+                onPress={() => { impact(); setScreenMode('investment'); }}
                 activeOpacity={0.8}
               >
                 <View style={[styles.chooseIconWrap, { backgroundColor: colors.primary + '20' }]}>
@@ -792,7 +795,7 @@ export default function AddInvestmentScreen() {
 
               <TouchableOpacity
                 style={[styles.chooseCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setScreenMode('cash'); }}
+                onPress={() => { impact(); setScreenMode('cash'); }}
                 activeOpacity={0.8}
               >
                 <View style={[styles.chooseIconWrap, { backgroundColor: '#4CAF5020' }]}>
@@ -947,7 +950,7 @@ export default function AddInvestmentScreen() {
               {/* Dropdown trigger */}
               <TouchableOpacity
                 style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.primary }]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStockPickerVisible(true); }}
+                onPress={() => { impact(); setStockPickerVisible(true); }}
                 activeOpacity={0.75}
               >
                 <View style={[styles.dropdownAvatar, { backgroundColor: colors.primary + '20' }]}>

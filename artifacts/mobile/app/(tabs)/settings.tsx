@@ -16,6 +16,7 @@ import { useClerk, useUser } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings, ThemeMode, WeightUnit } from '@/context/AppSettingsContext';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
@@ -26,15 +27,6 @@ import { PremiumBadge } from '@/components/PremiumBadge';
 const APP_VERSION = '1.0.0';
 const BUILD = '100';
 const COPYRIGHT_YEAR = new Date().getFullYear();
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function useHaptic() {
-  const { hapticsEnabled } = useAppSettings();
-  return useCallback((style = Haptics.ImpactFeedbackStyle.Light) => {
-    if (hapticsEnabled) Haptics.impactAsync(style);
-  }, [hapticsEnabled]);
-}
 
 // ─── Pulsing live dot ─────────────────────────────────────────────────────────
 
@@ -667,7 +659,7 @@ export default function SettingsScreen() {
   const insets  = useSafeAreaInsets();
   const t       = useT();
   const router  = useRouter();
-  const haptic  = useHaptic();
+  const { impact: haptic, notify } = useHaptic();
   const { signOut } = useClerk();
   const { user } = useUser();
   const { plan, isPro, launchAccess, showPaywall, manageSubscription } = useSubscription();
@@ -747,7 +739,7 @@ export default function SettingsScreen() {
         '@invstry_theme', '@invstry_lang', '@invstry_weight',
         '@invstry_haptics', '@invstry_analytics', '@invstry_notif', '@invstry_hide_values',
       ]);
-      if (hapticsEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      notify(Haptics.NotificationFeedbackType.Warning);
     } else if (confirm.id === 'signout') {
       await signOut();
       router.replace('/(auth)/welcome' as any);

@@ -9,6 +9,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { CashAccount, CashAccountType } from '@/types';
 
@@ -23,6 +24,7 @@ export default function CashAccountsScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { cashAccounts, addCashAccount, updateCashAccount, removeCashAccount } = useCash();
+  const { impact, notify } = useHaptic();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -59,13 +61,13 @@ export default function CashAccountsScreen() {
   };
 
   const openAdd = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impact();
     resetForm();
     setShowForm(true);
   };
 
   const openEdit = (a: CashAccount) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    impact();
     setEditingId(a.id);
     setCashType(a.type);
     setAccountName(a.accountName);
@@ -91,7 +93,7 @@ export default function CashAccountsScreen() {
     } else {
       await addCashAccount(account);
     }
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    notify();
     setShowForm(false);
     resetForm();
   };
@@ -110,7 +112,7 @@ export default function CashAccountsScreen() {
         text: t.delete,
         style: 'destructive',
         onPress: async () => {
-          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          impact(Haptics.ImpactFeedbackStyle.Medium);
           removeCashAccount(id);
         },
       },
@@ -121,7 +123,7 @@ export default function CashAccountsScreen() {
     if (!pendingDeleteId) return;
     const id = pendingDeleteId;
     setPendingDeleteId(null);
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    impact(Haptics.ImpactFeedbackStyle.Medium);
     removeCashAccount(id);
   };
 

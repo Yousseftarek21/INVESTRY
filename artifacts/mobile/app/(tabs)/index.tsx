@@ -7,10 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle } from 'react-native-svg';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices, useGoldHistory, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
@@ -333,6 +333,7 @@ export default function HomeScreen() {
   const { cashAccounts, totalCash } = useCash();
   const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { plan, isPro } = useSubscription();
+  const { impact } = useHaptic();
   const isLoading = pricesLoading || holdingsLoading;
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
@@ -544,7 +545,7 @@ export default function HomeScreen() {
                       onPress={() => {
                         if (f !== timeFilter) {
                           if (Platform.OS !== 'web') {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            impact();
                           }
                           setTimeFilter(f);
                         }
