@@ -199,9 +199,12 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
     // original user-gesture window). No-op on native.
     const webPopup = openWebPopup();
     try {
-      await purchase(period, webPopup);
+      const success = await purchase(period, webPopup);
       setShowConfirm(false);
       onClose();
+      if (success) {
+        Alert.alert(t.subThankYouTitle, t.subThankYouBody);
+      }
     } catch {
       webPopup?.close();
       setShowConfirm(false);

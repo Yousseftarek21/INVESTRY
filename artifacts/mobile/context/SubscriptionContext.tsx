@@ -92,7 +92,7 @@ export interface SubscriptionContextValue {
   offerings: {
     pro: MockProduct;
   };
-  purchase: (period: BillingPeriod, webPopup?: Window | null) => Promise<void>;
+  purchase: (period: BillingPeriod, webPopup?: Window | null) => Promise<boolean>;
   restore: () => Promise<void>;
   manageSubscription: (webPopup?: Window | null) => Promise<void>;
   showPaywall: () => void;
@@ -282,14 +282,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setPlan('pro');
       setBillingPeriod(period);
       await cachePlan(userId, 'pro', period);
-      return;
+      return true;
     }
 
     if (launchAccess) {
       // Launch Access is on — everyone already has Pro, purchase UI is
       // replaced with a non-clickable badge, but guard here too in case
       // anything still calls this directly.
-      return;
+      return false;
     }
 
     setIsPurchasing(true);
@@ -316,7 +316,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       const result = await openCheckoutUrl(url, redirectUrl, webPopup);
       if (result.type !== 'success') {
         // User cancelled or dismissed the Checkout sheet — no entitlement change.
-        return;
+        return false;
       }
 
       // Stripe webhooks are async, so poll briefly for the subscription to
@@ -328,9 +328,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           setPlan(data.plan);
           setBillingPeriod(data.billingPeriod);
           await cachePlan(userId, data.plan, data.billingPeriod);
-          break;
+          return true;
         }
       }
+      // Checkout completed but the webhook hasn't landed the subscription
+      // yet — don't claim success prematurely.
+      return false;
     } finally {
       setIsPurchasing(false);
     }
