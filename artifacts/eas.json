@@ -1,1 +1,20 @@
-{"cli":{"packageManager":"pnpm"},"build":{"production":{"ios":{"bundleIdentifier":"com.investry.app"}}},"submit":{"production":{"ios":{"ascAppId":"6787447052"}}}}
+{
+  "cli": {
+    "packageManager": "pnpm",
+    "requireCommit": false
+  },
+  "build": {
+    "production": {
+      "ios": {
+        "bundleIdentifier": "com.investry.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6787447052"
+      }
+    }
+  }
+}
