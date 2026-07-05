@@ -20,12 +20,14 @@ interface AppSettingsValue {
   weightUnit: WeightUnit;
   hapticsEnabled: boolean;
   analyticsEnabled: boolean;
+  crashReportsEnabled: boolean;
   notifications: NotificationPrefs;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setLanguage: (lang: Language) => Promise<void>;
   setWeightUnit: (unit: WeightUnit) => Promise<void>;
   setHapticsEnabled: (val: boolean) => Promise<void>;
   setAnalyticsEnabled: (val: boolean) => Promise<void>;
+  setCrashReportsEnabled: (val: boolean) => Promise<void>;
   setNotification: (key: keyof NotificationPrefs, val: boolean) => Promise<void>;
   isLoaded: boolean;
 }
@@ -36,6 +38,7 @@ const K = {
   weight: '@invstry_weight',
   haptics: '@invstry_haptics',
   analytics: '@invstry_analytics',
+  crashReports: '@invstry_crash_reports',
   notif: '@invstry_notif',
 };
 
@@ -55,18 +58,20 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [weightUnit, setWeightUnitState] = useState<WeightUnit>('g');
   const [hapticsEnabled, setHapticsState] = useState(true);
   const [analyticsEnabled, setAnalyticsState] = useState(true);
+  const [crashReportsEnabled, setCrashReportsState] = useState(true);
   const [notifications, setNotificationsState] = useState<NotificationPrefs>(DEFAULT_NOTIF);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [t, l, w, h, a, n] = await Promise.all([
+        const [t, l, w, h, a, c, n] = await Promise.all([
           AsyncStorage.getItem(K.theme),
           AsyncStorage.getItem(K.lang),
           AsyncStorage.getItem(K.weight),
           AsyncStorage.getItem(K.haptics),
           AsyncStorage.getItem(K.analytics),
+          AsyncStorage.getItem(K.crashReports),
           AsyncStorage.getItem(K.notif),
         ]);
         if (t === 'light' || t === 'dark' || t === 'system') setThemeModeState(t);
@@ -74,6 +79,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         if (w === 'g' || w === 'oz') setWeightUnitState(w);
         if (h !== null) setHapticsState(h === 'true');
         if (a !== null) setAnalyticsState(a === 'true');
+        if (c !== null) setCrashReportsState(c === 'true');
         if (n) {
           try { setNotificationsState({ ...DEFAULT_NOTIF, ...JSON.parse(n) }); } catch { /* use defaults */ }
         }
@@ -113,6 +119,11 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     await AsyncStorage.setItem(K.analytics, String(val));
   }, []);
 
+  const setCrashReportsEnabled = useCallback(async (val: boolean) => {
+    setCrashReportsState(val);
+    await AsyncStorage.setItem(K.crashReports, String(val));
+  }, []);
+
   const setNotification = useCallback(async (key: keyof NotificationPrefs, val: boolean) => {
     setNotificationsState(prev => {
       const next = { ...prev, [key]: val };
@@ -124,9 +135,9 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   return (
     <AppSettingsContext.Provider value={{
       themeMode, language, resolvedTheme,
-      weightUnit, hapticsEnabled, analyticsEnabled, notifications,
+      weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
       setThemeMode, setLanguage, setWeightUnit,
-      setHapticsEnabled, setAnalyticsEnabled, setNotification,
+      setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
       isLoaded,
     }}>
       {children}

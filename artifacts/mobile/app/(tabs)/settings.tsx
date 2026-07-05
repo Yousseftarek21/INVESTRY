@@ -664,8 +664,8 @@ export default function SettingsScreen() {
   const { user } = useUser();
   const { plan, isPro, launchAccess, showPaywall, manageSubscription } = useSubscription();
   const {
-    themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, notifications,
-    setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setNotification,
+    themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
+    setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
   } = useAppSettings();
   const { holdings, removeHolding } = useHoldings();
   const { data: prices, dataUpdatedAt, refetch: refetchPrices } = useMarketPrices();
@@ -918,10 +918,14 @@ export default function SettingsScreen() {
             </>
           )}
           <Div />
-          <NavRow icon="map-pin"   iconBg="#EF4444" label="Region"        value="Egypt (EG)" />
-          <NavRow icon="hash"      iconBg="#374151" label="Date Format"   value="DD/MM/YYYY" />
-          <NavRow icon="type"      iconBg="#6B7280" label="Number Format" value="1,234.56" />
-          <NavRow icon="dollar-sign" iconBg="#059669" label="Currency"    value="EGP (ج.م)" last />
+          <NavRow icon="map-pin"   iconBg="#EF4444" label="Region"        value="Egypt (EG)"
+            onPress={() => showModal('Region', 'INVESTRY is built specifically for the Egyptian market — gold and silver prices, EGX stocks, and real estate values are all sourced and priced for Egypt.\n\nSupport for other regions may be added in a future update.')} />
+          <NavRow icon="hash"      iconBg="#374151" label="Date Format"   value="DD/MM/YYYY"
+            onPress={() => showModal('Date Format', 'Dates are currently shown in DD/MM/YYYY format, matching Egyptian conventions.\n\nCustom date formats are not yet configurable — this is coming in a future update.')} />
+          <NavRow icon="type"      iconBg="#6B7280" label="Number Format" value="1,234.56"
+            onPress={() => showModal('Number Format', 'Numbers are currently shown with a comma thousands separator and period decimal (e.g. 1,234.56).\n\nCustom number formats are not yet configurable — this is coming in a future update.')} />
+          <NavRow icon="dollar-sign" iconBg="#059669" label="Currency"    value="EGP (ج.م)"
+            onPress={() => showModal('Currency', 'INVESTRY displays all portfolio values in Egyptian Pounds (EGP), converting live gold, silver, and stock prices as needed.\n\nSupport for additional display currencies may be added in a future update.')} last />
         </Sect>
 
         {/* ── PORTFOLIO PREFERENCES ────────────────────────── */}
@@ -954,7 +958,8 @@ export default function SettingsScreen() {
           <Div />
           <NavRow icon="eye-off"     iconBg="#374151"   label="Hide Portfolio Values" sublabel="Mask balances for privacy"
             value={hideValues ? 'On' : 'Off'} onPress={() => handleHideValues(!hideValues)} />
-          <NavRow icon="trending-up" iconBg="#6366F1"   label="Performance Calculation" value="FIFO" last />
+          <NavRow icon="trending-up" iconBg="#6366F1"   label="Performance Calculation" value="FIFO"
+            onPress={() => showModal('Performance Calculation', 'Gain/loss is calculated using First-In, First-Out (FIFO): each holding\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
         </Sect>
 
         {/* ── NOTIFICATIONS ────────────────────────────────── */}
@@ -973,7 +978,7 @@ export default function SettingsScreen() {
         {/* ── PRIVACY & DATA ───────────────────────────────── */}
         <Sect label="PRIVACY & DATA">
           <ToggleRow icon="activity"     iconBg="#6366F1" label="Analytics Sharing" sublabel="Anonymous usage data to improve the app" value={analyticsEnabled} onChange={v => setAnalyticsEnabled(v)} />
-          <ToggleRow icon="alert-circle" iconBg="#F97316" label="Crash Reports"     sublabel="Automatically send crash logs"           value={analyticsEnabled} onChange={v => setAnalyticsEnabled(v)} />
+          <ToggleRow icon="alert-circle" iconBg="#F97316" label="Crash Reports"     sublabel="Automatically send crash logs"           value={crashReportsEnabled} onChange={v => setCrashReportsEnabled(v)} />
           <ToggleRow icon="zap"          iconBg="#FBBF24" label="Haptic Feedback"   sublabel="Vibration on interactions"               value={hapticsEnabled}   onChange={v => setHapticsEnabled(v)} />
           <NavRow icon="shield"   iconBg="#047857" label="Privacy Settings"  sublabel="Device-level permissions" onPress={() => Linking.openSettings()} />
           <NavRow icon="download" iconBg="#0EA5E9" label="Export My Data"
