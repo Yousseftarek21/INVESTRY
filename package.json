@@ -17,13 +17,5 @@
     "@replit/revenuecat-sdk": "^5.0.0",
     "stripe": "^22.3.0",
     "stripe-replit-sync": "^1.0.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "browser-tabs-lock",
-      "core-js",
-      "dtrace-provider"
-    ]
   }
 }

@@ -73,6 +73,9 @@ onlyBuiltDependencies:
   - esbuild
   - msw
   - unrs-resolver
+  - browser-tabs-lock
+  - core-js
+  - dtrace-provider
 
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms
@@ -167,4 +170,3 @@ allowBuilds:
   core-js: true
   dtrace-provider: true
   esbuild: true
-dangerouslyAllowAllBuilds: true
