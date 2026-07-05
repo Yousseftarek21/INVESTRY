@@ -18,6 +18,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CustomSplash } from "@/components/CustomSplash";
 import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
 import { AppSettingsProvider } from "@/context/AppSettingsContext";
@@ -88,6 +89,8 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
   );
 }
 
+const MIN_SPLASH_DURATION_MS = 2500;
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -95,10 +98,13 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [showCustomSplash, setShowCustomSplash] = React.useState(true);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      const timer = setTimeout(() => setShowCustomSplash(false), MIN_SPLASH_DURATION_MS);
+      return () => clearTimeout(timer);
     }
   }, [fontsLoaded, fontError]);
 
@@ -129,6 +135,7 @@ export default function RootLayout() {
           </AppSettingsProvider>
         </SafeAreaProvider>
       </ClerkLoaded>
+      {showCustomSplash && <CustomSplash />}
     </ClerkProvider>
   );
 }
