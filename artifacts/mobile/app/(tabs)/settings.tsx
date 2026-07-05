@@ -694,6 +694,7 @@ export default function SettingsScreen() {
   const verified  = user?.hasVerifiedEmailAddress ?? false;
   const initials  = ([firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase()) || email[0]?.toUpperCase() || 'I';
   const displayName = (user?.unsafeMetadata?.displayName as string | undefined) ?? '';
+  const profileName = displayName.trim() || fullName;
 
   const lastUpdate = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -779,7 +780,7 @@ export default function SettingsScreen() {
         {/* ── PROFILE HERO ─────────────────────────────────── */}
         {user && (
           <ProfileHero
-            initials={initials} fullName={fullName} email={email}
+            initials={initials} fullName={profileName} email={email}
             verified={verified} holdingsCount={holdings.length}
             plan={plan === 'pro' ? plan : null}
             onPress={() => { haptic(); setEditProfileOpen(true); }}
