@@ -673,15 +673,8 @@ export default function SettingsScreen() {
   const [modal, setModal]         = useState<{ title: string; content: string } | null>(null);
   const [confirm, setConfirm]     = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
   const [langOpen, setLangOpen]   = useState(false);
-  const [hideValues, setHideValues] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem('@invstry_hide_values').then(v => {
-      if (v === 'true') setHideValues(true);
-    });
-  }, []);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -702,11 +695,6 @@ export default function SettingsScreen() {
 
   const showModal = (title: string, content: string) => { haptic(); setModal({ title, content }); };
   const openURL   = (url: string) => { haptic(); Linking.openURL(url).catch(() => showModal('Could not open link', 'Please check your internet connection and try again.')); };
-
-  const handleHideValues = async (v: boolean) => {
-    haptic(); setHideValues(v);
-    await AsyncStorage.setItem('@invstry_hide_values', String(v));
-  };
 
   const handleDeleteAll = () => {
     haptic(Haptics.ImpactFeedbackStyle.Heavy);
@@ -956,8 +944,6 @@ export default function SettingsScreen() {
             </View>
           </View>
           <Div />
-          <NavRow icon="eye-off"     iconBg="#374151"   label="Hide Portfolio Values" sublabel="Mask balances for privacy"
-            value={hideValues ? 'On' : 'Off'} onPress={() => handleHideValues(!hideValues)} />
           <NavRow icon="trending-up" iconBg="#6366F1"   label="Performance Calculation" value="FIFO"
             onPress={() => showModal('Performance Calculation', 'Gain/loss is calculated using First-In, First-Out (FIFO): each holding\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
         </Sect>

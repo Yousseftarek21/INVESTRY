@@ -15,6 +15,7 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices, useGoldHistory, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { useSubscription } from '@/context/SubscriptionContext';
+import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
 import { PremiumBadge } from '@/components/PremiumBadge';
@@ -334,6 +335,7 @@ export default function HomeScreen() {
   const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { plan, isPro } = useSubscription();
   const { impact } = useHaptic();
+  const { hideValues, setHideValues } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
@@ -428,14 +430,26 @@ export default function HomeScreen() {
 
         <View style={styles.heroBody}>
           {/* Label */}
-          <Text style={[styles.heroLabel, { color: colors.mutedForeground, textAlign: 'center' }]}>
-            {t.totalPortfolioValue}
-          </Text>
+          <View style={styles.heroLabelRow}>
+            <View style={styles.heroLabelSpacer} />
+            <Text style={[styles.heroLabel, { color: colors.mutedForeground, textAlign: 'center' }]}>
+              {t.totalPortfolioValue}
+            </Text>
+            <TouchableOpacity
+              onPress={() => { impact(); setHideValues(!hideValues); }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.heroEyeBtn}
+              accessibilityRole="button"
+              accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
+            >
+              <Feather name={hideValues ? 'eye-off' : 'eye'} size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
 
           {/* Big value */}
           <View style={[styles.heroValueRow, { justifyContent: 'center' }]}>
             <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-              {displayValue}
+              {hideValues ? '••••••' : displayValue}
             </Text>
             <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>EGP</Text>
           </View>
@@ -446,16 +460,16 @@ export default function HomeScreen() {
               <View style={styles.iCell}>
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Invested</Text>
                 <View style={styles.iCellValueRow}>
-                  <Text style={[styles.iCellValue, { color: colors.text }]}>{fmtCompact(summary.totalCost)}</Text>
-                  <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>
+                  <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(summary.totalCost)}</Text>
+                  {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>}
                 </View>
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
               <View style={styles.iCell}>
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Current</Text>
                 <View style={styles.iCellValueRow}>
-                  <Text style={[styles.iCellValue, { color: colors.text }]}>{fmtCompact(summary.totalValue)}</Text>
-                  <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>
+                  <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(summary.totalValue)}</Text>
+                  {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>}
                 </View>
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
@@ -463,11 +477,13 @@ export default function HomeScreen() {
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Return</Text>
                 <View style={styles.iCellValueRow}>
                   <Text style={[styles.iCellValue, { color: gainColor }]}>
-                    {isGain ? '+' : ''}{summary.gainPct.toFixed(1)}%
+                    {hideValues ? '••••' : `${isGain ? '+' : ''}${summary.gainPct.toFixed(1)}%`}
                   </Text>
-                  <Text style={[styles.iCellCur, { color: gainColor + 'AA' }]}>
-                    {isGain ? '▲' : '▼'}
-                  </Text>
+                  {!hideValues && (
+                    <Text style={[styles.iCellCur, { color: gainColor + 'AA' }]}>
+                      {isGain ? '▲' : '▼'}
+                    </Text>
+                  )}
                 </View>
               </View>
             </View>
@@ -482,12 +498,12 @@ export default function HomeScreen() {
                   <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>Today</Text>
                   <View style={[styles.plBadge, { backgroundColor: todayColor + '1A' }]}>
                     <Text style={[styles.plBadgeText, { color: todayColor }]}>
-                      {isTodayGain ? '+' : ''}{summary.todayPct.toFixed(2)}%
+                      {hideValues ? '••' : `${isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
                     </Text>
                   </View>
                 </View>
                 <Text style={[styles.plValue, { color: todayColor }]} numberOfLines={1} adjustsFontSizeToFit>
-                  {isTodayGain ? '+' : '−'}{Math.abs(summary.todayGain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                  {hideValues ? '••••' : `${isTodayGain ? '+' : '−'}${Math.abs(summary.todayGain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`}
                 </Text>
               </View>
 
@@ -497,12 +513,12 @@ export default function HomeScreen() {
                   <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>Total P/L</Text>
                   <View style={[styles.plBadge, { backgroundColor: gainColor + '1A' }]}>
                     <Text style={[styles.plBadgeText, { color: gainColor }]}>
-                      {isGain ? '+' : ''}{summary.gainPct.toFixed(2)}%
+                      {hideValues ? '••' : `${isGain ? '+' : ''}${summary.gainPct.toFixed(2)}%`}
                     </Text>
                   </View>
                 </View>
                 <Text style={[styles.plValue, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit>
-                  {isGain ? '+' : '−'}{Math.abs(summary.gain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                  {hideValues ? '••••' : `${isGain ? '+' : '−'}${Math.abs(summary.gain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`}
                 </Text>
               </View>
             </View>
@@ -706,6 +722,9 @@ const styles = StyleSheet.create({
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashValue: { fontSize: 18, fontFamily: 'Inter_600SemiBold' },
 
+  heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  heroLabelSpacer:  { width: 16 },
+  heroEyeBtn:       { width: 16, alignItems: 'center', justifyContent: 'center' },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
   heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
   heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52 },
