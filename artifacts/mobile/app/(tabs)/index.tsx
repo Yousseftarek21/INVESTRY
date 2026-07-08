@@ -416,7 +416,7 @@ export default function HomeScreen() {
         locations={[0, 0.5, 1]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320, zIndex: -1 }}
         pointerEvents="none"
       />
     <ScrollView
