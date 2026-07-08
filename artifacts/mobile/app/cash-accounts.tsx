@@ -12,6 +12,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { CashAccount, CashAccountType } from '@/types';
+import { parseAmount } from '@/utils/parseAmount';
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
@@ -77,7 +78,8 @@ export default function CashAccountsScreen() {
   };
 
   const handleSave = async () => {
-    if (!accountName.trim() || !balance.trim() || isNaN(parseFloat(balance))) {
+    const parsedBalance = parseAmount(balance);
+    if (!accountName.trim() || !balance.trim() || isNaN(parsedBalance)) {
       Alert.alert(t.enterAccountDetails);
       return;
     }
@@ -85,7 +87,7 @@ export default function CashAccountsScreen() {
       id: editingId ?? generateId(),
       type: cashType,
       accountName: accountName.trim(),
-      balance: parseFloat(balance),
+      balance: parsedBalance,
       currency,
     };
     if (editingId) {

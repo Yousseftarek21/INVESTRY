@@ -15,6 +15,7 @@ import { useCash } from '@/context/CashContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { CashAccount, CashAccountType, GoldKarat, Holding, MetalForm, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
+import { parseAmount } from '@/utils/parseAmount';
 
 const FREE_LIMIT = 5;
 
@@ -579,9 +580,9 @@ export default function AddInvestmentScreen() {
     { key: 'under_construction', label: t.statusUnderConstruction },
   ];
 
-  const reAreaNum = parseFloat(area) || 0;
-  const rePricePerM2Num = parseFloat(currentMarketPricePerM2) || 0;
-  const rePurchasePriceNum = parseFloat(purchasePrice) || 0;
+  const reAreaNum = parseAmount(area) || 0;
+  const rePricePerM2Num = parseAmount(currentMarketPricePerM2) || 0;
+  const rePurchasePriceNum = parseAmount(purchasePrice) || 0;
   const reCurrentValue = reAreaNum * rePricePerM2Num;
   const rePurchasePricePerM2 = reAreaNum > 0 ? rePurchasePriceNum / reAreaNum : 0;
   const reGainLoss = reCurrentValue - rePurchasePriceNum;
@@ -639,15 +640,15 @@ export default function AddInvestmentScreen() {
 
     if (type === 'gold') {
       if (!grams || !purchasePricePerGram) { Alert.alert(t.missingFields, t.enterGramsAndPrice); return; }
-      holding = { id, type: 'gold', karat, form, grams: parseFloat(grams), purchasePricePerGram: parseFloat(purchasePricePerGram), purchaseDate: today, notes };
+      holding = { id, type: 'gold', karat, form, grams: parseAmount(grams), purchasePricePerGram: parseAmount(purchasePricePerGram), purchaseDate: today, notes };
     } else if (type === 'silver') {
       if (!grams || !purchasePricePerGram) { Alert.alert(t.missingFields, t.enterGramsAndPrice); return; }
-      holding = { id, type: 'silver', form, grams: parseFloat(grams), purchasePricePerGram: parseFloat(purchasePricePerGram), purchaseDate: today, notes };
+      holding = { id, type: 'silver', form, grams: parseAmount(grams), purchasePricePerGram: parseAmount(purchasePricePerGram), purchaseDate: today, notes };
     } else if (type === 'stock') {
       if (!shares || !purchasePricePerShare) { Alert.alert(t.missingFields, t.enterSharesAndPrice); return; }
       const sym = customSymbol.trim().toUpperCase() || selectedStock.symbol;
       const name = customSymbol.trim() ? customSymbol.trim().toUpperCase() : selectedStock.name;
-      holding = { id, type: 'stock', symbol: sym, companyName: name, shares: parseFloat(shares), purchasePricePerShare: parseFloat(purchasePricePerShare), purchaseDate: today, notes };
+      holding = { id, type: 'stock', symbol: sym, companyName: name, shares: parseAmount(shares), purchasePricePerShare: parseAmount(purchasePricePerShare), purchaseDate: today, notes };
     } else if (type === 'real_estate') {
       const finalGovernorate = governorate.trim();
       const finalCity = city.trim();
@@ -659,8 +660,8 @@ export default function AddInvestmentScreen() {
         Alert.alert(t.missingFields, t.enterRealEstateRequired);
         return;
       }
-      const parsedArea = parseFloat(area);
-      const parsedPricePerM2 = parseFloat(currentMarketPricePerM2);
+      const parsedArea = parseAmount(area);
+      const parsedPricePerM2 = parseAmount(currentMarketPricePerM2);
       const computedCurrentValue = parsedArea * parsedPricePerM2;
       holding = {
         id, type: 'real_estate',
@@ -674,24 +675,24 @@ export default function AddInvestmentScreen() {
         currentValue: computedCurrentValue,
         lastValuationDate: lastValuationDate || undefined,
         valuationSource,
-        purchasePrice: parseFloat(purchasePrice),
+        purchasePrice: parseAmount(purchasePrice),
         purchaseDate: realEstatePurchaseDate,
         developer: developer.trim() || undefined,
         compoundName: compoundName.trim() || undefined,
         unitNumber: unitNumber.trim() || undefined,
         hasInstallmentPlan: hasInstallmentPlan || undefined,
-        downPayment: hasInstallmentPlan && downPayment ? parseFloat(downPayment) : undefined,
-        remainingBalance: hasInstallmentPlan && remainingBalance ? parseFloat(remainingBalance) : undefined,
-        monthlyInstallment: hasInstallmentPlan && monthlyInstallment ? parseFloat(monthlyInstallment) : undefined,
+        downPayment: hasInstallmentPlan && downPayment ? parseAmount(downPayment) : undefined,
+        remainingBalance: hasInstallmentPlan && remainingBalance ? parseAmount(remainingBalance) : undefined,
+        monthlyInstallment: hasInstallmentPlan && monthlyInstallment ? parseAmount(monthlyInstallment) : undefined,
         installmentEndDate: hasInstallmentPlan && installmentEndDate ? installmentEndDate : undefined,
-        monthlyRent: hasRentalInfo && monthlyRent ? parseFloat(monthlyRent) : undefined,
+        monthlyRent: hasRentalInfo && monthlyRent ? parseAmount(monthlyRent) : undefined,
         propertyStatus: hasRentalInfo ? propertyStatus : undefined,
         notes,
       };
     } else if (type === 'personal_asset') {
       if (!assetName.trim() || !purchasePrice) { Alert.alert(t.missingFields, t.enterAssetDetails); return; }
-      const parsedPurchasePrice = parseFloat(purchasePrice);
-      const parsedCurrentValue = currentValue ? parseFloat(currentValue) : parsedPurchasePrice;
+      const parsedPurchasePrice = parseAmount(purchasePrice);
+      const parsedCurrentValue = currentValue ? parseAmount(currentValue) : parsedPurchasePrice;
       holding = {
         id, type: 'personal_asset',
         name: assetName.trim(), category: assetCategory, icon: assetIcon,
@@ -727,7 +728,7 @@ export default function AddInvestmentScreen() {
       id: generateId(),
       type: cashType,
       accountName: cashAccountName.trim(),
-      balance: parseFloat(cashBalance),
+      balance: parseAmount(cashBalance),
       currency: cashCurrency,
     };
     notify();
@@ -1185,12 +1186,12 @@ export default function AddInvestmentScreen() {
                   <Text style={labelStyle}>{t.monthlyRent}</Text>
                   <TextInput style={inputStyle} placeholder="e.g. 20000" placeholderTextColor={colors.mutedForeground}
                     value={monthlyRent}
-                    onChangeText={(v) => { setMonthlyRent(v); const n = parseFloat(v); setAnnualRent(!isNaN(n) ? String(n * 12) : ''); }}
+                    onChangeText={(v) => { setMonthlyRent(v); const n = parseAmount(v); setAnnualRent(!isNaN(n) ? String(n * 12) : ''); }}
                     keyboardType="decimal-pad" />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.annualRent}</Text>
                   <TextInput style={inputStyle} placeholder="e.g. 240000" placeholderTextColor={colors.mutedForeground}
                     value={annualRent}
-                    onChangeText={(v) => { setAnnualRent(v); const n = parseFloat(v); setMonthlyRent(!isNaN(n) ? String(n / 12) : ''); }}
+                    onChangeText={(v) => { setAnnualRent(v); const n = parseAmount(v); setMonthlyRent(!isNaN(n) ? String(n / 12) : ''); }}
                     keyboardType="decimal-pad" />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.propertyStatus}</Text>
                   <View style={styles.chips}>
