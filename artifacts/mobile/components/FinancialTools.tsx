@@ -322,7 +322,7 @@ function GoldValueModal({ visible, onClose }: { visible: boolean; onClose: () =>
   const value = parseNum(grams) * pricePerGram;
 
   return (
-    <ModalShell visible={visible} title="Gold Value Calculator" icon="award" iconColor="#D4AC0D" onClose={onClose}>
+    <ModalShell visible={visible} title="Gold Value Calculator" icon="award" iconColor="#1ABBA9" onClose={onClose}>
       <SegPicker
         options={[{ key: '24k', label: '24K' }, { key: '22k', label: '22K' }, { key: '21k', label: '21K' }, { key: '18k', label: '18K' }]}
         value={karat}
@@ -450,7 +450,7 @@ function GoldPurityModal({ visible, onClose }: { visible: boolean; onClose: () =
   const pureGold = parseNum(grams) * purities[fromK];
 
   return (
-    <ModalShell visible={visible} title="Gold Purity Converter" icon="layers" iconColor="#D4AC0D" onClose={onClose}>
+    <ModalShell visible={visible} title="Gold Purity Converter" icon="layers" iconColor="#1ABBA9" onClose={onClose}>
       <SegPicker
         options={[{ key: '24', label: '24K' }, { key: '22', label: '22K' }, { key: '21', label: '21K' }, { key: '18', label: '18K' }]}
         value={fromK}
@@ -497,12 +497,12 @@ function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => vo
 
 const TOOLS = [
   { id: 'zakat',    icon: 'moon',         label: 'Zakat',           sub: 'Smart Calculator', color: '#10B981' },
-  { id: 'gold',     icon: 'award',        label: 'Gold Value',      sub: 'Live price',       color: '#D4AC0D' },
+  { id: 'gold',     icon: 'award',        label: 'Gold Value',      sub: 'Live price',       color: '#1ABBA9' },
   { id: 'silver',   icon: 'circle',       label: 'Silver Value',    sub: 'Live price',       color: '#C0C8D4' },
   { id: 'currency', icon: 'refresh-cw',   label: 'Currency',        sub: 'EGP ↔ USD',       color: '#4A9EFF' },
   { id: 'roi',      icon: 'trending-up',  label: 'ROI',             sub: 'Return on invest', color: '#00D4AA' },
   { id: 'compound', icon: 'bar-chart-2',  label: 'Compound',        sub: 'Growth calc',      color: '#A47FCA' },
-  { id: 'purity',   icon: 'layers',       label: 'Gold Purity',     sub: '24K → 21K → 18K', color: '#D4AC0D' },
+  { id: 'purity',   icon: 'layers',       label: 'Gold Purity',     sub: '24K → 21K → 18K', color: '#1ABBA9' },
   { id: 'weight',   icon: 'maximize-2',   label: 'Weight',          sub: 'g ↔ Troy Oz',     color: '#F59E0B' },
 ] as const;
 type ToolId = typeof TOOLS[number]['id'];

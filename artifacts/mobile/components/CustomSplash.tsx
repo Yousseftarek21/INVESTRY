@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     letterSpacing: 1.5,
-    color: "#C9A227",
+    color: "#1ABBA9",
   },
   tagline: {
     marginTop: 8,
@@ -71,6 +71,6 @@ const styles = StyleSheet.create({
   barFill: {
     height: "100%",
     borderRadius: 2,
-    backgroundColor: "#C9A227",
+    backgroundColor: "#1ABBA9",
   },
 });

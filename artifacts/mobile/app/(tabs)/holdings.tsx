@@ -23,7 +23,7 @@ const TYPE_ICONS: Record<Holding['type'], keyof typeof Feather.glyphMap> = {
 };
 
 const TYPE_COLORS: Record<Holding['type'], string> = {
-  gold: '#D4AC0D',
+  gold: '#1ABBA9',
   silver: '#C0C8D4',
   stock: '#4A9EFF',
   real_estate: '#A47FCA',

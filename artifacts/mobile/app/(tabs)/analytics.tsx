@@ -303,7 +303,7 @@ function PodiumRow({ rank, label, gainPct, value, isFirst }: {
   const colors = useColors();
   const isGain = gainPct >= 0;
   const gc = isGain ? colors.green : colors.red;
-  const rankColors = ['#D4AC0D', '#C0C8D4', '#CD7F32'];
+  const rankColors = ['#1ABBA9', '#C0C8D4', '#CD7F32'];
   const rankColor = rankColors[rank - 1] ?? colors.mutedForeground;
 
   return (

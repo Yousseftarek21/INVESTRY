@@ -177,7 +177,7 @@ const tabStyles = StyleSheet.create({
     marginTop: -8,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.18)',
-    shadowColor: '#D4AC0D',
+    shadowColor: '#1ABBA9',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.30,
     shadowRadius: 6,
