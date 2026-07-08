@@ -28,7 +28,7 @@ import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 SplashScreen.preventAutoHideAsync();
 
 const splashStartTime = Date.now();
-const MIN_SPLASH_DURATION_MS = 1800;
+const MIN_SPLASH_DURATION_MS = 2500;
 
 const webTokenCache: TokenCache = {
   getToken: (key: string) => Promise.resolve(localStorage.getItem(key)),
