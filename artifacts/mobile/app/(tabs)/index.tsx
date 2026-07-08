@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import {
-  Animated, LayoutChangeEvent, Platform, Pressable, RefreshControl,
+  Animated, AppState, LayoutChangeEvent, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -342,6 +342,14 @@ export default function HomeScreen() {
   const { hideValues, setHideValues } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
 
+  // Auto-refresh prices when app comes back to foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refetch();
+    });
+    return () => sub.remove();
+  }, [refetch]);
+
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
   const [sparkWidth, setSparkWidth] = useState(0);
   const { data: goldHistory } = useGoldHistory(timeFilter);
@@ -402,20 +410,20 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Gradient bloom — top-to-background, home tab only */}
+      {/* Gradient bloom — upper half only */}
       <ExpoLinearGradient
-        colors={[colors.primary + '28', colors.primary + '10', colors.background]}
-        locations={[0, 0.35, 1]}
+        colors={[colors.primary + '28', colors.primary + '10', 'transparent']}
+        locations={[0, 0.5, 1]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
         pointerEvents="none"
       />
     <ScrollView
       style={styles.scrollTransparent}
       contentContainerStyle={[styles.content, { paddingTop: topPad, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor="#FFFFFF" progressBackgroundColor={colors.card} />}
     >
       {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
