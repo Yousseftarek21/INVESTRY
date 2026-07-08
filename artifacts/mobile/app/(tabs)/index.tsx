@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle } from 'react-native-svg';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
-import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 import { useUser } from '@clerk/expo';
 import { useColors } from '@/hooks/useColors';
@@ -20,6 +19,7 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
+import { PremiumBadge } from '@/components/PremiumBadge';
 import { Holding, MarketPrices } from '@/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -425,11 +425,7 @@ export default function HomeScreen() {
             <Text style={[styles.greetingName, { color: colors.text }]} numberOfLines={1}>
               {firstName || 'there'}
             </Text>
-            {isPro && (
-              Platform.OS === 'ios'
-                ? <SymbolView name="rosette" tintColor="#C9A227" size={14} />
-                : <Feather name="award" size={14} color="#C9A227" />
-            )}
+            {isPro && <PremiumBadge size="sm" />}
           </View>
         </View>
         <View style={styles.headerRight}>
