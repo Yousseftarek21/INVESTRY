@@ -25,7 +25,7 @@ import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
 import { PremiumBadge } from '@/components/PremiumBadge';
 
 const APP_VERSION = '1.0.0';
-const BUILD = '100';
+const BUILD = '23';
 const COPYRIGHT_YEAR = new Date().getFullYear();
 
 // ─── Pulsing live dot ─────────────────────────────────────────────────────────
