@@ -587,6 +587,15 @@ export default function AddInvestmentScreen() {
   const reGainLoss = reCurrentValue - rePurchasePriceNum;
   const reAppreciationPct = rePurchasePriceNum > 0 ? (reGainLoss / rePurchasePriceNum) * 100 : 0;
   const reShowSummary = reAreaNum > 0 && rePricePerM2Num > 0 && rePurchasePriceNum > 0;
+  // Heuristic: a total purchase price for a property bigger than ~5 m² should be a
+  // multiple of the per-m² rate, not roughly equal to it. If the number the user typed
+  // as the "total" is within the same order of magnitude as the current price/m², they
+  // most likely typed a per-m² figure by mistake — flag it before they save a distorted P/L.
+  const rePurchasePriceLooksPerM2 =
+    reAreaNum > 5 && rePurchasePriceNum > 0 && rePricePerM2Num > 0 &&
+    rePurchasePriceNum < rePricePerM2Num * reAreaNum * 0.3 &&
+    rePurchasePriceNum > rePricePerM2Num * 0.2 &&
+    rePurchasePriceNum < rePricePerM2Num * 5;
 
   const Chip = ({ value, selected, onPress, label }: { value: string; selected: boolean; onPress: () => void; label?: string }) => (
     <TouchableOpacity
@@ -1060,9 +1069,21 @@ export default function AddInvestmentScreen() {
             </View>
 
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.purchasePrice}</Text>
+              <Text style={labelStyle}>{t.realEstatePurchasePrice}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 3500000" placeholderTextColor={colors.mutedForeground}
                 value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" />
+              <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                {t.realEstatePurchasePriceHint}
+                {reAreaNum > 0 && rePurchasePriceNum > 0
+                  ? `  (≈ ${rePurchasePricePerM2.toLocaleString(undefined, { maximumFractionDigits: 0 })} EGP/m²)`
+                  : ''}
+              </Text>
+              {rePurchasePriceLooksPerM2 && (
+                <View style={[styles.warningBanner, { backgroundColor: colors.red + '1A', borderColor: colors.red }]}>
+                  <Feather name="alert-triangle" size={16} color={colors.red} />
+                  <Text style={[styles.warningText, { color: colors.red }]}>{t.purchasePriceSuspiciousWarning}</Text>
+                </View>
+              )}
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchaseDate}</Text>
@@ -1363,6 +1384,12 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
   notesInput: { minHeight: 80, textAlignVertical: 'top' },
+  hintText: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 15 },
+  warningBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    borderRadius: 10, borderWidth: 1, padding: 10, marginTop: 8,
+  },
+  warningText: { flex: 1, fontSize: 12, fontFamily: 'Inter_500Medium', lineHeight: 16 },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16, marginTop: 8 },
   saveButtonText: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
   // Choose screen

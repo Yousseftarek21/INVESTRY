@@ -130,6 +130,18 @@ const BASE_HEADERS = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function redactUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    for (const key of u.searchParams.keys()) {
+      if (/key|token|secret/i.test(key)) u.searchParams.set(key, "***");
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 async function safeFetch(url: string, opts?: RequestInit): Promise<Response | null> {
   try {
     const ctrl = new AbortController();
@@ -137,11 +149,24 @@ async function safeFetch(url: string, opts?: RequestInit): Promise<Response | nu
     const res = await fetch(url, { ...opts, signal: ctrl.signal });
     clearTimeout(id);
     return res;
-  } catch { return null; }
+  } catch (err) {
+    logger.warn({ url: redactUrl(url), err: err instanceof Error ? err.message : err }, "safeFetch: request failed");
+    return null;
+  }
 }
 
-async function safeJson<T>(res: Response | null): Promise<T | null> {
-  if (!res?.ok) return null;
+async function safeJson<T>(res: Response | null, label?: string): Promise<T | null> {
+  if (!res) {
+    if (label) logger.warn({ label }, "safeJson: no response (network error or timeout)");
+    return null;
+  }
+  if (!res.ok) {
+    if (label) {
+      const body = await res.text().catch(() => "<unreadable>");
+      logger.warn({ label, status: res.status, statusText: res.statusText, body: body.slice(0, 500) }, "safeJson: non-OK response");
+    }
+    return null;
+  }
   try { return await res.json() as T; } catch { return null; }
 }
 
@@ -166,7 +191,7 @@ async function fetchCommodityLatest(): Promise<{ xau: number; xag: number } | nu
   if (!key) { logger.warn("COMMODITY_API_KEY not set"); return null; }
 
   const url = `${COMMODITY_API_BASE}/rates/latest?apiKey=${key}&symbols=XAU,XAG`;
-  const data = await safeJson<CommodityLatestResponse>(await safeFetch(url));
+  const data = await safeJson<CommodityLatestResponse>(await safeFetch(url), "CommodityPriceAPI latest");
 
   if (!data?.success || !data.rates) {
     logger.warn({ data }, "CommodityPriceAPI latest: unexpected response");
@@ -200,7 +225,7 @@ async function fetchCommodityHistorical(): Promise<HistoricalRates | null> {
 
   const date = yesterdayDate();
   const url = `${COMMODITY_API_BASE}/rates/historical?apiKey=${key}&symbols=XAU,XAG&date=${date}`;
-  const data = await safeJson<CommodityHistoricalResponse>(await safeFetch(url));
+  const data = await safeJson<CommodityHistoricalResponse>(await safeFetch(url), "CommodityPriceAPI historical");
 
   if (!data?.success || !data.rates?.XAU || !data.rates?.XAG) {
     logger.warn({ data }, "CommodityPriceAPI historical: unexpected response");
