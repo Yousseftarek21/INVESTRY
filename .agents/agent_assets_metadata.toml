@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "f0kvXnofprdcTt-CngWes"
 uri = "file://artifacts/mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "9RvySXtoiYetAwvT7WQc8"
+uri = "file://investry-mobile.zip"
+type = "unspecified"
+title = "INVESTRY Mobile Source Code"
