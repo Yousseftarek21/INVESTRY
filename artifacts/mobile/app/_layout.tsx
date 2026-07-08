@@ -118,7 +118,7 @@ export default function RootLayout() {
   const appReady = fontsLoaded || !!fontError;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#060D1A" }}>
+    <View style={{ flex: 1, backgroundColor: "#121212" }}>
       {/* Custom splash renders immediately on first mount — no providers needed */}
       {showCustomSplash && <CustomSplash />}
 
