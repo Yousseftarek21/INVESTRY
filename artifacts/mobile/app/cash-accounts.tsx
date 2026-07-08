@@ -12,7 +12,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { CashAccount, CashAccountType } from '@/types';
-import { parseAmount } from '@/utils/parseAmount';
+import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
@@ -218,7 +218,7 @@ export default function CashAccountsScreen() {
                 placeholderTextColor={colors.mutedForeground}
                 keyboardType="decimal-pad"
                 value={balance}
-                onChangeText={setBalance}
+                onChangeText={(v) => setBalance(formatAmountInput(v))}
               />
             </View>
 

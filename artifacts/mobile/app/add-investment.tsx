@@ -15,7 +15,7 @@ import { useCash } from '@/context/CashContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { CashAccount, CashAccountType, GoldKarat, Holding, MetalForm, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
-import { parseAmount } from '@/utils/parseAmount';
+import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 
 const FREE_LIMIT = 5;
 
@@ -852,7 +852,7 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.balance}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 25000" placeholderTextColor={colors.mutedForeground}
-                value={cashBalance} onChangeText={setCashBalance} keyboardType="decimal-pad" />
+                value={cashBalance} onChangeText={(v) => setCashBalance(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.accountCurrency}</Text>
@@ -920,12 +920,12 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.weightGrams}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 50" placeholderTextColor={colors.mutedForeground}
-                value={grams} onChangeText={setGrams} keyboardType="decimal-pad" />
+                value={grams} onChangeText={(v) => setGrams(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 3900" placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} keyboardType="decimal-pad" />
+                value={purchasePricePerGram} onChangeText={(v) => setPurchasePricePerGram(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
           </>)}
 
@@ -943,12 +943,12 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.weightGrams}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 500" placeholderTextColor={colors.mutedForeground}
-                value={grams} onChangeText={setGrams} keyboardType="decimal-pad" />
+                value={grams} onChangeText={(v) => setGrams(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 52" placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} keyboardType="decimal-pad" />
+                value={purchasePricePerGram} onChangeText={(v) => setPurchasePricePerGram(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
           </>)}
 
@@ -995,12 +995,12 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.numberOfShares}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 100" placeholderTextColor={colors.mutedForeground}
-                value={shares} onChangeText={setShares} keyboardType="decimal-pad" />
+                value={shares} onChangeText={(v) => setShares(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerShare}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 95.50" placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerShare} onChangeText={setPurchasePricePerShare} keyboardType="decimal-pad" />
+                value={purchasePricePerShare} onChangeText={(v) => setPurchasePricePerShare(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
           </>)}
 
@@ -1066,13 +1066,13 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.area}</Text>
               <TextInput style={inputStyle} placeholder={t.areaPlaceholder} placeholderTextColor={colors.mutedForeground}
-                value={area} onChangeText={setArea} keyboardType="decimal-pad" />
+                value={area} onChangeText={(v) => setArea(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
 
             <View style={styles.section}>
               <Text style={labelStyle}>{t.realEstatePurchasePrice}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 3500000" placeholderTextColor={colors.mutedForeground}
-                value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" />
+                value={purchasePrice} onChangeText={(v) => setPurchasePrice(formatAmountInput(v))} keyboardType="decimal-pad" />
               <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
                 {t.realEstatePurchasePriceHint}
                 {reAreaNum > 0 && rePurchasePriceNum > 0
@@ -1095,7 +1095,7 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentMarketPricePerM2}</Text>
               <TextInput style={inputStyle} placeholder={t.currentMarketPricePerM2Placeholder} placeholderTextColor={colors.mutedForeground}
-                value={currentMarketPricePerM2} onChangeText={setCurrentMarketPricePerM2} keyboardType="decimal-pad" />
+                value={currentMarketPricePerM2} onChangeText={(v) => setCurrentMarketPricePerM2(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.lastValuationDate}</Text>
@@ -1150,13 +1150,13 @@ export default function AddInvestmentScreen() {
                 <View style={styles.collapsibleBody}>
                   <Text style={labelStyle}>{t.downPayment}</Text>
                   <TextInput style={inputStyle} placeholder="e.g. 500000" placeholderTextColor={colors.mutedForeground}
-                    value={downPayment} onChangeText={setDownPayment} keyboardType="decimal-pad" />
+                    value={downPayment} onChangeText={(v) => setDownPayment(formatAmountInput(v))} keyboardType="decimal-pad" />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.remainingBalance}</Text>
                   <TextInput style={inputStyle} placeholder="e.g. 2000000" placeholderTextColor={colors.mutedForeground}
-                    value={remainingBalance} onChangeText={setRemainingBalance} keyboardType="decimal-pad" />
+                    value={remainingBalance} onChangeText={(v) => setRemainingBalance(formatAmountInput(v))} keyboardType="decimal-pad" />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.monthlyInstallment}</Text>
                   <TextInput style={inputStyle} placeholder="e.g. 15000" placeholderTextColor={colors.mutedForeground}
-                    value={monthlyInstallment} onChangeText={setMonthlyInstallment} keyboardType="decimal-pad" />
+                    value={monthlyInstallment} onChangeText={(v) => setMonthlyInstallment(formatAmountInput(v))} keyboardType="decimal-pad" />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.installmentEndDate}</Text>
                   <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
                     value={installmentEndDate} onChangeText={setInstallmentEndDate} />
@@ -1186,12 +1186,12 @@ export default function AddInvestmentScreen() {
                   <Text style={labelStyle}>{t.monthlyRent}</Text>
                   <TextInput style={inputStyle} placeholder="e.g. 20000" placeholderTextColor={colors.mutedForeground}
                     value={monthlyRent}
-                    onChangeText={(v) => { setMonthlyRent(v); const n = parseAmount(v); setAnnualRent(!isNaN(n) ? String(n * 12) : ''); }}
+                    onChangeText={(v) => { const f = formatAmountInput(v); setMonthlyRent(f); const n = parseAmount(f); setAnnualRent(!isNaN(n) ? formatAmountInput(String(n * 12)) : ''); }}
                     keyboardType="decimal-pad" />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.annualRent}</Text>
                   <TextInput style={inputStyle} placeholder="e.g. 240000" placeholderTextColor={colors.mutedForeground}
                     value={annualRent}
-                    onChangeText={(v) => { setAnnualRent(v); const n = parseAmount(v); setMonthlyRent(!isNaN(n) ? String(n / 12) : ''); }}
+                    onChangeText={(v) => { const f = formatAmountInput(v); setAnnualRent(f); const n = parseAmount(f); setMonthlyRent(!isNaN(n) ? formatAmountInput(String(n / 12)) : ''); }}
                     keyboardType="decimal-pad" />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.propertyStatus}</Text>
                   <View style={styles.chips}>
@@ -1285,13 +1285,13 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePrice}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 250000" placeholderTextColor={colors.mutedForeground}
-                value={purchasePrice} onChangeText={setPurchasePrice} keyboardType="decimal-pad" />
+                value={purchasePrice} onChangeText={(v) => setPurchasePrice(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentEstimatedValue}</Text>
               <TextInput style={inputStyle} placeholder="Defaults to purchase price if left blank"
                 placeholderTextColor={colors.mutedForeground}
-                value={currentValue} onChangeText={setCurrentValue} keyboardType="decimal-pad" />
+                value={currentValue} onChangeText={(v) => setCurrentValue(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.assetCurrency}</Text>
