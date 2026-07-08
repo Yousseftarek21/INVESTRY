@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -26,6 +26,9 @@ import { SubscriptionProvider, _registerPaywallCallback } from "@/context/Subscr
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 
 SplashScreen.preventAutoHideAsync();
+
+const splashStartTime = Date.now();
+const MIN_SPLASH_DURATION_MS = 1800;
 
 const webTokenCache: TokenCache = {
   getToken: (key: string) => Promise.resolve(localStorage.getItem(key)),
@@ -89,8 +92,6 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
   );
 }
 
-const MIN_SPLASH_DURATION_MS = 2500;
-
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -100,42 +101,55 @@ export default function RootLayout() {
   });
   const [showCustomSplash, setShowCustomSplash] = React.useState(true);
 
+  // Hide the native splash immediately — our custom splash takes over from here
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-      const timer = setTimeout(() => setShowCustomSplash(false), MIN_SPLASH_DURATION_MS);
-      return () => clearTimeout(timer);
-    }
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  // Once fonts are ready, wait out whatever remains of MIN_SPLASH_DURATION
+  useEffect(() => {
+    if (!fontsLoaded && !fontError) return;
+    const elapsed = Date.now() - splashStartTime;
+    const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
+    const timer = setTimeout(() => setShowCustomSplash(false), remaining);
+    return () => clearTimeout(timer);
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  const appReady = fontsLoaded || !!fontError;
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
-      <ClerkLoaded>
-        <SafeAreaProvider>
-          <AppSettingsProvider>
-            <ErrorBoundary>
-              <QueryClientProvider client={queryClient}>
-                <SubscriptionProvider>
-                  <GestureHandlerRootView style={{ flex: 1 }}>
-                    <KeyboardProvider>
-                      <HoldingsProvider>
-                        <CashProvider>
-                          <AppWithPaywall>
-                            <RootLayoutNav />
-                          </AppWithPaywall>
-                        </CashProvider>
-                      </HoldingsProvider>
-                    </KeyboardProvider>
-                  </GestureHandlerRootView>
-                </SubscriptionProvider>
-              </QueryClientProvider>
-            </ErrorBoundary>
-            {showCustomSplash && <CustomSplash />}
-          </AppSettingsProvider>
-        </SafeAreaProvider>
-      </ClerkLoaded>
-    </ClerkProvider>
+    <View style={{ flex: 1, backgroundColor: "#060D1A" }}>
+      {/* Custom splash renders immediately on first mount — no providers needed */}
+      {showCustomSplash && <CustomSplash />}
+
+      {/* Full app tree mounts once fonts are ready, hidden behind the splash */}
+      {appReady && (
+        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
+          <ClerkLoaded>
+            <SafeAreaProvider>
+              <AppSettingsProvider>
+                <ErrorBoundary>
+                  <QueryClientProvider client={queryClient}>
+                    <SubscriptionProvider>
+                      <GestureHandlerRootView style={{ flex: 1 }}>
+                        <KeyboardProvider>
+                          <HoldingsProvider>
+                            <CashProvider>
+                              <AppWithPaywall>
+                                <RootLayoutNav />
+                              </AppWithPaywall>
+                            </CashProvider>
+                          </HoldingsProvider>
+                        </KeyboardProvider>
+                      </GestureHandlerRootView>
+                    </SubscriptionProvider>
+                  </QueryClientProvider>
+                </ErrorBoundary>
+              </AppSettingsProvider>
+            </SafeAreaProvider>
+          </ClerkLoaded>
+        </ClerkProvider>
+      )}
+    </View>
   );
 }
