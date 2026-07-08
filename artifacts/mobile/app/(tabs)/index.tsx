@@ -426,14 +426,16 @@ export default function HomeScreen() {
               {firstName || 'there'}
             </Text>
           </View>
-          <View style={styles.titleRow}>
-            <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
-            {isPro && <PremiumBadge size="sm" />}
-          </View>
         </View>
         <View style={styles.headerRight}>
           <LiveChip lastUpdated={prices?.lastUpdated ?? null} />
         </View>
+      </View>
+
+      {/* ── Portfolio label ─────────────────────────────────────── */}
+      <View style={styles.titleRow}>
+        <Text style={[styles.screenTitle, { color: colors.mutedForeground }]}>{t.portfolio}</Text>
+        {isPro && <PremiumBadge size="sm" />}
       </View>
 
       {/* ── Hero Card ───────────────────────────────────────────── */}
@@ -716,8 +718,8 @@ const styles = StyleSheet.create({
   scrollTransparent: { flex: 1, backgroundColor: 'transparent' },
   content:          { paddingHorizontal: 20, gap: 20 },
 
-  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  headerLeft:    { gap: 20, alignItems: 'flex-start' },
+  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 },
+  headerLeft:    { alignItems: 'flex-start' },
   headerRight:   { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
   greetingBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
   greetingHi:    { fontSize: 15, fontFamily: 'Inter_400Regular' },
