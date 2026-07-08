@@ -10,7 +10,7 @@ import { useSubscription, openWebPopup, BillingPeriod } from '@/context/Subscrip
 import { useT } from '@/hooks/useTranslation';
 import { LaunchBadge, LaunchBanner } from '@/components/LaunchAccess';
 
-const ACCENT = '#A47FCA';
+const ACCENT = '#C9A227';
 
 // ─── Confirm modal ─────────────────────────────────────────────────────────────
 

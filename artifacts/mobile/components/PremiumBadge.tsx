@@ -3,7 +3,7 @@ import { Animated, Platform, StyleSheet, Text } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Feather } from '@expo/vector-icons';
 
-const PURPLE = '#A47FCA';
+const PURPLE = '#C9A227';
 
 export function PremiumBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const scale = useRef(new Animated.Value(0.6)).current;

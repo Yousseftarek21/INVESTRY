@@ -13,7 +13,7 @@ interface PremiumGateProps {
   children: React.ReactNode;
 }
 
-const ACCENT = '#A47FCA';
+const ACCENT = '#C9A227';
 const BADGE = 'PRO';
 
 export function PremiumGate({ feature, description, children }: PremiumGateProps) {
