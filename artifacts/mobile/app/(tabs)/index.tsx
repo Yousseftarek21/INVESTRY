@@ -707,9 +707,9 @@ const styles = StyleSheet.create({
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
   headerLeft:    { gap: 4, alignItems: 'flex-start' },
   headerRight:   { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
-  greetingBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  greetingHi:    { fontSize: 22, fontFamily: 'Inter_400Regular' },
-  greetingName:  { fontSize: 22, fontFamily: 'Inter_700Bold', flexShrink: 1 },
+  greetingBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
+  greetingHi:    { fontSize: 15, fontFamily: 'Inter_400Regular' },
+  greetingName:  { fontSize: 15, fontFamily: 'Inter_500Medium', flexShrink: 1 },
   screenTitle:   { fontSize: 14, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
