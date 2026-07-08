@@ -323,7 +323,7 @@ function ComingSoon({ icon, title, description }: {
         <Text style={[cs.desc, { color: colors.mutedForeground }]}>{description}</Text>
       </View>
       <View style={[cs.badge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
-        <Text style={[cs.badgeTxt, { color: colors.primary }]}>Coming Soon</Text>
+        <Text style={[cs.badgeTxt, { color: colors.primary }]}>Beta Preview</Text>
       </View>
     </View>
   );
