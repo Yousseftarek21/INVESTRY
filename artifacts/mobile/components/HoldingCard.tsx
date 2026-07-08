@@ -72,7 +72,7 @@ function getSubtitle(holding: Holding): string {
 }
 
 const ICON_COLORS: Record<Holding['type'], string> = {
-  gold: '#1ABBA9',
+  gold: '#C9A227',
   silver: '#C0C8D4',
   stock: '#4A9EFF',
   real_estate: '#A47FCA',

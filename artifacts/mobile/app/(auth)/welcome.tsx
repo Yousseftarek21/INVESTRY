@@ -15,8 +15,8 @@ const SLIDES = [
   {
     id: '1',
     icon: 'award' as const,
-    iconColor: '#1ABBA9',
-    iconBg: '#1ABBA918',
+    iconColor: '#C9A227',
+    iconBg: '#C9A22718',
     title: 'Track Gold & Silver',
     subtitle: 'Live prices for 24K, 22K, 21K & 18K gold and sterling silver — all in Egyptian pounds.',
   },

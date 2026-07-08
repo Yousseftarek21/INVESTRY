@@ -434,7 +434,7 @@ const epm = StyleSheet.create({
 function ThemeMiniPreview({ mode }: { mode: ThemeMode }) {
   const bg   = mode === 'light' ? '#F5F5F7' : '#121212';
   const card = mode === 'light' ? '#FFFFFF'  : '#1C1C1E';
-  const a    = '#1ABBA9';
+  const a    = '#C9A227';
   const r1   = mode === 'light' ? '#EBE5D8' : '#242426';
   const r2   = mode === 'light' ? '#E0D8CA' : '#2C2C2E';
   return (
@@ -752,16 +752,16 @@ export default function SettingsScreen() {
         {!user && (
           <Pressable
             onPress={() => router.push('/(auth)/sign-in' as any)}
-            style={({ pressed }) => [sc.signInCard, { backgroundColor: colors.card, borderColor: '#1ABBA940', opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [sc.signInCard, { backgroundColor: colors.card, borderColor: '#C9A22740', opacity: pressed ? 0.85 : 1 }]}
           >
             <View style={sc.signInIconWrap}>
-              <Feather name="user" size={22} color="#1ABBA9" />
+              <Feather name="user" size={22} color="#C9A227" />
             </View>
             <View style={sc.signInText}>
               <Text style={[sc.signInTitle, { color: colors.text }]}>Sign in to your account</Text>
               <Text style={[sc.signInSub, { color: colors.mutedForeground }]}>Load your saved investments & sync data</Text>
             </View>
-            <Feather name="chevron-right" size={18} color="#1ABBA9" />
+            <Feather name="chevron-right" size={18} color="#C9A227" />
           </Pressable>
         )}
 
@@ -1056,14 +1056,14 @@ const sc = StyleSheet.create({
   signOutTxt: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
 
   signInCard: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
-  signInIconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#1ABBA918', alignItems: 'center', justifyContent: 'center' },
+  signInIconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#C9A22718', alignItems: 'center', justifyContent: 'center' },
   signInText: { flex: 1, gap: 3 },
   signInTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   signInSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
 
   // Subscription card (free user)
   upgradeCard: {
-    borderRadius: 18, backgroundColor: '#1ABBA9',
+    borderRadius: 18, backgroundColor: '#C9A227',
     flexDirection: 'row', alignItems: 'center',
     padding: 18, gap: 14,
   },

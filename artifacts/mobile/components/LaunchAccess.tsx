@@ -10,7 +10,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-export function LaunchBadge({ accent = '#1ABBA9', style }: { accent?: string; style?: object }) {
+export function LaunchBadge({ accent = '#C9A227', style }: { accent?: string; style?: object }) {
   return (
     <View style={[lb.badge, { backgroundColor: accent + '18', borderColor: accent + '40' }, style]}>
       <Feather name="gift" size={13} color={accent} style={{ marginRight: 7 }} />
@@ -44,11 +44,11 @@ export function LaunchBanner() {
 
 const bn = StyleSheet.create({
   wrap: {
-    backgroundColor: '#1ABBA912', borderWidth: 1, borderColor: '#1ABBA935',
+    backgroundColor: '#C9A22712', borderWidth: 1, borderColor: '#C9A22735',
     borderRadius: 18, padding: 16, marginBottom: 16, gap: 6,
   },
   iconRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   emoji: { fontSize: 16 },
-  title: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#1ABBA9', letterSpacing: -0.2 },
+  title: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#C9A227', letterSpacing: -0.2 },
   body: { fontSize: 13, fontFamily: 'Inter_400Regular', color: '#C0CDD8', lineHeight: 19 },
 });
