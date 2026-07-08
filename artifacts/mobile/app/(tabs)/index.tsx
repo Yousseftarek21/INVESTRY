@@ -434,7 +434,7 @@ export default function HomeScreen() {
 
       {/* ── Portfolio label ─────────────────────────────────────── */}
       <View style={styles.titleRow}>
-        <Text style={[styles.screenTitle, { color: colors.mutedForeground }]}>{t.portfolio}</Text>
+        <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
         {isPro && <PremiumBadge size="sm" />}
       </View>
 
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   greetingBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
   greetingHi:    { fontSize: 15, fontFamily: 'Inter_400Regular' },
   greetingName:  { fontSize: 15, fontFamily: 'Inter_500Medium', flexShrink: 1 },
-  screenTitle:   { fontSize: 14, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  screenTitle:   { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
