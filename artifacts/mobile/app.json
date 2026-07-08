@@ -17,8 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.investry.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "ITSEncryptionExportComplianceCode": ""
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
