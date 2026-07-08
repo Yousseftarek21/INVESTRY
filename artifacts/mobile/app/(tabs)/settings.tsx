@@ -432,11 +432,11 @@ const epm = StyleSheet.create({
 // ─── Theme preview cards ───────────────────────────────────────────────────────
 
 function ThemeMiniPreview({ mode }: { mode: ThemeMode }) {
-  const bg   = mode === 'light' ? '#F5F5F7' : mode === 'dark' ? '#060D1A' : '#0D1520';
-  const card = mode === 'light' ? '#FFFFFF'  : '#0F1D32';
+  const bg   = mode === 'light' ? '#F5F5F7' : '#121212';
+  const card = mode === 'light' ? '#FFFFFF'  : '#1C1C1E';
   const a    = '#1ABBA9';
-  const r1   = mode === 'light' ? '#EBE5D8' : '#1E3050';
-  const r2   = mode === 'light' ? '#E0D8CA' : '#142540';
+  const r1   = mode === 'light' ? '#EBE5D8' : '#242426';
+  const r2   = mode === 'light' ? '#E0D8CA' : '#2C2C2E';
   return (
     <View style={[tm.preview, { backgroundColor: bg }]}>
       <View style={[tm.topBar, { backgroundColor: a }]} />

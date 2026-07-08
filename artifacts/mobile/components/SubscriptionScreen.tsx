@@ -362,9 +362,9 @@ const sw = StyleSheet.create({
 
   sheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#060D1A',
+    backgroundColor: '#121212',
     borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    borderTopWidth: 1, borderColor: '#1C2D40',
+    borderTopWidth: 1, borderColor: '#2E2E30',
     maxHeight: '95%',
   },
   handle: {

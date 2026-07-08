@@ -39,7 +39,7 @@ export function PremiumGate({ feature, description, children }: PremiumGateProps
         <View style={[g.glowRingOuter, { borderColor: accent + '18' }]} />
         <View style={[g.glowRingInner, { borderColor: accent + '28' }]} />
 
-        <View style={[g.card, { borderColor: accent + '30', backgroundColor: '#060D1A' }]}>
+        <View style={[g.card, { borderColor: accent + '30', backgroundColor: '#121212' }]}>
           <View style={[g.topBar, { backgroundColor: accent }]} />
 
           <View style={g.body}>
@@ -81,7 +81,7 @@ export function PremiumGate({ feature, description, children }: PremiumGateProps
       <View style={[g.glowRingOuter, { borderColor: accent + '18' }]} />
       <View style={[g.glowRingInner, { borderColor: accent + '28' }]} />
 
-      <View style={[g.card, { borderColor: accent + '30', backgroundColor: '#060D1A' }]}>
+      <View style={[g.card, { borderColor: accent + '30', backgroundColor: '#121212' }]}>
         {/* Top accent bar */}
         <View style={[g.topBar, { backgroundColor: accent }]} />
 
