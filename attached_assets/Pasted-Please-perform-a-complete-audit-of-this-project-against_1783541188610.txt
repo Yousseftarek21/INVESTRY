@@ -1,0 +1,78 @@
+Please perform a complete audit of this project against Apple's current App Store Review Guidelines, TestFlight requirements, Human Interface Guidelines, privacy requirements, and security best practices.
+Review the entire codebase and provide a report with the following sections:
+Apple App Store Compliance
+Identify any features that may violate Apple's App Store Review Guidelines.
+Point out missing permissions, disclosures, or required user flows.
+Verify the app behaves as Apple expects.
+TestFlight Readiness
+Check whether the app is suitable for external beta review.
+Identify anything that could delay or block TestFlight approval.
+Privacy & Data Collection
+List every type of user data collected.
+Verify all permission requests are justified.
+Check compliance with Apple's privacy requirements.
+Identify any missing privacy disclosures.
+Authentication
+Verify login, signup, password reset, and session management.
+Ensure authentication is secure and stable.
+Confirm there are no dead ends or broken authentication flows.
+Financial Features
+Since this is a finance and investment tracking application (not a brokerage), verify that:
+The app does not promise investment returns.
+It does not provide misleading financial advice.
+It clearly presents itself as a tracking and portfolio management tool.
+It does not violate Apple's financial services policies.
+UI/UX Review
+Check for broken layouts.
+Verify Dark Mode support if applicable.
+Check accessibility.
+Verify navigation consistency.
+Detect placeholder screens, unfinished pages, or "Coming Soon" pages that should be hidden or improved.
+Stability
+Detect crashes.
+Detect runtime errors.
+Detect missing assets.
+Detect invalid routes.
+Detect network failures.
+Detect loading issues.
+Permissions
+Review every permission requested and determine whether each is necessary, properly explained, and compliant with Apple requirements.
+App Metadata
+Review:
+App name
+Bundle identifier
+Version and build numbers
+Icons
+Splash screen
+Launch behavior
+Required Info.plist keys
+Required app descriptions
+Security
+Look for exposed API keys.
+Look for secrets committed to the repository.
+Review environment variables.
+Review network security.
+Review token storage.
+Review HTTPS usage.
+Performance
+Detect slow screens.
+Detect unnecessary renders.
+Detect large assets.
+Detect memory leaks.
+Detect performance bottlenecks.
+Apple Review Risks
+List every issue that could cause:
+TestFlight rejection
+App Store rejection
+Delayed review
+Rank each issue by:
+Critical
+High
+Medium
+Low
+For every issue, include:
+Why it is a problem.
+The exact file(s) involved.
+The recommended fix.
+Whether it is required before submitting to Apple.
+Finally, provide an overall readiness score from 0–100% and a prioritized checklist of everything that should be completed before the next TestFlight submission.
