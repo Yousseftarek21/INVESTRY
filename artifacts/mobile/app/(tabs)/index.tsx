@@ -401,8 +401,18 @@ export default function HomeScreen() {
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
   return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Gradient bloom — top-to-background, home tab only */}
+      <ExpoLinearGradient
+        colors={[colors.primary + '28', colors.primary + '10', colors.background]}
+        locations={[0, 0.35, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={styles.scrollTransparent}
       contentContainerStyle={[styles.content, { paddingTop: topPad, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
@@ -695,14 +705,16 @@ export default function HomeScreen() {
         )}
       </View>
     </ScrollView>
+    </View>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { paddingHorizontal: 20, gap: 20 },
+  container:        { flex: 1 },
+  scrollTransparent: { flex: 1, backgroundColor: 'transparent' },
+  content:          { paddingHorizontal: 20, gap: 20 },
 
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
   headerLeft:    { gap: 4, alignItems: 'flex-start' },
