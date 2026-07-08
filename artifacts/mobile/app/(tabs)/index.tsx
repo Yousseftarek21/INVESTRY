@@ -423,7 +423,7 @@ export default function HomeScreen() {
       style={[styles.scrollTransparent, { zIndex: 1 }]}
       contentContainerStyle={[styles.content, { paddingTop: topPad, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.text} progressViewOffset={topPad} />}
     >
       {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
