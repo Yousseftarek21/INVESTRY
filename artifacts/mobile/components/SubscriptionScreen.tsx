@@ -369,13 +369,13 @@ const sw = StyleSheet.create({
   },
   handle: {
     alignSelf: 'center', width: 42, height: 4,
-    borderRadius: 2, backgroundColor: '#1C2D40',
+    borderRadius: 2, backgroundColor: '#2E2E30',
     marginTop: 12, marginBottom: 2,
   },
   closeBtn: { position: 'absolute', top: 16, right: 18, zIndex: 10 },
   closeCircle: {
     width: 30, height: 30, borderRadius: 15, backgroundColor: '#0B1525',
-    borderWidth: 1, borderColor: '#1C2D40', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#2E2E30', alignItems: 'center', justifyContent: 'center',
   },
   scroll: { paddingHorizontal: 20 },
 
@@ -407,7 +407,7 @@ const sw = StyleSheet.create({
   // Toggle
   toggleWrap: {
     flexDirection: 'row', backgroundColor: '#0B1525',
-    borderRadius: 16, padding: 4, borderWidth: 1, borderColor: '#1C2D40', marginBottom: 14,
+    borderRadius: 16, padding: 4, borderWidth: 1, borderColor: '#2E2E30', marginBottom: 14,
   },
   toggleBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -426,7 +426,7 @@ const sw = StyleSheet.create({
   // Features
   featureCard: {
     backgroundColor: '#0B1525', borderRadius: 20,
-    borderWidth: 1, borderColor: '#1C2D40',
+    borderWidth: 1, borderColor: '#2E2E30',
     padding: 18, marginBottom: 20,
   },
   featureTitle: {
@@ -450,7 +450,7 @@ const sw = StyleSheet.create({
   // Footer
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 },
   footerTxt: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#3A4D62' },
-  dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#1C2D40' },
+  dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#2E2E30' },
   disclaimer: {
     fontSize: 10, fontFamily: 'Inter_400Regular', color: '#2A3A4A',
     lineHeight: 15, textAlign: 'center', marginBottom: 4,
