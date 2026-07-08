@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle } from 'react-native-svg';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useUser } from '@clerk/expo';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -330,6 +331,9 @@ export default function HomeScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
+  const { user } = useUser();
+  const displayName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
+  const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { cashAccounts, totalCash } = useCash();
   const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
@@ -406,8 +410,11 @@ export default function HomeScreen() {
       {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.brandBlock}>
-            <Text style={[styles.appLabel, { color: colors.primary }]}>{t.appName}</Text>
+          <View style={styles.greetingBlock}>
+            <Text style={[styles.greetingHi, { color: colors.mutedForeground }]}>Hi,</Text>
+            <Text style={[styles.greetingName, { color: colors.text }]} numberOfLines={1}>
+              {firstName || 'there'}
+            </Text>
           </View>
           <View style={styles.titleRow}>
             <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
@@ -698,12 +705,13 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 20 },
 
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
-  headerLeft:  { gap: 18, alignItems: 'flex-start' },
-  headerRight: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
-  brandBlock:  { gap: 1, alignItems: 'flex-start' },
-  appLabel:    { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: 4 },
-  screenTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  headerLeft:    { gap: 4, alignItems: 'flex-start' },
+  headerRight:   { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
+  greetingBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  greetingHi:    { fontSize: 22, fontFamily: 'Inter_400Regular' },
+  greetingName:  { fontSize: 22, fontFamily: 'Inter_700Bold', flexShrink: 1 },
+  screenTitle:   { fontSize: 14, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   heroAccent: { height: 1.25 },
