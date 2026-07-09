@@ -97,7 +97,24 @@ export interface PersonalAssetHolding {
   photos?: string[];
 }
 
-export type Holding = GoldHolding | SilverHolding | StockHolding | RealEstateHolding | PersonalAssetHolding;
+export type FixedIncomeSubtype = 'tbill' | 'saving_cert' | 'deposit' | 'sukuk';
+export type PaymentFrequency = 'monthly' | 'quarterly' | 'at_maturity';
+
+export interface FixedIncomeHolding {
+  id: string;
+  type: 'fixed_income';
+  subtype: FixedIncomeSubtype;
+  label: string;
+  institution: string;
+  principal: number;
+  annualRate: number;
+  purchaseDate: string;
+  maturityDate: string;
+  paymentFrequency: PaymentFrequency;
+  notes?: string;
+}
+
+export type Holding = GoldHolding | SilverHolding | StockHolding | RealEstateHolding | PersonalAssetHolding | FixedIncomeHolding;
 
 export type CashAccountType = 'bank' | 'cash_home' | 'foreign_currency';
 

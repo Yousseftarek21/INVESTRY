@@ -13,13 +13,13 @@ import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { CashAccount, CashAccountType, GoldKarat, Holding, MetalForm, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
+import { CashAccount, CashAccountType, FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 
 const FREE_LIMIT = 5;
 
-type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset';
+type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset' | 'fixed_income';
 type AddScreenMode = 'choose' | 'investment' | 'cash';
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
@@ -454,6 +454,15 @@ export default function AddInvestmentScreen() {
   const [assetPurchaseDate, setAssetPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [assetIconTouched, setAssetIconTouched] = useState(false);
 
+  const [fiSubtype, setFiSubtype] = useState<FixedIncomeSubtype>('tbill');
+  const [fiLabel, setFiLabel] = useState('');
+  const [fiInstitution, setFiInstitution] = useState('');
+  const [fiPrincipal, setFiPrincipal] = useState('');
+  const [fiAnnualRate, setFiAnnualRate] = useState('');
+  const [fiPurchaseDate, setFiPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [fiMaturityDate, setFiMaturityDate] = useState('');
+  const [fiPaymentFrequency, setFiPaymentFrequency] = useState<PaymentFrequency>('at_maturity');
+
   // Pre-fill form when editing
   useEffect(() => {
     if (!editingHolding) return;
@@ -511,6 +520,15 @@ export default function AddInvestmentScreen() {
       setCurrentValue(String(editingHolding.currentValue ?? 0));
       setAssetCurrency(editingHolding.currency);
       setAssetPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
+    } else if (editingHolding.type === 'fixed_income') {
+      setFiSubtype(editingHolding.subtype);
+      setFiLabel(editingHolding.label ?? '');
+      setFiInstitution(editingHolding.institution ?? '');
+      setFiPrincipal(String(editingHolding.principal ?? 0));
+      setFiAnnualRate(String(editingHolding.annualRate ?? 0));
+      setFiPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
+      setFiMaturityDate(editingHolding.maturityDate ?? '');
+      setFiPaymentFrequency(editingHolding.paymentFrequency ?? 'at_maturity');
     }
   }, [holdingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -532,6 +550,7 @@ export default function AddInvestmentScreen() {
     { key: 'stock', label: t.egxStock, icon: 'bar-chart-2', color: '#4A9EFF' },
     { key: 'real_estate', label: t.realEstate, icon: 'home', color: '#A47FCA' },
     { key: 'personal_asset', label: t.personalAsset, icon: 'star', color: '#E08E45' },
+    { key: 'fixed_income', label: t.fixedIncome, icon: 'percent', color: '#22C55E' },
   ];
 
   const CASH_TYPES: { key: CashAccountType; label: string; icon: keyof typeof Feather.glyphMap; color: string }[] = [
@@ -698,6 +717,23 @@ export default function AddInvestmentScreen() {
         name: assetName.trim(), category: assetCategory, icon: assetIcon,
         purchasePrice: parsedPurchasePrice, currentValue: parsedCurrentValue,
         currency: assetCurrency, purchaseDate: assetPurchaseDate || today, notes,
+      };
+    } else if (type === 'fixed_income') {
+      if (!fiLabel.trim() || !fiInstitution.trim() || !fiPrincipal || !fiAnnualRate || !fiPurchaseDate || !fiMaturityDate) {
+        Alert.alert(t.missingFields, t.enterFixedIncomeDetails);
+        return;
+      }
+      holding = {
+        id, type: 'fixed_income',
+        subtype: fiSubtype,
+        label: fiLabel.trim(),
+        institution: fiInstitution.trim(),
+        principal: parseAmount(fiPrincipal),
+        annualRate: parseAmount(fiAnnualRate),
+        purchaseDate: fiPurchaseDate,
+        maturityDate: fiMaturityDate,
+        paymentFrequency: fiPaymentFrequency,
+        notes,
       };
     }
 
@@ -1305,6 +1341,77 @@ export default function AddInvestmentScreen() {
               <Text style={labelStyle}>{t.purchaseDate}</Text>
               <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
                 value={assetPurchaseDate} onChangeText={setAssetPurchaseDate} />
+            </View>
+          </>)}
+
+          {/* Fixed Income */}
+          {type === 'fixed_income' && (<>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.fiSubtype}</Text>
+              <View style={styles.chips}>
+                {([
+                  { key: 'tbill', label: t.tbill },
+                  { key: 'saving_cert', label: t.savingCert },
+                  { key: 'deposit', label: t.deposit },
+                  { key: 'sukuk', label: t.sukuk },
+                ] as { key: FixedIncomeSubtype; label: string }[]).map(s => (
+                  <Chip key={s.key} value={s.key} selected={fiSubtype === s.key}
+                    onPress={() => setFiSubtype(s.key)} label={s.label} />
+                ))}
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.fiLabel}</Text>
+              <TextInput style={inputStyle} placeholder={t.fiLabelPlaceholder}
+                placeholderTextColor={colors.mutedForeground}
+                value={fiLabel} onChangeText={setFiLabel} />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.fiInstitution}</Text>
+              <TextInput style={inputStyle} placeholder={t.fiInstitutionPlaceholder}
+                placeholderTextColor={colors.mutedForeground}
+                value={fiInstitution} onChangeText={setFiInstitution} />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.fiPrincipal}</Text>
+              <TextInput style={inputStyle} placeholder="e.g. 100000"
+                placeholderTextColor={colors.mutedForeground}
+                value={fiPrincipal} onChangeText={(v) => setFiPrincipal(formatAmountInput(v))}
+                keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.fiAnnualRate}</Text>
+              <TextInput style={inputStyle} placeholder={t.fiAnnualRatePlaceholder}
+                placeholderTextColor={colors.mutedForeground}
+                value={fiAnnualRate} onChangeText={(v) => setFiAnnualRate(formatAmountInput(v))}
+                keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.fiPurchaseDate}</Text>
+              <TextInput style={inputStyle} placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.mutedForeground}
+                value={fiPurchaseDate} onChangeText={setFiPurchaseDate}
+                keyboardType="numbers-and-punctuation" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.fiMaturityDate}</Text>
+              <TextInput style={inputStyle} placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.mutedForeground}
+                value={fiMaturityDate} onChangeText={setFiMaturityDate}
+                keyboardType="numbers-and-punctuation" />
+            </View>
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.fiPaymentFrequency}</Text>
+              <View style={styles.chips}>
+                {([
+                  { key: 'monthly', label: t.fiMonthly },
+                  { key: 'quarterly', label: t.fiQuarterly },
+                  { key: 'at_maturity', label: t.fiAtMaturity },
+                ] as { key: PaymentFrequency; label: string }[]).map(f => (
+                  <Chip key={f.key} value={f.key} selected={fiPaymentFrequency === f.key}
+                    onPress={() => setFiPaymentFrequency(f.key)} label={f.label} />
+                ))}
+              </View>
             </View>
           </>)}
 

@@ -23,12 +23,22 @@ function personalAssetCostEGP(holding: Extract<Holding, { type: 'personal_asset'
   return holding.purchasePrice;
 }
 
+function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>): number {
+  const today = new Date();
+  const purchase = new Date(h.purchaseDate);
+  const maturity = new Date(h.maturityDate);
+  const daysTotal = Math.max(1, (maturity.getTime() - purchase.getTime()) / 86400000);
+  const daysElapsed = Math.max(0, Math.min(daysTotal, (today.getTime() - purchase.getTime()) / 86400000));
+  return h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
+}
+
 function computeCurrentValue(holding: Holding, prices?: MarketPrices): number {
+  if (holding.type === 'fixed_income') return fixedIncomeAccruedValue(holding);
+  if (holding.type === 'real_estate') return holding.currentValue;
   if (!prices) return 0;
   if (holding.type === 'gold') return holding.grams * goldPricePerGram(prices, holding.karat);
   if (holding.type === 'silver') return holding.grams * silverPricePerGram(prices);
   if (holding.type === 'stock') return holding.shares * holding.purchasePricePerShare;
-  if (holding.type === 'real_estate') return holding.currentValue;
   if (holding.type === 'personal_asset') return personalAssetValueEGP(holding, prices);
   return 0;
 }
@@ -39,6 +49,7 @@ function computeCost(holding: Holding, prices?: MarketPrices): number {
   if (holding.type === 'stock') return holding.shares * holding.purchasePricePerShare;
   if (holding.type === 'real_estate') return holding.purchasePrice;
   if (holding.type === 'personal_asset') return personalAssetCostEGP(holding, prices);
+  if (holding.type === 'fixed_income') return holding.principal;
   return 0;
 }
 
@@ -47,6 +58,7 @@ function getIcon(holding: Holding): keyof typeof Feather.glyphMap {
   if (holding.type === 'silver') return 'circle';
   if (holding.type === 'stock') return 'bar-chart-2';
   if (holding.type === 'personal_asset') return (holding.icon as keyof typeof Feather.glyphMap) || 'star';
+  if (holding.type === 'fixed_income') return 'percent';
   return 'home';
 }
 
@@ -55,6 +67,7 @@ function getTitle(holding: Holding): string {
   if (holding.type === 'silver') return 'Silver';
   if (holding.type === 'stock') return holding.symbol;
   if (holding.type === 'personal_asset') return holding.name || 'Personal Asset';
+  if (holding.type === 'fixed_income') return holding.label || holding.institution;
   return holding.propertyName || 'Real Estate';
 }
 
@@ -65,6 +78,13 @@ function getSubtitle(holding: Holding): string {
   if (holding.type === 'personal_asset') {
     const c = holding.category;
     return c.charAt(0).toUpperCase() + c.slice(1);
+  }
+  if (holding.type === 'fixed_income') {
+    const today = new Date();
+    const maturity = new Date(holding.maturityDate);
+    const daysLeft = Math.ceil((maturity.getTime() - today.getTime()) / 86400000);
+    const suffix = daysLeft > 0 ? `${daysLeft}d left` : 'Matured';
+    return `${holding.annualRate}% · ${holding.institution} · ${suffix}`;
   }
   const typeLabel = holding.propertyType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
   const place = [holding.district, holding.city].filter(Boolean).join(', ');
@@ -77,6 +97,7 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   stock: '#4A9EFF',
   real_estate: '#A47FCA',
   personal_asset: '#E08E45',
+  fixed_income: '#22C55E',
 };
 
 export function HoldingCard({ holding, prices, onDelete, onEdit }: HoldingCardProps) {

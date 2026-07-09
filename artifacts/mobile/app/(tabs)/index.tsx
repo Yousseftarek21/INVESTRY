@@ -35,12 +35,22 @@ function personalAssetCostEGP(h: Extract<Holding, { type: 'personal_asset' }>, p
   return h.purchasePrice;
 }
 
+function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>): number {
+  const today = new Date();
+  const purchase = new Date(h.purchaseDate);
+  const maturity = new Date(h.maturityDate);
+  const daysTotal = Math.max(1, (maturity.getTime() - purchase.getTime()) / 86400000);
+  const daysElapsed = Math.max(0, Math.min(daysTotal, (today.getTime() - purchase.getTime()) / 86400000));
+  return h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
+}
+
 function computeValue(h: Holding, prices?: MarketPrices): number {
+  if (h.type === 'fixed_income') return fixedIncomeAccruedValue(h);
+  if (h.type === 'real_estate') return h.currentValue;
   if (!prices) return 0;
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
-  if (h.type === 'real_estate') return h.currentValue;
   if (h.type === 'personal_asset') return personalAssetValueEGP(h, prices);
   return 0;
 }
@@ -51,6 +61,7 @@ function computeCost(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
   if (h.type === 'real_estate') return h.purchasePrice;
   if (h.type === 'personal_asset') return personalAssetCostEGP(h, prices);
+  if (h.type === 'fixed_income') return h.principal;
   return 0;
 }
 

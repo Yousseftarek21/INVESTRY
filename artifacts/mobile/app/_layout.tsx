@@ -24,6 +24,7 @@ import { CashProvider } from "@/context/CashContext";
 import { AppSettingsProvider } from "@/context/AppSettingsContext";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
+import { useNotifications } from "@/hooks/useNotifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -72,6 +73,11 @@ function RootLayoutNav() {
   );
 }
 
+function NotificationsInitializer() {
+  useNotifications();
+  return null;
+}
+
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
   const [paywallVisible, setPaywallVisible] = React.useState(false);
 
@@ -83,6 +89,7 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <NotificationsInitializer />
       {children}
       <SubscriptionScreen
         visible={paywallVisible}

@@ -62,6 +62,7 @@
   },
   "dependencies": {
     "expo-build-properties": "^57.0.3",
+    "expo-notifications": "^0.32.17",
     "react-native-purchases": "^10.4.0"
   }
 }
