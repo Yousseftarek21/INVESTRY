@@ -19,6 +19,7 @@ export interface AllocationSegment {
 
 interface Props {
   segments: AllocationSegment[];
+  hideValues?: boolean;
 }
 
 // ─── Animated overview bar ───────────────────────────────────────────────────
@@ -78,9 +79,9 @@ const bar = StyleSheet.create({
 // ─── Single allocation row ────────────────────────────────────────────────────
 
 function AllocationRow({
-  seg, total, trackWidth, delay,
+  seg, total, trackWidth, delay, hideValues,
 }: {
-  seg: AllocationSegment; total: number; trackWidth: number; delay: number;
+  seg: AllocationSegment; total: number; trackWidth: number; delay: number; hideValues?: boolean;
 }) {
   const colors = useColors();
   const pct = total > 0 ? (seg.value / total) * 100 : 0;
@@ -120,9 +121,9 @@ function AllocationRow({
 
       {/* Right: percentage + value */}
       <View style={row.right}>
-        <Text style={[row.pct, { color: seg.color }]}>{pct.toFixed(1)}%</Text>
+        <Text style={[row.pct, { color: seg.color }]}>{hideValues ? '••' : `${pct.toFixed(1)}%`}</Text>
         <Text style={[row.val, { color: colors.mutedForeground }]}>
-          {fmtCpt(seg.value)} EGP
+          {hideValues ? '•••••' : `${fmtCpt(seg.value)} EGP`}
         </Text>
       </View>
     </View>
@@ -144,7 +145,7 @@ const row = StyleSheet.create({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AllocationBar({ segments }: Props) {
+export function AllocationBar({ segments, hideValues }: Props) {
   const total = segments.reduce((s, seg) => s + seg.value, 0);
   const [trackWidth, setTrackWidth] = useState(0);
 
@@ -171,6 +172,7 @@ export function AllocationBar({ segments }: Props) {
             total={total}
             trackWidth={trackWidth}
             delay={i * 60}
+            hideValues={hideValues}
           />
         ))}
       </View>

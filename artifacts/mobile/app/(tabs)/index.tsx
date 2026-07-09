@@ -662,6 +662,7 @@ export default function HomeScreen() {
                   icon: 'star',      quantity: summary.paCount > 0 ? `${summary.paCount} asset${summary.paCount !== 1 ? 's' : ''}` : undefined,
                 },
               ]}
+              hideValues={hideValues}
             />
           </View>
         )}
