@@ -72,7 +72,7 @@ Egypt's first investment tracking mobile app (Expo / React Native). Slogan: "Kno
 ## Gotchas
 
 - CORS blocks Yahoo Finance and goldprice.org on web preview — this is normal. All APIs work on native (Expo Go).
-- EGX stock tickers on Yahoo Finance use `.CA` suffix (e.g. `COMI.CA` for Cairo Exchange).
+- EGX stock tickers on Yahoo Finance use `.CA` suffix (e.g. `COMI.CA` for Egyptian Exchange).
 - `useColors()` depends on `AppSettingsContext` — must be used inside `AppSettingsProvider`.
 - UUID: use `Date.now().toString() + Math.random().toString(36).substr(2, 9)` — never `uuid` package.
 

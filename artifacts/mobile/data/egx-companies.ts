@@ -1,5 +1,5 @@
 // Egyptian Exchange (EGX) — complete company database
-// Yahoo Finance uses the `.CA` suffix for Cairo Exchange listings
+// Yahoo Finance uses the `.CA` suffix for Egyptian Exchange listings
 
 export const EGX_SECTORS = [
   'All',

@@ -44,7 +44,7 @@ function MarketStatusBanner() {
         </View>
       </View>
       <View style={mst.right}>
-        <Text style={[mst.flag, { color: colors.mutedForeground }]}>🇪🇬 Cairo Exchange</Text>
+        <Text style={[mst.flag, { color: colors.mutedForeground }]}>🇪🇬 Egyptian Exchange</Text>
         <Text style={[mst.schedule, { color: colors.mutedForeground }]}>Sun–Thu · 10:00–14:30</Text>
       </View>
     </View>
