@@ -279,30 +279,32 @@ function USMarketStatusBanner() {
     <View style={[umb.banner, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={umb.left}>
         <Animated.View style={[umb.dot, { backgroundColor: accent, opacity: session === 'open' ? pulseAnim : 1 }]} />
-        <View>
-          <Text style={[umb.label, { color: accent }]}>NYSE / NASDAQ {label}</Text>
-          <Text style={[umb.sub, { color: colors.mutedForeground }]}>{nextEvent}</Text>
+        <View style={umb.textWrap}>
+          <Text style={[umb.label, { color: accent }]}>US {label}</Text>
+          <Text style={[umb.sub, { color: colors.mutedForeground }]} numberOfLines={1}>{nextEvent}</Text>
         </View>
       </View>
       <View style={umb.right}>
-        <Text style={[umb.flag, { color: colors.mutedForeground }]}>🇺🇸 US Markets</Text>
-        <Text style={[umb.schedule, { color: colors.mutedForeground }]}>Mon–Fri · 9:30–16:00 ET</Text>
+        <Text style={[umb.flag, { color: colors.mutedForeground }]}>🇺🇸 NYSE · NASDAQ</Text>
+        <Text style={[umb.schedule, { color: colors.mutedForeground }]}>Mon–Fri · 9:30–16:00</Text>
       </View>
     </View>
   );
 }
 const umb = StyleSheet.create({
   banner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1,
+    gap: 8,
   },
-  left:     { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dot:      { width: 9, height: 9, borderRadius: 5 },
-  label:    { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  left:     { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
+  textWrap: { flex: 1, minWidth: 0 },
+  dot:      { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  label:    { fontSize: 12, fontFamily: 'Inter_700Bold' },
   sub:      { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  right:    { alignItems: 'flex-end', gap: 2 },
-  flag:     { fontSize: 11, fontFamily: 'Inter_500Medium' },
-  schedule: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  right:    { alignItems: 'flex-end', gap: 2, flexShrink: 0 },
+  flag:     { fontSize: 10, fontFamily: 'Inter_500Medium' },
+  schedule: { fontSize: 9, fontFamily: 'Inter_400Regular' },
 });
 
 // ─── Main GlobalStocksMarket Component ────────────────────────────────────────

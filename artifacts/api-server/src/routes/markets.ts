@@ -21,7 +21,7 @@ function makeCache<T>(ttlMs: number) {
 const pricesCache    = makeCache<MarketPricesResponse>(30_000);   // 30 s
 const historicalCache = makeCache<HistoricalRates>(86_400_000);   // 24 h
 const stocksCache    = makeCache<EGXStockResponse[]>(30_000);     // 30 s
-const globalStocksCache = makeCache<EGXStockResponse[]>(30_000);  // 30 s
+const globalStocksCache = makeCache<EGXStockResponse[]>(5 * 60_000); // 5 min (Twelve Data free tier)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -79,30 +79,17 @@ const EGX_TICKERS = [
   { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "Orascom Development Egypt"  },
 ];
 
-// ─── Global stock ticker list (US-listed, via Yahoo Finance — free, no key) ───
+// ─── Global stock ticker list — 8 symbols, fits Twelve Data free tier (8 credits/min) ───
 
 const GLOBAL_TICKERS = [
   { yahoo: "SPY",   symbol: "SPY",   name: "S&P 500 (SPDR ETF)"       },
   { yahoo: "QQQ",   symbol: "QQQ",   name: "NASDAQ 100 (Invesco ETF)" },
-  { yahoo: "DIA",   symbol: "DIA",   name: "Dow Jones (SPDR ETF)"     },
   { yahoo: "AAPL",  symbol: "AAPL",  name: "Apple Inc."               },
   { yahoo: "MSFT",  symbol: "MSFT",  name: "Microsoft Corp."          },
+  { yahoo: "NVDA",  symbol: "NVDA",  name: "NVIDIA Corp."             },
   { yahoo: "GOOGL", symbol: "GOOGL", name: "Alphabet Inc."            },
   { yahoo: "AMZN",  symbol: "AMZN",  name: "Amazon.com Inc."          },
-  { yahoo: "NVDA",  symbol: "NVDA",  name: "NVIDIA Corp."             },
-  { yahoo: "META",  symbol: "META",  name: "Meta Platforms Inc."      },
   { yahoo: "TSLA",  symbol: "TSLA",  name: "Tesla Inc."               },
-  { yahoo: "JPM",   symbol: "JPM",   name: "JPMorgan Chase & Co."     },
-  { yahoo: "V",     symbol: "V",     name: "Visa Inc."                },
-  { yahoo: "MA",    symbol: "MA",    name: "Mastercard Inc."          },
-  { yahoo: "WMT",   symbol: "WMT",   name: "Walmart Inc."             },
-  { yahoo: "KO",    symbol: "KO",    name: "Coca-Cola Co."            },
-  { yahoo: "PG",    symbol: "PG",    name: "Procter & Gamble Co."     },
-  { yahoo: "DIS",   symbol: "DIS",   name: "Walt Disney Co."          },
-  { yahoo: "NKE",   symbol: "NKE",   name: "Nike Inc."                },
-  { yahoo: "JNJ",   symbol: "JNJ",   name: "Johnson & Johnson"        },
-  { yahoo: "PFE",   symbol: "PFE",   name: "Pfizer Inc."              },
-  { yahoo: "BA",    symbol: "BA",    name: "Boeing Co."               },
 ];
 
 const TROY_OZ = 31.1034768;  // exact grams per troy ounce
@@ -531,6 +518,49 @@ async function fetchGlobalStocksViaQuote(): Promise<EGXStockResponse[]> {
   });
 }
 
+// ─── Twelve Data — primary live source for US stocks ─────────────────────────
+// Free tier: 800 credits/day; each symbol = 1 credit; batch call = Σ symbols.
+// With 20 symbols and 5-min cache: ~40 fetches/day = 800 credits/day (at the limit).
+
+async function fetchGlobalStocksViaTwelveData(): Promise<EGXStockResponse[]> {
+  const apiKey = process.env.TWELVE_DATA_API_KEY;
+  if (!apiKey) { logger.warn("TWELVE_DATA_API_KEY not set"); return []; }
+
+  const symbols = GLOBAL_TICKERS.map(t => t.yahoo).join(",");
+  const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbols)}&apikey=${apiKey}`;
+  const res = await safeFetch(url, { headers: { Accept: "application/json" } });
+  if (!res?.ok) {
+    logger.warn({ status: res?.status }, "Twelve Data: non-OK response");
+    return [];
+  }
+
+  const data = await res.json() as Record<string, any>;
+
+  // Top-level error (bad key, quota exceeded, etc.)
+  if (data?.status === "error" || data?.code) {
+    logger.warn({ code: data?.code, message: data?.message }, "Twelve Data: API error");
+    return [];
+  }
+
+  // Single-symbol response comes back as a flat object; multi-symbol is keyed by ticker
+  const isSingle = GLOBAL_TICKERS.length === 1;
+
+  return GLOBAL_TICKERS.map(t => {
+    const q = isSingle ? data : data[t.yahoo];
+    if (!q || q.status === "error" || !q.close) {
+      return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
+    }
+    return {
+      symbol:        t.symbol,
+      name:          t.name,
+      price:         round2(parseFloat(q.close)),
+      previousClose: round2(parseFloat(q.previous_close ?? "0")),
+      change:        round2(parseFloat(q.change ?? "0")),
+      changePercent: round2(parseFloat(q.percent_change ?? "0")),
+    };
+  });
+}
+
 // ─── Stooq fallback for US stocks (truly free, no API key, different IP allowance) ──
 
 async function fetchGlobalStocksViaStooq(): Promise<EGXStockResponse[]> {
@@ -567,7 +597,18 @@ async function fetchGlobalStocksViaStooq(): Promise<EGXStockResponse[]> {
 }
 
 async function fetchGlobalStocks(): Promise<EGXStockResponse[]> {
-  // 1. Try YF quote with crumb/cookie (most accurate — regularMarketPrice + proper change%)
+  // 1. Twelve Data — authenticated, proper change vs previous close
+  try {
+    const data = await fetchGlobalStocksViaTwelveData();
+    if (data.some(s => s.price > 0)) {
+      logger.info("Global stocks via Twelve Data");
+      return data;
+    }
+  } catch (err) {
+    logger.warn({ err }, "Global stocks: Twelve Data failed");
+  }
+
+  // 2. YF quote with crumb/cookie
   try {
     const data = await fetchGlobalStocksViaQuote();
     if (data.some(s => s.price > 0)) {
@@ -576,18 +617,18 @@ async function fetchGlobalStocks(): Promise<EGXStockResponse[]> {
     }
   } catch { /* fall through */ }
 
-  // 2. Try YF spark endpoint (second choice)
+  // 3. YF spark
   try {
     const data = await fetchTickersViaSpark(GLOBAL_TICKERS, "Global stocks spark");
     if (data.some(s => s.price > 0)) return data;
   } catch { /* fall through */ }
 
-  // 3. Stooq — independent provider, not affected by YF IP blocks
+  // 4. Stooq — independent provider, not IP-blocked by YF
   try {
     const data = await fetchGlobalStocksViaStooq();
     if (data.length > 0) return data;
   } catch (err) {
-    logger.warn({ err }, "Global stocks: Stooq also failed");
+    logger.warn({ err }, "Global stocks: all sources failed");
   }
 
   return [];
