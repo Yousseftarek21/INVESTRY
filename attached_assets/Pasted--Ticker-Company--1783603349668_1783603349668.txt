@@ -1,0 +1,52 @@
+| Ticker | Company                                               |
+| ------ | ----------------------------------------------------- |
+| MICH   | Misr Chemical Industries                              |
+| MILS   | Middle & West Delta Flour Mills                       |
+| MISR   | Misr Hotels                                           |
+| MNHD   | Madinet Masr Housing & Development                    |
+| MOED   | The Medical Packaging Company                         |
+| MOIL   | Maridive & Oil Services                               |
+| MPCI   | Memphis Pharmaceuticals & Chemical Industries         |
+| MPCO   | Mansourah Poultry                                     |
+| MPRC   | El Nasr Manufacturing Agricultural Crops              |
+| MTFH   | MNT-Halan                                             |
+| NAHO   | National Housing for Professional Syndicates          |
+| NCIN   | Nile City Investments                                 |
+| NCLH   | Nozha International Hospital                          |
+| NEDA   | North Cairo Mills                                     |
+| NEFI   | National Company for Maize Products                   |
+| NHPS   | National Housing for Professional Syndicates          |
+| NINH   | Nile Pharmaceuticals & Chemical Industries            |
+| NIPH   | El Nile Co. for Pharmaceuticals & Chemical Industries |
+| NOKA   | North Cairo Flour Mills                               |
+| OCDI   | Orascom Development Egypt                             |
+| OFH    | Orascom Financial Holding                             |
+| OIH    | Orascom Investment Holding                            |
+| OISR   | Oil & Soap Company                                    |
+| OLFI   | Obour Land for Food Industries                        |
+| ORAS   | Orascom Construction PLC                              |
+| ORWE   | Oriental Weavers                                      |
+| PACH   | Paint & Chemicals Industries (PACHIN)                 |
+| PHAR   | Egyptian International Pharmaceuticals (EIPICO)       |
+| PHDC   | Palm Hills Developments                               |
+| PIOH   | Pioneer Property Development                          |
+| POUL   | Cairo Poultry                                         |
+| PRCL   | Prime Holding                                         |
+| PRDC   | Pioneers Properties for Urban Development             |
+| PRMH   | Prime Holding                                         |
+| PRTL   | Port Said Development & Construction                  |
+| QNBA   | QNB Alahli                                            |
+| RAKT   | Rakta Paper Manufacturing                             |
+| RAYA   | Raya Holding for Financial Investments                |
+| RMDA   | Rameda Pharmaceuticals                                |
+| RMGC   | Remco Group                                           |
+| RUBX   | Rubex International                                   |
+| SAIB   | SAIB Bank                                             |
+| SCEM   | Sinai Cement                                          |
+| SDTI   | Suez Development & Trading                            |
+| SKPC   | Sidi Kerir Petrochemicals                             |
+| SNFC   | Sharm Dreams Company                                  |
+| SWDY   | Elsewedy Electric                                     |
+| TMGH   | Talaat Moustafa Group Holding                         |
+| UTOP   | Utopia Real Estate Investment & Tourism               |
+| WCDF   | West Delta Flour Mills                                |

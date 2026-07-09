@@ -1,0 +1,43 @@
+| Ticker | Company                                                       |
+| ------ | ------------------------------------------------------------- |
+| EDBM   | Egyptians Housing Development & Reconstruction                |
+| EDFM   | East Delta Mills                                              |
+| EDIT   | Edita Food Industries                                         |
+| EFIC   | Egyptian Financial & Industrial                               |
+| EFIH   | e-finance for Digital & Financial Investments                 |
+| EFID   | Egypt Free Shops                                              |
+| EGAL   | Egypt Aluminum                                                |
+| EGCH   | Egyptian Chemical Industries (KIMA)                           |
+| EGSA   | Egyptian Satellite (Nilesat)                                  |
+| EGTS   | Egyptian Transport (EGYTRANS)                                 |
+| EHDR   | Egyptian Housing Development & Reconstruction                 |
+| EIKA   | El Kahera Housing                                             |
+| EKHO   | Egypt Kuwait Holding                                          |
+| ELKA   | El Kahera El Watania Investment                               |
+| EMFD   | Emaar Misr for Development                                    |
+| ENGC   | Engineering Industries (ICON)                                 |
+| EOSB   | Egyptian Company for Construction Development (LIFT SLAB)     |
+| EPCO   | Egypt for Poultry                                             |
+| ESRS   | Ezz Steel                                                     |
+| ETEL   | Telecom Egypt                                                 |
+| EXPA   | Export Development Bank of Egypt                              |
+| FAIT   | Faisal Islamic Bank of Egypt                                  |
+| FIRM   | First Investment Company                                      |
+| FNAR   | Al Fanar Contracting Construction Trade Import & Export       |
+| FWRY   | Fawry for Banking Technology & Electronic Payment             |
+| GBCO   | GB Corp                                                       |
+| GCCI   | Gulf Canadian Real Estate Investment                          |
+| GDWA   | Gadwa for Industrial Development                              |
+| GGCC   | Giza General Contracting                                      |
+| GIHD   | Gharbia Islamic Housing Development                           |
+| GMCI   | GMC Group for Industrial Commercial & Financial Investments   |
+| GTEX   | Golden Textiles & Clothes Wool                                |
+| HDBK   | Housing & Development Bank                                    |
+| HELI   | Heliopolis Housing                                            |
+| HRHO   | EFG Holding                                                   |
+| ICMI   | International Company for Medical Industries                  |
+| IDHC   | Integrated Diagnostics Holdings                               |
+| IEEC   | Industrial Engineering Company for Construction & Development |
+| IFAP   | International Agricultural Products                           |
+| INFI   | Ismailia National Food Industries (Foodico)                   |
+| IRAX   | Iraqi N                                                       |

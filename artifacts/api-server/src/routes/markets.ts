@@ -56,78 +56,66 @@ interface HistoricalRates {
 
 // ─── EGX ticker list ──────────────────────────────────────────────────────────
 
-// All 54 EGX companies — kept in sync with artifacts/mobile/data/egx-companies.ts
+// 42 verified EGX companies — kept in sync with artifacts/mobile/data/egx-companies.ts
+// 4 tickers (QNBA, EKHO, ESRS, IDHC) are valid EGX listings but absent from TradingView's
+// Egypt scanner feed; they fall back to Yahoo Finance spark on native devices.
 const EGX_TICKERS = [
   // Banking
-  { yahoo: "COMI.CA",  symbol: "COMI",  name: "Commercial International Bank"   },
-  { yahoo: "QNBA.CA",  symbol: "QNBA",  name: "QNB Al Ahli Bank"                },
-  { yahoo: "CRED.CA",  symbol: "CRED",  name: "Credit Agricole Egypt"           },
-  { yahoo: "ADIB.CA",  symbol: "ADIB",  name: "Abu Dhabi Islamic Bank Egypt"    },
-  { yahoo: "HDBK.CA",  symbol: "HDBK",  name: "Housing & Development Bank"      },
-  { yahoo: "AIBD.CA",  symbol: "AIBD",  name: "Arab Investment Bank"            },
-  { yahoo: "BLOM.CA",  symbol: "BLOM",  name: "Blom Bank Egypt"                 },
-  { yahoo: "FABL.CA",  symbol: "FABL",  name: "First Abu Dhabi Bank Egypt"      },
+  { yahoo: "COMI.CA",  symbol: "COMI",  name: "Commercial International Bank (CIB)" },
+  { yahoo: "QNBA.CA",  symbol: "QNBA",  name: "QNB Al Ahli"                         },
+  { yahoo: "CIEB.CA",  symbol: "CIEB",  name: "Credit Agricole Egypt"               },
+  { yahoo: "ADIB.CA",  symbol: "ADIB",  name: "Abu Dhabi Islamic Bank Egypt"        },
+  { yahoo: "HDBK.CA",  symbol: "HDBK",  name: "Housing & Development Bank"          },
   // Financial Services
-  { yahoo: "HRHO.CA",  symbol: "HRHO",  name: "EFG Hermes Holding"              },
-  { yahoo: "EKHO.CA",  symbol: "EKHO",  name: "EK Holding"                      },
-  { yahoo: "CIBD.CA",  symbol: "CIBD",  name: "CI Capital Holding"              },
-  { yahoo: "EFID.CA",  symbol: "EFID",  name: "Egyptian Financial & Industrial" },
-  { yahoo: "MNFN.CA",  symbol: "MNFN",  name: "Mena for Financial Investments"  },
+  { yahoo: "HRHO.CA",  symbol: "HRHO",  name: "EFG Holding"                         },
+  { yahoo: "EKHO.CA",  symbol: "EKHO",  name: "Egypt Kuwait Holding"                },
+  { yahoo: "CICH.CA",  symbol: "CICH",  name: "CI Capital Holding"                  },
+  { yahoo: "EFIC.CA",  symbol: "EFIC",  name: "Egyptian Financial & Industrial"     },
   // Real Estate
-  { yahoo: "TMGH.CA",  symbol: "TMGH",  name: "Talaat Mostafa Group"            },
-  { yahoo: "PHDC.CA",  symbol: "PHDC",  name: "Palm Hills Developments"         },
-  { yahoo: "MNHD.CA",  symbol: "MNHD",  name: "Madinet Nasr Housing"            },
-  { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "Orascom Development Egypt"       },
-  { yahoo: "EMFD.CA",  symbol: "EMFD",  name: "Emaar Misr for Development"      },
-  { yahoo: "ORHD.CA",  symbol: "ORHD",  name: "Ora Developers Egypt"            },
-  { yahoo: "HELI.CA",  symbol: "HELI",  name: "Heliopolis Housing & Dev."       },
-  { yahoo: "DRTK.CA",  symbol: "DRTK",  name: "Delta for Real Estate & Tourism" },
+  { yahoo: "TMGH.CA",  symbol: "TMGH",  name: "Talaat Moustafa Group Holding"       },
+  { yahoo: "PHDC.CA",  symbol: "PHDC",  name: "Palm Hills Developments"             },
+  { yahoo: "MASR.CA",  symbol: "MASR",  name: "Madinet Masr Housing & Development"  },
+  { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "Orascom Development Egypt"           },
+  { yahoo: "EMFD.CA",  symbol: "EMFD",  name: "Emaar Misr for Development"          },
+  { yahoo: "ORHD.CA",  symbol: "ORHD",  name: "Ora Developers Egypt"               },
+  { yahoo: "HELI.CA",  symbol: "HELI",  name: "Heliopolis Housing"                  },
   // Telecom
-  { yahoo: "ETEL.CA",  symbol: "ETEL",  name: "Telecom Egypt"                   },
+  { yahoo: "ETEL.CA",  symbol: "ETEL",  name: "Telecom Egypt"                       },
   // Industrial
-  { yahoo: "SWDY.CA",  symbol: "SWDY",  name: "El Sewedy Electric"              },
-  { yahoo: "ESRS.CA",  symbol: "ESRS",  name: "Ezz Steel"                       },
-  { yahoo: "EAST.CA",  symbol: "EAST",  name: "Eastern Company"                 },
-  { yahoo: "ORAS.CA",  symbol: "ORAS",  name: "Orascom Construction"            },
-  { yahoo: "MFPC.CA",  symbol: "MFPC",  name: "Maridive & Oil Services"         },
+  { yahoo: "SWDY.CA",  symbol: "SWDY",  name: "El Sewedy Electric"                  },
+  { yahoo: "ESRS.CA",  symbol: "ESRS",  name: "Ezz Steel"                           },
+  { yahoo: "EAST.CA",  symbol: "EAST",  name: "Eastern Company"                     },
+  { yahoo: "ORAS.CA",  symbol: "ORAS",  name: "Orascom Construction"                },
+  { yahoo: "MOIL.CA",  symbol: "MOIL",  name: "Maridive & Oil Services"             },
+  { yahoo: "EGAL.CA",  symbol: "EGAL",  name: "Egypt Aluminum"                      },
   // Chemicals & Fertilizers
-  { yahoo: "ABUK.CA",  symbol: "ABUK",  name: "Abu Kir Fertilizers"             },
-  { yahoo: "SKPC.CA",  symbol: "SKPC",  name: "Sidi Kerir Petrochemicals"       },
-  { yahoo: "MOPCO.CA", symbol: "MOPCO", name: "Misr Fertilizers Production"     },
+  { yahoo: "ABUK.CA",  symbol: "ABUK",  name: "Abu Kir Fertilizers"                 },
+  { yahoo: "SKPC.CA",  symbol: "SKPC",  name: "Sidi Kerir Petrochemicals"           },
+  { yahoo: "MFPC.CA",  symbol: "MFPC",  name: "Misr Fertilizers Production (MOPCO)" },
+  { yahoo: "EGCH.CA",  symbol: "EGCH",  name: "Egyptian Chemical Industries (KIMA)" },
   // Energy
-  { yahoo: "AMOC.CA",  symbol: "AMOC",  name: "Alexandria Mineral Oils"         },
-  { yahoo: "PRSM.CA",  symbol: "PRSM",  name: "Petrojet"                        },
+  { yahoo: "AMOC.CA",  symbol: "AMOC",  name: "Alexandria Mineral Oils"             },
   // Construction Materials
-  { yahoo: "STMR.CA",  symbol: "STMR",  name: "Suez Cement"                     },
-  { yahoo: "MCEM.CA",  symbol: "MCEM",  name: "Misr Cement (Qena)"              },
-  { yahoo: "LCSW.CA",  symbol: "LCSW",  name: "Lecico Egypt"                    },
-  { yahoo: "EGCH.CA",  symbol: "EGCH",  name: "Egyptian Cement"                 },
+  { yahoo: "SUCE.CA",  symbol: "SUCE",  name: "Suez Cement"                         },
+  { yahoo: "MCQE.CA",  symbol: "MCQE",  name: "Misr Cement (Qena)"                  },
+  { yahoo: "LCSW.CA",  symbol: "LCSW",  name: "Lecico Egypt"                        },
   // Healthcare
-  { yahoo: "CLHO.CA",  symbol: "CLHO",  name: "Cleopatra Hospital Group"        },
-  { yahoo: "ISPH.CA",  symbol: "ISPH",  name: "EIPICO"                          },
-  { yahoo: "SPMD.CA",  symbol: "SPMD",  name: "Speed Medical"                   },
-  { yahoo: "IDHC.CA",  symbol: "IDHC",  name: "Integrated Diagnostics (IDH)"   },
-  { yahoo: "AMPH.CA",  symbol: "AMPH",  name: "Amoun Pharmaceutical"            },
+  { yahoo: "CLHO.CA",  symbol: "CLHO",  name: "Cleopatra Hospital Group"            },
+  { yahoo: "PHAR.CA",  symbol: "PHAR",  name: "EIPICO"                              },
+  { yahoo: "SPMD.CA",  symbol: "SPMD",  name: "Speed Medical"                       },
+  { yahoo: "IDHC.CA",  symbol: "IDHC",  name: "Integrated Diagnostics (IDH)"       },
   // Food & Beverage
-  { yahoo: "JUFO.CA",  symbol: "JUFO",  name: "Juhayna Food Industries"         },
-  { yahoo: "DOMTY.CA", symbol: "DOMTY", name: "Arabian Food Industries"         },
-  { yahoo: "EGAL.CA",  symbol: "EGAL",  name: "Egypt Aluminum"                  },
+  { yahoo: "JUFO.CA",  symbol: "JUFO",  name: "Juhayna Food Industries"             },
+  { yahoo: "DOMT.CA",  symbol: "DOMT",  name: "Domty"                               },
   // Technology
-  { yahoo: "FWRY.CA",  symbol: "FWRY",  name: "Fawry for Banking & Payment"     },
+  { yahoo: "FWRY.CA",  symbol: "FWRY",  name: "Fawry for Banking & Payment"         },
+  { yahoo: "EFIH.CA",  symbol: "EFIH",  name: "e-finance for Digital Investments"   },
   // Textile
-  { yahoo: "ORWE.CA",  symbol: "ORWE",  name: "Oriental Weavers"                },
-  { yahoo: "GTHE.CA",  symbol: "GTHE",  name: "Ghazl El Mahalla"                },
-  // Automotive
-  { yahoo: "GAMA.CA",  symbol: "GAMA",  name: "Ghabbour Auto"                   },
+  { yahoo: "ORWE.CA",  symbol: "ORWE",  name: "Oriental Weavers"                    },
   // Education
-  { yahoo: "CIRA.CA",  symbol: "CIRA",  name: "CIRA Education"                  },
-  // Tourism
-  { yahoo: "EGTS.CA",  symbol: "EGTS",  name: "Egyptian Resorts Company"        },
+  { yahoo: "CIRA.CA",  symbol: "CIRA",  name: "CIRA Education"                      },
   // Transportation
-  { yahoo: "ACGC.CA",  symbol: "ACGC",  name: "Alexandria Container & Cargo"    },
-  // Insurance / Other
-  { yahoo: "EGYI.CA",  symbol: "EGYI",  name: "Egyptian Takaful - Property"     },
-  { yahoo: "GLNA.CA",  symbol: "GLNA",  name: "GlassEgypt"                      },
+  { yahoo: "ALCN.CA",  symbol: "ALCN",  name: "Alexandria Container & Cargo"        },
 ];
 
 // ─── Global stock ticker list — 8 symbols, fits Twelve Data free tier (8 credits/min) ───

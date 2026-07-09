@@ -1,0 +1,52 @@
+| Ticker | Company                                                            |
+| ------ | ------------------------------------------------------------------ |
+| AALR   | General Company for Land Reclamation, Development & Reconstruction |
+| ABUK   | Abu Qir Fertilizers & Chemical Industries                          |
+| ACAMD  | Arab Co. for Asset Management & Development                        |
+| ACAP   | A Capital Holding                                                  |
+| ACGC   | Arab Cotton Ginning                                                |
+| ACRO   | Acrow Misr                                                         |
+| ACTF   | Act Financial                                                      |
+| ADCI   | Alexandria Pharmaceuticals                                         |
+| ADIB   | Abu Dhabi Islamic Bank Egypt                                       |
+| ADPC   | Arab Dairy Products (Panda)                                        |
+| AFDI   | Al Ahly Development & Investment                                   |
+| AFMC   | Alexandria Flour Mills                                             |
+| AIDC   | Arabia Investments Holding                                         |
+| AIFI   | Atlas for Investment & Food Industries                             |
+| AIHC   | Arabia Investments Holding                                         |
+| AJWA   | AJWA for Food Industries Egypt                                     |
+| ALCN   | Alexandria Container & Cargo Handling                              |
+| ALEX   | Alexandria Cement                                                  |
+| ALUM   | Arab Aluminium                                                     |
+| AMER   | Amer Group Holding                                                 |
+| AMES   | Alexandria New Medical Center                                      |
+| AMIA   | Arab Moltaqa Investments                                           |
+| AMOC   | Alexandria Mineral Oils Company                                    |
+| AMPI   | MDP / Mena Investment & Technology                                 |
+| APPC   | Advanced Pharmaceutical Packaging                                  |
+| APSW   | Arab Polvara Spinning & Weaving                                    |
+| ARAB   | Arab Developers Holding                                            |
+| ARCC   | Arabian Cement Company                                             |
+| AREH   | Egyptian Real Estate Group                                         |
+| ARVA   | Arab Valves Company                                                |
+| ASCM   | ASCOM Mining                                                       |
+| ASPI   | Aspire Capital Holding                                             |
+| ATLC   | Al Tawfeek Leasing                                                 |
+| BINV   | B Investments Holding                                              |
+| BIOC   | BioGeneric Pharma                                                  |
+| BTFH   | Beltone Holding                                                    |
+| CANA   | Canal Shipping Agencies                                            |
+| CERA   | Ceramica Remas                                                     |
+| CFIN   | Contact Financial Holding                                          |
+| CICH   | CI Capital Holding                                                 |
+| CIEB   | Crédit Agricole Egypt                                              |
+| CNFN   | CONCRETE Fashion Group                                             |
+| COMI   | Commercial International Bank (CIB)                                |
+| COPR   | Copper for Commercial Investment                                   |
+| COSG   | Cairo Oils & Soap                                                  |
+| DCRC   | Delta Construction & Rebuilding                                    |
+| DOMT   | Domty                                                              |
+| DSCW   | Dice Sport & Casual Wear                                           |
+| ECAP   | El Ezz Ceramics & Porcelain (Gemma)                                |
+| EDAF   | East Delta Flour Mills                                             |
