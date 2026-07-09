@@ -486,45 +486,53 @@ async function fetchTickersViaSpark(
   });
 }
 
-// ─── EGX via YF v8/finance/chart (one request per symbol, works from server) ──
-// query2.finance.yahoo.com + v8/chart is not IP-blocked on Replit shared infra.
+// ─── EGX via TradingView Egypt scanner ────────────────────────────────────────
+// Single POST returns all EGX stocks at once; returns correct exchange prices.
+// columns: [close, change_abs, change%, volume]
 
-async function fetchEGXViaChart(): Promise<EGXStockResponse[]> {
-  const YF_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
+  const tickers = EGX_TICKERS.map(t => t.symbol);
+  const body = JSON.stringify({
+    columns: ["close", "change_abs", "change", "volume"],
+    filter: [{ left: "name", operation: "in_range", right: tickers }],
+    sort: { sortBy: "name", sortOrder: "asc" },
+    range: [0, tickers.length + 5],
+  });
 
-  const results = await Promise.allSettled(
-    EGX_TICKERS.map(async t => {
-      const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t.yahoo)}?range=1d&interval=1d`;
-      const res = await safeFetch(url, { headers: { 'User-Agent': YF_UA, Accept: 'application/json' } });
-      if (!res?.ok) throw new Error(`chart ${res?.status}`);
-      const data = await res.json() as any;
-      const meta = data?.chart?.result?.[0]?.meta;
-      if (!meta?.regularMarketPrice) throw new Error('no price');
-      const price    = round2(meta.regularMarketPrice);
-      const prevClose = round2(meta.chartPreviousClose ?? 0);
-      const change   = prevClose > 0 ? round2(price - prevClose) : 0;
-      const changePct = prevClose > 0 ? round2((change / prevClose) * 100) : 0;
-      return { symbol: t.symbol, name: t.name, price, previousClose: prevClose, change, changePercent: changePct };
-    })
-  );
+  const res = await safeFetch("https://scanner.tradingview.com/egypt/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
+    body,
+  });
+  if (!res?.ok) throw new Error(`TV scanner ${res?.status}`);
 
-  const stocks: EGXStockResponse[] = [];
-  for (const r of results) {
-    if (r.status === 'fulfilled') stocks.push(r.value);
-  }
-  return stocks;
+  const data = await res.json() as { data: Array<{ s: string; d: [number, number, number, number] }> };
+  if (!data?.data?.length) throw new Error("TV scanner: empty");
+
+  // s is "EGX:COMI" — strip the prefix
+  const bySymbol = new Map(data.data.map(item => {
+    const sym = item.s.replace(/^EGX:/, "");
+    const [close, changeAbs, changePct] = item.d;
+    return [sym, { price: round2(close), previousClose: round2(close - changeAbs), change: round2(changeAbs), changePercent: round2(changePct) }];
+  }));
+
+  return EGX_TICKERS.map(t => {
+    const q = bySymbol.get(t.symbol);
+    if (!q || !q.price) return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
+    return { symbol: t.symbol, name: t.name, ...q };
+  });
 }
 
 async function fetchStocks(): Promise<EGXStockResponse[]> {
-  // 1. YF v8 chart — works from server (not IP-blocked like v7)
+  // 1. TradingView Egypt scanner — single request, correct prices, works from server
   try {
-    const data = await fetchEGXViaChart();
+    const data = await fetchEGXViaTradingView();
     if (data.some(s => s.price > 0)) {
-      logger.info({ count: data.length }, "EGX stocks via YF v8 chart");
+      logger.info({ count: data.length }, "EGX stocks via TradingView scanner");
       return data;
     }
   } catch (err) {
-    logger.warn({ err }, "EGX: v8 chart failed");
+    logger.warn({ err }, "EGX: TradingView scanner failed");
   }
 
   // 2. YF spark fallback
