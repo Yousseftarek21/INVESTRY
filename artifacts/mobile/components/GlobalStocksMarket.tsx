@@ -145,7 +145,7 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
             ${stock.price.toFixed(2)}
           </Text>
           <View style={[sc.changeBadge, { backgroundColor: changeColor + '15' }]}>
-            <View style={[sc.changeDot, { backgroundColor: changeColor }]} />
+            <Text style={[sc.changeArrow, { color: changeColor }]}>{isPos ? '▲' : '▼'}</Text>
             <Text style={[sc.changeTxt, { color: changeColor }]}>
               {isPos ? '+' : ''}{stock.changePercent.toFixed(2)}%
             </Text>
@@ -184,7 +184,7 @@ const sc = StyleSheet.create({
   priceCol: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
   price: { fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
   changeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
-  changeDot: { width: 6, height: 6, borderRadius: 3 },
+  changeArrow: { fontSize: 9, lineHeight: 13 },
   changeTxt: { fontSize: 11, fontFamily: 'Inter_700Bold' },
   changeAbs: { fontSize: 10, fontFamily: 'Inter_500Medium' },
   meta: {
