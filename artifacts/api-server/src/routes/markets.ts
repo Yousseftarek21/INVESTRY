@@ -393,24 +393,50 @@ async function fetchUsdToEgp(): Promise<number> {
   return FALLBACK_EGP;
 }
 
-// ─── FX cross rates (floating currencies vs EGP) ─────────────────────────────
-// Uses open.er-api.com (free, no key) which returns USD-based rates.
-// EGP per 1 unit of each currency = usdToEgp / rates[sym]
+// ─── FX cross rates via Wise (same source as USD/EGP) ────────────────────────
+// Primary: Wise live mid-market rates for each currency pair directly vs EGP.
+// Fallback: open.er-api.com cross-rates for any pair Wise doesn't return.
 
 const FX_SYMBOLS = ['EUR', 'GBP', 'TRY', 'CNY', 'CHF', 'QAR', 'SAR', 'AED', 'KWD'] as const;
 
 interface ErApiFullResponse { rates: Record<string, number> }
 
 async function fetchFxCrossRates(usdToEgp: number): Promise<Record<string, number>> {
-  const er = await safeJson<ErApiFullResponse>(
-    await safeFetch("https://open.er-api.com/v6/latest/USD")
+  // Fetch all pairs from Wise in parallel — same endpoint used for USD/EGP
+  const settled = await Promise.allSettled(
+    FX_SYMBOLS.map(async sym => {
+      const data = await safeJson<WiseRateResponse>(
+        await safeFetch(`https://wise.com/rates/live?source=${sym}&target=EGP`)
+      );
+      return { sym, value: data?.value ?? null };
+    })
   );
-  const raw = er?.rates ?? {};
+
   const out: Record<string, number> = {};
-  for (const sym of FX_SYMBOLS) {
-    const r = raw[sym];
-    if (r && r > 0) out[sym] = Math.round((usdToEgp / r) * 10000) / 10000;
+  const missing: string[] = [];
+
+  for (const r of settled) {
+    if (r.status === 'fulfilled' && r.value.value && r.value.value > 0) {
+      out[r.value.sym] = Math.round(r.value.value * 10000) / 10000;
+      logger.info({ sym: r.value.sym, rate: r.value.value }, `FX from Wise`);
+    } else {
+      if (r.status === 'fulfilled') missing.push(r.value.sym);
+    }
   }
+
+  // Fallback to open.er-api.com for any pair Wise didn't return
+  if (missing.length > 0) {
+    logger.warn({ missing }, "FX Wise fallback to open.er-api.com for some pairs");
+    const er = await safeJson<ErApiFullResponse>(
+      await safeFetch("https://open.er-api.com/v6/latest/USD")
+    );
+    const raw = er?.rates ?? {};
+    for (const sym of missing) {
+      const r = raw[sym];
+      if (r && r > 0) out[sym] = Math.round((usdToEgp / r) * 10000) / 10000;
+    }
+  }
+
   return out;
 }
 
