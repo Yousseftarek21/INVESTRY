@@ -487,16 +487,16 @@ async function fetchTickersViaSpark(
 }
 
 // ─── EGX via TradingView Egypt scanner ────────────────────────────────────────
-// Single POST returns all EGX stocks at once; returns correct exchange prices.
+// No filter — fetches ALL 292 EGX stocks in one request.
 // columns: [close, change_abs, change%, volume]
 
+const EGX_NAMES: Record<string, string> = Object.fromEntries(EGX_TICKERS.map(t => [t.symbol, t.name]));
+
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
-  const tickers = EGX_TICKERS.map(t => t.symbol);
   const body = JSON.stringify({
     columns: ["close", "change_abs", "change", "volume"],
-    filter: [{ left: "name", operation: "in_range", right: tickers }],
     sort: { sortBy: "name", sortOrder: "asc" },
-    range: [0, tickers.length + 5],
+    range: [0, 300],
   });
 
   const res = await safeFetch("https://scanner.tradingview.com/egypt/scan", {
@@ -509,17 +509,17 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   const data = await res.json() as { data: Array<{ s: string; d: [number, number, number, number] }> };
   if (!data?.data?.length) throw new Error("TV scanner: empty");
 
-  // s is "EGX:COMI" — strip the prefix
-  const bySymbol = new Map(data.data.map(item => {
+  return data.data.map(item => {
     const sym = item.s.replace(/^EGX:/, "");
     const [close, changeAbs, changePct] = item.d;
-    return [sym, { price: round2(close), previousClose: round2(close - changeAbs), change: round2(changeAbs), changePercent: round2(changePct) }];
-  }));
-
-  return EGX_TICKERS.map(t => {
-    const q = bySymbol.get(t.symbol);
-    if (!q || !q.price) return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
-    return { symbol: t.symbol, name: t.name, ...q };
+    return {
+      symbol:        sym,
+      name:          EGX_NAMES[sym] ?? sym,
+      price:         round2(close),
+      previousClose: round2(close - changeAbs),
+      change:        round2(changeAbs),
+      changePercent: round2(changePct),
+    };
   });
 }
 
