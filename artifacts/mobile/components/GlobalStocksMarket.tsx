@@ -270,10 +270,10 @@ function USMarketStatusBanner() {
   }, [session]);
 
   const accent =
-    session === 'open'  ? colors.green        :
-    session === 'pre'   ? '#F59E0B'            :
-    session === 'post'  ? '#F97316'            :
-    colors.mutedForeground;
+    session === 'open'  ? colors.green :
+    session === 'pre'   ? '#F59E0B'    :
+    session === 'post'  ? '#F97316'    :
+    '#EF4444';
 
   return (
     <View style={[umb.banner, { backgroundColor: colors.card, borderColor: colors.border }]}>
