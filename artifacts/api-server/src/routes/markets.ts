@@ -486,7 +486,48 @@ async function fetchTickersViaSpark(
   });
 }
 
+// ─── EGX via YF v8/finance/chart (one request per symbol, works from server) ──
+// query2.finance.yahoo.com + v8/chart is not IP-blocked on Replit shared infra.
+
+async function fetchEGXViaChart(): Promise<EGXStockResponse[]> {
+  const YF_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+
+  const results = await Promise.allSettled(
+    EGX_TICKERS.map(async t => {
+      const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t.yahoo)}?range=1d&interval=1d`;
+      const res = await safeFetch(url, { headers: { 'User-Agent': YF_UA, Accept: 'application/json' } });
+      if (!res?.ok) throw new Error(`chart ${res?.status}`);
+      const data = await res.json() as any;
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (!meta?.regularMarketPrice) throw new Error('no price');
+      const price    = round2(meta.regularMarketPrice);
+      const prevClose = round2(meta.chartPreviousClose ?? 0);
+      const change   = prevClose > 0 ? round2(price - prevClose) : 0;
+      const changePct = prevClose > 0 ? round2((change / prevClose) * 100) : 0;
+      return { symbol: t.symbol, name: t.name, price, previousClose: prevClose, change, changePercent: changePct };
+    })
+  );
+
+  const stocks: EGXStockResponse[] = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled') stocks.push(r.value);
+  }
+  return stocks;
+}
+
 async function fetchStocks(): Promise<EGXStockResponse[]> {
+  // 1. YF v8 chart — works from server (not IP-blocked like v7)
+  try {
+    const data = await fetchEGXViaChart();
+    if (data.some(s => s.price > 0)) {
+      logger.info({ count: data.length }, "EGX stocks via YF v8 chart");
+      return data;
+    }
+  } catch (err) {
+    logger.warn({ err }, "EGX: v8 chart failed");
+  }
+
+  // 2. YF spark fallback
   return fetchTickersViaSpark(EGX_TICKERS, "EGX stocks");
 }
 
