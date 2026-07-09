@@ -261,8 +261,8 @@ function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => voi
 
       <View style={[zk.assetList, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {[
-          { label: 'Gold Holdings', value: goldWealth, icon: 'award' as const, color: colors.primary },
-          { label: 'Silver Holdings', value: silverWealth, icon: 'circle' as const, color: colors.silverColor },
+          { label: 'Gold', value: goldWealth, icon: 'award' as const, color: colors.primary },
+          { label: 'Silver', value: silverWealth, icon: 'circle' as const, color: colors.silverColor },
         ].map((item, i) => (
           <View key={i} style={[zk.assetRow, i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
             <View style={[zk.assetIcon, { backgroundColor: item.color + '18' }]}>

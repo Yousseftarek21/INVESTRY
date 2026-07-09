@@ -986,7 +986,7 @@ export default function SettingsScreen() {
           </View>
           <Div />
           <NavRow icon="trending-up" iconBg="#6366F1"   label="Performance Calculation" value="FIFO"
-            onPress={() => showModal('Performance Calculation', 'Gain/loss is calculated using First-In, First-Out (FIFO): each holding\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
+            onPress={() => showModal('Performance Calculation', 'Gain/loss is calculated using First-In, First-Out (FIFO): each investment\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
         </Sect>
 
         {/* ── SECURITY ─────────────────────────────────────── */}
@@ -1022,7 +1022,7 @@ export default function SettingsScreen() {
         {/* ── SUPPORT ──────────────────────────────────────── */}
         <Sect label="SUPPORT">
           <NavRow icon="help-circle" iconBg="#0EA5E9" label="Help Center" onPress={() =>
-            showModal('Help Center', 'INVESTRY tracks your gold, silver, EGX stocks, and real estate in one place.\n\n• Pull down to refresh prices\n• Tap + on the Investments tab to add a holding\n• Swipe left on a holding to delete it\n• Toggle Arabic in Settings → Language & Region\n\nFor support: support@investry.app')} />
+            showModal('Help Center', 'INVESTRY tracks your gold, silver, EGX stocks, and real estate in one place.\n\n• Pull down to refresh prices\n• Tap + on the Investments tab to add an investment\n• Swipe left on an investment to delete it\n• Toggle Arabic in Settings → Language & Region\n\nFor support: support@investry.app')} />
           <NavRow icon="mail"   iconBg="#10B981" label="Contact Support"    onPress={() => openURL('mailto:support@investry.app?subject=INVESTRY Support')} />
           <NavRow icon="flag"   iconBg="#F59E0B" label="Report a Bug"       onPress={() => openURL(`mailto:bugs@investry.app?subject=Bug Report — INVESTRY v${APP_VERSION}`)} />
           <NavRow icon="edit-2" iconBg="#8B5CF6" label="Request a Feature"  onPress={() => openURL('mailto:feedback@investry.app?subject=Feature Request')} />

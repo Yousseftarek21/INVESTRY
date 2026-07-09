@@ -183,8 +183,8 @@ const en = {
   tapToAddCash: 'Tap + to add your first cash account',
   deleteCashAccount: 'Delete Cash Account',
   deleteCashAccountConfirm: 'Are you sure you want to delete this cash account?',
-  deleteHolding: 'Delete Holding',
-  deleteHoldingConfirm: 'Are you sure you want to delete this holding? This cannot be undone.',
+  deleteHolding: 'Delete Investment',
+  deleteHoldingConfirm: 'Are you sure you want to delete this investment? This cannot be undone.',
   delete: 'Delete',
   cancel: 'Cancel',
 
