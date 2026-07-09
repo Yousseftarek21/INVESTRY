@@ -250,6 +250,29 @@ const sk = StyleSheet.create({
   card: { height: 78, borderRadius: 16, borderWidth: 1, marginBottom: 8 },
 });
 
+// ─── Timezone helpers ─────────────────────────────────────────────────────────
+// Egypt is always UTC+2. US Eastern is EDT (UTC-4) Mar 2nd-Sun → Nov 1st-Sun, else EST (UTC-5).
+// Cairo is +6h ahead of EDT, +7h ahead of EST.
+
+function isUSOnEDT(d: Date = new Date()): boolean {
+  const y = d.getFullYear();
+  const mar1 = new Date(y, 2, 1);
+  const edtStart = new Date(y, 2, 8 + (7 - mar1.getDay()) % 7);
+  const nov1 = new Date(y, 10, 1);
+  const edtEnd = new Date(y, 10, (7 - nov1.getDay()) % 7 + 1);
+  return d >= edtStart && d < edtEnd;
+}
+
+// Returns NYSE/NASDAQ session hours in Cairo time (e.g. "15:30–22:00 Cairo")
+function nyseHoursInCairo(): string {
+  const edt = isUSOnEDT();
+  return edt ? '15:30–22:00 Cairo' : '16:30–23:00 Cairo';
+}
+
+function etLabel(): string {
+  return isUSOnEDT() ? 'EDT' : 'EST';
+}
+
 // ─── US Market Status Banner ──────────────────────────────────────────────────
 
 function USMarketStatusBanner() {
@@ -286,7 +309,8 @@ function USMarketStatusBanner() {
       </View>
       <View style={umb.right}>
         <Text style={[umb.flag, { color: colors.mutedForeground }]}>🇺🇸 NYSE · NASDAQ</Text>
-        <Text style={[umb.schedule, { color: colors.mutedForeground }]}>Mon–Fri · 9:30–16:00</Text>
+        <Text style={[umb.schedule, { color: colors.mutedForeground }]}>Mon–Fri · 9:30–16:00 {etLabel()}</Text>
+        <Text style={[umb.scheduleCairo, { color: colors.mutedForeground }]}>{nyseHoursInCairo()}</Text>
       </View>
     </View>
   );
@@ -297,14 +321,15 @@ const umb = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1,
     gap: 8,
   },
-  left:     { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
-  textWrap: { flex: 1, minWidth: 0 },
-  dot:      { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  label:    { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  sub:      { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  right:    { alignItems: 'flex-end', gap: 2, flexShrink: 0 },
-  flag:     { fontSize: 10, fontFamily: 'Inter_500Medium' },
-  schedule: { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  left:          { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
+  textWrap:      { flex: 1, minWidth: 0 },
+  dot:           { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  label:         { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  sub:           { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  right:         { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
+  flag:          { fontSize: 10, fontFamily: 'Inter_500Medium' },
+  schedule:      { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  scheduleCairo: { fontSize: 8, fontFamily: 'Inter_400Regular', opacity: 0.6 },
 });
 
 // ─── Main GlobalStocksMarket Component ────────────────────────────────────────

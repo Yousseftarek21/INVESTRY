@@ -35,6 +35,7 @@ interface MarketPricesResponse {
   silverChangePercent: number;
   goldEgpPerGram: Record<string, number>;
   silverEgpPerGram: number;
+  fxRates: Record<string, number>;
   lastUpdated: string;
   sources: string[];
 }
@@ -397,6 +398,27 @@ async function fetchUsdToEgp(): Promise<number> {
   return FALLBACK_EGP;
 }
 
+// ─── FX cross rates (floating currencies vs EGP) ─────────────────────────────
+// Uses open.er-api.com (free, no key) which returns USD-based rates.
+// EGP per 1 unit of each currency = usdToEgp / rates[sym]
+
+const FX_SYMBOLS = ['EUR', 'GBP', 'TRY', 'CNY', 'CHF', 'QAR', 'SAR', 'AED', 'KWD'] as const;
+
+interface ErApiFullResponse { rates: Record<string, number> }
+
+async function fetchFxCrossRates(usdToEgp: number): Promise<Record<string, number>> {
+  const er = await safeJson<ErApiFullResponse>(
+    await safeFetch("https://open.er-api.com/v6/latest/USD")
+  );
+  const raw = er?.rates ?? {};
+  const out: Record<string, number> = {};
+  for (const sym of FX_SYMBOLS) {
+    const r = raw[sym];
+    if (r && r > 0) out[sym] = Math.round((usdToEgp / r) * 10000) / 10000;
+  }
+  return out;
+}
+
 // ─── Assemble prices ──────────────────────────────────────────────────────────
 
 async function fetchPrices(): Promise<MarketPricesResponse> {
@@ -435,6 +457,10 @@ async function fetchPrices(): Promise<MarketPricesResponse> {
 
   const sources: string[] = latest ? ["commoditypriceapi.com"] : ["fallback"];
 
+  // Fetch FX cross rates in parallel with the existing requests would be
+  // ideal, but usdToEgp must be known first to compute EGP-based rates.
+  const fxRates = await fetchFxCrossRates(usdToEgp);
+
   return {
     goldUsd:             round2(goldUsd),
     silverUsd:           round2(silverUsd),
@@ -445,6 +471,7 @@ async function fetchPrices(): Promise<MarketPricesResponse> {
     silverChangePercent: silverChangePct,
     goldEgpPerGram,
     silverEgpPerGram,
+    fxRates,
     lastUpdated: new Date().toISOString(),
     sources,
   };

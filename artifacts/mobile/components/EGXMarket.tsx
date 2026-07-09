@@ -9,6 +9,26 @@ import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data
 import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 
+// ─── Timezone helpers ─────────────────────────────────────────────────────────
+// Egypt is always UTC+2 (no DST since 2011).
+// US Eastern uses EDT (UTC-4) from 2nd Sunday of March to 1st Sunday of November,
+// and EST (UTC-5) otherwise. Cairo is UTC+2, so offset from ET = +6 (EDT) or +7 (EST).
+
+function isUSOnEDT(d: Date = new Date()): boolean {
+  const y = d.getFullYear();
+  const mar1 = new Date(y, 2, 1);
+  const edtStart = new Date(y, 2, 8 + (7 - mar1.getDay()) % 7);
+  const nov1 = new Date(y, 10, 1);
+  const edtEnd = new Date(y, 10, (7 - nov1.getDay()) % 7 + 1);
+  return d >= edtStart && d < edtEnd;
+}
+
+// Returns EGX session hours converted to US ET string (e.g. "04:00–08:30 EDT")
+function egxHoursInET(): string {
+  const edt = isUSOnEDT();
+  return edt ? '04:00–08:30 EDT' : '03:00–07:30 EST';
+}
+
 // ─── Market Status Banner ─────────────────────────────────────────────────────
 
 function MarketStatusBanner() {
@@ -45,7 +65,8 @@ function MarketStatusBanner() {
       </View>
       <View style={mst.right}>
         <Text style={[mst.flag, { color: colors.mutedForeground }]}>🇪🇬 Egyptian Exchange</Text>
-        <Text style={[mst.schedule, { color: colors.mutedForeground }]}>Sun–Thu · 10:00–14:30</Text>
+        <Text style={[mst.schedule, { color: colors.mutedForeground }]}>Sun–Thu · 10:00–14:30 Cairo</Text>
+        <Text style={[mst.scheduleET, { color: colors.mutedForeground }]}>{egxHoursInET()}</Text>
       </View>
     </View>
   );
@@ -59,9 +80,10 @@ const mst = StyleSheet.create({
   dot: { width: 9, height: 9, borderRadius: 5 },
   label: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   sub: { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  right: { alignItems: 'flex-end', gap: 2 },
+  right: { alignItems: 'flex-end', gap: 1 },
   flag: { fontSize: 11, fontFamily: 'Inter_500Medium' },
   schedule: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  scheduleET: { fontSize: 9, fontFamily: 'Inter_400Regular', opacity: 0.6 },
 });
 
 // ─── Search Bar ───────────────────────────────────────────────────────────────

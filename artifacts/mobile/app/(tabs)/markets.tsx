@@ -380,22 +380,39 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
 }
 
 function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['data'] }) {
-  const usd = prices ? prices.usdToEgp : 0;
-  const sar = prices ? usd / 3.75    : 0;
-  const aed = prices ? usd / 3.6725  : 0;
-  const kwd = prices ? usd * 3.25    : 0;
+  const usd = prices?.usdToEgp ?? 0;
+  const fx  = prices?.fxRates  ?? {};
+
+  // Gulf pegged currencies: fall back to derived rate if live FX not available
+  const sar = fx.SAR ?? (usd / 3.75);
+  const aed = fx.AED ?? (usd / 3.6725);
+  const kwd = fx.KWD ?? (usd * 3.25);
+  const qar = fx.QAR ?? (usd / 3.64);
+
+  // Floating currencies from live FX rates
+  const eur = fx.EUR ?? 0;
+  const gbp = fx.GBP ?? 0;
+  const try_ = fx.TRY ?? 0;
+  const cny = fx.CNY ?? 0;
+
+  const hasLiveFx = eur > 0;
 
   return (
     <View style={tab.group}>
       <View style={tab.section}>
         <SLabel icon="dollar-sign" title="EXCHANGE RATES vs. EGP" />
         <TableCard>
-          <CurrencyRow flag="🇺🇸" name="US Dollar"     pair="USD / EGP" rate={usd} unit="EGP per 1 USD" isLive />
-          <CurrencyRow flag="🇸🇦" name="Saudi Riyal"   pair="SAR / EGP" rate={sar} unit="EGP per 1 SAR" isLive />
-          <CurrencyRow flag="🇦🇪" name="UAE Dirham"    pair="AED / EGP" rate={aed} unit="EGP per 1 AED" isLive />
-          <CurrencyRow flag="🇰🇼" name="Kuwaiti Dinar" pair="KWD / EGP" rate={kwd} unit="EGP per 1 KWD" isLast isLive />
+          <CurrencyRow flag="🇺🇸" name="US Dollar"     pair="USD / EGP" rate={usd}  unit="EGP per 1 USD" isLive />
+          <CurrencyRow flag="🇪🇺" name="Euro"           pair="EUR / EGP" rate={eur}  unit="EGP per 1 EUR" isLive={hasLiveFx} />
+          <CurrencyRow flag="🇬🇧" name="British Pound"  pair="GBP / EGP" rate={gbp}  unit="EGP per 1 GBP" isLive={hasLiveFx} />
+          <CurrencyRow flag="🇸🇦" name="Saudi Riyal"    pair="SAR / EGP" rate={sar}  unit="EGP per 1 SAR" isLive />
+          <CurrencyRow flag="🇦🇪" name="UAE Dirham"     pair="AED / EGP" rate={aed}  unit="EGP per 1 AED" isLive />
+          <CurrencyRow flag="🇰🇼" name="Kuwaiti Dinar"  pair="KWD / EGP" rate={kwd}  unit="EGP per 1 KWD" isLive />
+          <CurrencyRow flag="🇶🇦" name="Qatari Riyal"   pair="QAR / EGP" rate={qar}  unit="EGP per 1 QAR" isLive />
+          <CurrencyRow flag="🇹🇷" name="Turkish Lira"   pair="TRY / EGP" rate={try_} unit="EGP per 1 TRY" isLive={hasLiveFx} />
+          <CurrencyRow flag="🇨🇳" name="Chinese Yuan"   pair="CNY / EGP" rate={cny}  unit="EGP per 1 CNY" isLast isLive={hasLiveFx} />
         </TableCard>
-        <Text style={tab.note}>SAR, AED, KWD rates are derived from the live USD/EGP rate.</Text>
+        <Text style={tab.note}>USD rate is live. EUR, GBP, TRY, CNY are cross-rates via open.er-api.com · SAR, AED, QAR, KWD derived from peg.</Text>
       </View>
     </View>
   );

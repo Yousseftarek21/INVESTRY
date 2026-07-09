@@ -19,6 +19,10 @@ const FALLBACK: MarketPrices = {
   silverChange: 0,
   silverChangePercent: 0,
   lastUpdated: new Date(),
+  fxRates: {
+    EUR: 55.5, GBP: 65.0, TRY: 1.55, CNY: 7.05,
+    CHF: 57.5, QAR: 14.0, SAR: 13.6, AED: 13.9, KWD: 166.0,
+  },
 };
 
 const EGX_FALLBACK: EGXStock[] = [
@@ -104,6 +108,7 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
       silverChange:       data.silverChange        ?? 0,
       silverChangePercent: data.silverChangePercent ?? 0,
       lastUpdated: data.lastUpdated ? new Date(data.lastUpdated) : new Date(),
+      fxRates: data.fxRates ?? FALLBACK.fxRates,
     };
   } catch {
     // API server unreachable — fall through to direct CORS-open sources
