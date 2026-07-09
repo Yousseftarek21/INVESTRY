@@ -888,7 +888,9 @@ export default function SettingsScreen() {
         <Sect label="ACCOUNT & SECURITY">
           <NavRow icon="lock"    iconBg="#1D4ED8" label="Change Password"    onPress={() => showModal('Change Password', 'To change your password, sign out and use "Forgot Password" on the sign-in screen. Password management is handled securely by Clerk authentication.')} />
           <NavRow icon="link"    iconBg="#6366F1" label="Connected Accounts" value="Beta"
-            onPress={() => showModal('Connected Accounts', 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments. This feature is currently in beta testing.')} last />
+            onPress={() => showModal('Connected Accounts', 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments. This feature is currently in beta testing.')} />
+          <Div />
+          <ToggleRow icon="lock" iconBg="#6366F1" label="Biometric Lock" sublabel="Require Face ID or Touch ID on launch" value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last />
         </Sect>
 
         {/* ── APPEARANCE ───────────────────────────────────── */}
@@ -987,11 +989,6 @@ export default function SettingsScreen() {
           <Div />
           <NavRow icon="trending-up" iconBg="#6366F1"   label="Performance Calculation" value="FIFO"
             onPress={() => showModal('Performance Calculation', 'Gain/loss is calculated using First-In, First-Out (FIFO): each investment\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
-        </Sect>
-
-        {/* ── SECURITY ─────────────────────────────────────── */}
-        <Sect label="SECURITY">
-          <ToggleRow icon="lock" iconBg="#6366F1" label="Biometric Lock" sublabel="Require Face ID or Touch ID on launch" value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last />
         </Sect>
 
         {/* ── NOTIFICATIONS ────────────────────────────────── */}
