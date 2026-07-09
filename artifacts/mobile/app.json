@@ -48,11 +48,11 @@
     "experiments": {
       "typedRoutes": true
     },
+    "owner": "investrytest",
     "extra": {
       "eas": {
-        "projectId": "739f2bab-aa1e-418e-9e8b-a382f0f250d1"
+        "projectId": "454ceef6-5c8c-43e2-ae54-614ac212a151"
       }
-    },
-    "owner": "yousseftesting"
+    }
   }
 }
