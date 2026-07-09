@@ -69,3 +69,51 @@ export function searchGlobalCompanies(companies: GlobalCompany[], query: string)
     c.ticker.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
   );
 }
+
+// ─── US Market Session ─────────────────────────────────────────────────────────
+// NYSE / NASDAQ hours (America/New_York):
+//   Pre-market:  04:00–09:30 ET
+//   Regular:     09:30–16:00 ET
+//   After-hours: 16:00–20:00 ET
+//   Closed:      otherwise and weekends
+
+export type USSession = 'pre' | 'open' | 'post' | 'closed';
+
+export function getUSMarketStatus(): {
+  isOpen: boolean;
+  session: USSession;
+  label: string;
+  nextEvent: string;
+} {
+  const et   = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day  = et.getDay(); // 0=Sun, 6=Sat
+  const time = et.getHours() * 60 + et.getMinutes();
+
+  const PRE_START  = 4  * 60;      // 04:00 ET
+  const REG_OPEN   = 9  * 60 + 30; // 09:30 ET
+  const REG_CLOSE  = 16 * 60;      // 16:00 ET
+  const POST_CLOSE = 20 * 60;      // 20:00 ET
+
+  const isWeekday = day >= 1 && day <= 5; // Mon–Fri
+
+  if (isWeekday) {
+    if (time >= PRE_START && time < REG_OPEN) {
+      return { isOpen: false, session: 'pre',  label: 'Pre-Market',  nextEvent: 'Opens at 9:30 AM ET'  };
+    }
+    if (time >= REG_OPEN && time < REG_CLOSE) {
+      return { isOpen: true,  session: 'open', label: 'Open',        nextEvent: 'Closes at 4:00 PM ET' };
+    }
+    if (time >= REG_CLOSE && time < POST_CLOSE) {
+      return { isOpen: false, session: 'post', label: 'After-Hours', nextEvent: 'Closes at 8:00 PM ET' };
+    }
+  }
+
+  let nextEvent: string;
+  if (day === 5 && time >= POST_CLOSE) nextEvent = 'Opens Monday 9:30 AM ET';
+  else if (day === 6)                  nextEvent = 'Opens Monday 9:30 AM ET';
+  else if (day === 0)                  nextEvent = 'Opens Tomorrow 9:30 AM ET';
+  else if (time < PRE_START)           nextEvent = 'Pre-Market at 4:00 AM ET';
+  else                                 nextEvent = 'Opens Tomorrow 9:30 AM ET';
+
+  return { isOpen: false, session: 'closed', label: 'Closed', nextEvent };
+}

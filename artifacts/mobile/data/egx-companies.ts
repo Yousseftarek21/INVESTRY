@@ -150,24 +150,50 @@ export function searchCompanies(query: string): EGXCompany[] {
   );
 }
 
-// EGX trading hours: Sunday–Thursday 10:00–15:30 Cairo time (UTC+2)
-export function getEGXMarketStatus(): { isOpen: boolean; label: string; nextEvent: string } {
-  const cairo = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
-  const day = cairo.getDay(); // 0=Sun, 1=Mon, ..., 4=Thu, 5=Fri, 6=Sat
-  const h = cairo.getHours();
-  const m = cairo.getMinutes();
-  const time = h * 60 + m;
-  const open  = 10 * 60;       // 10:00
-  const close = 15 * 60 + 30;  // 15:30
-  const isWeekday = day >= 0 && day <= 4;
+// EGX trading hours: Sunday–Thursday, Cairo time (Africa/Cairo = UTC+2)
+// Pre-session:  09:30–10:00
+// Regular:      10:00–14:30
+// Post-session: 14:30–15:00
+// Closed: otherwise and Fri–Sat
 
-  if (isWeekday && time >= open && time < close) {
-    return { isOpen: true, label: 'Open', nextEvent: `Closes at 3:30 PM` };
+export type EGXSession = 'pre' | 'open' | 'post' | 'closed';
+
+export function getEGXMarketStatus(): {
+  isOpen: boolean;
+  session: EGXSession;
+  label: string;
+  nextEvent: string;
+} {
+  const cairo = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+  const day  = cairo.getDay(); // 0=Sun … 4=Thu, 5=Fri, 6=Sat
+  const time = cairo.getHours() * 60 + cairo.getMinutes();
+
+  const PRE_START  = 9  * 60 + 30; // 09:30
+  const REG_OPEN   = 10 * 60;      // 10:00
+  const REG_CLOSE  = 14 * 60 + 30; // 14:30
+  const POST_CLOSE = 15 * 60;      // 15:00
+
+  const isWeekday = day >= 0 && day <= 4; // Sun–Thu
+
+  if (isWeekday) {
+    if (time >= PRE_START && time < REG_OPEN) {
+      return { isOpen: false, session: 'pre',  label: 'Pre-Session',  nextEvent: 'Opens at 10:00 AM' };
+    }
+    if (time >= REG_OPEN && time < REG_CLOSE) {
+      return { isOpen: true,  session: 'open', label: 'Open',         nextEvent: 'Closes at 2:30 PM'  };
+    }
+    if (time >= REG_CLOSE && time < POST_CLOSE) {
+      return { isOpen: false, session: 'post', label: 'Post-Session', nextEvent: 'Closes at 3:00 PM'  };
+    }
   }
-  const daysUntilSun = day === 5 ? 1 : day === 6 ? 0 : 0;
-  return {
-    isOpen: false,
-    label: 'Closed',
-    nextEvent: day === 5 ? 'Opens Sunday 10:00 AM' : day === 6 ? 'Opens Tomorrow 10:00 AM' : 'Opens 10:00 AM',
-  };
+
+  // Closed — compute next open message
+  let nextEvent: string;
+  if (day === 4 && time >= POST_CLOSE) nextEvent = 'Opens Sunday 10:00 AM'; // Thu after close
+  else if (day === 5)                  nextEvent = 'Opens Sunday 10:00 AM'; // Fri
+  else if (day === 6)                  nextEvent = 'Opens Tomorrow 10:00 AM'; // Sat → Sun
+  else if (time < PRE_START)           nextEvent = 'Pre-Session at 9:30 AM'; // weekday early
+  else                                 nextEvent = 'Opens Tomorrow 10:00 AM'; // weekday after post
+
+  return { isOpen: false, session: 'closed', label: 'Closed', nextEvent };
 }

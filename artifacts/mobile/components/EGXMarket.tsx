@@ -13,11 +13,11 @@ import { getEGXMarketStatus } from '@/data/egx-companies';
 
 function MarketStatusBanner() {
   const colors = useColors();
-  const { isOpen, label, nextEvent } = getEGXMarketStatus();
+  const { session, label, nextEvent } = getEGXMarketStatus();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (session !== 'open') return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 0.3, duration: 900, useNativeDriver: Platform.OS !== 'web' }),
@@ -26,14 +26,18 @@ function MarketStatusBanner() {
     );
     loop.start();
     return () => loop.stop();
-  }, [isOpen]);
+  }, [session]);
 
-  const accent = isOpen ? colors.green : colors.mutedForeground;
+  const accent =
+    session === 'open'   ? colors.green        :
+    session === 'pre'    ? '#F59E0B'            :
+    session === 'post'   ? '#F97316'            :
+    colors.mutedForeground;
 
   return (
     <View style={[mst.banner, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={mst.left}>
-        <Animated.View style={[mst.dot, { backgroundColor: accent, opacity: isOpen ? pulseAnim : 1 }]} />
+        <Animated.View style={[mst.dot, { backgroundColor: accent, opacity: session === 'open' ? pulseAnim : 1 }]} />
         <View>
           <Text style={[mst.label, { color: accent }]}>EGX {label}</Text>
           <Text style={[mst.sub, { color: colors.mutedForeground }]}>{nextEvent}</Text>
@@ -41,7 +45,7 @@ function MarketStatusBanner() {
       </View>
       <View style={mst.right}>
         <Text style={[mst.flag, { color: colors.mutedForeground }]}>🇪🇬 Cairo Exchange</Text>
-        <Text style={[mst.schedule, { color: colors.mutedForeground }]}>Sun–Thu · 10:00–15:30</Text>
+        <Text style={[mst.schedule, { color: colors.mutedForeground }]}>Sun–Thu · 10:00–14:30</Text>
       </View>
     </View>
   );

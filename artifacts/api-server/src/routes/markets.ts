@@ -128,6 +128,92 @@ const BASE_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
+// ─── Yahoo Finance Session (crumb + cookie) ────────────────────────────────────
+// Yahoo Finance rate-limits unauthenticated API calls from shared IPs.
+// Establishing a session cookie (from fc.yahoo.com) + crumb bypasses this.
+
+interface YFSession { crumb: string; cookie: string; expiresAt: number }
+let _yfSession: YFSession | null = null;
+
+async function getYFSession(): Promise<YFSession | null> {
+  if (_yfSession && Date.now() < _yfSession.expiresAt) return _yfSession;
+
+  try {
+    // Step 1 — fc.yahoo.com issues the A3 session cookie via a redirect response.
+    // Use redirect:'manual' so we can read Set-Cookie before it's consumed.
+    const ctrl1 = new AbortController();
+    const t1 = setTimeout(() => ctrl1.abort(), 8000);
+    const fcRes = await fetch("https://fc.yahoo.com/", {
+      redirect: "manual",
+      headers: {
+        "User-Agent": BASE_HEADERS["User-Agent"],
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: ctrl1.signal,
+    });
+    clearTimeout(t1);
+
+    // Collect Set-Cookie headers (Node 18+ Headers.getSetCookie() returns string[])
+    const rawCookies: string[] =
+      typeof (fcRes.headers as any).getSetCookie === "function"
+        ? (fcRes.headers as any).getSetCookie()
+        : [(fcRes.headers.get("set-cookie") ?? "")];
+
+    let cookie = "";
+    for (const rc of rawCookies) {
+      const m = rc.match(/\b(A3=[^;]+)/);
+      if (m) { cookie = m[1]; break; }
+    }
+    if (!cookie) {
+      for (const rc of rawCookies) {
+        const m = rc.match(/\b(A1=[^;]+)/);
+        if (m) { cookie = m[1]; break; }
+      }
+    }
+    if (!cookie) {
+      logger.warn("YF session: no A3/A1 cookie from fc.yahoo.com");
+      return null;
+    }
+
+    // Step 2 — exchange cookie for a crumb
+    const ctrl2 = new AbortController();
+    const t2 = setTimeout(() => ctrl2.abort(), 8000);
+    const crumbRes = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
+      headers: { ...BASE_HEADERS, Cookie: cookie },
+      signal: ctrl2.signal,
+    });
+    clearTimeout(t2);
+
+    if (!crumbRes.ok) {
+      logger.warn({ status: crumbRes.status }, "YF session: getcrumb failed");
+      return null;
+    }
+    const crumb = (await crumbRes.text()).trim();
+    if (!crumb || crumb.length > 30 || crumb.includes("<")) {
+      logger.warn("YF session: invalid crumb received");
+      return null;
+    }
+
+    _yfSession = { crumb, cookie, expiresAt: Date.now() + 20 * 60_000 }; // 20 min TTL
+    logger.info({ crumbLen: crumb.length }, "YF session established");
+    return _yfSession;
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : err }, "YF session: setup failed");
+    return null;
+  }
+}
+
+/** Build authenticated YF headers (with cookie + crumb appended to URL). */
+function yfAuthHeaders(session: YFSession | null): Record<string, string> {
+  const h: Record<string, string> = { ...BASE_HEADERS };
+  if (session?.cookie) h["Cookie"] = session.cookie;
+  return h;
+}
+function yfCrumbParam(session: YFSession | null): string {
+  return session ? `&crumb=${encodeURIComponent(session.crumb)}` : "";
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function redactUrl(url: string): string {
@@ -367,6 +453,7 @@ async function fetchTickersViaSpark(
   tickers: { yahoo: string; symbol: string; name: string }[],
   logLabel: string
 ): Promise<EGXStockResponse[]> {
+  const session = await getYFSession();
   const batches: { yahoo: string; symbol: string; name: string }[][] = [];
   for (let i = 0; i < tickers.length; i += 10) batches.push(tickers.slice(i, i + 10));
 
@@ -374,8 +461,8 @@ async function fetchTickersViaSpark(
     batches.map(async batch =>
       safeJson<SparkResponse>(
         await safeFetch(
-          `${YF_SPARK_BASE}?symbols=${encodeURIComponent(batch.map(t => t.yahoo).join(","))}&range=5d&interval=1d`,
-          { headers: BASE_HEADERS }
+          `${YF_SPARK_BASE}?symbols=${encodeURIComponent(batch.map(t => t.yahoo).join(","))}&range=5d&interval=1d${yfCrumbParam(session)}`,
+          { headers: yfAuthHeaders(session) }
         )
       )
     )
@@ -416,8 +503,94 @@ async function fetchStocks(): Promise<EGXStockResponse[]> {
   return fetchTickersViaSpark(EGX_TICKERS, "EGX stocks");
 }
 
+/** Fetch US stock quotes via Yahoo Finance v7/finance/quote (authenticated with crumb+cookie). */
+async function fetchGlobalStocksViaQuote(): Promise<EGXStockResponse[]> {
+  const session = await getYFSession();
+  const symbols = GLOBAL_TICKERS.map(t => t.yahoo).join(",");
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&lang=en-US&region=US${yfCrumbParam(session)}`;
+  const res = await safeFetch(url, { headers: yfAuthHeaders(session) });
+  const data = await safeJson<{ quoteResponse: { result: any[] } }>(res, "Global stocks quote");
+  const results: any[] = data?.quoteResponse?.result ?? [];
+  if (results.length === 0) {
+    logger.warn("Global stocks: Yahoo Finance quote returned no data");
+    return [];
+  }
+  const byTicker = new Map<string, any>(results.map((r: any) => [r.symbol as string, r]));
+  return GLOBAL_TICKERS.map(t => {
+    const r = byTicker.get(t.yahoo);
+    if (!r?.regularMarketPrice) {
+      return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
+    }
+    return {
+      symbol: t.symbol, name: t.name,
+      price:         round2(r.regularMarketPrice),
+      previousClose: round2(r.regularMarketPreviousClose ?? 0),
+      change:        round2(r.regularMarketChange ?? 0),
+      changePercent: round2(r.regularMarketChangePercent ?? 0),
+    };
+  });
+}
+
+// ─── Stooq fallback for US stocks (truly free, no API key, different IP allowance) ──
+
+async function fetchGlobalStocksViaStooq(): Promise<EGXStockResponse[]> {
+  // Stooq format: f=sd2t2ohlcv → Symbol,Date,Time,Open,High,Low,Close,Volume
+  // Each symbol needs its own request; run in parallel.
+  const rows = await Promise.all(
+    GLOBAL_TICKERS.map(async t => {
+      const sym = t.yahoo.toLowerCase() + ".us"; // e.g., AAPL → aapl.us
+      const url = `https://stooq.com/q/l/?s=${sym}&f=sd2t2ohlcv&h&e=csv`;
+      const res = await safeFetch(url, {
+        headers: { "User-Agent": BASE_HEADERS["User-Agent"], Accept: "text/csv,text/plain" },
+      });
+      if (!res?.ok) return null;
+      const text = await res.text();
+      const lines = text.trim().split("\n");
+      if (lines.length < 2) return null;
+      const parts = lines[1].split(","); // skip header row
+      // parts: [Symbol, Date, Time, Open, High, Low, Close, Volume]
+      const open  = parseFloat(parts[3]);
+      const close = parseFloat(parts[6]);
+      if (!close || isNaN(close) || close <= 0) return null;
+      const change       = round2(close - open);
+      const changePercent = open > 0 ? round2((change / open) * 100) : 0;
+      return {
+        symbol: t.symbol, name: t.name,
+        price: round2(close), previousClose: round2(open),
+        change, changePercent,
+      } as EGXStockResponse;
+    })
+  );
+  const valid = rows.filter((r): r is EGXStockResponse => r !== null);
+  logger.info({ count: valid.length }, "Global stocks via Stooq");
+  return valid;
+}
+
 async function fetchGlobalStocks(): Promise<EGXStockResponse[]> {
-  return fetchTickersViaSpark(GLOBAL_TICKERS, "Global stocks");
+  // 1. Try YF quote with crumb/cookie (most accurate — regularMarketPrice + proper change%)
+  try {
+    const data = await fetchGlobalStocksViaQuote();
+    if (data.some(s => s.price > 0)) {
+      logger.info("Global stocks via YF quote");
+      return data;
+    }
+  } catch { /* fall through */ }
+
+  // 2. Try YF spark endpoint (second choice)
+  try {
+    const data = await fetchTickersViaSpark(GLOBAL_TICKERS, "Global stocks spark");
+    if (data.some(s => s.price > 0)) return data;
+  } catch { /* fall through */ }
+
+  // 3. Stooq — independent provider, not affected by YF IP blocks
+  try {
+    const data = await fetchGlobalStocksViaStooq();
+    if (data.length > 0) return data;
+  } catch (err) {
+    logger.warn({ err }, "Global stocks: Stooq also failed");
+  }
+
+  return [];
 }
 
 // ─── Gold history (sparkline) ─────────────────────────────────────────────────

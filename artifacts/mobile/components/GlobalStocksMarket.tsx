@@ -6,6 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import {
   GLOBAL_CATEGORIES, GlobalCategory, getCategoryCounts, searchGlobalCompanies, GLOBAL_COMPANIES,
+  getUSMarketStatus,
 } from '@/data/global-stocks';
 import { useGlobalStocks, GlobalStockLive } from '@/hooks/useGlobalStocks';
 
@@ -249,6 +250,61 @@ const sk = StyleSheet.create({
   card: { height: 78, borderRadius: 16, borderWidth: 1, marginBottom: 8 },
 });
 
+// ─── US Market Status Banner ──────────────────────────────────────────────────
+
+function USMarketStatusBanner() {
+  const colors = useColors();
+  const { session, label, nextEvent } = getUSMarketStatus();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (session !== 'open') return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 900, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1,   duration: 900, useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [session]);
+
+  const accent =
+    session === 'open'  ? colors.green        :
+    session === 'pre'   ? '#F59E0B'            :
+    session === 'post'  ? '#F97316'            :
+    colors.mutedForeground;
+
+  return (
+    <View style={[umb.banner, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={umb.left}>
+        <Animated.View style={[umb.dot, { backgroundColor: accent, opacity: session === 'open' ? pulseAnim : 1 }]} />
+        <View>
+          <Text style={[umb.label, { color: accent }]}>NYSE / NASDAQ {label}</Text>
+          <Text style={[umb.sub, { color: colors.mutedForeground }]}>{nextEvent}</Text>
+        </View>
+      </View>
+      <View style={umb.right}>
+        <Text style={[umb.flag, { color: colors.mutedForeground }]}>🇺🇸 US Markets</Text>
+        <Text style={[umb.schedule, { color: colors.mutedForeground }]}>Mon–Fri · 9:30–16:00 ET</Text>
+      </View>
+    </View>
+  );
+}
+const umb = StyleSheet.create({
+  banner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1,
+  },
+  left:     { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dot:      { width: 9, height: 9, borderRadius: 5 },
+  label:    { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  sub:      { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  right:    { alignItems: 'flex-end', gap: 2 },
+  flag:     { fontSize: 11, fontFamily: 'Inter_500Medium' },
+  schedule: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+});
+
 // ─── Main GlobalStocksMarket Component ────────────────────────────────────────
 
 export function GlobalStocksMarket() {
@@ -291,6 +347,8 @@ export function GlobalStocksMarket() {
 
   return (
     <View style={gm.wrap}>
+      <USMarketStatusBanner />
+
       <SearchBar value={query} onChange={handleQuery} />
 
       <CategoryPills active={category} onChange={handleCategory} counts={counts} />
