@@ -75,7 +75,7 @@ const EGX_TICKERS = [
   { yahoo: "TMGH.CA",  symbol: "TMGH",  name: "Talaat Moustafa Group Holding"       },
   { yahoo: "PHDC.CA",  symbol: "PHDC",  name: "Palm Hills Developments"             },
   { yahoo: "MASR.CA",  symbol: "MASR",  name: "Madinet Masr Housing & Development"  },
-  { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "Orascom Development Egypt"           },
+  { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "SODIC"                               },
   { yahoo: "EMFD.CA",  symbol: "EMFD",  name: "Emaar Misr for Development"          },
   { yahoo: "ORHD.CA",  symbol: "ORHD",  name: "Ora Developers Egypt"               },
   { yahoo: "HELI.CA",  symbol: "HELI",  name: "Heliopolis Housing"                  },
