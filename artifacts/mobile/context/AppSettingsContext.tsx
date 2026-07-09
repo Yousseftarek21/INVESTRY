@@ -31,6 +31,8 @@ interface AppSettingsValue {
   setCrashReportsEnabled: (val: boolean) => Promise<void>;
   setHideValues: (val: boolean) => Promise<void>;
   setNotification: (key: keyof NotificationPrefs, val: boolean) => Promise<void>;
+  biometricLock: boolean;
+  setBiometricLock: (val: boolean) => Promise<void>;
   isLoaded: boolean;
 }
 
@@ -43,6 +45,7 @@ const K = {
   crashReports: '@invstry_crash_reports',
   hideValues: '@invstry_hide_values',
   notif: '@invstry_notif',
+  biometric: '@invstry_biometric',
 };
 
 const DEFAULT_NOTIF: NotificationPrefs = {
@@ -64,12 +67,13 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [crashReportsEnabled, setCrashReportsState] = useState(true);
   const [hideValues, setHideValuesState] = useState(false);
   const [notifications, setNotificationsState] = useState<NotificationPrefs>(DEFAULT_NOTIF);
+  const [biometricLock, setBiometricLockState] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [t, l, w, h, a, c, hv, n] = await Promise.all([
+        const [t, l, w, h, a, c, hv, n, bio] = await Promise.all([
           AsyncStorage.getItem(K.theme),
           AsyncStorage.getItem(K.lang),
           AsyncStorage.getItem(K.weight),
@@ -78,6 +82,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
           AsyncStorage.getItem(K.crashReports),
           AsyncStorage.getItem(K.hideValues),
           AsyncStorage.getItem(K.notif),
+          AsyncStorage.getItem(K.biometric),
         ]);
         if (t === 'light' || t === 'dark' || t === 'system') setThemeModeState(t);
         if (l === 'en' || l === 'ar') setLanguageState(l);
@@ -86,6 +91,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         if (a !== null) setAnalyticsState(a === 'true');
         if (c !== null) setCrashReportsState(c === 'true');
         if (hv !== null) setHideValuesState(hv === 'true');
+        if (bio !== null) setBiometricLockState(bio === 'true');
         if (n) {
           try { setNotificationsState({ ...DEFAULT_NOTIF, ...JSON.parse(n) }); } catch { /* use defaults */ }
         }
@@ -143,12 +149,18 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     });
   }, []);
 
+  const setBiometricLock = useCallback(async (val: boolean) => {
+    setBiometricLockState(val);
+    await AsyncStorage.setItem(K.biometric, String(val));
+  }, []);
+
   return (
     <AppSettingsContext.Provider value={{
       themeMode, language, resolvedTheme,
       weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, hideValues, notifications,
       setThemeMode, setLanguage, setWeightUnit,
       setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setHideValues, setNotification,
+      biometricLock, setBiometricLock,
       isLoaded,
     }}>
       {children}

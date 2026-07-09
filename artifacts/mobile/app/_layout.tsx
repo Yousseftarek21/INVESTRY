@@ -21,7 +21,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CustomSplash } from "@/components/CustomSplash";
 import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
-import { AppSettingsProvider } from "@/context/AppSettingsContext";
+import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
+import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -76,6 +77,11 @@ function RootLayoutNav() {
 function NotificationsInitializer() {
   useNotifications();
   return null;
+}
+
+function BiometricWrapper({ children }: { children: React.ReactNode }) {
+  const { biometricLock } = useAppSettings();
+  return <BiometricGate enabled={biometricLock}>{children}</BiometricGate>;
 }
 
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
@@ -135,6 +141,7 @@ export default function RootLayout() {
           <ClerkLoaded>
             <SafeAreaProvider>
               <AppSettingsProvider>
+                <BiometricWrapper>
                 <ErrorBoundary>
                   <QueryClientProvider client={queryClient}>
                     <SubscriptionProvider>
@@ -152,6 +159,7 @@ export default function RootLayout() {
                     </SubscriptionProvider>
                   </QueryClientProvider>
                 </ErrorBoundary>
+                </BiometricWrapper>
               </AppSettingsProvider>
             </SafeAreaProvider>
           </ClerkLoaded>

@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Alert, Animated, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
-  ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
+  ScrollView, Share, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -19,7 +19,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings, ThemeMode, WeightUnit } from '@/context/AppSettingsContext';
 import { useHoldings } from '@/context/HoldingsContext';
-import { useMarketPrices } from '@/hooks/usePrices';
+import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
 import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
 import { PremiumBadge } from '@/components/PremiumBadge';
@@ -665,6 +665,7 @@ export default function SettingsScreen() {
   const { plan, isPro, launchAccess, showPaywall, manageSubscription } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
+    biometricLock, setBiometricLock,
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
   } = useAppSettings();
   const { holdings, removeHolding } = useHoldings();
@@ -699,6 +700,48 @@ export default function SettingsScreen() {
   const handleDeleteAll = () => {
     haptic(Haptics.ImpactFeedbackStyle.Heavy);
     setConfirm({ id: 'delete', title: 'Delete All Data', message: 'Permanently removes all investments and preferences. This cannot be undone.', label: 'Delete Everything', danger: true });
+  };
+
+  const handleExport = async () => {
+    haptic();
+    try {
+      const lines: string[] = ['Type,Name,Details,Current Value (EGP),Cost (EGP),Gain/Loss (EGP)'];
+      for (const h of holdings) {
+        let type = '', name = '', details = '', value = 0, cost = 0;
+        if (h.type === 'gold') {
+          type = 'Gold'; name = `${h.karat.toUpperCase()} Gold`; details = `${h.grams}g ${h.form}`;
+          value = prices ? h.grams * goldPricePerGram(prices, h.karat) : 0;
+          cost = h.grams * h.purchasePricePerGram;
+        } else if (h.type === 'silver') {
+          type = 'Silver'; name = 'Silver'; details = `${h.grams}g ${h.form}`;
+          value = prices ? h.grams * silverPricePerGram(prices) : 0;
+          cost = h.grams * h.purchasePricePerGram;
+        } else if (h.type === 'stock') {
+          type = 'EGX Stock'; name = h.symbol; details = `${h.shares} shares`;
+          value = h.shares * h.purchasePricePerShare; cost = h.shares * h.purchasePricePerShare;
+        } else if (h.type === 'real_estate') {
+          type = 'Real Estate'; name = h.propertyName || h.propertyType; details = h.propertyType;
+          value = h.currentValue; cost = h.purchasePrice;
+        } else if (h.type === 'personal_asset') {
+          type = 'Personal Asset'; name = h.name; details = h.category;
+          const cv = h.currentValue ?? h.purchasePrice;
+          value = h.currency === 'USD' && prices ? cv * prices.usdToEgp : cv;
+          cost = h.currency === 'USD' && prices ? h.purchasePrice * prices.usdToEgp : h.purchasePrice;
+        } else if (h.type === 'fixed_income') {
+          type = 'Fixed Income'; name = h.label || h.institution; details = `${h.annualRate}% ${h.subtype}`;
+          const today = new Date(), pur = new Date(h.purchaseDate), mat = new Date(h.maturityDate);
+          const daysTotal = Math.max(1, (mat.getTime() - pur.getTime()) / 86400000);
+          const daysElapsed = Math.max(0, Math.min(daysTotal, (today.getTime() - pur.getTime()) / 86400000));
+          value = h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
+          cost = h.principal;
+        }
+        lines.push(`${type},"${name}","${details}",${value.toFixed(0)},${cost.toFixed(0)},${(value - cost).toFixed(0)}`);
+      }
+      const date = new Date().toLocaleDateString('en-EG', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      await Share.share({ message: lines.join('\n'), title: `INVESTRY Portfolio — ${date}` });
+    } catch {
+      Alert.alert('Export Failed', 'Could not generate export. Please try again.');
+    }
   };
 
   const handleSignOut = () => {
@@ -948,6 +991,11 @@ export default function SettingsScreen() {
             onPress={() => showModal('Performance Calculation', 'Gain/loss is calculated using First-In, First-Out (FIFO): each holding\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
         </Sect>
 
+        {/* ── SECURITY ─────────────────────────────────────── */}
+        <Sect label="SECURITY">
+          <ToggleRow icon="lock" iconBg="#6366F1" label="Biometric Lock" sublabel="Require Face ID or Touch ID on launch" value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last />
+        </Sect>
+
         {/* ── NOTIFICATIONS ────────────────────────────────── */}
         <Sect label="NOTIFICATIONS">
           <ToggleRow icon="bell"      iconBg="#F59E0B" label="Price Alerts"    sublabel="Gold, silver & FX movements"    value={notifications.priceAlerts}    onChange={v => setNotification('priceAlerts', v)} />
@@ -968,8 +1016,8 @@ export default function SettingsScreen() {
           <ToggleRow icon="zap"          iconBg="#FBBF24" label="Haptic Feedback"   sublabel="Vibration on interactions"               value={hapticsEnabled}   onChange={v => setHapticsEnabled(v)} />
           <NavRow icon="shield"   iconBg="#047857" label="Privacy Settings"  sublabel="Device-level permissions" onPress={() => Linking.openSettings()} />
           <NavRow icon="download" iconBg="#0EA5E9" label="Export My Data"
-            sublabel={`${holdings.length} investment${holdings.length !== 1 ? 's' : ''} ready`}
-            onPress={() => showModal('Export My Data', `You have ${holdings.length} investment${holdings.length !== 1 ? 's' : ''} saved.\n\nFull CSV/JSON export is coming soon in a future update.`)} />
+            sublabel={`${holdings.length} investment${holdings.length !== 1 ? 's' : ''} · CSV`}
+            onPress={handleExport} />
           <NavRow icon="trash-2"  iconBg={colors.red} label="Delete All Data" sublabel="Permanently remove all investments" onPress={handleDeleteAll} destructive last />
         </Sect>
 

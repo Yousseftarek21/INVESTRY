@@ -38,7 +38,7 @@ function computeCurrentValue(holding: Holding, prices?: MarketPrices): number {
   if (!prices) return 0;
   if (holding.type === 'gold') return holding.grams * goldPricePerGram(prices, holding.karat);
   if (holding.type === 'silver') return holding.grams * silverPricePerGram(prices);
-  if (holding.type === 'stock') return holding.shares * holding.purchasePricePerShare;
+  if (holding.type === 'stock') return holding.shares * (prices.egxPrices?.[holding.symbol] ?? holding.purchasePricePerShare);
   if (holding.type === 'personal_asset') return personalAssetValueEGP(holding, prices);
   return 0;
 }

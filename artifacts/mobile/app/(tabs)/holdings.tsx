@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,6 +9,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
+import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding } from '@/types';
 
@@ -37,7 +38,14 @@ export default function HoldingsScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { holdings, removeHolding } = useHoldings();
-  const { data: prices } = useMarketPrices();
+  const { data: rawPrices } = useMarketPrices();
+  const { data: egxStocks } = useEGXMarket();
+  const prices = useMemo(() => {
+    if (!rawPrices) return rawPrices;
+    const egxPrices: Record<string, number> = {};
+    egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
+    return { ...rawPrices, egxPrices };
+  }, [rawPrices, egxStocks]);
   const { impact } = useHaptic();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 

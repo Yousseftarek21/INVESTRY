@@ -15,6 +15,8 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices, useGoldHistory, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { usePortfolioSnapshots, PortfolioSnapshot } from '@/hooks/usePortfolioSnapshots';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
@@ -50,7 +52,7 @@ function computeValue(h: Holding, prices?: MarketPrices): number {
   if (!prices) return 0;
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);
-  if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
+  if (h.type === 'stock') return h.shares * (prices.egxPrices?.[h.symbol] ?? h.purchasePricePerShare);
   if (h.type === 'personal_asset') return personalAssetValueEGP(h, prices);
   return 0;
 }
@@ -95,6 +97,15 @@ function buildSmoothPath(pts: Pt[]): string {
 
 const TIME_FILTERS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
 type TimeFilter = typeof TIME_FILTERS[number];
+
+function snapshotValues(snapshots: PortfolioSnapshot[], filter: TimeFilter): number[] | null {
+  if (filter === '1D') return null;
+  const days: Record<TimeFilter, number> = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365, 'ALL': 9999 };
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days[filter]);
+  const vals = snapshots.filter(s => new Date(s.date) >= cutoff).map(s => s.value);
+  return vals.length >= 2 ? vals : null;
+}
 
 function getApproxDates(range: TimeFilter, count: number): string[] {
   const now = new Date();
@@ -347,7 +358,14 @@ export default function HomeScreen() {
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { cashAccounts, totalCash } = useCash();
-  const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
+  const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
+  const { data: egxStocks } = useEGXMarket();
+  const prices = useMemo(() => {
+    if (!rawPrices) return rawPrices;
+    const egxPrices: Record<string, number> = {};
+    egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
+    return { ...rawPrices, egxPrices };
+  }, [rawPrices, egxStocks]);
   const { plan, isPro } = useSubscription();
   const { impact } = useHaptic();
   const { hideValues, setHideValues } = useAppSettings();
@@ -361,7 +379,7 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [refetch]);
 
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('1M');
   const [sparkWidth, setSparkWidth] = useState(0);
   const { data: goldHistory } = useGoldHistory(timeFilter);
 
@@ -402,6 +420,8 @@ export default function HomeScreen() {
       goldGrams, silverGrams, stockCount, reCount, paCount,
     };
   }, [holdings, prices]);
+
+  const { snapshots } = usePortfolioSnapshots(summary.totalValue);
 
   const displayValue = useCounterDisplay(summary.totalValue);
 
@@ -571,7 +591,7 @@ export default function HomeScreen() {
                 }}
               >
                 <InteractiveChart
-                  prices={goldHistory ?? null}
+                  prices={snapshotValues(snapshots, timeFilter) ?? goldHistory ?? null}
                   width={sparkWidth}
                   height={78}
                   timeFilter={timeFilter}

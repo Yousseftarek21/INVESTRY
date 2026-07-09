@@ -136,6 +136,7 @@ export interface MarketPrices {
   silverChange: number;
   silverChangePercent: number;
   lastUpdated: Date;
+  egxPrices?: Record<string, number>;
 }
 
 export interface EGXStock {

@@ -13,6 +13,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
@@ -42,7 +43,7 @@ function computeValue(h: Holding, prices?: MarketPrices): number {
   if (!prices) return 0;
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);
-  if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
+  if (h.type === 'stock') return h.shares * (prices.egxPrices?.[h.symbol] ?? h.purchasePricePerShare);
   if (h.type === 'personal_asset') return personalAssetValueEGP(h, prices);
   return 0;
 }
@@ -544,7 +545,14 @@ export default function AnalyticsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { holdings, isLoading: holdingsLoading } = useHoldings();
-  const { data: prices, isLoading: pricesLoading, refetch } = useMarketPrices();
+  const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
+  const { data: egxStocks } = useEGXMarket();
+  const prices = useMemo(() => {
+    if (!rawPrices) return rawPrices;
+    const egxPrices: Record<string, number> = {};
+    egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
+    return { ...rawPrices, egxPrices };
+  }, [rawPrices, egxStocks]);
   const isLoading = pricesLoading || holdingsLoading;
 
   const [period, setPeriod] = useState<Period>('ALL');
