@@ -56,27 +56,78 @@ interface HistoricalRates {
 
 // ─── EGX ticker list ──────────────────────────────────────────────────────────
 
+// All 54 EGX companies — kept in sync with artifacts/mobile/data/egx-companies.ts
 const EGX_TICKERS = [
-  { yahoo: "COMI.CA",  symbol: "COMI",  name: "Commercial Intl Bank"      },
-  { yahoo: "HRHO.CA",  symbol: "HRHO",  name: "EFG Hermes Holding"         },
-  { yahoo: "TMGH.CA",  symbol: "TMGH",  name: "Talaat Moustafa Group"      },
-  { yahoo: "ORWE.CA",  symbol: "ORWE",  name: "Oriental Weavers"           },
-  { yahoo: "EAST.CA",  symbol: "EAST",  name: "Eastern Company"            },
-  { yahoo: "ORAS.CA",  symbol: "ORAS",  name: "Orascom Construction"       },
-  { yahoo: "CLHO.CA",  symbol: "CLHO",  name: "Cleopatra Hospital"         },
-  { yahoo: "EKHO.CA",  symbol: "EKHO",  name: "EK Holding"                 },
-  { yahoo: "SWDY.CA",  symbol: "SWDY",  name: "El Sewedy Electric"         },
-  { yahoo: "FWRY.CA",  symbol: "FWRY",  name: "Fawry Banking & Payment"    },
-  { yahoo: "PHDC.CA",  symbol: "PHDC",  name: "Palm Hills Developments"    },
-  { yahoo: "MNHD.CA",  symbol: "MNHD",  name: "Madinet Nasr Housing"       },
-  { yahoo: "JUFO.CA",  symbol: "JUFO",  name: "Juhayna Food Industries"    },
-  { yahoo: "ESRS.CA",  symbol: "ESRS",  name: "Ezz Steel"                  },
-  { yahoo: "GAMA.CA",  symbol: "GAMA",  name: "Ghabbour Auto"              },
-  { yahoo: "HDBK.CA",  symbol: "HDBK",  name: "Housing & Development Bank" },
-  { yahoo: "ABUK.CA",  symbol: "ABUK",  name: "Abu Kir Fertilizers"        },
-  { yahoo: "SPMD.CA",  symbol: "SPMD",  name: "Speed Medical"              },
-  { yahoo: "CIRA.CA",  symbol: "CIRA",  name: "CIRA Education"             },
-  { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "Orascom Development Egypt"  },
+  // Banking
+  { yahoo: "COMI.CA",  symbol: "COMI",  name: "Commercial International Bank"   },
+  { yahoo: "QNBA.CA",  symbol: "QNBA",  name: "QNB Al Ahli Bank"                },
+  { yahoo: "CRED.CA",  symbol: "CRED",  name: "Credit Agricole Egypt"           },
+  { yahoo: "ADIB.CA",  symbol: "ADIB",  name: "Abu Dhabi Islamic Bank Egypt"    },
+  { yahoo: "HDBK.CA",  symbol: "HDBK",  name: "Housing & Development Bank"      },
+  { yahoo: "AIBD.CA",  symbol: "AIBD",  name: "Arab Investment Bank"            },
+  { yahoo: "BLOM.CA",  symbol: "BLOM",  name: "Blom Bank Egypt"                 },
+  { yahoo: "FABL.CA",  symbol: "FABL",  name: "First Abu Dhabi Bank Egypt"      },
+  // Financial Services
+  { yahoo: "HRHO.CA",  symbol: "HRHO",  name: "EFG Hermes Holding"              },
+  { yahoo: "EKHO.CA",  symbol: "EKHO",  name: "EK Holding"                      },
+  { yahoo: "CIBD.CA",  symbol: "CIBD",  name: "CI Capital Holding"              },
+  { yahoo: "EFID.CA",  symbol: "EFID",  name: "Egyptian Financial & Industrial" },
+  { yahoo: "MNFN.CA",  symbol: "MNFN",  name: "Mena for Financial Investments"  },
+  // Real Estate
+  { yahoo: "TMGH.CA",  symbol: "TMGH",  name: "Talaat Mostafa Group"            },
+  { yahoo: "PHDC.CA",  symbol: "PHDC",  name: "Palm Hills Developments"         },
+  { yahoo: "MNHD.CA",  symbol: "MNHD",  name: "Madinet Nasr Housing"            },
+  { yahoo: "OCDI.CA",  symbol: "OCDI",  name: "Orascom Development Egypt"       },
+  { yahoo: "EMFD.CA",  symbol: "EMFD",  name: "Emaar Misr for Development"      },
+  { yahoo: "ORHD.CA",  symbol: "ORHD",  name: "Ora Developers Egypt"            },
+  { yahoo: "HELI.CA",  symbol: "HELI",  name: "Heliopolis Housing & Dev."       },
+  { yahoo: "DRTK.CA",  symbol: "DRTK",  name: "Delta for Real Estate & Tourism" },
+  // Telecom
+  { yahoo: "ETEL.CA",  symbol: "ETEL",  name: "Telecom Egypt"                   },
+  // Industrial
+  { yahoo: "SWDY.CA",  symbol: "SWDY",  name: "El Sewedy Electric"              },
+  { yahoo: "ESRS.CA",  symbol: "ESRS",  name: "Ezz Steel"                       },
+  { yahoo: "EAST.CA",  symbol: "EAST",  name: "Eastern Company"                 },
+  { yahoo: "ORAS.CA",  symbol: "ORAS",  name: "Orascom Construction"            },
+  { yahoo: "MFPC.CA",  symbol: "MFPC",  name: "Maridive & Oil Services"         },
+  // Chemicals & Fertilizers
+  { yahoo: "ABUK.CA",  symbol: "ABUK",  name: "Abu Kir Fertilizers"             },
+  { yahoo: "SKPC.CA",  symbol: "SKPC",  name: "Sidi Kerir Petrochemicals"       },
+  { yahoo: "MOPCO.CA", symbol: "MOPCO", name: "Misr Fertilizers Production"     },
+  // Energy
+  { yahoo: "AMOC.CA",  symbol: "AMOC",  name: "Alexandria Mineral Oils"         },
+  { yahoo: "PRSM.CA",  symbol: "PRSM",  name: "Petrojet"                        },
+  // Construction Materials
+  { yahoo: "STMR.CA",  symbol: "STMR",  name: "Suez Cement"                     },
+  { yahoo: "MCEM.CA",  symbol: "MCEM",  name: "Misr Cement (Qena)"              },
+  { yahoo: "LCSW.CA",  symbol: "LCSW",  name: "Lecico Egypt"                    },
+  { yahoo: "EGCH.CA",  symbol: "EGCH",  name: "Egyptian Cement"                 },
+  // Healthcare
+  { yahoo: "CLHO.CA",  symbol: "CLHO",  name: "Cleopatra Hospital Group"        },
+  { yahoo: "ISPH.CA",  symbol: "ISPH",  name: "EIPICO"                          },
+  { yahoo: "SPMD.CA",  symbol: "SPMD",  name: "Speed Medical"                   },
+  { yahoo: "IDHC.CA",  symbol: "IDHC",  name: "Integrated Diagnostics (IDH)"   },
+  { yahoo: "AMPH.CA",  symbol: "AMPH",  name: "Amoun Pharmaceutical"            },
+  // Food & Beverage
+  { yahoo: "JUFO.CA",  symbol: "JUFO",  name: "Juhayna Food Industries"         },
+  { yahoo: "DOMTY.CA", symbol: "DOMTY", name: "Arabian Food Industries"         },
+  { yahoo: "EGAL.CA",  symbol: "EGAL",  name: "Egypt Aluminum"                  },
+  // Technology
+  { yahoo: "FWRY.CA",  symbol: "FWRY",  name: "Fawry for Banking & Payment"     },
+  // Textile
+  { yahoo: "ORWE.CA",  symbol: "ORWE",  name: "Oriental Weavers"                },
+  { yahoo: "GTHE.CA",  symbol: "GTHE",  name: "Ghazl El Mahalla"                },
+  // Automotive
+  { yahoo: "GAMA.CA",  symbol: "GAMA",  name: "Ghabbour Auto"                   },
+  // Education
+  { yahoo: "CIRA.CA",  symbol: "CIRA",  name: "CIRA Education"                  },
+  // Tourism
+  { yahoo: "EGTS.CA",  symbol: "EGTS",  name: "Egyptian Resorts Company"        },
+  // Transportation
+  { yahoo: "ACGC.CA",  symbol: "ACGC",  name: "Alexandria Container & Cargo"    },
+  // Insurance / Other
+  { yahoo: "EGYI.CA",  symbol: "EGYI",  name: "Egyptian Takaful - Property"     },
+  { yahoo: "GLNA.CA",  symbol: "GLNA",  name: "GlassEgypt"                      },
 ];
 
 // ─── Global stock ticker list — 8 symbols, fits Twelve Data free tier (8 credits/min) ───
@@ -490,7 +541,9 @@ async function fetchTickersViaSpark(
 // No filter — fetches ALL 292 EGX stocks in one request.
 // columns: [close, change_abs, change%, volume]
 
-const EGX_NAMES: Record<string, string> = Object.fromEntries(EGX_TICKERS.map(t => [t.symbol, t.name]));
+// Build lookup maps from our authoritative EGX ticker list
+const EGX_NAMES: Record<string, string>  = Object.fromEntries(EGX_TICKERS.map(t => [t.symbol, t.name]));
+const EGX_SYMBOL_SET: Set<string>        = new Set(EGX_TICKERS.map(t => t.symbol));
 
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   const body = JSON.stringify({
@@ -509,18 +562,21 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   const data = await res.json() as { data: Array<{ s: string; d: [number, number, number, number] }> };
   if (!data?.data?.length) throw new Error("TV scanner: empty");
 
-  return data.data.map(item => {
+  const results: EGXStockResponse[] = [];
+  for (const item of data.data) {
     const sym = item.s.replace(/^EGX:/, "");
+    if (!EGX_SYMBOL_SET.has(sym)) continue;          // skip non-EGX / unwanted tickers
     const [close, changeAbs, changePct] = item.d;
-    return {
+    results.push({
       symbol:        sym,
       name:          EGX_NAMES[sym] ?? sym,
       price:         round2(close),
       previousClose: round2(close - changeAbs),
       change:        round2(changeAbs),
       changePercent: round2(changePct),
-    };
-  });
+    });
+  }
+  return results;
 }
 
 async function fetchStocks(): Promise<EGXStockResponse[]> {
