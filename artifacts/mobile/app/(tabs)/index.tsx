@@ -680,7 +680,7 @@ export default function HomeScreen() {
           <View style={styles.cashInfo}>
             <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
             <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-              {totalCash.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+              {hideValues ? '••••••' : totalCash.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
             </Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
@@ -729,6 +729,7 @@ export default function HomeScreen() {
                 key={h.id}
                 holding={h}
                 prices={prices}
+                hideValues={hideValues}
                 onEdit={() => router.push(`/add-investment?holdingId=${h.id}` as any)}
               />
             ))}

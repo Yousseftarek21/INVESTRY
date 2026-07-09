@@ -887,8 +887,6 @@ export default function SettingsScreen() {
         {/* ── ACCOUNT & SECURITY ─────────────────────────── */}
         <Sect label="ACCOUNT & SECURITY">
           <NavRow icon="lock"    iconBg="#1D4ED8" label="Change Password"    onPress={() => showModal('Change Password', 'To change your password, sign out and use "Forgot Password" on the sign-in screen. Password management is handled securely by Clerk authentication.')} />
-          <NavRow icon="eye"     iconBg="#047857" label="Face ID / Biometrics" value="Off"
-            onPress={() => showModal('Biometrics', 'Biometric app lock coming soon. Configure face or fingerprint unlock to protect your portfolio without re-entering your password.')} />
           <NavRow icon="link"    iconBg="#6366F1" label="Connected Accounts" value="Beta"
             onPress={() => showModal('Connected Accounts', 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments. This feature is currently in beta testing.')} last />
         </Sect>

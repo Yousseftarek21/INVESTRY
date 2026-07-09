@@ -10,6 +10,7 @@ interface HoldingCardProps {
   prices?: MarketPrices;
   onDelete?: () => void;
   onEdit?: () => void;
+  hideValues?: boolean;
 }
 
 function personalAssetValueEGP(holding: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -100,7 +101,7 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   fixed_income: '#22C55E',
 };
 
-export function HoldingCard({ holding, prices, onDelete, onEdit }: HoldingCardProps) {
+export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues }: HoldingCardProps) {
   const colors = useColors();
   const currentValue = computeCurrentValue(holding, prices);
   const cost = computeCost(holding, prices);
@@ -128,8 +129,8 @@ export function HoldingCard({ holding, prices, onDelete, onEdit }: HoldingCardPr
         {prices ? (
           <>
             <Text style={[styles.value, { color: colors.text }]}>
-              {currentValue.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
-              <Text style={[styles.valueUnit, { color: colors.mutedForeground }]}> EGP</Text>
+              {hideValues ? '••••••' : currentValue.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+              {!hideValues && <Text style={[styles.valueUnit, { color: colors.mutedForeground }]}> EGP</Text>}
             </Text>
             {holding.type === 'personal_asset' ? (
               <View style={[styles.manualPill, { backgroundColor: colors.mutedForeground + '18' }]}>
@@ -140,7 +141,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit }: HoldingCardPr
               <View style={[styles.gainPill, { backgroundColor: gainColor + '18' }]}>
                 <Feather name={isPositive ? 'arrow-up' : 'arrow-down'} size={9} color={gainColor} />
                 <Text style={[styles.gainText, { color: gainColor }]}>
-                  {isPositive ? '+' : ''}{gainPercent.toFixed(1)}%
+                  {hideValues ? '••' : `${isPositive ? '+' : ''}${gainPercent.toFixed(1)}%`}
                 </Text>
               </View>
             )}
