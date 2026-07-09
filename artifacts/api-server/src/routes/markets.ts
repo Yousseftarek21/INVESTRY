@@ -57,19 +57,16 @@ interface HistoricalRates {
 
 // ─── EGX ticker list ──────────────────────────────────────────────────────────
 
-// 42 verified EGX companies — kept in sync with artifacts/mobile/data/egx-companies.ts
-// 4 tickers (QNBA, EKHO, ESRS, IDHC) are valid EGX listings but absent from TradingView's
-// Egypt scanner feed; they fall back to Yahoo Finance spark on native devices.
+// 38 verified EGX companies — kept in sync with artifacts/mobile/data/egx-companies.ts
+// All listed tickers are present in TradingView's Egypt scanner feed.
 const EGX_TICKERS = [
   // Banking
   { yahoo: "COMI.CA",  symbol: "COMI",  name: "Commercial International Bank (CIB)" },
-  { yahoo: "QNBA.CA",  symbol: "QNBA",  name: "QNB Al Ahli"                         },
   { yahoo: "CIEB.CA",  symbol: "CIEB",  name: "Credit Agricole Egypt"               },
   { yahoo: "ADIB.CA",  symbol: "ADIB",  name: "Abu Dhabi Islamic Bank Egypt"        },
   { yahoo: "HDBK.CA",  symbol: "HDBK",  name: "Housing & Development Bank"          },
   // Financial Services
   { yahoo: "HRHO.CA",  symbol: "HRHO",  name: "EFG Holding"                         },
-  { yahoo: "EKHO.CA",  symbol: "EKHO",  name: "Egypt Kuwait Holding"                },
   { yahoo: "CICH.CA",  symbol: "CICH",  name: "CI Capital Holding"                  },
   { yahoo: "EFIC.CA",  symbol: "EFIC",  name: "Egyptian Financial & Industrial"     },
   // Real Estate
@@ -84,7 +81,6 @@ const EGX_TICKERS = [
   { yahoo: "ETEL.CA",  symbol: "ETEL",  name: "Telecom Egypt"                       },
   // Industrial
   { yahoo: "SWDY.CA",  symbol: "SWDY",  name: "El Sewedy Electric"                  },
-  { yahoo: "ESRS.CA",  symbol: "ESRS",  name: "Ezz Steel"                           },
   { yahoo: "EAST.CA",  symbol: "EAST",  name: "Eastern Company"                     },
   { yahoo: "ORAS.CA",  symbol: "ORAS",  name: "Orascom Construction"                },
   { yahoo: "MOIL.CA",  symbol: "MOIL",  name: "Maridive & Oil Services"             },
@@ -104,7 +100,6 @@ const EGX_TICKERS = [
   { yahoo: "CLHO.CA",  symbol: "CLHO",  name: "Cleopatra Hospital Group"            },
   { yahoo: "PHAR.CA",  symbol: "PHAR",  name: "EIPICO"                              },
   { yahoo: "SPMD.CA",  symbol: "SPMD",  name: "Speed Medical"                       },
-  { yahoo: "IDHC.CA",  symbol: "IDHC",  name: "Integrated Diagnostics (IDH)"       },
   // Food & Beverage
   { yahoo: "JUFO.CA",  symbol: "JUFO",  name: "Juhayna Food Industries"             },
   { yahoo: "DOMT.CA",  symbol: "DOMT",  name: "Domty"                               },
@@ -597,16 +592,16 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
 async function fetchStocks(): Promise<EGXStockResponse[]> {
   // 1. TradingView Egypt scanner — single request, correct prices, works from server
   try {
-    const data = await fetchEGXViaTradingView();
-    if (data.some(s => s.price > 0)) {
-      logger.info({ count: data.length }, "EGX stocks via TradingView scanner");
-      return data;
+    const tvData = await fetchEGXViaTradingView();
+    if (tvData.some(s => s.price > 0)) {
+      logger.info({ count: tvData.length }, "EGX stocks via TradingView scanner");
+      return tvData;
     }
   } catch (err) {
     logger.warn({ err }, "EGX: TradingView scanner failed");
   }
 
-  // 2. YF spark fallback
+  // 2. YF spark fallback (all tickers)
   return fetchTickersViaSpark(EGX_TICKERS, "EGX stocks");
 }
 

@@ -33,14 +33,12 @@ export interface EGXCompany {
 export const EGX_COMPANIES: EGXCompany[] = [
   // ─── Banking ──────────────────────────────────────────────────────────────
   { ticker: 'COMI',  yahoo: 'COMI.CA',  nameEn: 'Commercial International Bank (CIB)', nameAr: 'البنك التجاري الدولي',              sector: 'Banking',               industry: 'Banks',                   fallbackPrice: 134.50 },
-  { ticker: 'QNBA',  yahoo: 'QNBA.CA',  nameEn: 'QNB Al Ahli',                         nameAr: 'بنك قطر الوطني الأهلي',            sector: 'Banking',               industry: 'Banks',                   fallbackPrice: 60.20  },
   { ticker: 'CIEB',  yahoo: 'CIEB.CA',  nameEn: 'Credit Agricole Egypt',               nameAr: 'كريدي أجريكول مصر',               sector: 'Banking',               industry: 'Banks',                   fallbackPrice: 24.00  },
   { ticker: 'ADIB',  yahoo: 'ADIB.CA',  nameEn: 'Abu Dhabi Islamic Bank Egypt',        nameAr: 'بنك أبو ظبي الإسلامي مصر',        sector: 'Banking',               industry: 'Islamic Banking',         fallbackPrice: 47.00  },
   { ticker: 'HDBK',  yahoo: 'HDBK.CA',  nameEn: 'Housing & Development Bank',          nameAr: 'بنك التعمير والإسكان',             sector: 'Banking',               industry: 'Banks',                   fallbackPrice: 79.50  },
 
   // ─── Financial Services ───────────────────────────────────────────────────
   { ticker: 'HRHO',  yahoo: 'HRHO.CA',  nameEn: 'EFG Holding',                         nameAr: 'هيرميس للأوراق المالية',           sector: 'Financial Services',    industry: 'Investment Banking',      fallbackPrice: 26.70  },
-  { ticker: 'EKHO',  yahoo: 'EKHO.CA',  nameEn: 'Egypt Kuwait Holding',                nameAr: 'المصرية الكويتية القابضة',         sector: 'Financial Services',    industry: 'Diversified Financials',  fallbackPrice: 18.75  },
   { ticker: 'CICH',  yahoo: 'CICH.CA',  nameEn: 'CI Capital Holding',                  nameAr: 'سي آي كابيتال القابضة',           sector: 'Financial Services',    industry: 'Brokerage',               fallbackPrice: 11.60  },
   { ticker: 'EFIC',  yahoo: 'EFIC.CA',  nameEn: 'Egyptian Financial & Industrial',     nameAr: 'المصرية المالية والصناعية',       sector: 'Financial Services',    industry: 'Diversified Financials',  fallbackPrice: 180.00 },
 
@@ -58,7 +56,6 @@ export const EGX_COMPANIES: EGXCompany[] = [
 
   // ─── Industrial ───────────────────────────────────────────────────────────
   { ticker: 'SWDY',  yahoo: 'SWDY.CA',  nameEn: 'El Sewedy Electric',                  nameAr: 'السويدي إليكتريك',               sector: 'Industrial',            industry: 'Electrical Equipment',    fallbackPrice: 89.00  },
-  { ticker: 'ESRS',  yahoo: 'ESRS.CA',  nameEn: 'Ezz Steel',                           nameAr: 'حديد عز',                        sector: 'Industrial',            industry: 'Steel',                   fallbackPrice: 30.00  },
   { ticker: 'EAST',  yahoo: 'EAST.CA',  nameEn: 'Eastern Company',                     nameAr: 'الشركة الشرقية للدخان',           sector: 'Industrial',            industry: 'Tobacco',                 fallbackPrice: 36.90  },
   { ticker: 'ORAS',  yahoo: 'ORAS.CA',  nameEn: 'Orascom Construction',                nameAr: 'أوراسكوم للإنشاء والصناعة',      sector: 'Industrial',            industry: 'Construction & Engineering', fallbackPrice: 691.00 },
   { ticker: 'MOIL',  yahoo: 'MOIL.CA',  nameEn: 'Maridive & Oil Services',             nameAr: 'ماريديف والنفط للخدمات',          sector: 'Industrial',            industry: 'Oil Services',            fallbackPrice: 0.50   },
@@ -82,7 +79,6 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'CLHO',  yahoo: 'CLHO.CA',  nameEn: 'Cleopatra Hospital Group',            nameAr: 'مجموعة مستشفيات كليوباترا',       sector: 'Healthcare',            industry: 'Hospitals',               fallbackPrice: 16.37  },
   { ticker: 'PHAR',  yahoo: 'PHAR.CA',  nameEn: 'EIPICO',                              nameAr: 'الشركة المصرية الدولية للأدوية', sector: 'Healthcare',            industry: 'Pharmaceuticals',         fallbackPrice: 86.00  },
   { ticker: 'SPMD',  yahoo: 'SPMD.CA',  nameEn: 'Speed Medical',                       nameAr: 'سبيد ميدكال للتشخيص',            sector: 'Healthcare',            industry: 'Diagnostics',             fallbackPrice: 0.45   },
-  { ticker: 'IDHC',  yahoo: 'IDHC.CA',  nameEn: 'Integrated Diagnostics Holdings (IDH)', nameAr: 'المجمعة للتشخيص الطبي',        sector: 'Healthcare',            industry: 'Diagnostics',             fallbackPrice: 23.50  },
 
   // ─── Food & Beverage ──────────────────────────────────────────────────────
   { ticker: 'JUFO',  yahoo: 'JUFO.CA',  nameEn: 'Juhayna Food Industries',             nameAr: 'جهينة للأغذية والألبان',          sector: 'Food & Beverage',       industry: 'Food Production',         fallbackPrice: 30.90  },
