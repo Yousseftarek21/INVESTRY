@@ -143,6 +143,7 @@ const rfSt = StyleSheet.create({
 
 function LiveChip({ lastUpdated }: { lastUpdated: Date | null }) {
   const colors = useColors();
+  const t = useT();
   const opacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.loop(Animated.sequence([
@@ -159,11 +160,11 @@ function LiveChip({ lastUpdated }: { lastUpdated: Date | null }) {
     <View style={chipSt.col}>
       <View style={[chipSt.pill, { backgroundColor: colors.green + '14', borderColor: colors.green + '30' }]}>
         <Animated.View style={[chipSt.dot, { backgroundColor: colors.green, opacity }]} />
-        <Text style={[chipSt.label, { color: colors.green }]}>LIVE</Text>
+        <Text style={[chipSt.label, { color: colors.green }]}>{t.liveLabel}</Text>
       </View>
       {timeStr && (
         <Text style={[chipSt.time, { color: colors.mutedForeground }]}>
-          Updated {timeStr}
+          {t.updatedAt}{timeStr}
         </Text>
       )}
     </View>
@@ -290,9 +291,9 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.greetingBlock}>
-            <Text style={[styles.greetingHi, { color: colors.mutedForeground }]}>Hi,</Text>
+            <Text style={[styles.greetingHi, { color: colors.mutedForeground }]}>{t.hiGreeting}</Text>
             <Text style={[styles.greetingName, { color: colors.text }]} numberOfLines={1}>
-              {firstName || 'there'}
+              {firstName || t.thereGreeting}
             </Text>
             {isPro && <PremiumBadge size="sm" />}
           </View>
@@ -343,7 +344,7 @@ export default function HomeScreen() {
           {summary.totalCost > 0 && (
             <View style={[styles.iStrip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
               <View style={styles.iCell}>
-                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Invested</Text>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.invested}</Text>
                 <View style={styles.iCellValueRow}>
                   <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(summary.totalCost)}</Text>
                   {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>}
@@ -351,7 +352,7 @@ export default function HomeScreen() {
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
               <View style={styles.iCell}>
-                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Current</Text>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.currentLabel}</Text>
                 <View style={styles.iCellValueRow}>
                   <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(summary.totalValue)}</Text>
                   {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>}
@@ -359,7 +360,7 @@ export default function HomeScreen() {
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
               <View style={styles.iCell}>
-                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>Return</Text>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.returnLabel}</Text>
                 <View style={styles.iCellValueRow}>
                   <Text style={[styles.iCellValue, { color: gainColor }]}>
                     {hideValues ? '••••' : `${isGain ? '+' : ''}${summary.gainPct.toFixed(1)}%`}
@@ -380,7 +381,7 @@ export default function HomeScreen() {
               <View style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}>
                 <View style={styles.plTop}>
                   <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
-                  <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>Today</Text>
+                  <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
                   <View style={[styles.plBadge, { backgroundColor: todayColor + '1A' }]}>
                     <Text style={[styles.plBadgeText, { color: todayColor }]}>
                       {hideValues ? '••' : `${isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
@@ -395,7 +396,7 @@ export default function HomeScreen() {
               <View style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}>
                 <View style={styles.plTop}>
                   <Feather name={isGain ? 'trending-up' : 'trending-down'} size={10} color={gainColor + 'CC'} />
-                  <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>Total P/L</Text>
+                  <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.totalPL}</Text>
                   <View style={[styles.plBadge, { backgroundColor: gainColor + '1A' }]}>
                     <Text style={[styles.plBadgeText, { color: gainColor }]}>
                       {hideValues ? '••' : `${isGain ? '+' : ''}${summary.gainPct.toFixed(2)}%`}

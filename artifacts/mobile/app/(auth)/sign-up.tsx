@@ -10,6 +10,7 @@ import { useSignUp, useSSO } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -23,6 +24,7 @@ function useWarmUpBrowser() {
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const colors = useColors();
+  const t = useT();
   const checks = [
     password.length >= 8,
     /[A-Z]/.test(password),
@@ -32,7 +34,7 @@ function PasswordStrengthBar({ password }: { password: string }) {
   ];
   const score = checks.filter(Boolean).length;
   const strengthColor = score <= 1 ? colors.red : score <= 3 ? '#F59E0B' : colors.green;
-  const strengthLabel = score <= 1 ? 'Weak' : score <= 3 ? 'Fair' : 'Strong';
+  const strengthLabel = score <= 1 ? t.passwordWeak : score <= 3 ? t.passwordFair : t.passwordStrong;
 
   if (!password) return null;
   return (
@@ -63,6 +65,7 @@ const strengthStyles = StyleSheet.create({
 export default function SignUpScreen() {
   useWarmUpBrowser();
   const colors = useColors();
+  const t = useT();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -169,9 +172,9 @@ export default function SignUpScreen() {
               <Feather name="mail" size={28} color={colors.primary} />
             </View>
           </View>
-          <Text style={[styles.title, { color: colors.text }]}>Verify your email</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t.verifyEmailTitle}</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            We sent a 6-digit code to{'\n'}{email}
+            {t.verifyEmailSubtitle}{'\n'}{email}
           </Text>
 
           <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -203,12 +206,12 @@ export default function SignUpScreen() {
           >
             {isFetching
               ? <ActivityIndicator color={colors.primaryForeground} />
-              : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Verify Email</Text>
+              : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>{t.verifyEmailBtn}</Text>
             }
           </Pressable>
 
           <Pressable onPress={() => signUp.verifications.sendEmailCode()}>
-            <Text style={[styles.linkText, { color: colors.primary, textAlign: 'center' }]}>Resend code</Text>
+            <Text style={[styles.linkText, { color: colors.primary, textAlign: 'center' }]}>{t.resendCode}</Text>
           </Pressable>
 
           {/* Required for Clerk bot protection */}
@@ -232,9 +235,9 @@ export default function SignUpScreen() {
 
           <View style={styles.headerWrap}>
             <Text style={[styles.appLabel, { color: colors.primary }]}>INVESTRY</Text>
-            <Text style={[styles.title, { color: colors.text }]}>Create account</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t.createAccount}</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Start tracking your investments today
+              {t.signUpSubtitle}
             </Text>
           </View>
 
@@ -249,7 +252,7 @@ export default function SignUpScreen() {
                 ? <ActivityIndicator color={colors.background} />
                 : <>
                     <Feather name="command" size={17} color={colors.background} />
-                    <Text style={[styles.socialBtnText, { color: colors.background }]}>Continue with Apple</Text>
+                    <Text style={[styles.socialBtnText, { color: colors.background }]}>{t.continueWithApple}</Text>
                   </>
               }
             </Pressable>
@@ -265,27 +268,25 @@ export default function SignUpScreen() {
               ? <ActivityIndicator color={colors.text} />
               : <>
                   <Text style={styles.googleG}>G</Text>
-                  <Text style={[styles.socialBtnText, { color: colors.text }]}>Continue with Google</Text>
+                  <Text style={[styles.socialBtnText, { color: colors.text }]}>{t.continueWithGoogle}</Text>
                 </>
             }
           </Pressable>
 
           <View style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
+            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>{t.orDivider}</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
-
-
           {/* Email */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Email address</Text>
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.emailAddress}</Text>
             <View style={[styles.inputWrap, { borderColor: errors.fields.emailAddress ? colors.red : colors.border, backgroundColor: colors.card }]}>
               <Feather name="mail" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
-                placeholder="you@example.com"
+                placeholder={t.emailPlaceholder}
                 placeholderTextColor={colors.mutedForeground}
                 value={email}
                 onChangeText={setEmail}
@@ -301,7 +302,7 @@ export default function SignUpScreen() {
 
           {/* Password */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Password</Text>
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.passwordLabel}</Text>
             <View style={[styles.inputWrap, { borderColor: errors.fields.password ? colors.red : colors.border, backgroundColor: colors.card }]}>
               <Feather name="lock" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
               <TextInput
@@ -338,10 +339,10 @@ export default function SignUpScreen() {
               {agreedToTerms && <Feather name="check" size={12} color={colors.primaryForeground} />}
             </View>
             <Text style={[styles.termsText, { color: colors.mutedForeground }]}>
-              I agree to the{' '}
-              <Text style={{ color: colors.primary }}>Terms of Service</Text>
-              {' '}and{' '}
-              <Text style={{ color: colors.primary }}>Privacy Policy</Text>
+              {t.agreeToTermsPrefix}
+              <Text style={{ color: colors.primary }}>{t.termsOfService}</Text>
+              {t.agreeAnd}
+              <Text style={{ color: colors.primary }}>{t.privacyPolicy}</Text>
             </Text>
           </Pressable>
 
@@ -362,14 +363,14 @@ export default function SignUpScreen() {
           >
             {isFetching
               ? <ActivityIndicator color={colors.primaryForeground} />
-              : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Create Account</Text>
+              : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>{t.createAccountBtn}</Text>
             }
           </Pressable>
 
           <View style={styles.footerRow}>
-            <Text style={[styles.footerText, { color: colors.mutedForeground }]}>Already have an account? </Text>
+            <Text style={[styles.footerText, { color: colors.mutedForeground }]}>{t.alreadyHaveAccount}</Text>
             <Pressable onPress={() => router.replace('/(auth)/sign-in' as any)}>
-              <Text style={[styles.linkText, { color: colors.primary }]}>Sign in</Text>
+              <Text style={[styles.linkText, { color: colors.primary }]}>{t.signInLink}</Text>
             </Pressable>
           </View>
 

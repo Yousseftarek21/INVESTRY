@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useColorScheme } from 'react-native';
+import { I18nManager, useColorScheme } from 'react-native';
 import { Language } from '@/i18n';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -85,7 +85,11 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
           AsyncStorage.getItem(K.biometric),
         ]);
         if (t === 'light' || t === 'dark' || t === 'system') setThemeModeState(t);
-        if (l === 'en' || l === 'ar') setLanguageState(l);
+        if (l === 'en' || l === 'ar') {
+          setLanguageState(l);
+          I18nManager.allowRTL(true);
+          I18nManager.forceRTL(l === 'ar');
+        }
         if (w === 'g' || w === 'oz') setWeightUnitState(w);
         if (h !== null) setHapticsState(h === 'true');
         if (a !== null) setAnalyticsState(a === 'true');
@@ -113,6 +117,8 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
 
   const setLanguage = useCallback(async (lang: Language) => {
     setLanguageState(lang);
+    I18nManager.allowRTL(true);
+    I18nManager.forceRTL(lang === 'ar');
     await AsyncStorage.setItem(K.lang, lang);
   }, []);
 

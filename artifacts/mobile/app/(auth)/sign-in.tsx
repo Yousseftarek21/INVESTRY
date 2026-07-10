@@ -10,6 +10,7 @@ import { useSignIn, useSSO } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 import { getApiBaseUrl } from '@/utils/api';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -25,6 +26,7 @@ function useWarmUpBrowser() {
 export default function SignInScreen() {
   useWarmUpBrowser();
   const colors = useColors();
+  const t = useT();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -149,9 +151,9 @@ export default function SignInScreen() {
           {/* Header */}
           <View style={styles.headerWrap}>
             <Text style={[styles.appLabel, { color: colors.primary }]}>INVESTRY</Text>
-            <Text style={[styles.title, { color: colors.text }]}>Welcome back</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t.welcomeBack}</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Sign in to your account
+              {t.signInSubtitle}
             </Text>
           </View>
 
@@ -166,7 +168,7 @@ export default function SignInScreen() {
                 ? <ActivityIndicator color={colors.background} />
                 : <>
                     <Feather name="command" size={17} color={colors.background} />
-                    <Text style={[styles.socialBtnText, { color: colors.background }]}>Continue with Apple</Text>
+                    <Text style={[styles.socialBtnText, { color: colors.background }]}>{t.continueWithApple}</Text>
                   </>
               }
             </Pressable>
@@ -182,7 +184,7 @@ export default function SignInScreen() {
               ? <ActivityIndicator color={colors.text} />
               : <>
                   <Text style={styles.googleG}>G</Text>
-                  <Text style={[styles.socialBtnText, { color: colors.text }]}>Continue with Google</Text>
+                  <Text style={[styles.socialBtnText, { color: colors.text }]}>{t.continueWithGoogle}</Text>
                 </>
             }
           </Pressable>
@@ -190,18 +192,18 @@ export default function SignInScreen() {
           {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
+            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>{t.orDivider}</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
           {/* Email */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Email address</Text>
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.emailAddress}</Text>
             <View style={[styles.inputWrap, { borderColor: errors.fields.identifier ? colors.red : colors.border, backgroundColor: colors.card }]}>
               <Feather name="mail" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
-                placeholder="you@example.com"
+                placeholder={t.emailPlaceholder}
                 placeholderTextColor={colors.mutedForeground}
                 value={email}
                 onChangeText={setEmail}
@@ -218,13 +220,13 @@ export default function SignInScreen() {
           {/* Password */}
           <View style={styles.fieldGroup}>
             <View style={styles.fieldLabelRow}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Password</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.passwordLabel}</Text>
             </View>
             <View style={[styles.inputWrap, { borderColor: errors.fields.password ? colors.red : colors.border, backgroundColor: colors.card }]}>
               <Feather name="lock" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
-                placeholder="Enter password"
+                placeholder={t.passwordPlaceholder}
                 placeholderTextColor={colors.mutedForeground}
                 value={password}
                 onChangeText={setPassword}
@@ -255,7 +257,7 @@ export default function SignInScreen() {
           >
             {isFetching
               ? <ActivityIndicator color={colors.primaryForeground} />
-              : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Sign In</Text>
+              : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>{t.signInBtnLabel}</Text>
             }
           </Pressable>
 
@@ -269,16 +271,16 @@ export default function SignInScreen() {
               ? <ActivityIndicator size="small" color={colors.mutedForeground} />
               : <>
                   <Feather name="user" size={14} color={colors.mutedForeground} />
-                  <Text style={[styles.demoBtnText, { color: colors.mutedForeground }]}>Use Demo Account</Text>
+                  <Text style={[styles.demoBtnText, { color: colors.mutedForeground }]}>{t.useDemoAccount}</Text>
                 </>
             }
           </Pressable>
 
           {/* Footer */}
           <View style={styles.footerRow}>
-            <Text style={[styles.footerText, { color: colors.mutedForeground }]}>Don't have an account? </Text>
+            <Text style={[styles.footerText, { color: colors.mutedForeground }]}>{t.dontHaveAccount}</Text>
             <Pressable onPress={() => router.replace('/(auth)/sign-up' as any)}>
-              <Text style={[styles.linkText, { color: colors.primary }]}>Create one</Text>
+              <Text style={[styles.linkText, { color: colors.primary }]}>{t.createOne}</Text>
             </Pressable>
           </View>
         </ScrollView>

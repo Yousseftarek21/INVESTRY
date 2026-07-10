@@ -13,21 +13,22 @@ import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-const TABS = [
-  { key: 'metals',      label: 'Metals',      icon: 'award'       },
-  { key: 'currencies',  label: 'Currencies',  icon: 'dollar-sign' },
-  { key: 'egx',        label: 'EGX',         icon: 'bar-chart-2' },
-  { key: 'stocks',     label: 'Stocks',      icon: 'trending-up' },
-  { key: 'global',     label: 'Global',      icon: 'globe'       },
-  { key: 'real_estate',label: 'Real Estate', icon: 'home'        },
+const TABS_CONFIG = [
+  { key: 'metals',      icon: 'award'       },
+  { key: 'currencies',  icon: 'dollar-sign' },
+  { key: 'egx',        icon: 'bar-chart-2' },
+  { key: 'stocks',     icon: 'trending-up' },
+  { key: 'global',     icon: 'globe'       },
+  { key: 'real_estate',icon: 'home'        },
 ] as const;
 
-type TabKey = typeof TABS[number]['key'];
+type TabKey = typeof TABS_CONFIG[number]['key'];
 
 // ─── Live dot ─────────────────────────────────────────────────────────────────
 
 function LiveDot() {
   const colors = useColors();
+  const t = useT();
   const opacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.loop(
@@ -40,7 +41,7 @@ function LiveDot() {
   return (
     <View style={ldSt.row}>
       <Animated.View style={[ldSt.dot, { backgroundColor: colors.green, opacity }]} />
-      <Text style={[ldSt.text, { color: colors.green }]}>LIVE</Text>
+      <Text style={[ldSt.text, { color: colors.green }]}>{t.liveLabel}</Text>
     </View>
   );
 }
@@ -54,6 +55,17 @@ const ldSt = StyleSheet.create({
 
 function TabBar({ active, onChange }: { active: TabKey; onChange: (k: TabKey) => void }) {
   const colors = useColors();
+  const t = useT();
+
+  const tabLabels: Record<TabKey, string> = {
+    metals: t.tabMetals,
+    currencies: t.tabCurrencies,
+    egx: t.tabEGX,
+    stocks: t.tabStocks,
+    global: t.tabGlobal,
+    real_estate: t.tabRealEstate,
+  };
+
   return (
     <ScrollView
       horizontal
@@ -61,7 +73,7 @@ function TabBar({ active, onChange }: { active: TabKey; onChange: (k: TabKey) =>
       contentContainerStyle={tb.row}
       style={tb.wrap}
     >
-      {TABS.map(tab => {
+      {TABS_CONFIG.map(tab => {
         const isActive = tab.key === active;
         return (
           <Pressable
@@ -81,7 +93,7 @@ function TabBar({ active, onChange }: { active: TabKey; onChange: (k: TabKey) =>
               color={isActive ? colors.primaryForeground : colors.mutedForeground}
             />
             <Text style={[tb.label, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
-              {tab.label}
+              {tabLabels[tab.key]}
             </Text>
           </Pressable>
         );

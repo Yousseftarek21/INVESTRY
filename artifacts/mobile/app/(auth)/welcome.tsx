@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import {
   Animated, Platform, Pressable,
   StyleSheet, Text, View,
@@ -8,35 +8,9 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 
 const ONBOARDING_KEY = '@invstry_onboarding_done';
-
-const SLIDES = [
-  {
-    id: '1',
-    icon: 'award' as const,
-    iconColor: '#C9A227',
-    iconBg: '#C9A22718',
-    title: 'Track Gold & Silver',
-    subtitle: 'Live prices for 24K, 22K, 21K & 18K gold and sterling silver — all in Egyptian pounds.',
-  },
-  {
-    id: '2',
-    icon: 'bar-chart-2' as const,
-    iconColor: '#4A9EFF',
-    iconBg: '#4A9EFF18',
-    title: 'EGX Stocks & Real Estate',
-    subtitle: 'Monitor your Egyptian Exchange stocks and property investments in one unified view.',
-  },
-  {
-    id: '3',
-    icon: 'pie-chart' as const,
-    iconColor: '#00D4AA',
-    iconBg: '#00D4AA18',
-    title: 'Your Complete Portfolio',
-    subtitle: 'See your total net worth, allocation breakdown, and gain/loss at a glance — always up to date.',
-  },
-];
 
 function Dot({ active, color }: { active: boolean; color: string }) {
   const anim = useRef(new Animated.Value(active ? 1 : 0)).current;
@@ -51,12 +25,40 @@ function Dot({ active, color }: { active: boolean; color: string }) {
 
 export default function WelcomeScreen() {
   const colors = useColors();
+  const t = useT();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
   const slideAnim = useRef(new Animated.Value(1)).current;
   const screenAnim = useRef(new Animated.Value(0)).current;
+
+  const SLIDES = useMemo(() => [
+    {
+      id: '1',
+      icon: 'award' as const,
+      iconColor: '#C9A227',
+      iconBg: '#C9A22718',
+      title: t.onboardSlide1Title,
+      subtitle: t.onboardSlide1Sub,
+    },
+    {
+      id: '2',
+      icon: 'bar-chart-2' as const,
+      iconColor: '#4A9EFF',
+      iconBg: '#4A9EFF18',
+      title: t.onboardSlide2Title,
+      subtitle: t.onboardSlide2Sub,
+    },
+    {
+      id: '3',
+      icon: 'pie-chart' as const,
+      iconColor: '#00D4AA',
+      iconBg: '#00D4AA18',
+      title: t.onboardSlide3Title,
+      subtitle: t.onboardSlide3Sub,
+    },
+  ], [t]);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then(done => {
@@ -128,10 +130,10 @@ export default function WelcomeScreen() {
           <View style={styles.welcomeText}>
             <Text style={[styles.welcomeApp, { color: colors.primary }]}>INVESTRY</Text>
             <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-              Know Your Wealth
+              {t.welcomeTagline}
             </Text>
             <Text style={[styles.welcomeDesc, { color: colors.mutedForeground }]}>
-              Track gold, silver, EGX stocks and real estate — live prices in Egyptian pounds.
+              {t.welcomeDesc}
             </Text>
           </View>
 
@@ -140,7 +142,7 @@ export default function WelcomeScreen() {
               style={[styles.btnPrimary, { backgroundColor: colors.primary }]}
               onPress={() => router.push('/(auth)/sign-up' as any)}
             >
-              <Text style={[styles.btnPrimaryText, { color: colors.primaryForeground }]}>Get Started</Text>
+              <Text style={[styles.btnPrimaryText, { color: colors.primaryForeground }]}>{t.getStarted}</Text>
               <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
             </Pressable>
 
@@ -148,7 +150,7 @@ export default function WelcomeScreen() {
               style={[styles.btnSecondary, { borderColor: colors.border, backgroundColor: colors.card }]}
               onPress={() => router.push('/(auth)/sign-in' as any)}
             >
-              <Text style={[styles.btnSecondaryText, { color: colors.text }]}>Sign In</Text>
+              <Text style={[styles.btnSecondaryText, { color: colors.text }]}>{t.signInBtn}</Text>
             </Pressable>
           </View>
 
@@ -164,7 +166,7 @@ export default function WelcomeScreen() {
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenAnim }]}>
       <View style={[styles.skipRow, { paddingTop: topPad + 12 }]}>
         <Pressable onPress={handleSkip} style={[styles.skipBtn, { backgroundColor: colors.muted }]}>
-          <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip</Text>
+          <Text style={[styles.skipText, { color: colors.mutedForeground }]}>{t.skip}</Text>
         </Pressable>
       </View>
 
@@ -199,7 +201,7 @@ export default function WelcomeScreen() {
             style={[styles.getStartedBtn, { backgroundColor: colors.primary }]}
             onPress={handleNext}
           >
-            <Text style={[styles.getStartedText, { color: colors.primaryForeground }]}>Get Started</Text>
+            <Text style={[styles.getStartedText, { color: colors.primaryForeground }]}>{t.getStarted}</Text>
             <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
           </Pressable>
         )}

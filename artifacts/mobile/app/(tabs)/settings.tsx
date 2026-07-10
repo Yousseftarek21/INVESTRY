@@ -193,6 +193,7 @@ function ConfirmModal({ visible, title, message, confirmLabel = 'Confirm', dange
   onConfirm: () => void; onCancel: () => void;
 }) {
   const colors = useColors();
+  const t = useT();
   if (!visible) return null;
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
@@ -202,7 +203,7 @@ function ConfirmModal({ visible, title, message, confirmLabel = 'Confirm', dange
           <Text style={[cm.msg, { color: colors.mutedForeground }]}>{message}</Text>
           <View style={cm.row}>
             <TouchableOpacity onPress={onCancel} style={[cm.btn, { backgroundColor: colors.muted }]}>
-              <Text style={[cm.btnTxt, { color: colors.mutedForeground }]}>Cancel</Text>
+              <Text style={[cm.btnTxt, { color: colors.mutedForeground }]}>{t.cancelBtn}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onConfirm}
@@ -251,6 +252,7 @@ function ProfileHero({
   plan?: 'pro' | null;
 }) {
   const colors = useColors();
+  const t = useT();
   return (
     <TouchableOpacity
       onPress={onPress} activeOpacity={0.75}
@@ -291,17 +293,17 @@ function ProfileHero({
             {verified ? (
               <View style={[ph.tag, { backgroundColor: colors.green + '18', borderColor: colors.green + '38' }]}>
                 <Feather name="shield" size={9} color={colors.green} />
-                <Text style={[ph.tagTxt, { color: colors.green }]}>Verified</Text>
+                <Text style={[ph.tagTxt, { color: colors.green }]}>{t.verifiedLabel}</Text>
               </View>
             ) : (
               <View style={[ph.tag, { backgroundColor: colors.red + '14', borderColor: colors.red + '30' }]}>
                 <Feather name="alert-circle" size={9} color={colors.red} />
-                <Text style={[ph.tagTxt, { color: colors.red }]}>Unverified</Text>
+                <Text style={[ph.tagTxt, { color: colors.red }]}>{t.unverifiedLabel}</Text>
               </View>
             )}
             <View style={[ph.tag, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '38' }]}>
               <Feather name="briefcase" size={9} color={colors.primary} />
-              <Text style={[ph.tagTxt, { color: colors.primary }]}>{holdingsCount} Investments</Text>
+              <Text style={[ph.tagTxt, { color: colors.primary }]}>{holdingsCount} {t.investmentsLabel}</Text>
             </View>
           </View>
         </View>
@@ -357,7 +359,7 @@ function EditProfileModal({
       >
         <View style={[mo.handle, { backgroundColor: colors.border }]} />
         <View style={[mo.header, { borderBottomColor: colors.border }]}>
-          <Text style={[mo.title, { color: colors.text }]}>Edit Profile</Text>
+          <Text style={[mo.title, { color: colors.text }]}>{t.editProfile}</Text>
           <TouchableOpacity onPress={onClose} style={[mo.close, { backgroundColor: colors.muted }]}>
             <Feather name="x" size={16} color={colors.mutedForeground} />
           </TouchableOpacity>
@@ -392,7 +394,7 @@ function EditProfileModal({
 
           {/* Email (read-only) */}
           <View style={epm.field}>
-            <Text style={[epm.fieldLabel, { color: colors.mutedForeground }]}>Email</Text>
+            <Text style={[epm.fieldLabel, { color: colors.mutedForeground }]}>{t.emailLabel}</Text>
             <View style={[epm.readonlyRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Text style={[epm.readonlyText, { color: colors.mutedForeground }]} numberOfLines={1}>{email}</Text>
             </View>
@@ -404,7 +406,7 @@ function EditProfileModal({
             style={[epm.saveBtn, { backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 }]}
           >
             <Text style={[epm.saveBtnTxt, { color: colors.primaryForeground }]}>
-              {saving ? 'Saving…' : t.save}
+              {saving ? t.savingLabel : t.save}
             </Text>
           </TouchableOpacity>
         </View>
@@ -471,7 +473,14 @@ const THEME_OPTS: { key: ThemeMode; label: string; icon: keyof typeof Feather.gl
 
 function ThemePicker({ value, onChange }: { value: ThemeMode; onChange: (m: ThemeMode) => void }) {
   const colors = useColors();
+  const t = useT();
   const scales = useRef(THEME_OPTS.map(() => new Animated.Value(1))).current;
+
+  const themeLabels: Record<ThemeMode, string> = {
+    light: t.themeLight,
+    dark: t.themeDark,
+    system: t.themeAuto,
+  };
 
   const tap = (key: ThemeMode, i: number) => {
     onChange(key);
@@ -501,7 +510,7 @@ function ThemePicker({ value, onChange }: { value: ThemeMode; onChange: (m: Them
                 <Text style={[tpk.label, {
                   color: active ? colors.primary : colors.mutedForeground,
                   fontFamily: active ? 'Inter_700Bold' : 'Inter_500Medium',
-                }]}>{item.label}</Text>
+                }]}>{themeLabels[item.key]}</Text>
               </View>
               {active && (
                 <View style={[tpk.check, { backgroundColor: colors.primary }]}>
@@ -528,6 +537,7 @@ const tpk = StyleSheet.create({
 
 function MarketStatusCard({ onRefresh }: { onRefresh: () => void }) {
   const colors = useColors();
+  const t = useT();
   const { data: prices, dataUpdatedAt, isFetching } = useMarketPrices();
 
   const lastUpdate = dataUpdatedAt
@@ -555,11 +565,11 @@ function MarketStatusCard({ onRefresh }: { onRefresh: () => void }) {
             <Feather name="activity" size={15} color={ok ? colors.green : colors.red} />
           </View>
           <View style={{ gap: 3 }}>
-            <Text style={[msc.title, { color: colors.text }]}>Market Status</Text>
+            <Text style={[msc.title, { color: colors.text }]}>{t.marketStatus}</Text>
             <View style={msc.liveRow}>
               <PulseDot color={ok ? colors.green : colors.red} size={6} />
               <Text style={[msc.liveLabel, { color: ok ? colors.green : colors.red }]}>
-                {ok ? 'Connected' : 'Offline'}
+                {ok ? t.connectedLabel : t.offlineLabel}
               </Text>
             </View>
           </View>
@@ -573,7 +583,7 @@ function MarketStatusCard({ onRefresh }: { onRefresh: () => void }) {
         >
           <Feather name="refresh-cw" size={13} color={isFetching ? colors.mutedForeground : colors.primary} />
           <Text style={[msc.refreshTxt, { color: isFetching ? colors.mutedForeground : colors.primary }]}>
-            {isFetching ? 'Updating…' : 'Refresh'}
+            {isFetching ? t.updatingLabel : t.refreshBtn}
           </Text>
         </TouchableOpacity>
       </View>
@@ -581,11 +591,11 @@ function MarketStatusCard({ onRefresh }: { onRefresh: () => void }) {
       <View style={[msc.hr, { backgroundColor: colors.border }]} />
 
       <View style={msc.grid}>
-        <StatusPair label="Last Update"   value={lastUpdate} />
-        <StatusPair label="USD/EGP Rate"  value={prices ? prices.usdToEgp.toFixed(3) : '—'} />
+        <StatusPair label={t.lastUpdateLabel}  value={lastUpdate} />
+        <StatusPair label={t.usdEgpRateLabel}  value={prices ? prices.usdToEgp.toFixed(3) : '—'} />
         <StatusPair
-          label="EGX Market"
-          value={egxOpen ? 'Open Now' : 'Closed'}
+          label={t.egxMarketLabel}
+          value={egxOpen ? t.openNow : t.closedLabel}
           color={egxOpen ? colors.green : colors.mutedForeground}
         />
       </View>
@@ -613,26 +623,27 @@ const msc = StyleSheet.create({
 
 function SmartFooter({ lastUpdate }: { lastUpdate: string }) {
   const colors = useColors();
+  const t = useT();
   return (
     <View style={[sf.wrap, { borderTopColor: colors.border }]}>
       <Text style={[sf.brand, { color: colors.primary }]}>INVESTRY</Text>
-      <Text style={[sf.tagline, { color: colors.mutedForeground }]}>Know Your Wealth</Text>
+      <Text style={[sf.tagline, { color: colors.mutedForeground }]}>{t.knowYourWealth}</Text>
       <View style={sf.meta}>
         <View style={sf.metaRow}>
-          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>Version</Text>
+          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>{t.versionLabel}</Text>
           <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>{APP_VERSION} (Build {BUILD})</Text>
         </View>
         <View style={sf.metaRow}>
-          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>Last API Update</Text>
+          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>{t.lastApiUpdateLabel}</Text>
           <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>{lastUpdate}</Text>
         </View>
         <View style={sf.metaRow}>
-          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>Data Storage</Text>
-          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>On-device only</Text>
+          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>{t.dataStorageLabel}</Text>
+          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>{t.onDeviceOnly}</Text>
         </View>
       </View>
       <Text style={[sf.copy, { color: colors.mutedForeground }]}>
-        © {COPYRIGHT_YEAR} INVESTRY. All rights reserved.
+        © {COPYRIGHT_YEAR} INVESTRY. {t.allRightsReserved}
       </Text>
       <Text style={[sf.disc, { color: colors.mutedForeground }]}>
         Market data is for informational purposes only and does not constitute financial advice. Prices may be delayed or inaccurate. Past performance does not indicate future results.
@@ -746,7 +757,7 @@ export default function SettingsScreen() {
 
   const handleSignOut = () => {
     haptic(Haptics.ImpactFeedbackStyle.Medium);
-    setConfirm({ id: 'signout', title: 'Sign Out', message: 'Are you sure you want to sign out?', label: 'Sign Out', danger: true });
+    setConfirm({ id: 'signout', title: t.signOutConfirmTitle, message: t.signOutConfirmMsg, label: t.signOutBtn, danger: true });
   };
 
   const handleSaveProfile = async (name: string) => {
@@ -801,8 +812,8 @@ export default function SettingsScreen() {
               <Feather name="user" size={22} color="#C9A227" />
             </View>
             <View style={sc.signInText}>
-              <Text style={[sc.signInTitle, { color: colors.text }]}>Sign in to your account</Text>
-              <Text style={[sc.signInSub, { color: colors.mutedForeground }]}>Load your saved investments & sync data</Text>
+              <Text style={[sc.signInTitle, { color: colors.text }]}>{t.signInToYourAccount}</Text>
+              <Text style={[sc.signInSub, { color: colors.mutedForeground }]}>{t.loadSavedInvestments}</Text>
             </View>
             <Feather name="chevron-right" size={18} color="#C9A227" />
           </Pressable>
@@ -900,7 +911,7 @@ export default function SettingsScreen() {
             <View style={[sc.themeLabelIcon, { backgroundColor: '#8B5CF620' }]}>
               <Feather name="eye" size={14} color="#8B5CF6" />
             </View>
-            <Text style={[rw.label, { color: colors.text }]}>Theme</Text>
+            <Text style={[rw.label, { color: colors.text }]}>{t.themeLabel}</Text>
           </View>
           <ThemePicker value={themeMode} onChange={async m => { haptic(); await setThemeMode(m); }} />
         </Sect>
@@ -915,7 +926,7 @@ export default function SettingsScreen() {
           >
             <Bdg icon="globe" bg="#0EA5E9" />
             <View style={rw.body}>
-              <Text style={[rw.label, { color: colors.text }]}>Language</Text>
+              <Text style={[rw.label, { color: colors.text }]}>{t.languageLabel}</Text>
             </View>
             <View style={rw.trail}>
               <Text style={[rw.val, { color: colors.mutedForeground }]}>{language === 'ar' ? 'عربي' : 'English'}</Text>
@@ -931,7 +942,7 @@ export default function SettingsScreen() {
                   <React.Fragment key={lang}>
                     <TouchableOpacity
                       style={[rw.row, { paddingLeft: 60, backgroundColor: active ? colors.primary + '10' : 'transparent' }]}
-                      onPress={async () => { haptic(); await setLanguage(lang); setLangOpen(false); }}
+                      onPress={async () => { haptic(); await setLanguage(lang); setLangOpen(false); Alert.alert('', t.languageRestartNote); }}
                       activeOpacity={0.55}
                     >
                       <View style={rw.body}>
@@ -964,8 +975,8 @@ export default function SettingsScreen() {
           <View style={rw.row}>
             <Bdg icon="sliders" bg="#059669" />
             <View style={rw.body}>
-              <Text style={[rw.label, { color: colors.text }]}>Weight Unit</Text>
-              <Text style={[rw.sub, { color: colors.mutedForeground }]}>Gold & silver display unit</Text>
+              <Text style={[rw.label, { color: colors.text }]}>{t.weightUnit}</Text>
+              <Text style={[rw.sub, { color: colors.mutedForeground }]}>{t.goldSilverUnit}</Text>
             </View>
             <View style={sc.segRow}>
               {(['g', 'oz'] as WeightUnit[]).map(u => {
@@ -1045,7 +1056,7 @@ export default function SettingsScreen() {
           onPress={handleSignOut} activeOpacity={0.7}
         >
           <Feather name="log-out" size={17} color={colors.red} />
-          <Text style={[sc.signOutTxt, { color: colors.red }]}>Sign Out</Text>
+          <Text style={[sc.signOutTxt, { color: colors.red }]}>{t.signOutBtn}</Text>
         </TouchableOpacity>
 
         {/* ── SMART FOOTER ─────────────────────────────────── */}
