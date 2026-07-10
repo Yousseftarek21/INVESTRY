@@ -15,7 +15,7 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
-
+import { BanknoteIcon } from '@/components/BanknoteIcon';
 
 const FREE_LIMIT = 5;
 
@@ -805,7 +805,7 @@ export default function AddInvestmentScreen() {
               activeOpacity={0.75}
             >
               <View style={[styles.choiceIconWrap, { backgroundColor: '#22C55E18' }]}>
-                <Feather name="credit-card" size={28} color="#22C55E" />
+                <BanknoteIcon size={28} color="#22C55E" />
               </View>
               <View style={styles.choiceText}>
                 <Text style={[styles.choiceTitle, { color: colors.text }]}>{t.addCashOption}</Text>

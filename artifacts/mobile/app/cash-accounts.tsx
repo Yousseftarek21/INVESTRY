@@ -6,7 +6,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
-
+import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -245,7 +245,11 @@ export default function CashAccountsScreen() {
                             <Feather name="check" size={9} color={colors.primaryForeground} />
                           </View>
                         )}
-                        <Feather name={TYPE_ICONS[ct.key]} size={20} color={active ? colors.primary : colors.mutedForeground} />
+                        {ct.key === 'cash_home' ? (
+                          <BanknoteIcon size={20} color={active ? colors.primary : colors.mutedForeground} />
+                        ) : (
+                          <Feather name={TYPE_ICONS[ct.key]} size={20} color={active ? colors.primary : colors.mutedForeground} />
+                        )}
                         <Text style={[styles.typeLabel, { color: active ? colors.primary : colors.text }]}>{ct.label}</Text>
                       </TouchableOpacity>
                     </Animated.View>
@@ -334,7 +338,7 @@ export default function CashAccountsScreen() {
             {cashAccounts.length === 0 ? (
               <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={[styles.emptyIconWrap, { backgroundColor: colors.primary + '14' }]}>
-                  <Feather name="credit-card" size={30} color={colors.primary} />
+                  <BanknoteIcon size={30} color={colors.primary} />
                 </View>
                 <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noCashAccounts}</Text>
                 <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAddCash}</Text>
@@ -355,7 +359,11 @@ export default function CashAccountsScreen() {
                     style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   >
                     <View style={[styles.accountIconWrap, { backgroundColor: colors.primary + '16' }]}>
-                      <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.primary} />
+                      {a.type === 'cash_home' ? (
+                        <BanknoteIcon size={18} color={colors.primary} />
+                      ) : (
+                        <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.primary} />
+                      )}
                     </View>
                     <View style={styles.accountInfo}>
                       <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{a.accountName}</Text>
