@@ -10,6 +10,7 @@ import { useSignIn, useSSO } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { getApiBaseUrl } from '@/utils/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -35,6 +36,7 @@ export default function SignInScreen() {
   const [showPass, setShowPass] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -64,14 +66,31 @@ export default function SignInScreen() {
 
     if (signIn.status === 'complete') {
       await signIn.finalize({ navigate: finalizeNavigate });
-    } else if (signIn.status === 'needs_client_trust') {
-      // Device tracking is disabled — trust this device and finalize
-      try {
-        await (signIn as any).mfa?.trustDevice?.();
-      } catch { /* ignore if not supported */ }
-      await signIn.finalize({ navigate: finalizeNavigate });
     } else {
       setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
+    }
+  };
+
+  const handleDemoSignIn = async () => {
+    setGlobalError('');
+    setDemoLoading(true);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/demo/token`);
+      const data = await res.json();
+      if (!res.ok || !data.token) throw new Error(data.error ?? 'Could not load demo token');
+
+      const { error } = await (signIn as any).create({ strategy: 'ticket', ticket: data.token });
+      if (error) throw new Error(error.message ?? 'Demo sign-in failed');
+
+      if (signIn.status === 'complete') {
+        await signIn.finalize({ navigate: finalizeNavigate });
+      } else {
+        throw new Error(`Unexpected status: ${signIn.status}`);
+      }
+    } catch (err: any) {
+      setGlobalError(err.message ?? 'Demo sign-in failed. Please try again.');
+    } finally {
+      setDemoLoading(false);
     }
   };
 
@@ -242,11 +261,17 @@ export default function SignInScreen() {
 
           {/* Demo account — for App Store reviewers */}
           <Pressable
-            style={({ pressed }) => [styles.demoBtn, { borderColor: colors.border, backgroundColor: colors.card, opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => { setEmail('investry.demo@atomicmail.io'); setPassword('INVESTRY@2026'); }}
+            style={({ pressed }) => [styles.demoBtn, { borderColor: colors.border, backgroundColor: colors.card, opacity: (pressed || demoLoading) ? 0.7 : 1 }]}
+            onPress={handleDemoSignIn}
+            disabled={demoLoading}
           >
-            <Feather name="user" size={14} color={colors.mutedForeground} />
-            <Text style={[styles.demoBtnText, { color: colors.mutedForeground }]}>Use Demo Account</Text>
+            {demoLoading
+              ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+              : <>
+                  <Feather name="user" size={14} color={colors.mutedForeground} />
+                  <Text style={[styles.demoBtnText, { color: colors.mutedForeground }]}>Use Demo Account</Text>
+                </>
+            }
           </Pressable>
 
           {/* Footer */}

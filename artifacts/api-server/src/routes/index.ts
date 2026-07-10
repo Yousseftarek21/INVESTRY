@@ -6,6 +6,7 @@ import cashRouter from "./cash";
 import stripeRouter from "./stripe";
 import legalRouter from "./legal";
 import configRouter from "./config";
+import demoRouter from "./demo";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(cashRouter);
 router.use(stripeRouter);
 router.use(legalRouter);
 router.use(configRouter);
+router.use(demoRouter);
 
 export default router;
