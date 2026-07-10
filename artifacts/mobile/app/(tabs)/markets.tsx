@@ -20,7 +20,6 @@ const TABS = [
   { key: 'stocks',     label: 'Stocks',      icon: 'trending-up' },
   { key: 'global',     label: 'Global',      icon: 'globe'       },
   { key: 'real_estate',label: 'Real Estate', icon: 'home'        },
-  { key: 'crypto',     label: 'Crypto',      icon: 'cpu'         },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -477,8 +476,6 @@ export default function MarketsScreen() {
         return <ComingSoon icon="globe"       title="Global Indices"   description="Track major market indices from around the world in one place." />;
       case 'real_estate':
         return <ComingSoon icon="home"        title="Real Estate"      description="Egyptian real estate price indices and market trends by city." />;
-      case 'crypto':
-        return <ComingSoon icon="cpu"         title="Crypto Markets"   description="Bitcoin, Ethereum, and top cryptocurrencies priced in EGP." />;
     }
   }
 
