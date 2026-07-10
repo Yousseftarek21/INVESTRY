@@ -33,7 +33,6 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [code, setCode] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
@@ -65,21 +64,8 @@ export default function SignInScreen() {
 
     if (signIn.status === 'complete') {
       await signIn.finalize({ navigate: finalizeNavigate });
-    } else if (signIn.status === 'needs_second_factor' || signIn.status === 'needs_client_trust') {
-      const factor = signIn.supportedSecondFactors?.find((f: any) => f.strategy === 'email_code');
-      if (factor) await signIn.mfa.sendEmailCode();
     } else {
-      setGlobalError('Unexpected sign-in state. Please try again.');
-    }
-  };
-
-  const handleVerify = async () => {
-    setGlobalError('');
-    await signIn.mfa.verifyEmailCode({ code });
-    if (signIn.status === 'complete') {
-      await signIn.finalize({ navigate: finalizeNavigate });
-    } else {
-      setGlobalError('Invalid code. Please try again.');
+      setGlobalError('Sign-in could not complete. Please try again.');
     }
   };
 
@@ -118,59 +104,6 @@ export default function SignInScreen() {
       setAppleLoading(false);
     }
   }, [startSSOFlow]);
-
-  // OTP verification view
-  if (signIn.status === 'needs_client_trust') {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.inner, { paddingTop: topPad + 24, paddingBottom: botPad + 24 }]}>
-          <Pressable onPress={() => signIn.reset()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={20} color={colors.text} />
-          </Pressable>
-          <View style={styles.iconWrap}>
-            <View style={[styles.iconCircle, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="mail" size={28} color={colors.primary} />
-            </View>
-          </View>
-          <Text style={[styles.title, { color: colors.text }]}>Check your email</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            We sent a verification code to {email}
-          </Text>
-
-          <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="6-digit code"
-              placeholderTextColor={colors.mutedForeground}
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-              maxLength={6}
-              textAlign="center"
-            />
-          </View>
-          {errors.fields.code && (
-            <Text style={[styles.fieldError, { color: colors.red }]}>{errors.fields.code.message}</Text>
-          )}
-
-          <Pressable
-            style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: isFetching ? 0.7 : 1 }]}
-            onPress={handleVerify}
-            disabled={isFetching || code.length < 4}
-          >
-            {isFetching
-              ? <ActivityIndicator color={colors.primaryForeground} />
-              : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Verify</Text>
-            }
-          </Pressable>
-
-          <Pressable onPress={() => signIn.mfa.sendEmailCode()}>
-            <Text style={[styles.linkText, { color: colors.primary }]}>Resend code</Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim }]}>
