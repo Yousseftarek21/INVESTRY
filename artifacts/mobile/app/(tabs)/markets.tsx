@@ -232,6 +232,7 @@ function CurrencyRow({
   rate: number; unit: string; isLast?: boolean; isLive?: boolean;
 }) {
   const colors = useColors();
+  const t = useT();
   return (
     <View style={[
       cr.row,
@@ -245,7 +246,7 @@ function CurrencyRow({
           <Text style={[cr.name, { color: colors.text }]}>{name}</Text>
           {isLive && (
             <View style={[cr.livePill, { backgroundColor: colors.green + '18' }]}>
-              <Text style={[cr.liveTxt, { color: colors.green }]}>LIVE</Text>
+              <Text style={[cr.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
             </View>
           )}
         </View>
@@ -324,6 +325,7 @@ function ComingSoon({ icon, title, description }: {
   icon: keyof typeof Feather.glyphMap; title: string; description: string;
 }) {
   const colors = useColors();
+  const t = useT();
   return (
     <View style={[cs.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[cs.iconWrap, { backgroundColor: colors.muted }]}>
@@ -334,7 +336,7 @@ function ComingSoon({ icon, title, description }: {
         <Text style={[cs.desc, { color: colors.mutedForeground }]}>{description}</Text>
       </View>
       <View style={[cs.badge, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '30' }]}>
-        <Text style={[cs.badgeTxt, { color: colors.primary }]}>Beta Preview</Text>
+        <Text style={[cs.badgeTxt, { color: colors.primary }]}>{t.betaPreview}</Text>
       </View>
     </View>
   );
@@ -356,6 +358,7 @@ const cs = StyleSheet.create({
 
 function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['data'] }) {
   const colors = useColors();
+  const t = useT();
   const gold24 = prices ? Math.round(goldPricePerGram(prices, '24k')) : 0;
   const gold22 = prices ? Math.round(goldPricePerGram(prices, '22k')) : 0;
   const gold21 = prices ? Math.round(goldPricePerGram(prices, '21k')) : 0;
@@ -369,21 +372,21 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
   return (
     <View style={tab.group}>
       <View style={tab.section}>
-        <SLabel icon="award" title="GOLD" />
+        <SLabel icon="award" title={t.goldSectionLabel} />
         <TableCard>
-          <MetalRow accentColor={colors.primary} label="24K · Pure Gold"   sublabel="99.9% · Per gram"    price={gold24} changePercent={prices?.goldChangePercent} />
-          <MetalRow accentColor={colors.primary} label="22K Gold"           sublabel="91.67% · Per gram"   price={gold22} />
-          <MetalRow accentColor={colors.primary} label="21K Gold"           sublabel="87.5% · Per gram"    price={gold21} />
-          <MetalRow accentColor={colors.goldDark ?? '#A68700'} label="18K Gold" sublabel="75.0% · Per gram" price={gold18} />
-          <MetalRow accentColor={colors.primary} label="Gold · Troy Ounce"  sublabel="31.10 g · XAU/EGP"   price={goldOz}   unit="EGP" usdPrice={prices?.goldUsd} changePercent={prices?.goldChangePercent} isLast bold />
+          <MetalRow accentColor={colors.primary} label={t.gold24K}   sublabel={t.gold24KSub}    price={gold24} changePercent={prices?.goldChangePercent} />
+          <MetalRow accentColor={colors.primary} label={t.gold22K}   sublabel={t.gold22KSub}    price={gold22} />
+          <MetalRow accentColor={colors.primary} label={t.gold21K}   sublabel={t.gold21KSub}    price={gold21} />
+          <MetalRow accentColor={colors.goldDark ?? '#A68700'} label={t.gold18K} sublabel={t.gold18KSub} price={gold18} />
+          <MetalRow accentColor={colors.primary} label={t.goldTroyOz} sublabel={t.goldTroyOzSub} price={goldOz} unit="EGP" usdPrice={prices?.goldUsd} changePercent={prices?.goldChangePercent} isLast bold />
         </TableCard>
       </View>
       <View style={tab.section}>
-        <SLabel icon="circle" title="SILVER" />
+        <SLabel icon="circle" title={t.silverSectionLabel} />
         <TableCard>
-          <MetalRow accentColor={colors.silverColor} label="Silver 999 · Fine"    sublabel="99.9% · Per gram"  price={silver999} changePercent={prices?.silverChangePercent} />
-          <MetalRow accentColor={colors.silverColor} label="Silver 925 · Sterling" sublabel="92.5% · Per gram"  price={silver925} />
-          <MetalRow accentColor={colors.silverColor} label="Silver · Troy Ounce"  sublabel="31.10 g · XAG/EGP"  price={silverOz}  unit="EGP" changePercent={prices?.silverChangePercent} isLast bold />
+          <MetalRow accentColor={colors.silverColor} label={t.silver999Label} sublabel={t.silver999Sub}  price={silver999} changePercent={prices?.silverChangePercent} />
+          <MetalRow accentColor={colors.silverColor} label={t.silver925Label} sublabel={t.silver925Sub}  price={silver925} />
+          <MetalRow accentColor={colors.silverColor} label={t.silverTroyOz}   sublabel={t.silverTroyOzSub} price={silverOz} unit="EGP" changePercent={prices?.silverChangePercent} isLast bold />
         </TableCard>
       </View>
     </View>
@@ -391,6 +394,7 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
 }
 
 function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['data'] }) {
+  const t = useT();
   const usd  = prices?.usdToEgp ?? 0;
   const fx   = prices?.fxRates  ?? {};
 
@@ -406,19 +410,19 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
   return (
     <View style={tab.group}>
       <View style={tab.section}>
-        <SLabel icon="dollar-sign" title="EXCHANGE RATES vs. EGP" />
+        <SLabel icon="dollar-sign" title={t.exchangeRatesVsEGP} />
         <TableCard>
-          <CurrencyRow flag="🇺🇸" name="US Dollar"     pair="USD / EGP" rate={usd}  unit="EGP per 1 USD" isLive />
-          <CurrencyRow flag="🇪🇺" name="Euro"           pair="EUR / EGP" rate={eur}  unit="EGP per 1 EUR" isLive />
-          <CurrencyRow flag="🇬🇧" name="British Pound"  pair="GBP / EGP" rate={gbp}  unit="EGP per 1 GBP" isLive />
-          <CurrencyRow flag="🇸🇦" name="Saudi Riyal"    pair="SAR / EGP" rate={sar}  unit="EGP per 1 SAR" isLive />
-          <CurrencyRow flag="🇦🇪" name="UAE Dirham"     pair="AED / EGP" rate={aed}  unit="EGP per 1 AED" isLive />
-          <CurrencyRow flag="🇰🇼" name="Kuwaiti Dinar"  pair="KWD / EGP" rate={kwd}  unit="EGP per 1 KWD" isLive />
-          <CurrencyRow flag="🇶🇦" name="Qatari Riyal"   pair="QAR / EGP" rate={qar}  unit="EGP per 1 QAR" isLive />
-          <CurrencyRow flag="🇹🇷" name="Turkish Lira"   pair="TRY / EGP" rate={try_} unit="EGP per 1 TRY" isLive />
-          <CurrencyRow flag="🇨🇳" name="Chinese Yuan"   pair="CNY / EGP" rate={cny}  unit="EGP per 1 CNY" isLast isLive />
+          <CurrencyRow flag="🇺🇸" name={t.currencyUSD} pair="USD / EGP" rate={usd}  unit={`${t.currencyUnitEGP} USD`} isLive />
+          <CurrencyRow flag="🇪🇺" name={t.currencyEUR} pair="EUR / EGP" rate={eur}  unit={`${t.currencyUnitEGP} EUR`} isLive />
+          <CurrencyRow flag="🇬🇧" name={t.currencyGBP} pair="GBP / EGP" rate={gbp}  unit={`${t.currencyUnitEGP} GBP`} isLive />
+          <CurrencyRow flag="🇸🇦" name={t.currencySAR} pair="SAR / EGP" rate={sar}  unit={`${t.currencyUnitEGP} SAR`} isLive />
+          <CurrencyRow flag="🇦🇪" name={t.currencyAED} pair="AED / EGP" rate={aed}  unit={`${t.currencyUnitEGP} AED`} isLive />
+          <CurrencyRow flag="🇰🇼" name={t.currencyKWD} pair="KWD / EGP" rate={kwd}  unit={`${t.currencyUnitEGP} KWD`} isLive />
+          <CurrencyRow flag="🇶🇦" name={t.currencyQAR} pair="QAR / EGP" rate={qar}  unit={`${t.currencyUnitEGP} QAR`} isLive />
+          <CurrencyRow flag="🇹🇷" name={t.currencyTRY} pair="TRY / EGP" rate={try_} unit={`${t.currencyUnitEGP} TRY`} isLive />
+          <CurrencyRow flag="🇨🇳" name={t.currencyCNY} pair="CNY / EGP" rate={cny}  unit={`${t.currencyUnitEGP} CNY`} isLast isLive />
         </TableCard>
-        <Text style={tab.note}>All rates are live mid-market prices from Wise · Refreshed every 30s</Text>
+        <Text style={tab.note}>{t.liveRatesNote}</Text>
       </View>
     </View>
   );
@@ -442,6 +446,7 @@ const tab = StyleSheet.create({
 
 export default function MarketsScreen() {
   const colors = useColors();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const [activeTab, setActiveTab] = useState<TabKey>('metals');
@@ -485,9 +490,9 @@ export default function MarketsScreen() {
       case 'egx':         return <EGXTab />;
       case 'stocks':      return <GlobalStocksMarket />;
       case 'global':
-        return <ComingSoon icon="globe"       title="Global Indices"   description="Track major market indices from around the world in one place." />;
+        return <ComingSoon icon="globe"  title={t.globalIndicesTitle}     description={t.globalIndicesDesc} />;
       case 'real_estate':
-        return <ComingSoon icon="home"        title="Real Estate"      description="Egyptian real estate price indices and market trends by city." />;
+        return <ComingSoon icon="home"   title={t.realEstateMarketTitle}  description={t.realEstateMarketDesc} />;
     }
   }
 
@@ -500,7 +505,7 @@ export default function MarketsScreen() {
     >
       <View style={s.header}>
         <View>
-          <Text style={[s.title, { color: colors.text }]}>Markets</Text>
+          <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
         </View>
         <LiveDot />
       </View>
@@ -513,7 +518,7 @@ export default function MarketsScreen() {
         <View style={s.tsRow}>
           <Feather name="clock" size={11} color={colors.mutedForeground} />
           <Text style={[s.ts, { color: colors.mutedForeground }]}>
-            Updated{' '}
+            {t.updatedAt}
             {new Date(prices.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </Text>
         </View>

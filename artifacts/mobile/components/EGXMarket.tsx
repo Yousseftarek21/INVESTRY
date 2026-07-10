@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data/egx-companies';
 import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { getEGXMarketStatus } from '@/data/egx-companies';
@@ -33,6 +34,7 @@ function egxHoursInET(): string {
 
 function MarketStatusBanner() {
   const colors = useColors();
+  const t = useT();
   const { session, label, nextEvent } = getEGXMarketStatus();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -64,8 +66,8 @@ function MarketStatusBanner() {
         </View>
       </View>
       <View style={mst.right}>
-        <Text style={[mst.flag, { color: colors.mutedForeground }]}>🇪🇬 Egyptian Exchange</Text>
-        <Text style={[mst.schedule, { color: colors.mutedForeground }]}>Sun–Thu · 10:00–14:30 Cairo</Text>
+        <Text style={[mst.flag, { color: colors.mutedForeground }]}>🇪🇬 {t.egyptianExchange}</Text>
+        <Text style={[mst.schedule, { color: colors.mutedForeground }]}>{t.egxSchedule}</Text>
         <Text style={[mst.scheduleET, { color: colors.mutedForeground }]}>{egxHoursInET()}</Text>
       </View>
     </View>
@@ -90,12 +92,13 @@ const mst = StyleSheet.create({
 
 function SearchBar({ value, onChange }: { value: string; onChange: (t: string) => void }) {
   const colors = useColors();
+  const t = useT();
   return (
     <View style={[sb.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Feather name="search" size={16} color={colors.mutedForeground} />
       <TextInput
         style={[sb.input, { color: colors.text }]}
-        placeholder="Search ticker, company, sector…"
+        placeholder={t.egxSearchPlaceholder}
         placeholderTextColor={colors.mutedForeground}
         value={value}
         onChangeText={onChange}
@@ -212,6 +215,7 @@ const rb = StyleSheet.create({
 
 function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) {
   const colors = useColors();
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   const isPos = stock.changePercent >= 0;
   const changeColor = stock.change === 0 && !stock.isLive ? colors.mutedForeground
@@ -241,7 +245,7 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
             <Text style={[sc.ticker, { color: colors.text }]}>{stock.ticker}</Text>
             {!stock.isLive && (
               <View style={[sc.staticBadge, { backgroundColor: colors.muted }]}>
-                <Text style={[sc.staticTxt, { color: colors.mutedForeground }]}>est.</Text>
+                <Text style={[sc.staticTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel.toLowerCase().slice(0, 4)}.</Text>
               </View>
             )}
           </View>
@@ -280,12 +284,12 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
         <View style={sc.metaRight}>
           {stock.volume != null && (
             <Text style={[sc.metaVal, { color: colors.mutedForeground }]}>
-              Vol {fmtVolume(stock.volume)}
+              {t.volLabel} {fmtVolume(stock.volume)}
             </Text>
           )}
           {stock.marketCap != null && (
             <Text style={[sc.metaVal, { color: colors.mutedForeground }]}>
-              Cap {fmtMarketCap(stock.marketCap)}
+              {t.capLabel} {fmtMarketCap(stock.marketCap)}
             </Text>
           )}
         </View>
@@ -297,7 +301,7 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
           {/* 52-week range */}
           {stock.high52w != null && stock.low52w != null && (
             <View style={sc.detailRow}>
-              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>52W Range</Text>
+              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>{t.weekRange52}</Text>
               <View style={{ flex: 1 }}>
                 <RangeBar price={stock.price} low={stock.low52w} high={stock.high52w} />
               </View>
@@ -306,19 +310,19 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
           {/* P/E and Dividend */}
           <View style={sc.detailRow}>
             <View style={sc.detailItem}>
-              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>P/E Ratio</Text>
+              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>{t.peRatio}</Text>
               <Text style={[sc.detailValue, { color: colors.text }]}>
                 {stock.pe != null ? stock.pe.toFixed(1) : '—'}
               </Text>
             </View>
             <View style={sc.detailItem}>
-              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>Dividend Yield</Text>
+              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>{t.dividendYield}</Text>
               <Text style={[sc.detailValue, { color: colors.text }]}>
                 {stock.dividendYield != null ? `${stock.dividendYield.toFixed(2)}%` : '—'}
               </Text>
             </View>
             <View style={sc.detailItem}>
-              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>Industry</Text>
+              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>{t.industryLabel}</Text>
               <Text style={[sc.detailValue, { color: colors.text }]} numberOfLines={1}>
                 {stock.industry}
               </Text>
@@ -380,6 +384,7 @@ const sc = StyleSheet.create({
 
 function SectorGroup({ sector, stocks }: { sector: string; stocks: EGXStockLive[] }) {
   const colors = useColors();
+  const t = useT();
   return (
     <View style={sg.wrap}>
       <View style={sg.header}>
@@ -387,7 +392,7 @@ function SectorGroup({ sector, stocks }: { sector: string; stocks: EGXStockLive[
           {sector.toUpperCase()}
         </Text>
         <Text style={[sg.count, { color: colors.mutedForeground }]}>
-          {stocks.length} {stocks.length === 1 ? 'company' : 'companies'}
+          {stocks.length} {stocks.length === 1 ? t.companyLabel : t.companiesLabel}
         </Text>
       </View>
       {stocks.map((s, i) => (
@@ -435,6 +440,7 @@ const sk = StyleSheet.create({
 
 export function EGXMarket() {
   const colors = useColors();
+  const t = useT();
   const { data: allStocks = [], isLoading, refetch } = useEGXMarket();
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');
@@ -488,17 +494,17 @@ export function EGXMarket() {
       {/* Result count / live badge */}
       <View style={em.resultRow}>
         <Text style={[em.resultTxt, { color: colors.mutedForeground }]}>
-          {displayed.length} {displayed.length === 1 ? 'company' : 'companies'}
-          {query ? ` matching "${query}"` : sector !== 'All' ? ` in ${sector}` : ' listed'}
+          {displayed.length} {displayed.length === 1 ? t.companyLabel : t.companiesLabel}
+          {query ? ` ${t.matchingLabel} "${query}"` : sector !== 'All' ? ` ${t.inLabel} ${sector}` : ` ${t.listedLabel}`}
         </Text>
         {hasLive ? (
           <View style={[em.livePill, { backgroundColor: colors.green + '18' }]}>
             <View style={[em.liveDot, { backgroundColor: colors.green }]} />
-            <Text style={[em.liveTxt, { color: colors.green }]}>LIVE</Text>
+            <Text style={[em.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
           </View>
         ) : (
           <View style={[em.livePill, { backgroundColor: colors.muted }]}>
-            <Text style={[em.liveTxt, { color: colors.mutedForeground }]}>ESTIMATED</Text>
+            <Text style={[em.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
           </View>
         )}
       </View>
@@ -523,10 +529,10 @@ export function EGXMarket() {
             <View style={[em.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Feather name="search" size={28} color={colors.mutedForeground} />
               <Text style={[em.emptyTxt, { color: colors.mutedForeground }]}>
-                No companies found for "{query}"
+                {t.noCompaniesFound} "{query}"
               </Text>
               <Text style={[em.emptySub, { color: colors.mutedForeground }]}>
-                Try the ticker (e.g. COMI), company name, or sector
+                {t.egxSearchTip}
               </Text>
             </View>
           )}
@@ -536,8 +542,8 @@ export function EGXMarket() {
       {/* Web note */}
       {!hasLive && (
         <Text style={[em.webNote, { color: colors.mutedForeground }]}>
-          Live prices require the Expo Go app on iOS or Android.{'\n'}
-          Web preview shows estimated prices only.
+          {t.liveRequiresExpo}{'\n'}
+          {t.webPreviewNote}
         </Text>
       )}
     </View>

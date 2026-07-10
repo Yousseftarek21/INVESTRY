@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 import {
   GLOBAL_CATEGORIES, GlobalCategory, getCategoryCounts, searchGlobalCompanies, GLOBAL_COMPANIES,
   getUSMarketStatus,
@@ -14,12 +15,13 @@ import { useGlobalStocks, GlobalStockLive } from '@/hooks/useGlobalStocks';
 
 function SearchBar({ value, onChange }: { value: string; onChange: (t: string) => void }) {
   const colors = useColors();
+  const t = useT();
   return (
     <View style={[sb.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Feather name="search" size={16} color={colors.mutedForeground} />
       <TextInput
         style={[sb.input, { color: colors.text }]}
-        placeholder="Search ticker or company…"
+        placeholder={t.globalSearchPlaceholder}
         placeholderTextColor={colors.mutedForeground}
         value={value}
         onChangeText={onChange}
@@ -199,6 +201,7 @@ const sc = StyleSheet.create({
 
 function CategoryGroup({ category, stocks }: { category: string; stocks: GlobalStockLive[] }) {
   const colors = useColors();
+  const t = useT();
   return (
     <View style={cg.wrap}>
       <View style={cg.header}>
@@ -206,7 +209,7 @@ function CategoryGroup({ category, stocks }: { category: string; stocks: GlobalS
           {category.toUpperCase()}
         </Text>
         <Text style={[cg.count, { color: colors.mutedForeground }]}>
-          {stocks.length} {stocks.length === 1 ? 'ticker' : 'tickers'}
+          {stocks.length} {stocks.length === 1 ? t.tickerLabel : t.tickersLabel}
         </Text>
       </View>
       {stocks.map((s, i) => (
@@ -336,6 +339,7 @@ const umb = StyleSheet.create({
 
 export function GlobalStocksMarket() {
   const colors = useColors();
+  const t = useT();
   const { data: allStocks = [], isLoading } = useGlobalStocks();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<GlobalCategory>('All');
@@ -382,17 +386,17 @@ export function GlobalStocksMarket() {
 
       <View style={gm.resultRow}>
         <Text style={[gm.resultTxt, { color: colors.mutedForeground }]}>
-          {displayed.length} {displayed.length === 1 ? 'ticker' : 'tickers'}
-          {query ? ` matching "${query}"` : category !== 'All' ? ` in ${category}` : ' tracked'}
+          {displayed.length} {displayed.length === 1 ? t.tickerLabel : t.tickersLabel}
+          {query ? ` ${t.matchingLabel} "${query}"` : category !== 'All' ? ` ${t.inLabel} ${category}` : ` ${t.trackedLabel}`}
         </Text>
         {hasLive ? (
           <View style={[gm.livePill, { backgroundColor: colors.green + '18' }]}>
             <View style={[gm.liveDot, { backgroundColor: colors.green }]} />
-            <Text style={[gm.liveTxt, { color: colors.green }]}>LIVE</Text>
+            <Text style={[gm.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
           </View>
         ) : (
           <View style={[gm.livePill, { backgroundColor: colors.muted }]}>
-            <Text style={[gm.liveTxt, { color: colors.mutedForeground }]}>ESTIMATED</Text>
+            <Text style={[gm.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
           </View>
         )}
       </View>
@@ -414,10 +418,10 @@ export function GlobalStocksMarket() {
             <View style={[gm.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Feather name="search" size={28} color={colors.mutedForeground} />
               <Text style={[gm.emptyTxt, { color: colors.mutedForeground }]}>
-                No tickers found for "{query}"
+                {t.noTickersFound} "{query}"
               </Text>
               <Text style={[gm.emptySub, { color: colors.mutedForeground }]}>
-                Try the ticker (e.g. AAPL) or company name
+                {t.globalSearchTip}
               </Text>
             </View>
           )}
@@ -426,8 +430,8 @@ export function GlobalStocksMarket() {
 
       {!hasLive && (
         <Text style={[gm.webNote, { color: colors.mutedForeground }]}>
-          Live prices require the Expo Go app on iOS or Android.{'\n'}
-          Web preview shows estimated prices only.
+          {t.liveRequiresExpo}{'\n'}
+          {t.webPreviewNote}
         </Text>
       )}
     </View>
