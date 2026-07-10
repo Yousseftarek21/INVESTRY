@@ -358,7 +358,7 @@ export default function CashAccountsScreen() {
                   activeOpacity={0.85}
                 >
                   <Feather name="plus" size={17} color={colors.primaryForeground} />
-                  <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>{t.saveAccount}</Text>
+                  <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>{t.addCashAccount}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
