@@ -64,8 +64,14 @@ export default function SignInScreen() {
 
     if (signIn.status === 'complete') {
       await signIn.finalize({ navigate: finalizeNavigate });
+    } else if (signIn.status === 'needs_client_trust') {
+      // Device tracking is disabled — trust this device and finalize
+      try {
+        await (signIn as any).mfa?.trustDevice?.();
+      } catch { /* ignore if not supported */ }
+      await signIn.finalize({ navigate: finalizeNavigate });
     } else {
-      setGlobalError('Sign-in could not complete. Please try again.');
+      setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
     }
   };
 
