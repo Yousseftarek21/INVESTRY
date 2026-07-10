@@ -124,6 +124,7 @@ export interface CashAccount {
   accountName: string;
   balance: number;
   currency: string;
+  dateAdded?: string;
   notes?: string;
 }
 

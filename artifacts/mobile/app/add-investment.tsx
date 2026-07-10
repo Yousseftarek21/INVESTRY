@@ -16,6 +16,7 @@ import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, Pe
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
+import { DatePickerField } from '@/components/DatePickerField';
 
 const FREE_LIMIT = 5;
 
@@ -441,6 +442,8 @@ export default function AddInvestmentScreen() {
   const [purchasePrice, setPurchasePrice] = useState('');
   const [currentValue, setCurrentValue] = useState('');
   const [notes, setNotes] = useState('');
+  const today = new Date().toISOString().split('T')[0];
+  const [purchaseDate, setPurchaseDate] = useState(today);
   const [assetName, setAssetName] = useState('');
   const [assetCategory, setAssetCategory] = useState<PersonalAssetCategory>('watches');
   const [assetIcon, setAssetIcon] = useState<string>('watch');
@@ -467,16 +470,19 @@ export default function AddInvestmentScreen() {
       setForm(editingHolding.form);
       setGrams(String(editingHolding.grams ?? 0));
       setPurchasePricePerGram(String(editingHolding.purchasePricePerGram ?? 0));
+      setPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
     } else if (editingHolding.type === 'silver') {
       setForm(editingHolding.form);
       setGrams(String(editingHolding.grams ?? 0));
       setPurchasePricePerGram(String(editingHolding.purchasePricePerGram ?? 0));
+      setPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
     } else if (editingHolding.type === 'stock') {
       const match = EGX_SYMBOLS.find(s => s.symbol === editingHolding.symbol);
       if (match) { setSelectedStock(match); setCustomSymbol(''); }
       else setCustomSymbol(editingHolding.symbol ?? '');
       setShares(String(editingHolding.shares ?? 0));
       setPurchasePricePerShare(String(editingHolding.purchasePricePerShare ?? 0));
+      setPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
     } else if (editingHolding.type === 'real_estate') {
       setPropertyType(editingHolding.propertyType);
       setPropertyName(editingHolding.propertyName ?? '');
@@ -647,20 +653,19 @@ export default function AddInvestmentScreen() {
     }
 
     let holding: Holding | null = null;
-    const today = editingHolding?.purchaseDate ?? new Date().toISOString().split('T')[0];
     const id = editingHolding?.id ?? generateId();
 
     if (type === 'gold') {
       if (!grams || !purchasePricePerGram) { Alert.alert(t.missingFields, t.enterGramsAndPrice); return; }
-      holding = { id, type: 'gold', karat, form, grams: parseAmount(grams), purchasePricePerGram: parseAmount(purchasePricePerGram), purchaseDate: today, notes };
+      holding = { id, type: 'gold', karat, form, grams: parseAmount(grams), purchasePricePerGram: parseAmount(purchasePricePerGram), purchaseDate, notes };
     } else if (type === 'silver') {
       if (!grams || !purchasePricePerGram) { Alert.alert(t.missingFields, t.enterGramsAndPrice); return; }
-      holding = { id, type: 'silver', form, grams: parseAmount(grams), purchasePricePerGram: parseAmount(purchasePricePerGram), purchaseDate: today, notes };
+      holding = { id, type: 'silver', form, grams: parseAmount(grams), purchasePricePerGram: parseAmount(purchasePricePerGram), purchaseDate, notes };
     } else if (type === 'stock') {
       if (!shares || !purchasePricePerShare) { Alert.alert(t.missingFields, t.enterSharesAndPrice); return; }
       const sym = customSymbol.trim().toUpperCase() || selectedStock.symbol;
       const name = customSymbol.trim() ? customSymbol.trim().toUpperCase() : selectedStock.name;
-      holding = { id, type: 'stock', symbol: sym, companyName: name, shares: parseAmount(shares), purchasePricePerShare: parseAmount(purchasePricePerShare), purchaseDate: today, notes };
+      holding = { id, type: 'stock', symbol: sym, companyName: name, shares: parseAmount(shares), purchasePricePerShare: parseAmount(purchasePricePerShare), purchaseDate, notes };
     } else if (type === 'real_estate') {
       const finalGovernorate = governorate.trim();
       const finalCity = city.trim();
@@ -876,6 +881,9 @@ export default function AddInvestmentScreen() {
               <TextInput style={inputStyle} placeholder="e.g. 3900" placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerGram} onChangeText={(v) => setPurchasePricePerGram(formatAmountInput(v))} keyboardType="decimal-pad" />
             </View>
+            <View style={styles.section}>
+              <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
+            </View>
           </>)}
 
           {/* Silver */}
@@ -898,6 +906,9 @@ export default function AddInvestmentScreen() {
               <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 52" placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerGram} onChangeText={(v) => setPurchasePricePerGram(formatAmountInput(v))} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
           </>)}
 
@@ -950,6 +961,9 @@ export default function AddInvestmentScreen() {
               <Text style={labelStyle}>{t.purchasePricePerShare}</Text>
               <TextInput style={inputStyle} placeholder="e.g. 95.50" placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerShare} onChangeText={(v) => setPurchasePricePerShare(formatAmountInput(v))} keyboardType="decimal-pad" />
+            </View>
+            <View style={styles.section}>
+              <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
           </>)}
 
@@ -1036,9 +1050,7 @@ export default function AddInvestmentScreen() {
               )}
             </View>
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.purchaseDate}</Text>
-              <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
-                value={realEstatePurchaseDate} onChangeText={setRealEstatePurchaseDate} />
+              <DatePickerField label={t.purchaseDate} value={realEstatePurchaseDate} onChange={setRealEstatePurchaseDate} />
             </View>
 
             <View style={styles.section}>
@@ -1251,9 +1263,7 @@ export default function AddInvestmentScreen() {
               </View>
             </View>
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.purchaseDate}</Text>
-              <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
-                value={assetPurchaseDate} onChangeText={setAssetPurchaseDate} />
+              <DatePickerField label={t.purchaseDate} value={assetPurchaseDate} onChange={setAssetPurchaseDate} />
             </View>
           </>)}
 
@@ -1300,18 +1310,10 @@ export default function AddInvestmentScreen() {
                 keyboardType="decimal-pad" />
             </View>
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.fiPurchaseDate}</Text>
-              <TextInput style={inputStyle} placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.mutedForeground}
-                value={fiPurchaseDate} onChangeText={setFiPurchaseDate}
-                keyboardType="numbers-and-punctuation" />
+              <DatePickerField label={t.fiPurchaseDate} value={fiPurchaseDate} onChange={setFiPurchaseDate} />
             </View>
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.fiMaturityDate}</Text>
-              <TextInput style={inputStyle} placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.mutedForeground}
-                value={fiMaturityDate} onChangeText={setFiMaturityDate}
-                keyboardType="numbers-and-punctuation" />
+              <DatePickerField label={t.fiMaturityDate} value={fiMaturityDate} onChange={setFiMaturityDate} maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 30))} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.fiPaymentFrequency}</Text>

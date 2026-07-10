@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
+import { DatePickerField } from '@/components/DatePickerField';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -42,6 +43,7 @@ export default function CashAccountsScreen() {
   const [accountName, setAccountName] = useState('');
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('EGP');
+  const [dateAdded, setDateAdded] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -104,6 +106,7 @@ export default function CashAccountsScreen() {
     setAccountName('');
     setBalance('');
     setCurrency('EGP');
+    setDateAdded(new Date().toISOString().split('T')[0]);
     setNotes('');
   };
 
@@ -120,6 +123,7 @@ export default function CashAccountsScreen() {
     setAccountName(a.accountName);
     setBalance(formatAmountInput(String(a.balance)));
     setCurrency(a.currency);
+    setDateAdded(a.dateAdded ?? new Date().toISOString().split('T')[0]);
     setNotes(a.notes ?? '');
     setShowForm(true);
   };
@@ -136,6 +140,7 @@ export default function CashAccountsScreen() {
       accountName: accountName.trim(),
       balance: parsedBalance,
       currency,
+      dateAdded,
       notes: notes.trim() || undefined,
     };
     if (editingId) {
@@ -307,6 +312,11 @@ export default function CashAccountsScreen() {
                   );
                 })}
               </View>
+            </View>
+
+            {/* ── Date Added ──────────────────────────────────── */}
+            <View style={styles.section}>
+              <DatePickerField label={t.dateAdded} value={dateAdded} onChange={setDateAdded} />
             </View>
 
             {/* ── Notes ───────────────────────────────────────── */}
