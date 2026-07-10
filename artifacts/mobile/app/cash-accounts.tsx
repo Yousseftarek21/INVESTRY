@@ -16,6 +16,15 @@ import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
+const CURRENCY_FLAGS: Record<string, string> = {
+  EGP: '🇪🇬',
+  USD: '🇺🇸',
+  EUR: '🇪🇺',
+  GBP: '🇬🇧',
+  SAR: '🇸🇦',
+  AED: '🇦🇪',
+};
+
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
@@ -33,18 +42,19 @@ export default function CashAccountsScreen() {
   const [accountName, setAccountName] = useState('');
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('EGP');
+  const [notes, setNotes] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const CASH_TYPES: { key: CashAccountType; icon: keyof typeof Feather.glyphMap; label: string }[] = [
-    { key: 'bank', icon: 'credit-card', label: t.bankAccount },
-    { key: 'cash_home', icon: 'lock', label: t.cashAtHome },
-    { key: 'foreign_currency', icon: 'repeat', label: t.foreignCurrency },
+    { key: 'bank', icon: 'columns', label: t.bankAccount },
+    { key: 'cash_home', icon: 'pocket', label: t.cashAtHome },
+    { key: 'foreign_currency', icon: 'globe', label: t.foreignCurrency },
   ];
 
   const TYPE_ICONS: Record<CashAccountType, keyof typeof Feather.glyphMap> = {
-    bank: 'credit-card',
-    cash_home: 'lock',
-    foreign_currency: 'repeat',
+    bank: 'columns',
+    cash_home: 'pocket',
+    foreign_currency: 'globe',
   };
 
   const TYPE_LABELS: Record<CashAccountType, string> = {
@@ -59,6 +69,7 @@ export default function CashAccountsScreen() {
     setAccountName('');
     setBalance('');
     setCurrency('EGP');
+    setNotes('');
   };
 
   const openAdd = () => {
@@ -72,8 +83,9 @@ export default function CashAccountsScreen() {
     setEditingId(a.id);
     setCashType(a.type);
     setAccountName(a.accountName);
-    setBalance(String(a.balance));
+    setBalance(formatAmountInput(String(a.balance)));
     setCurrency(a.currency);
+    setNotes(a.notes ?? '');
     setShowForm(true);
   };
 
@@ -89,6 +101,7 @@ export default function CashAccountsScreen() {
       accountName: accountName.trim(),
       balance: parsedBalance,
       currency,
+      notes: notes.trim() || undefined,
     };
     if (editingId) {
       await updateCashAccount(account);
@@ -237,11 +250,26 @@ export default function CashAccountsScreen() {
                       onPress={() => setCurrency(c)}
                       activeOpacity={0.8}
                     >
+                      <Text style={styles.chipFlag}>{CURRENCY_FLAGS[c]}</Text>
                       <Text style={[styles.chipText, { color: active ? colors.primary : colors.text }]}>{c}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.cashNotes}</Text>
+              <TextInput
+                style={[inputStyle, styles.notesInput]}
+                placeholder={t.cashNotesPlaceholder}
+                placeholderTextColor={colors.mutedForeground}
+                value={notes}
+                onChangeText={v => setNotes(v.slice(0, 200))}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
             </View>
           </>
         ) : (
@@ -357,8 +385,10 @@ const styles = StyleSheet.create({
   typeCard: { flex: 1, minWidth: '30%', borderRadius: 12, borderWidth: 1.5, padding: 14, alignItems: 'center', gap: 6 },
   typeLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  chipFlag: { fontSize: 16 },
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  notesInput: { minHeight: 80, paddingTop: 12 },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
   totalCard: {
     borderRadius: 20, borderWidth: 1, padding: 20, marginBottom: 16,

@@ -1,0 +1,115 @@
+Please improve the "Add Cash Account" screen without changing the existing design language, colors, spacing, or layout. Keep the implementation clean, modern, and production-ready.
+
+## 1. Rename "Cash at Home"
+
+Replace the account type label:
+
+Current:
+- Cash at Home
+
+New:
+- Cash on Hand
+
+Update any related text, variables, and placeholders while maintaining backward compatibility if necessary.
+
+---
+
+## 2. Improve Currency Selector
+
+Enhance the currency selector by displaying each currency with its country/region flag.
+
+Example:
+
+🇪🇬 EGP
+🇺🇸 USD
+🇪🇺 EUR
+🇬🇧 GBP
+🇸🇦 SAR
+🇦🇪 AED
+
+Requirements:
+- Keep the existing chip/button design.
+- Preserve the selected-state styling.
+- Ensure the flags are aligned properly with the currency code.
+- The layout should remain responsive on smaller devices.
+- Make it easy to add more currencies in the future.
+
+---
+
+## 3. Format Balance While Typing
+
+Improve the Balance input field.
+
+Current:
+25000
+
+Desired behavior:
+25,000
+
+Requirements:
+- Format thousands separators as the user types.
+- Do not interfere with editing.
+- Preserve the underlying numeric value.
+- Support decimal values if entered.
+- Keep the numeric keyboard.
+- Prevent invalid characters.
+
+Examples:
+
+1000 → 1,000
+
+25000 → 25,000
+
+1250000 → 1,250,000
+
+---
+
+## 4. Add Optional Notes Field
+
+Below the Balance section, add an optional field:
+
+Label:
+Notes (Optional)
+
+Placeholder examples:
+- Emergency fund
+- Stored in home safe
+- Travel cash
+- Daily expenses
+
+Requirements:
+- Multiline text input.
+- Maximum 200 characters.
+- Optional field.
+- Match the styling of the other inputs.
+
+---
+
+## 5. Improve Account Type Icons
+
+Update the icons to make each account type more intuitive.
+
+Bank Account
+- Use a bank/building icon.
+
+Cash on Hand
+- Use a cash, banknote, or wallet icon instead of the home icon.
+
+Foreign Currency
+- Use a globe or currency exchange icon.
+
+Requirements:
+- Keep icon size and style consistent.
+- Maintain the existing color palette.
+- Ensure selected/unselected states remain unchanged.
+
+---
+
+General Requirements
+
+- Do not redesign the screen.
+- Preserve all existing functionality.
+- Follow the current dark theme and gold accent colors.
+- Ensure responsive behavior on both Android and iOS.
+- Keep the code clean, reusable, and production-ready.
+- Follow React Native and Expo best practices.

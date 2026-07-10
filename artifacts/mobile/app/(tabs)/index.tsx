@@ -676,7 +676,7 @@ export default function HomeScreen() {
           activeOpacity={0.85}
         >
           <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
-            <Feather name="dollar-sign" size={20} color={colors.green} />
+            <Feather name="pocket" size={20} color={colors.green} />
           </View>
           <View style={styles.cashInfo}>
             <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
