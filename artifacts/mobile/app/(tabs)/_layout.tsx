@@ -121,7 +121,7 @@ function ClassicTabLayout() {
           title: t.addTab,
           tabBarButton: () => (
             <Pressable
-              onPress={() => router.push('/add-investment')}
+              onPress={() => router.push('/cash-accounts?openAdd=1' as any)}
               style={tabStyles.addWrap}
               accessibilityLabel={t.addInvestment}
             >

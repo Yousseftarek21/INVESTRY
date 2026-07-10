@@ -3,7 +3,7 @@ import {
   Alert, Animated, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Rect, Circle, Line } from 'react-native-svg';
@@ -46,7 +46,9 @@ export default function CashAccountsScreen() {
   const { cashAccounts, addCashAccount, updateCashAccount, removeCashAccount } = useCash();
   const { impact, notify } = useHaptic();
 
-  const [showForm, setShowForm] = useState(false);
+  const { openAdd: openAddParam } = useLocalSearchParams<{ openAdd?: string }>();
+
+  const [showForm, setShowForm] = useState(openAddParam === '1');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cashType, setCashType] = useState<CashAccountType>('bank');
   const [accountName, setAccountName] = useState('');

@@ -6,7 +6,6 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useHaptic } from '@/hooks/useHaptic';
 import { Feather } from '@expo/vector-icons';
-import Svg, { Rect, Circle, Line } from 'react-native-svg';
 import { useAuth } from '@clerk/expo';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -17,23 +16,10 @@ import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, Pe
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 
-function BanknoteIcon({ size, color }: { size: number; color: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect x="1" y="6" width="22" height="13" rx="2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx="12" cy="12.5" r="2.5" stroke={color} strokeWidth="2" />
-      <Line x1="1" y1="10" x2="5" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <Line x1="19" y1="10" x2="23" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <Line x1="1" y1="15" x2="5" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <Line x1="19" y1="15" x2="23" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
-    </Svg>
-  );
-}
 
 const FREE_LIMIT = 5;
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset' | 'fixed_income';
-type AddScreenMode = 'choose' | 'investment';
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
@@ -413,7 +399,6 @@ export default function AddInvestmentScreen() {
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
   const isEditing = editingHolding !== null;
 
-  const [screenMode, setScreenMode] = useState<AddScreenMode>(isEditing ? 'investment' : 'choose');
 
   const [type, setType] = useState<InvestmentType>('gold');
   const [karat, setKarat] = useState<GoldKarat>('21k');
@@ -776,15 +761,11 @@ export default function AddInvestmentScreen() {
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text }]}>
-            {screenMode === 'choose' ? t.whatToAdd : (isEditing ? 'Edit Investment' : t.addInvestment)}
+            {isEditing ? 'Edit Investment' : t.addInvestment}
           </Text>
-          {screenMode === 'choose' ? (
-            <View style={{ width: 22 }} />
-          ) : (
-            <TouchableOpacity onPress={handleSave}>
-              <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={handleSave}>
+            <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -792,54 +773,8 @@ export default function AddInvestmentScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {!isEditing && screenMode !== 'choose' && (
-            <TouchableOpacity
-              style={styles.backRow}
-              onPress={() => setScreenMode('choose')}
-              hitSlop={8}
-            >
-              <Feather name="chevron-left" size={16} color={colors.mutedForeground} />
-              <Text style={[styles.backRowText, { color: colors.mutedForeground }]}>{t.back}</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Choose: Investment vs Cash */}
-          {screenMode === 'choose' && (
-            <View style={styles.chooseWrap}>
-              <TouchableOpacity
-                style={[styles.chooseCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => { impact(); setScreenMode('investment'); }}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.chooseIconWrap, { backgroundColor: colors.primary + '20' }]}>
-                  <Feather name="trending-up" size={22} color={colors.primary} />
-                </View>
-                <View style={styles.chooseInfo}>
-                  <Text style={[styles.chooseTitle, { color: colors.text }]}>{t.addInvestmentOption}</Text>
-                  <Text style={[styles.chooseDesc, { color: colors.mutedForeground }]}>{t.addInvestmentOptionDesc}</Text>
-                </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.chooseCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => { impact(); router.replace('/cash-accounts' as any); }}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.chooseIconWrap, { backgroundColor: colors.primary + '20' }]}>
-                  <BanknoteIcon size={22} color={colors.primary} />
-                </View>
-                <View style={styles.chooseInfo}>
-                  <Text style={[styles.chooseTitle, { color: colors.text }]}>{t.addCashOption}</Text>
-                  <Text style={[styles.chooseDesc, { color: colors.mutedForeground }]}>{t.addCashOptionDesc}</Text>
-                </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          )}
-
           {/* Investment */}
-          {screenMode === 'investment' && (<>
+          {(<>
           {/* Type */}
           <View style={styles.section}>
             <Text style={labelStyle}>{t.investmentType}</Text>
@@ -1432,18 +1367,6 @@ const styles = StyleSheet.create({
   warningText: { flex: 1, fontSize: 12, fontFamily: 'Inter_500Medium', lineHeight: 16 },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16, marginTop: 8 },
   saveButtonText: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  // Choose screen
-  backRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16, alignSelf: 'flex-start' },
-  backRowText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  chooseWrap: { gap: 12, marginTop: 8 },
-  chooseCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    borderRadius: 16, borderWidth: 1.5, padding: 16,
-  },
-  chooseIconWrap: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  chooseInfo: { flex: 1 },
-  chooseTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 3 },
-  chooseDesc: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   // Dropdown
   dropdownTrigger: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
