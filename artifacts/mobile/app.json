@@ -16,14 +16,14 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.investry.app",
-      "buildNumber": "33",
+      "buildNumber": "34",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.investry.app",
-      "versionCode": 33
+      "versionCode": 34
     },
     "web": {
       "favicon": "./assets/images/icon.png"
