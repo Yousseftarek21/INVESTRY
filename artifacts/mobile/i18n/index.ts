@@ -320,7 +320,7 @@ const en = {
 
 const ar: typeof en = {
   // App
-  appName: 'استثمارك',
+  appName: 'INVESTRY',
   appTagline: 'اعرف ثروتك',
 
   // Tabs

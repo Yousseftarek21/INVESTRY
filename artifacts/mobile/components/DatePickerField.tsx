@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { createElement, useState } from 'react';
 import {
   Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -47,6 +47,39 @@ export function DatePickerField({ label, value, onChange, maxDate, minDate }: Pr
     setTempDate(isoToDate(value));
     setShowPicker(true);
   };
+
+  const maxIso = (maxDate ?? new Date()).toISOString().split('T')[0];
+  const minIso = minDate?.toISOString().split('T')[0];
+
+  /* ── Web: transparent native <input type="date"> overlaid on the button ── */
+  if (Platform.OS === 'web') {
+    return (
+      <View>
+        <Text style={[st.label, { color: colors.mutedForeground }]}>{label}</Text>
+        <View style={[st.field, { borderColor: colors.border, backgroundColor: colors.card, position: 'relative', overflow: 'hidden' }]}>
+          <Feather name="calendar" size={16} color={colors.primary} />
+          <Text style={[st.value, { color: colors.text }]}>{formatDisplay(value)}</Text>
+          <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+          {createElement('input', {
+            type: 'date',
+            value,
+            max: maxIso,
+            ...(minIso ? { min: minIso } : {}),
+            onChange: (e: any) => onChange(e.target.value),
+            style: {
+              position: 'absolute',
+              inset: 0,
+              opacity: 0,
+              width: '100%',
+              height: '100%',
+              cursor: 'pointer',
+              border: 'none',
+            },
+          })}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View>
