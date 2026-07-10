@@ -175,6 +175,7 @@ function StockPickerModal({
   onClose: () => void;
 }) {
   const colors = useColors();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
   const [query, setQuery] = useState('');
@@ -205,7 +206,7 @@ function StockPickerModal({
             <Feather name="search" size={15} color={colors.mutedForeground} />
             <TextInput
               style={[pickerStyles.searchInput, { color: colors.text }]}
-              placeholder="Search symbol or company..."
+              placeholder={t.searchSymbolPlaceholder}
               placeholderTextColor={colors.mutedForeground}
               value={query}
               onChangeText={setQuery}
@@ -222,7 +223,7 @@ function StockPickerModal({
 
         {/* Count */}
         <Text style={[pickerStyles.countLabel, { color: colors.mutedForeground }]}>
-          {filtered.length} stocks listed
+          {filtered.length} {t.stocksListedCount}
         </Text>
 
         {/* List */}

@@ -83,9 +83,13 @@ function getSubtitle(holding: Holding): string {
   if (holding.type === 'fixed_income') {
     const today = new Date();
     const maturity = new Date(holding.maturityDate);
-    const daysLeft = Math.ceil((maturity.getTime() - today.getTime()) / 86400000);
-    const suffix = daysLeft > 0 ? `${daysLeft}d left` : 'Matured';
-    return `${holding.annualRate}% · ${holding.institution} · ${suffix}`;
+    const maturityMs = maturity.getTime();
+    const suffix = isNaN(maturityMs)
+      ? ''
+      : maturityMs > today.getTime()
+        ? `${Math.ceil((maturityMs - today.getTime()) / 86400000)}d left`
+        : 'Matured';
+    return `${holding.annualRate}% · ${holding.institution}${suffix ? ' · ' + suffix : ''}`;
   }
   const typeLabel = holding.propertyType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
   const place = [holding.district, holding.city].filter(Boolean).join(', ');

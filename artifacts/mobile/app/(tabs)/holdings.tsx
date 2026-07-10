@@ -121,7 +121,7 @@ export default function HoldingsScreen() {
             <Text style={[styles.screenTitle, { color: colors.text }]}>{t.holdings}</Text>
             {totalCount > 0 && (
               <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-                {totalCount} {totalCount === 1 ? 'asset' : 'assets'}
+                {totalCount} {totalCount === 1 ? t.investmentSingular : t.investmentPlural}
               </Text>
             )}
           </View>
