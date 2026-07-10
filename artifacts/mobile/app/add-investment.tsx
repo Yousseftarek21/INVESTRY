@@ -399,6 +399,7 @@ export default function AddInvestmentScreen() {
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
   const isEditing = editingHolding !== null;
 
+  const [screenMode, setScreenMode] = useState<'choose' | 'investment'>(isEditing ? 'investment' : 'choose');
 
   const [type, setType] = useState<InvestmentType>('gold');
   const [karat, setKarat] = useState<GoldKarat>('21k');
@@ -757,23 +758,68 @@ export default function AddInvestmentScreen() {
           borderBottomColor: colors.border,
           backgroundColor: colors.background,
         }]}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-            <Feather name="x" size={22} color={colors.mutedForeground} />
+          <TouchableOpacity
+            onPress={() => (screenMode === 'investment' && !isEditing) ? setScreenMode('choose') : router.back()}
+            hitSlop={12}
+          >
+            <Feather
+              name={(screenMode === 'investment' && !isEditing) ? 'chevron-left' : 'x'}
+              size={22}
+              color={colors.mutedForeground}
+            />
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text }]}>
-            {isEditing ? 'Edit Investment' : t.addInvestment}
+            {screenMode === 'choose' ? t.whatToAdd : (isEditing ? 'Edit Investment' : t.addInvestment)}
           </Text>
-          <TouchableOpacity onPress={handleSave}>
-            <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
-          </TouchableOpacity>
+          {screenMode === 'investment' ? (
+            <TouchableOpacity onPress={handleSave}>
+              <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 44 }} />
+          )}
         </View>
 
+        {screenMode === 'choose' ? (
+          <ScrollView
+            contentContainerStyle={[styles.chooserContent, { paddingBottom: botInsets + 40 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            <TouchableOpacity
+              style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => setScreenMode('investment')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.choiceIconWrap, { backgroundColor: colors.primary + '18' }]}>
+                <Feather name="trending-up" size={28} color={colors.primary} />
+              </View>
+              <View style={styles.choiceText}>
+                <Text style={[styles.choiceTitle, { color: colors.text }]}>{t.addInvestmentOption}</Text>
+                <Text style={[styles.choiceDesc, { color: colors.mutedForeground }]}>{t.addInvestmentOptionDesc}</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => router.replace('/cash-accounts?openAdd=1' as any)}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.choiceIconWrap, { backgroundColor: '#22C55E18' }]}>
+                <Feather name="pocket" size={28} color="#22C55E" />
+              </View>
+              <View style={styles.choiceText}>
+                <Text style={[styles.choiceTitle, { color: colors.text }]}>{t.addCashOption}</Text>
+                <Text style={[styles.choiceDesc, { color: colors.mutedForeground }]}>{t.addCashOptionDesc}</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </ScrollView>
+        ) : (
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: botInsets + 40 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Investment */}
           {(<>
           {/* Type */}
           <View style={styles.section}>
@@ -1296,6 +1342,7 @@ export default function AddInvestmentScreen() {
           </TouchableOpacity>
           </>)}
         </ScrollView>
+        )}
       </KeyboardAvoidingView>
 
       {/* Stock Picker Modal */}
@@ -1367,6 +1414,16 @@ const styles = StyleSheet.create({
   warningText: { flex: 1, fontSize: 12, fontFamily: 'Inter_500Medium', lineHeight: 16 },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16, marginTop: 8 },
   saveButtonText: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  chooserContent: { paddingHorizontal: 20, paddingTop: 32, gap: 14 },
+  choiceCard: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 18, borderWidth: 1.5,
+    padding: 20, gap: 16,
+  },
+  choiceIconWrap: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  choiceText: { flex: 1 },
+  choiceTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
+  choiceDesc: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 18 },
   // Dropdown
   dropdownTrigger: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

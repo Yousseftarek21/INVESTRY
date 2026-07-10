@@ -164,8 +164,8 @@ const en = {
   whatToAdd: 'What would you like to add?',
   addInvestmentOption: 'Investment',
   addInvestmentOptionDesc: 'Gold, silver, stocks, real estate & more',
-  addCashOption: 'Cash',
-  addCashOptionDesc: 'Bank accounts, cash at home, foreign currency',
+  addCashOption: 'Cash Account',
+  addCashOptionDesc: 'Bank accounts, physical cash & foreign currency',
   back: 'Back',
 
   // Cash accounts
@@ -173,7 +173,7 @@ const en = {
   editCashAccount: 'Edit Cash Account',
   cashAccountType: 'Account Type',
   bankAccount: 'Bank Account',
-  cashAtHome: 'Cash on Hand',
+  cashAtHome: 'Physical Cash',
   foreignCurrency: 'Foreign Currency',
   accountName: 'Account Name',
   accountNamePlaceholder: 'e.g. CIB Current Account',
@@ -481,8 +481,8 @@ const ar: typeof en = {
   whatToAdd: 'ماذا تريد أن تضيف؟',
   addInvestmentOption: 'استثمار',
   addInvestmentOptionDesc: 'ذهب، فضة، أسهم، عقارات والمزيد',
-  addCashOption: 'نقد',
-  addCashOptionDesc: 'حسابات بنكية، نقد بالمنزل، عملات أجنبية',
+  addCashOption: 'حساب نقدي',
+  addCashOptionDesc: 'حسابات بنكية، نقد وعملات أجنبية',
   back: 'رجوع',
 
   // Cash accounts
@@ -490,7 +490,7 @@ const ar: typeof en = {
   editCashAccount: 'تعديل حساب نقدي',
   cashAccountType: 'نوع الحساب',
   bankAccount: 'حساب بنكي',
-  cashAtHome: 'نقد في اليد',
+  cashAtHome: 'نقد',
   foreignCurrency: 'عملة أجنبية',
   accountName: 'اسم الحساب',
   accountNamePlaceholder: 'مثال: حساب البنك التجاري الدولي',
