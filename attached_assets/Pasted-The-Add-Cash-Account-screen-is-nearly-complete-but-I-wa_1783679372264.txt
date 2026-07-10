@@ -1,0 +1,166 @@
+The "Add Cash Account" screen is nearly complete, but I want to polish it to feel like a premium finance application. Please implement the following improvements while preserving the existing design language, colors, spacing, and layout.
+
+## 1. Replace the Cash on Hand Icon
+
+Replace the current house icon used for "Cash on Hand" with a modern **Banknote** icon.
+
+Requirements:
+- Use the **Banknote** icon from the existing icon library (preferably Lucide's `Banknote` icon).
+- The icon should represent physical cash, not a specific currency.
+- Do NOT use a house, dollar sign ($), euro (€), pound (£), EGP symbol, or any currency-specific icon.
+- Keep the existing icon size, stroke width, padding, rounded-square container, and selected/unselected styling.
+- Maintain the app's icon style for a clean, premium, and professional appearance.
+
+---
+
+## 2. Dynamic Account Name Placeholder
+
+Update the Account Name placeholder based on the selected account type.
+
+### Bank Account
+Placeholder:
+e.g. CIB Current Account
+
+### Cash on Hand
+Placeholder:
+e.g. Wallet
+or
+e.g. Home Safe
+or
+e.g. Emergency Cash
+
+### Foreign Currency
+Placeholder:
+e.g. USD Savings
+or
+e.g. EUR Cash
+or
+e.g. Travel Wallet
+
+The placeholder should update automatically whenever the account type changes.
+
+---
+
+## 3. Improve Foreign Currency Flow
+
+When the user selects **Foreign Currency**:
+
+- Do NOT automatically select EGP.
+- Either leave the currency unselected until the user chooses one, or default to USD.
+
+Display currencies in this order:
+
+🇺🇸 USD
+🇪🇺 EUR
+🇬🇧 GBP
+🇸🇦 SAR
+🇦🇪 AED
+🇪🇬 EGP
+
+For Bank Account and Cash on Hand, keep EGP selected by default.
+
+---
+
+## 4. Improve Selected Account Card
+
+Make the selected account type feel more premium.
+
+Requirements:
+- Keep the gold border.
+- Use a slightly lighter gold-tinted background.
+- Add a small checkmark in the top-right corner of the selected card.
+- Add a smooth 150–200ms selection animation.
+
+---
+
+## 5. Rename the Bottom Button
+
+Replace:
+
+"Add Cash Account"
+
+with:
+
+"Save Account"
+
+This screen creates Bank Accounts, Cash on Hand accounts, and Foreign Currency accounts, so "Save Account" is more accurate and future-proof.
+
+---
+
+## 6. Remove the Back Button
+
+The screen already has an "X" button in the navigation bar.
+
+Remove the extra "Back" button below the header to reduce clutter.
+
+---
+
+## 7. Add Contextual Helper Text Below Balance
+
+Display helper text depending on the selected account type.
+
+### Bank Account
+"Enter your current account balance."
+
+### Cash on Hand
+"Enter the amount of physical cash you currently have."
+
+### Foreign Currency
+"Enter the balance in the selected currency."
+
+Use subtle secondary text styling.
+
+---
+
+## 8. Auto Focus
+
+After the user selects an account type, automatically focus the Account Name field.
+
+---
+
+## 9. Balance Formatting
+
+Continue formatting the Balance field with thousand separators while typing.
+
+Examples:
+
+1000 → 1,000
+
+25000 → 25,000
+
+1250000 → 1,250,000
+
+Keep the underlying value numeric and preserve decimal support.
+
+---
+
+## 10. Currency Chips
+
+Display currency chips with country/region flags.
+
+Example:
+
+🇪🇬 EGP
+
+🇺🇸 USD
+
+🇪🇺 EUR
+
+🇬🇧 GBP
+
+🇸🇦 SAR
+
+🇦🇪 AED
+
+Maintain the current chip styling and responsive layout.
+
+---
+
+## General Requirements
+
+- Do not redesign the screen.
+- Preserve the existing dark theme, gold accent colors, spacing, typography, and component styling.
+- Follow React Native and Expo best practices.
+- Keep the implementation clean, reusable, and production-ready.
+- Ensure smooth performance on both iOS and Android.
+- The final result should feel polished and comparable to premium finance apps such as Revolut, Monarch Money, and Copilot Money.

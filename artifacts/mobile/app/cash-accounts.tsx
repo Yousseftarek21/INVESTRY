@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Modal, Platform, ScrollView,
+  Alert, Animated, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
+import Svg, { Rect, Circle, Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -14,19 +15,28 @@ import { useCash } from '@/context/CashContext';
 import { CashAccount, CashAccountType } from '@/types';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 
-const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
+const CURRENCIES_DEFAULT = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
+const CURRENCIES_FOREIGN  = ['USD', 'EUR', 'GBP', 'SAR', 'AED', 'EGP'];
 
 const CURRENCY_FLAGS: Record<string, string> = {
-  EGP: '🇪🇬',
-  USD: '🇺🇸',
-  EUR: '🇪🇺',
-  GBP: '🇬🇧',
-  SAR: '🇸🇦',
-  AED: '🇦🇪',
+  EGP: '🇪🇬', USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', SAR: '🇸🇦', AED: '🇦🇪',
 };
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+}
+
+function BanknoteIcon({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x="1" y="6" width="22" height="13" rx="2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="12" cy="12.5" r="2.5" stroke={color} strokeWidth="2" />
+      <Line x1="1" y1="10" x2="5" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="19" y1="10" x2="23" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="1" y1="15" x2="5" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="19" y1="15" x2="23" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </Svg>
+  );
 }
 
 export default function CashAccountsScreen() {
@@ -45,10 +55,17 @@ export default function CashAccountsScreen() {
   const [notes, setNotes] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-  const CASH_TYPES: { key: CashAccountType; icon: keyof typeof Feather.glyphMap; label: string }[] = [
-    { key: 'bank', icon: 'columns', label: t.bankAccount },
-    { key: 'cash_home', icon: 'pocket', label: t.cashAtHome },
-    { key: 'foreign_currency', icon: 'globe', label: t.foreignCurrency },
+  const nameInputRef = useRef<TextInput>(null);
+  const cardAnims = useRef<Record<CashAccountType, Animated.Value>>({
+    bank: new Animated.Value(1),
+    cash_home: new Animated.Value(1),
+    foreign_currency: new Animated.Value(1),
+  }).current;
+
+  const CASH_TYPES: { key: CashAccountType; label: string }[] = [
+    { key: 'bank',             label: t.bankAccount },
+    { key: 'cash_home',        label: t.cashAtHome },
+    { key: 'foreign_currency', label: t.foreignCurrency },
   ];
 
   const TYPE_ICONS: Record<CashAccountType, keyof typeof Feather.glyphMap> = {
@@ -61,6 +78,34 @@ export default function CashAccountsScreen() {
     bank: t.bankAccount,
     cash_home: t.cashAtHome,
     foreign_currency: t.foreignCurrency,
+  };
+
+  const NAME_PLACEHOLDER: Record<CashAccountType, string> = {
+    bank: t.cashNamePlaceholderBank,
+    cash_home: t.cashNamePlaceholderCash,
+    foreign_currency: t.cashNamePlaceholderForeign,
+  };
+
+  const BALANCE_HINT: Record<CashAccountType, string> = {
+    bank: t.cashHintBank,
+    cash_home: t.cashHintCash,
+    foreign_currency: t.cashHintForeign,
+  };
+
+  const currencies = cashType === 'foreign_currency' ? CURRENCIES_FOREIGN : CURRENCIES_DEFAULT;
+
+  const selectType = (key: CashAccountType) => {
+    Animated.sequence([
+      Animated.timing(cardAnims[key], { toValue: 0.94, duration: 80, useNativeDriver: true }),
+      Animated.timing(cardAnims[key], { toValue: 1, duration: 120, useNativeDriver: true }),
+    ]).start();
+    if (key === 'foreign_currency' && cashType !== 'foreign_currency') {
+      setCurrency('USD');
+    } else if (key !== 'foreign_currency' && cashType === 'foreign_currency') {
+      setCurrency('EGP');
+    }
+    setCashType(key);
+    setTimeout(() => nameInputRef.current?.focus(), 150);
   };
 
   const resetForm = () => {
@@ -115,9 +160,6 @@ export default function CashAccountsScreen() {
 
   const handleDelete = (id: string) => {
     if (Platform.OS === 'web') {
-      // react-native-web's Alert.alert only shows the message and does not
-      // reliably invoke custom button callbacks, so the "Delete" action never
-      // fired. Use an explicit modal instead so delete works on web too.
       setPendingDeleteId(id);
       return;
     }
@@ -144,9 +186,7 @@ export default function CashAccountsScreen() {
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
-
   const totalCash = cashAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
-
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
   const inputStyle = [styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }];
 
@@ -189,40 +229,57 @@ export default function CashAccountsScreen() {
       >
         {showForm ? (
           <>
+            {/* ── Account Type ─────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.cashAccountType}</Text>
               <View style={styles.typeGrid}>
                 {CASH_TYPES.map(ct => {
                   const active = cashType === ct.key;
                   return (
-                    <TouchableOpacity
+                    <Animated.View
                       key={ct.key}
-                      style={[styles.typeCard, {
-                        borderColor: active ? colors.primary : colors.border,
-                        backgroundColor: active ? colors.primary + '10' : colors.card,
-                      }]}
-                      onPress={() => setCashType(ct.key)}
-                      activeOpacity={0.8}
+                      style={{ flex: 1, transform: [{ scale: cardAnims[ct.key] }] }}
                     >
-                      <Feather name={ct.icon} size={20} color={active ? colors.primary : colors.mutedForeground} />
-                      <Text style={[styles.typeLabel, { color: active ? colors.primary : colors.text }]}>{ct.label}</Text>
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.typeCard, {
+                          borderColor: active ? colors.primary : colors.border,
+                          backgroundColor: active ? colors.primary + '18' : colors.card,
+                        }]}
+                        onPress={() => selectType(ct.key)}
+                        activeOpacity={0.85}
+                      >
+                        {active && (
+                          <View style={[styles.checkmark, { backgroundColor: colors.primary }]}>
+                            <Feather name="check" size={9} color={colors.primaryForeground} />
+                          </View>
+                        )}
+                        {ct.key === 'cash_home' ? (
+                          <BanknoteIcon size={20} color={active ? colors.primary : colors.mutedForeground} />
+                        ) : (
+                          <Feather name={TYPE_ICONS[ct.key]} size={20} color={active ? colors.primary : colors.mutedForeground} />
+                        )}
+                        <Text style={[styles.typeLabel, { color: active ? colors.primary : colors.text }]}>{ct.label}</Text>
+                      </TouchableOpacity>
+                    </Animated.View>
                   );
                 })}
               </View>
             </View>
 
+            {/* ── Account Name ─────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.accountName}</Text>
               <TextInput
+                ref={nameInputRef}
                 style={inputStyle}
-                placeholder={t.accountNamePlaceholder}
+                placeholder={NAME_PLACEHOLDER[cashType]}
                 placeholderTextColor={colors.mutedForeground}
                 value={accountName}
                 onChangeText={setAccountName}
               />
             </View>
 
+            {/* ── Balance ──────────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.balance}</Text>
               <TextInput
@@ -233,12 +290,14 @@ export default function CashAccountsScreen() {
                 value={balance}
                 onChangeText={(v) => setBalance(formatAmountInput(v))}
               />
+              <Text style={[styles.hint, { color: colors.mutedForeground }]}>{BALANCE_HINT[cashType]}</Text>
             </View>
 
+            {/* ── Currency ─────────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.accountCurrency}</Text>
               <View style={styles.chips}>
-                {CURRENCIES.map(c => {
+                {currencies.map(c => {
                   const active = currency === c;
                   return (
                     <TouchableOpacity
@@ -258,6 +317,7 @@ export default function CashAccountsScreen() {
               </View>
             </View>
 
+            {/* ── Notes ───────────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.cashNotes}</Text>
               <TextInput
@@ -296,7 +356,7 @@ export default function CashAccountsScreen() {
                   activeOpacity={0.85}
                 >
                   <Feather name="plus" size={17} color={colors.primaryForeground} />
-                  <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>{t.addCashAccount}</Text>
+                  <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>{t.saveAccount}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -307,7 +367,11 @@ export default function CashAccountsScreen() {
                     style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   >
                     <View style={[styles.accountIconWrap, { backgroundColor: colors.primary + '16' }]}>
-                      <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.primary} />
+                      {a.type === 'cash_home' ? (
+                        <BanknoteIcon size={18} color={colors.primary} />
+                      ) : (
+                        <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.primary} />
+                      )}
                     </View>
                     <View style={styles.accountInfo}>
                       <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{a.accountName}</Text>
@@ -381,15 +445,24 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 20, gap: 4 },
   section: { marginBottom: 16 },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 8, letterSpacing: 0.3 },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  typeCard: { flex: 1, minWidth: '30%', borderRadius: 12, borderWidth: 1.5, padding: 14, alignItems: 'center', gap: 6 },
-  typeLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  hint: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 17 },
+  typeGrid: { flexDirection: 'row', gap: 10 },
+  typeCard: {
+    flex: 1, borderRadius: 12, borderWidth: 1.5, padding: 14,
+    alignItems: 'center', gap: 6,
+  },
+  checkmark: {
+    position: 'absolute', top: 7, right: 7,
+    width: 16, height: 16, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  typeLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   chipFlag: { fontSize: 16 },
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  notesInput: { minHeight: 80, paddingTop: 12 },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
+  notesInput: { minHeight: 80, paddingTop: 12 },
   totalCard: {
     borderRadius: 20, borderWidth: 1, padding: 20, marginBottom: 16,
     alignItems: 'center', gap: 6,
@@ -417,10 +490,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginBottom: 4,
   },
   emptyTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', marginTop: 4 },
-  emptySubtitle: {
-    fontSize: 14, fontFamily: 'Inter_400Regular',
-    textAlign: 'center', lineHeight: 20,
-  },
+  emptySubtitle: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
   inlineBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 28, paddingVertical: 14,
