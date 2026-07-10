@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle } from 'react-native-svg';
+import { PerfChart } from '@/components/PerfChart';
+import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useUser } from '@clerk/expo';
@@ -17,7 +18,6 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
-import { usePortfolioSnapshots, PortfolioSnapshot } from '@/hooks/usePortfolioSnapshots';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';

@@ -17,6 +17,7 @@ import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
+import { PerfChart } from '@/components/PerfChart';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -79,37 +80,6 @@ function fmtK(n: number): string {
 const PERIODS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
 type Period = typeof PERIODS[number];
 
-function genCurve(gainPct: number, period: Period, seed: number, n = 40): number[] {
-  const scale: Record<Period, number> = { '1D': 0.12, '1W': 0.35, '1M': 0.9, '3M': 1.8, '1Y': 3.5, 'ALL': 6 };
-  const s = scale[period];
-  let r = (seed || 7) % 99991;
-  const rand = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
-  let v = 100;
-  return Array.from({ length: n }, (_, i) => {
-    v += (gainPct / 100) * s * (i / n) + (rand() - 0.47) * 1.8;
-    return v;
-  });
-}
-
-type Pt = { x: number; y: number; value: number };
-
-function buildSmoothPath(pts: Pt[]): string {
-  if (pts.length < 2) return '';
-  let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    const t = 0.25;
-    const cp1x = p1.x + (p2.x - p0.x) * t;
-    const cp1y = p1.y + (p2.y - p0.y) * t;
-    const cp2x = p2.x - (p3.x - p1.x) * t;
-    const cp2y = p2.y - (p3.y - p1.y) * t;
-    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
-  }
-  return d;
-}
 
 // ─── Animated arc ring ────────────────────────────────────────────────────────
 
