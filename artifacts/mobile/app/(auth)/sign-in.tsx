@@ -234,6 +234,15 @@ export default function SignInScreen() {
             }
           </Pressable>
 
+          {/* Demo account — for App Store reviewers */}
+          <Pressable
+            style={({ pressed }) => [styles.demoBtn, { borderColor: colors.border, backgroundColor: colors.card, opacity: pressed ? 0.7 : 1 }]}
+            onPress={() => { setEmail('investry.demo@atomicmail.io'); setPassword('INVESTRY@2026'); }}
+          >
+            <Feather name="user" size={14} color={colors.mutedForeground} />
+            <Text style={[styles.demoBtnText, { color: colors.mutedForeground }]}>Use Demo Account</Text>
+          </Pressable>
+
           {/* Footer */}
           <View style={styles.footerRow}>
             <Text style={[styles.footerText, { color: colors.mutedForeground }]}>Don't have an account? </Text>
@@ -301,4 +310,10 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   footerText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
   linkText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+
+  demoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderWidth: 1, borderRadius: 14, paddingVertical: 12,
+  },
+  demoBtnText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
 });
