@@ -1,12 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { EGXStock, MarketPrices } from '@/types';
+import { getApiBaseUrl } from '@/utils/api';
 
 export const TROY_OZ_TO_GRAMS = 31.1035;
 
-// Routes through Replit shared proxy → our Express API server at /api
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : '/api';
+const API_BASE = `${getApiBaseUrl()}/api`;
 
 // ─── Fallback (shown while loading or if all sources fail) ────────────────────
 

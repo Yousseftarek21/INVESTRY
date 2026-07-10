@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { GLOBAL_COMPANIES, GlobalCompany } from '@/data/global-stocks';
+import { getApiBaseUrl } from '@/utils/api';
 
 export interface GlobalStockLive extends GlobalCompany {
   price: number;
@@ -8,10 +9,7 @@ export interface GlobalStockLive extends GlobalCompany {
   isLive: boolean;
 }
 
-// Routes through Replit shared proxy → our Express API server at /api
-const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : '/api';
+const API_BASE = `${getApiBaseUrl()}/api`;
 
 interface ApiStock {
   symbol: string;
