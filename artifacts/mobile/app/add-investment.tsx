@@ -805,7 +805,7 @@ export default function AddInvestmentScreen() {
               activeOpacity={0.75}
             >
               <View style={[styles.choiceIconWrap, { backgroundColor: '#22C55E18' }]}>
-                <Feather name="pocket" size={28} color="#22C55E" />
+                <Feather name="credit-card" size={28} color="#22C55E" />
               </View>
               <View style={styles.choiceText}>
                 <Text style={[styles.choiceTitle, { color: colors.text }]}>{t.addCashOption}</Text>
