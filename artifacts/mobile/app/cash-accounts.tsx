@@ -346,7 +346,7 @@ export default function CashAccountsScreen() {
             {cashAccounts.length === 0 ? (
               <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={[styles.emptyIconWrap, { backgroundColor: colors.primary + '14' }]}>
-                  <Feather name="briefcase" size={30} color={colors.primary} />
+                  <BanknoteIcon size={30} color={colors.primary} />
                 </View>
                 <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noCashAccounts}</Text>
                 <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAddCash}</Text>

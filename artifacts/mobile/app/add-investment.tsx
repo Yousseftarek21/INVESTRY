@@ -6,21 +6,34 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useHaptic } from '@/hooks/useHaptic';
 import { Feather } from '@expo/vector-icons';
+import Svg, { Rect, Circle, Line } from 'react-native-svg';
 import { useAuth } from '@clerk/expo';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
-import { useCash } from '@/context/CashContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { CashAccount, CashAccountType, FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
+import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
+
+function BanknoteIcon({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x="1" y="6" width="22" height="13" rx="2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="12" cy="12.5" r="2.5" stroke={color} strokeWidth="2" />
+      <Line x1="1" y1="10" x2="5" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="19" y1="10" x2="23" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="1" y1="15" x2="5" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="19" y1="15" x2="23" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
+    </Svg>
+  );
+}
 
 const FREE_LIMIT = 5;
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset' | 'fixed_income';
-type AddScreenMode = 'choose' | 'investment' | 'cash';
+type AddScreenMode = 'choose' | 'investment';
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
@@ -393,7 +406,6 @@ export default function AddInvestmentScreen() {
   const insets = useSafeAreaInsets();
   const { impact, notify } = useHaptic();
   const { addHolding, updateHolding, holdings } = useHoldings();
-  const { addCashAccount } = useCash();
   const { isPro, launchAccess, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
@@ -402,11 +414,6 @@ export default function AddInvestmentScreen() {
   const isEditing = editingHolding !== null;
 
   const [screenMode, setScreenMode] = useState<AddScreenMode>(isEditing ? 'investment' : 'choose');
-
-  const [cashType, setCashType] = useState<CashAccountType>('bank');
-  const [cashAccountName, setCashAccountName] = useState('');
-  const [cashBalance, setCashBalance] = useState('');
-  const [cashCurrency, setCashCurrency] = useState('EGP');
 
   const [type, setType] = useState<InvestmentType>('gold');
   const [karat, setKarat] = useState<GoldKarat>('21k');
@@ -554,11 +561,10 @@ export default function AddInvestmentScreen() {
     { key: 'fixed_income', label: t.fixedIncome, icon: 'percent', color: '#22C55E' },
   ];
 
-  const CASH_TYPES: { key: CashAccountType; label: string; icon: keyof typeof Feather.glyphMap; color: string }[] = [
-    { key: 'bank', label: t.bankAccount, icon: 'credit-card', color: '#4A9EFF' },
-    { key: 'cash_home', label: t.cashAtHome, icon: 'home', color: colors.primary },
-    { key: 'foreign_currency', label: t.foreignCurrency, icon: 'globe', color: '#A47FCA' },
-  ];
+
+
+
+
 
   const CATEGORY_LABELS: Record<PersonalAssetCategory, string> = {
     watches: t.catWatches,
@@ -748,31 +754,6 @@ export default function AddInvestmentScreen() {
     router.back();
   };
 
-  const handleSaveCash = async () => {
-    // Without a signed-in account there is nowhere to persist this cash
-    // account — catch it here before any validation so we never silently
-    // drop it (the form would otherwise appear to save and then vanish).
-    if (!isSignedIn) {
-      promptSignInToSave();
-      return;
-    }
-
-    if (!cashAccountName.trim() || !cashBalance) {
-      Alert.alert(t.missingFields, t.enterAccountDetails);
-      return;
-    }
-    const account: CashAccount = {
-      id: generateId(),
-      type: cashType,
-      accountName: cashAccountName.trim(),
-      balance: parseAmount(cashBalance),
-      currency: cashCurrency,
-    };
-    notify();
-    await addCashAccount(account);
-    router.back();
-  };
-
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
@@ -795,12 +776,12 @@ export default function AddInvestmentScreen() {
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text }]}>
-            {screenMode === 'choose' ? t.whatToAdd : screenMode === 'cash' ? t.addCashAccount : (isEditing ? 'Edit Investment' : t.addInvestment)}
+            {screenMode === 'choose' ? t.whatToAdd : (isEditing ? 'Edit Investment' : t.addInvestment)}
           </Text>
           {screenMode === 'choose' ? (
             <View style={{ width: 22 }} />
           ) : (
-            <TouchableOpacity onPress={screenMode === 'cash' ? handleSaveCash : handleSave}>
+            <TouchableOpacity onPress={handleSave}>
               <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
             </TouchableOpacity>
           )}
@@ -842,11 +823,11 @@ export default function AddInvestmentScreen() {
 
               <TouchableOpacity
                 style={[styles.chooseCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => { impact(); setScreenMode('cash'); }}
+                onPress={() => { impact(); router.replace('/cash-accounts' as any); }}
                 activeOpacity={0.8}
               >
-                <View style={[styles.chooseIconWrap, { backgroundColor: '#4CAF5020' }]}>
-                  <Feather name="dollar-sign" size={22} color="#4CAF50" />
+                <View style={[styles.chooseIconWrap, { backgroundColor: colors.primary + '20' }]}>
+                  <BanknoteIcon size={22} color={colors.primary} />
                 </View>
                 <View style={styles.chooseInfo}>
                   <Text style={[styles.chooseTitle, { color: colors.text }]}>{t.addCashOption}</Text>
@@ -856,56 +837,6 @@ export default function AddInvestmentScreen() {
               </TouchableOpacity>
             </View>
           )}
-
-          {/* Cash */}
-          {screenMode === 'cash' && (<>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.cashAccountType}</Text>
-              <View style={styles.typeGrid}>
-                {CASH_TYPES.map(ct => {
-                  const isActive = cashType === ct.key;
-                  return (
-                    <TouchableOpacity
-                      key={ct.key}
-                      style={[styles.typeCard, {
-                        backgroundColor: isActive ? ct.color + '22' : colors.card,
-                        borderColor: isActive ? ct.color : colors.border,
-                      }]}
-                      onPress={() => setCashType(ct.key)}
-                      activeOpacity={0.7}
-                    >
-                      <Feather name={ct.icon} size={20} color={isActive ? ct.color : colors.mutedForeground} />
-                      <Text style={[styles.typeLabel, { color: isActive ? ct.color : colors.text }]}>{ct.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.accountName}</Text>
-              <TextInput style={inputStyle} placeholder={t.accountNamePlaceholder} placeholderTextColor={colors.mutedForeground}
-                value={cashAccountName} onChangeText={setCashAccountName} />
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.balance}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 25000" placeholderTextColor={colors.mutedForeground}
-                value={cashBalance} onChangeText={(v) => setCashBalance(formatAmountInput(v))} keyboardType="decimal-pad" />
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.accountCurrency}</Text>
-              <View style={styles.chips}>
-                {CURRENCIES.map(c => (
-                  <Chip key={c} value={c} selected={cashCurrency === c} onPress={() => setCashCurrency(c)} />
-                ))}
-              </View>
-            </View>
-
-            <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]}
-              onPress={handleSaveCash} activeOpacity={0.85}>
-              <Feather name="check" size={20} color={colors.primaryForeground} />
-              <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>{t.addCashAccount}</Text>
-            </TouchableOpacity>
-          </>)}
 
           {/* Investment */}
           {screenMode === 'investment' && (<>
