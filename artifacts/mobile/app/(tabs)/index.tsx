@@ -74,55 +74,6 @@ function fmtCompact(n: number): string {
   return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
 
-// ─── Chart helpers ────────────────────────────────────────────────────────────
-
-type Pt = { x: number; y: number; value: number };
-
-function buildSmoothPath(pts: Pt[]): string {
-  if (pts.length < 2) return '';
-  let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    const t = 0.25;
-    const cp1x = p1.x + (p2.x - p0.x) * t;
-    const cp1y = p1.y + (p2.y - p0.y) * t;
-    const cp2x = p2.x - (p3.x - p1.x) * t;
-    const cp2y = p2.y - (p3.y - p1.y) * t;
-    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
-  }
-  return d;
-}
-
-const TIME_FILTERS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
-type TimeFilter = typeof TIME_FILTERS[number];
-
-function snapshotValues(snapshots: PortfolioSnapshot[], filter: TimeFilter): number[] | null {
-  if (filter === '1D') return null;
-  const days: Record<TimeFilter, number> = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365, 'ALL': 9999 };
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days[filter]);
-  const vals = snapshots.filter(s => new Date(s.date) >= cutoff).map(s => s.value);
-  return vals.length >= 2 ? vals : null;
-}
-
-function getApproxDates(range: TimeFilter, count: number): string[] {
-  const now = new Date();
-  const shift = (days: number) => { const d = new Date(now); d.setDate(d.getDate() - days); return d; };
-  const totalDays: Record<TimeFilter, number> = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365, 'ALL': 1825 };
-  const days = totalDays[range];
-  return Array.from({ length: count }, (_, i) => {
-    if (range === '1D') return i === 0 ? 'Yesterday' : 'Today';
-    const daysAgo = Math.round((count - 1 - i) * days / Math.max(count - 1, 1));
-    const d = shift(daysAgo);
-    if (range === '1W') return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    if (range === '1M' || range === '3M') return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  });
-}
-
 // ─── Animated number display ──────────────────────────────────────────────────
 
 function useCounterDisplay(target: number): string {
@@ -226,128 +177,6 @@ const chipSt = StyleSheet.create({
   time:  { fontSize: 9, fontFamily: 'Inter_400Regular', letterSpacing: 0.1 },
 });
 
-// ─── Interactive Chart ────────────────────────────────────────────────────────
-
-function InteractiveChart({ prices, width, height = 78, timeFilter }: {
-  prices: number[] | null; width: number; height?: number; timeFilter: TimeFilter;
-}) {
-  const colors = useColors();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const [touchIdx, setTouchIdx] = useState<number | null>(null);
-  const pricesKey = prices ? prices.join(',') : '';
-
-  useEffect(() => {
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1, duration: 600, delay: 80, useNativeDriver: true,
-    }).start();
-  }, [pricesKey]);
-
-  if (!prices || prices.length < 2 || width < 10) {
-    return (
-      <View style={{ height: height + 28, alignItems: 'center', justifyContent: 'center' }}>
-        {prices !== null && (
-          <Text style={{ fontSize: 12, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>
-            Chart unavailable — pull to refresh
-          </Text>
-        )}
-      </View>
-    );
-  }
-
-  const color = prices[prices.length - 1] >= prices[0] ? colors.green : colors.red;
-  const minV = Math.min(...prices);
-  const maxV = Math.max(...prices);
-  const range = maxV - minV || 1;
-  const vPad = 10;
-
-  const pts: Pt[] = prices.map((v, i) => ({
-    x: (i / (prices.length - 1)) * width,
-    y: vPad + ((maxV - v) / range) * (height - vPad * 2),
-    value: v,
-  }));
-
-  const linePath = buildSmoothPath(pts);
-  const lastPt = pts[pts.length - 1];
-  const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
-  const dates = getApproxDates(timeFilter, prices.length);
-  const activePt = touchIdx !== null ? pts[touchIdx] : null;
-
-  return (
-    <View>
-      {/* Tooltip row — always reserves 28px so layout doesn't shift */}
-      <View style={chartSt.tooltipRow}>
-        {activePt !== null && touchIdx !== null ? (
-          <View style={chartSt.tooltipInner}>
-            <Text style={[chartSt.ttValue, { color: colors.text }]}>
-              ${activePt.value.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-            </Text>
-            <View style={[chartSt.ttDot, { backgroundColor: colors.border }]} />
-            <Text style={[chartSt.ttDate, { color: colors.mutedForeground }]}>
-              {dates[touchIdx]}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
-      {/* SVG chart with fade-in reveal */}
-      <View>
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <Svg width={width} height={height}>
-            <Defs>
-              <LinearGradient id="cgfill" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0"   stopColor={color} stopOpacity="0.30" />
-                <Stop offset="0.55" stopColor={color} stopOpacity="0.08" />
-                <Stop offset="1"   stopColor={color} stopOpacity="0" />
-              </LinearGradient>
-            </Defs>
-            <Path d={fillPath} fill="url(#cgfill)" />
-            <Path
-              d={linePath} fill="none"
-              stroke={color} strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round"
-            />
-            {activePt !== null && (
-              <>
-                <Line
-                  x1={activePt.x} y1={0}
-                  x2={activePt.x} y2={height}
-                  stroke={color + '55'} strokeWidth="1"
-                  strokeDasharray="3 3"
-                />
-                <Circle cx={activePt.x} cy={activePt.y} r={9} fill={color + '20'} />
-                <Circle cx={activePt.x} cy={activePt.y} r={4} fill={color} />
-              </>
-            )}
-          </Svg>
-        </Animated.View>
-
-        {/* Touch overlay — sits on top, captures drags */}
-        <View
-          style={[StyleSheet.absoluteFill]}
-          onStartShouldSetResponder={() => true}
-          onMoveShouldSetResponder={() => true}
-          onResponderMove={e => {
-            const x = Math.max(0, Math.min(width, e.nativeEvent.locationX));
-            const idx = Math.round((x / width) * (prices.length - 1));
-            setTouchIdx(Math.max(0, Math.min(prices.length - 1, idx)));
-          }}
-          onResponderRelease={() => setTouchIdx(null)}
-          onResponderTerminate={() => setTouchIdx(null)}
-        />
-      </View>
-    </View>
-  );
-}
-
-const chartSt = StyleSheet.create({
-  tooltipRow:   { height: 24, justifyContent: 'center', marginBottom: 4 },
-  tooltipInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  ttValue:      { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  ttDot:        { width: 3, height: 3, borderRadius: 1.5 },
-  ttDate:       { fontSize: 11, fontFamily: 'Inter_400Regular' },
-});
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
@@ -380,7 +209,7 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [refetch]);
 
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
+  const [timeFilter, setTimeFilter] = useState<ChartPeriod>('1D');
   const [sparkWidth, setSparkWidth] = useState(0);
 
   // ── Portfolio maths ────────────────────────────────────────────────────────
@@ -421,7 +250,7 @@ export default function HomeScreen() {
     };
   }, [holdings, prices]);
 
-  const { snapshots } = usePortfolioSnapshots(summary.totalValue);
+  const chartSeed = useMemo(() => Math.floor(summary.totalCost) % 99991 || 7, [summary.totalCost]);
 
   const displayValue = useCounterDisplay(summary.totalValue);
 
@@ -580,7 +409,7 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Interactive Chart */}
+          {/* Performance Chart */}
           {hasHoldings && (
             <>
               <View
@@ -590,17 +419,18 @@ export default function HomeScreen() {
                   if (w > 0) setSparkWidth(w);
                 }}
               >
-                <InteractiveChart
-                  prices={snapshotValues(snapshots, timeFilter)}
+                <PerfChart
+                  gainPct={summary.gainPct}
+                  period={timeFilter}
+                  seed={chartSeed}
                   width={sparkWidth}
                   height={78}
-                  timeFilter={timeFilter}
                 />
               </View>
 
               {/* Time filters */}
               <View style={styles.timeRow}>
-                {TIME_FILTERS.map(f => {
+                {CHART_PERIODS.map(f => {
                   const active = f === timeFilter;
                   return (
                     <Pressable
