@@ -15,7 +15,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
-import { useMarketPrices, useGoldHistory, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { usePortfolioSnapshots, PortfolioSnapshot } from '@/hooks/usePortfolioSnapshots';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -380,9 +380,8 @@ export default function HomeScreen() {
     return () => sub.remove();
   }, [refetch]);
 
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('1M');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('1D');
   const [sparkWidth, setSparkWidth] = useState(0);
-  const { data: goldHistory } = useGoldHistory(timeFilter);
 
   // ── Portfolio maths ────────────────────────────────────────────────────────
   const summary = useMemo(() => {
@@ -592,7 +591,7 @@ export default function HomeScreen() {
                 }}
               >
                 <InteractiveChart
-                  prices={snapshotValues(snapshots, timeFilter) ?? goldHistory ?? null}
+                  prices={snapshotValues(snapshots, timeFilter)}
                   width={sparkWidth}
                   height={78}
                   timeFilter={timeFilter}
