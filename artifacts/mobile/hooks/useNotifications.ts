@@ -46,7 +46,7 @@ async function scheduleDailySummary(enabled: boolean) {
     await Notifications.scheduleNotificationAsync({
       identifier: DAILY_SUMMARY_ID,
       content: {
-        title: 'استثمارك · Portfolio Update',
+        title: 'INVESTRY · Portfolio Update',
         body: 'Good morning! Check your portfolio performance for today.',
         sound: true,
       },
@@ -69,7 +69,7 @@ async function scheduleWeeklyReport(enabled: boolean) {
     await Notifications.scheduleNotificationAsync({
       identifier: WEEKLY_REPORT_ID,
       content: {
-        title: 'استثمارك · Weekly Report',
+        title: 'INVESTRY · Weekly Report',
         body: 'Your weekly investment summary is ready. See how your portfolio performed this week.',
         sound: true,
       },

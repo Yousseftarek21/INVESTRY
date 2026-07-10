@@ -806,7 +806,7 @@ export default function AddInvestmentScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.replace('/cash-accounts?openAdd=1' as any)}
+              onPress={() => router.push('/cash-accounts?openAdd=1' as any)}
               activeOpacity={0.75}
             >
               <View style={[styles.choiceIconWrap, { backgroundColor: '#22C55E18' }]}>
