@@ -60,7 +60,7 @@ export default function CashAccountsScreen() {
 
   const TYPE_ICONS: Record<CashAccountType, keyof typeof Feather.glyphMap> = {
     bank: 'credit-card',
-    cash_home: 'pocket',
+    cash_home: 'dollar-sign',
     foreign_currency: 'globe',
   };
 

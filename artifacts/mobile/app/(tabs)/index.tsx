@@ -9,6 +9,7 @@ import Svg, { Path, Defs, LinearGradient, Stop, Line, Circle } from 'react-nativ
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useUser } from '@clerk/expo';
+import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -676,7 +677,7 @@ export default function HomeScreen() {
           activeOpacity={0.85}
         >
           <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
-            <Feather name="pocket" size={20} color={colors.green} />
+            <BanknoteIcon size={20} color={colors.green} />
           </View>
           <View style={styles.cashInfo}>
             <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
