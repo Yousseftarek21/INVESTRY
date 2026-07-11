@@ -164,16 +164,24 @@ export default function RootLayout() {
       });
   }, []);
 
-  // Once fonts are ready, wait out whatever remains of MIN_SPLASH_DURATION
+  // Once BOTH fonts and Clerk config are ready, wait out whatever remains of
+  // MIN_SPLASH_DURATION before revealing the app. Waiting for clerkConfig
+  // prevents a black-screen flash if the API call resolves after fonts load.
   useEffect(() => {
-    if (!fontsLoaded && !fontError) return;
+    if ((!fontsLoaded && !fontError) || clerkConfig === null) return;
     const elapsed = Date.now() - splashStartTime;
     const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
     const timer = setTimeout(() => setShowCustomSplash(false), remaining);
     return () => clearTimeout(timer);
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, clerkConfig]);
 
-  const appReady = (fontsLoaded || !!fontError) && clerkConfig !== null;
+  // Guard: only mount ClerkProvider when we have a non-empty publishable key.
+  const validClerkConfig =
+    clerkConfig !== null && clerkConfig.publishableKey.length > 0
+      ? clerkConfig
+      : null;
+
+  const appReady = (fontsLoaded || !!fontError) && validClerkConfig !== null;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#121212" }}>
@@ -181,11 +189,11 @@ export default function RootLayout() {
       {showCustomSplash && <CustomSplash />}
 
       {/* Full app tree mounts once fonts are ready and Clerk config is fetched */}
-      {appReady && (
+      {appReady && validClerkConfig && (
         <ClerkProvider
-          publishableKey={clerkConfig.publishableKey}
+          publishableKey={validClerkConfig.publishableKey}
           tokenCache={tokenCache}
-          proxyUrl={clerkConfig.proxyUrl}
+          proxyUrl={validClerkConfig.proxyUrl}
         >
           <ClerkLoaded>
             <SafeAreaProvider>
