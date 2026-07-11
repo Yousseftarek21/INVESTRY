@@ -55,11 +55,11 @@ function computeCost(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'fixed_income') return h.principal;
   return 0;
 }
-function holdingLabel(h: Holding): string {
-  if (h.type === 'gold') return `${h.karat.toUpperCase()} Gold`;
-  if (h.type === 'silver') return 'Silver';
+function holdingLabel(h: Holding, labels: { gold: string; silver: string; realEstate: string }): string {
+  if (h.type === 'gold') return `${h.karat.toUpperCase()} ${labels.gold}`;
+  if (h.type === 'silver') return labels.silver;
   if (h.type === 'stock') return h.symbol;
-  if (h.type === 'real_estate') return h.propertyName || 'Real Estate';
+  if (h.type === 'real_estate') return h.propertyName || labels.realEstate;
   if (h.type === 'personal_asset') return h.name;
   if (h.type === 'fixed_income') return h.label || h.institution;
   return '–';
@@ -114,11 +114,12 @@ function buildSmoothPath(pts: Pt[]): string {
 
 function HealthArc({ score, size = 160 }: { score: number; size: number }) {
   const colors = useColors();
+  const t = useT();
   const anim = useRef(new Animated.Value(0)).current;
   const scoreColor =
     score >= 75 ? colors.green : score >= 50 ? '#F59E0B' : colors.red;
   const grade =
-    score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : score > 0 ? 'Needs Work' : 'No data';
+    score >= 75 ? t.healthExcellent : score >= 50 ? t.healthGood : score > 0 ? t.healthNeedsWork : t.healthNoData;
 
   useEffect(() => {
     Animated.timing(anim, {
@@ -420,6 +421,7 @@ function MetalSpotlight({ title, grams, value, avgBuy, gainPct, livePrice, tintC
   gainPct: number; livePrice?: number; tintColor: string;
 }) {
   const colors = useColors();
+  const t = useT();
   const isGain = gainPct >= 0;
   const gc = isGain ? colors.green : colors.red;
   return (
@@ -433,24 +435,24 @@ function MetalSpotlight({ title, grams, value, avgBuy, gainPct, livePrice, tintC
       <View style={ms.body}>
         <View style={ms.statCol}>
           <Text style={[ms.statVal, { color: colors.text }]}>{grams.toFixed(2)}<Text style={[ms.statUnit, { color: colors.mutedForeground }]}> g</Text></Text>
-          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>Total Weight</Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>{t.totalWeight}</Text>
         </View>
         <View style={[ms.divider, { backgroundColor: colors.border }]} />
         <View style={ms.statCol}>
           <Text style={[ms.statVal, { color: tintColor }]}>{fmtK(value)}<Text style={[ms.statUnit, { color: colors.mutedForeground }]}> EGP</Text></Text>
-          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>Market Value</Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>{t.marketValue}</Text>
         </View>
         <View style={[ms.divider, { backgroundColor: colors.border }]} />
         <View style={ms.statCol}>
           <Text style={[ms.statVal, { color: colors.text }]}>{avgBuy.toFixed(0)}<Text style={[ms.statUnit, { color: colors.mutedForeground }]}> EGP/g</Text></Text>
-          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>Avg Buy</Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>{t.avgBuy}</Text>
         </View>
       </View>
       {livePrice !== undefined && (
         <View style={[ms.footer, { borderTopColor: tintColor + '20' }]}>
           <Feather name="radio" size={10} color={tintColor} />
           <Text style={[ms.footerTxt, { color: colors.mutedForeground }]}>
-            Live price: <Text style={{ color: tintColor }}>{livePrice.toFixed(0)} EGP/g</Text>
+            {t.livePricePrefix}<Text style={{ color: tintColor }}>{livePrice.toFixed(0)} EGP/g</Text>
           </Text>
         </View>
       )}
@@ -541,6 +543,7 @@ const em = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
+  const t = useT();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { holdings, isLoading: holdingsLoading } = useHoldings();
@@ -609,7 +612,7 @@ export default function AnalyticsScreen() {
     holdings.map(h => {
       const v = computeValue(h, prices);
       const c = computeCost(h, prices);
-      return { h, v, gainPct: c > 0 ? ((v - c) / c) * 100 : 0, label: holdingLabel(h) };
+      return { h, v, gainPct: c > 0 ? ((v - c) / c) * 100 : 0, label: holdingLabel(h, { gold: t.gold, silver: t.silver, realEstate: t.realEstate }) };
     }).sort((a, b) => b.gainPct - a.gainPct),
     [holdings, prices]
   );
@@ -617,12 +620,12 @@ export default function AnalyticsScreen() {
   // ── Allocation segs ───────────────────────────────────────────────────────────
   const allocSegs = useMemo(() => {
     const raw = [
-      { label: 'Gold', value: sm.goldV, color: colors.primary },
-      { label: 'Silver', value: sm.silverV, color: colors.silverColor },
-      { label: 'EGX Stocks', value: sm.stockV, color: '#4A9EFF' },
-      { label: 'Real Estate', value: sm.reV, color: '#A47FCA' },
-      { label: 'Personal Assets', value: sm.paV, color: '#E08E45' },
-      { label: 'Fixed Income', value: sm.fiV, color: '#22C55E' },
+      { label: t.gold, value: sm.goldV, color: colors.primary },
+      { label: t.silver, value: sm.silverV, color: colors.silverColor },
+      { label: t.egxStocksAllocLabel, value: sm.stockV, color: '#4A9EFF' },
+      { label: t.realEstate, value: sm.reV, color: '#A47FCA' },
+      { label: t.personalAssetsAllocLabel, value: sm.paV, color: '#E08E45' },
+      { label: t.fixedIncome, value: sm.fiV, color: '#22C55E' },
     ].filter(s => s.value > 0);
     return raw.map(s => ({ ...s, pct: sm.totalValue > 0 ? (s.value / sm.totalValue) * 100 : 0 }));
   }, [sm, colors]);
@@ -632,27 +635,27 @@ export default function AnalyticsScreen() {
     type I = { icon: keyof typeof Feather.glyphMap; color: string; text: string };
     const items: I[] = [];
     if (!holdings.length) {
-      items.push({ icon: 'info', color: colors.primary, text: 'Add your first investment to see personalized insights about your portfolio.' });
+      items.push({ icon: 'info', color: colors.primary, text: t.insightFirstInvestment });
       return items;
     }
     if (performers[0]?.gainPct !== 0) {
       const b = performers[0];
-      items.push({ icon: 'trending-up', color: colors.green, text: `${b.label} is your best performer at ${b.gainPct > 0 ? '+' : ''}${b.gainPct.toFixed(1)}%.` });
+      items.push({ icon: 'trending-up', color: colors.green, text: t.insightBestPerformer(b.label, `${b.gainPct > 0 ? '+' : ''}${b.gainPct.toFixed(1)}`) });
     }
     const worst = performers[performers.length - 1];
     if (worst?.gainPct < -2) {
-      items.push({ icon: 'trending-down', color: colors.red, text: `${worst.label} is down ${worst.gainPct.toFixed(1)}%. Consider reviewing this position.` });
+      items.push({ icon: 'trending-down', color: colors.red, text: t.insightWorstPerformer(worst.label, worst.gainPct.toFixed(1)) });
     }
     if (typeCount < 2) {
-      items.push({ icon: 'alert-triangle', color: '#F59E0B', text: 'All eggs in one basket. Spreading across gold, stocks, or real estate reduces risk.' });
+      items.push({ icon: 'alert-triangle', color: '#F59E0B', text: t.insightLowDiversification });
     } else if (typeCount >= 3) {
-      items.push({ icon: 'check-circle', color: colors.green, text: `Solid diversification — you hold ${typeCount} different asset classes.` });
+      items.push({ icon: 'check-circle', color: colors.green, text: t.insightSolidDiversification(typeCount) });
     }
     if (sm.metalPct < 0.1 && sm.totalValue > 0) {
-      items.push({ icon: 'shield', color: '#A47FCA', text: 'Gold & silver hedge against EGP inflation. A 10–20% metals allocation is a common strategy.' });
+      items.push({ icon: 'shield', color: '#A47FCA', text: t.insightLowMetals });
     }
     if ((prices?.goldChangePercent ?? 0) > 1) {
-      items.push({ icon: 'award', color: colors.primary, text: `Gold up ${prices?.goldChangePercent.toFixed(2)}% today — your metals investments are appreciating.` });
+      items.push({ icon: 'award', color: colors.primary, text: t.insightGoldUp((prices?.goldChangePercent ?? 0).toFixed(2)) });
     }
     return items.slice(0, 4);
   }, [holdings, performers, typeCount, sm, prices, colors]);
@@ -668,23 +671,24 @@ export default function AnalyticsScreen() {
     if (!holdings.length) return items;
     const metalVal = sm.goldV + sm.silverV;
     const metalPct = sm.totalValue > 0 ? (metalVal / sm.totalValue) * 100 : 0;
-    if (metalPct > 0) items.push({ icon: 'shield', color: colors.primary, text: `Precious metals represent ${metalPct.toFixed(0)}% of your portfolio — a strong inflation hedge against EGP depreciation.` });
+    if (metalPct > 0) items.push({ icon: 'shield', color: colors.primary, text: t.insightMetalsPct(metalPct.toFixed(0)) });
     if (sm.goldV > 0 && sm.gain > 0) {
       const goldContrib = sm.totalValue > 0 ? (sm.goldV / sm.totalValue) * 100 : 0;
-      items.push({ icon: 'award', color: colors.primary, text: `Gold is your largest contributor at ${goldContrib.toFixed(0)}% of total portfolio value.` });
+      items.push({ icon: 'award', color: colors.primary, text: t.insightGoldLargest(goldContrib.toFixed(0)) });
     }
     if (sm.stockV > 0) {
       const stockPct = sm.totalValue > 0 ? (sm.stockV / sm.totalValue) * 100 : 0;
-      items.push({ icon: 'bar-chart-2', color: '#4A9EFF', text: `EGX stocks make up ${stockPct.toFixed(0)}% of your portfolio. Consider monitoring market volatility.` });
+      items.push({ icon: 'bar-chart-2', color: '#4A9EFF', text: t.insightStocksPct(stockPct.toFixed(0)) });
     }
     if (sm.gainPct > 10) {
-      items.push({ icon: 'trending-up', color: colors.green, text: `Your portfolio is up ${sm.gainPct.toFixed(1)}% overall — significantly outpacing traditional savings rates.` });
+      items.push({ icon: 'trending-up', color: colors.green, text: t.insightPortfolioUp(sm.gainPct.toFixed(1)) });
     } else if (sm.gainPct < -5) {
-      items.push({ icon: 'trending-down', color: colors.red, text: `Portfolio is down ${Math.abs(sm.gainPct).toFixed(1)}%. Dollar-cost averaging can reduce the impact of short-term volatility.` });
+      items.push({ icon: 'trending-down', color: colors.red, text: t.insightPortfolioDown(Math.abs(sm.gainPct).toFixed(1)) });
     }
     if (prices?.goldChangePercent && Math.abs(prices.goldChangePercent) > 0.5) {
-      const dir = prices.goldChangePercent > 0 ? 'up' : 'down';
-      items.push({ icon: 'zap', color: '#F59E0B', text: `Gold is ${dir} ${Math.abs(prices.goldChangePercent).toFixed(2)}% today — ${dir === 'up' ? 'your metals investments are gaining.' : 'a potential buy opportunity.'}` });
+      items.push({ icon: 'zap', color: '#F59E0B', text: prices.goldChangePercent > 0
+        ? t.insightGoldMovedUp(Math.abs(prices.goldChangePercent).toFixed(2))
+        : t.insightGoldMovedDown(Math.abs(prices.goldChangePercent).toFixed(2)) });
     }
     return items.slice(0, 4);
   }, [holdings, sm, prices, colors]);
@@ -705,7 +709,7 @@ export default function AnalyticsScreen() {
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={s.header}>
         <View>
-          <Text style={[s.pageTitle, { color: colors.text }]}>Analytics</Text>
+          <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
         </View>
       </View>
 
@@ -715,8 +719,8 @@ export default function AnalyticsScreen() {
           <Feather name="tool" size={15} color={colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>Financial Tools</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Smart calculators for investors</Text>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>{t.financialToolsTitle}</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.financialToolsSub}</Text>
         </View>
         <View style={[s.toolsBadge, { backgroundColor: colors.primary + '18' }]}>
           <Text style={[s.toolsBadgeTxt, { color: colors.primary }]}>8 TOOLS</Text>
@@ -727,16 +731,16 @@ export default function AnalyticsScreen() {
       {/* ══ SECTION 2: Market Intelligence ══════════════════════════ */}
       <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
       <PremiumGate
-        feature="Market Intelligence"
-        description="Live USD/EGP rate, gold & silver prices by karat, and personalized portfolio signals — updated in real time."
+        feature={t.subMarketIntelligence}
+        description={t.marketIntelligenceDesc}
       >
         <View style={s.sectionHeader}>
           <View style={[s.sectionIconWrap, { backgroundColor: '#4A9EFF18' }]}>
             <Feather name="globe" size={15} color="#4A9EFF" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.sectionTitle, { color: colors.text }]}>Market Intelligence</Text>
-            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Live rates & portfolio signals</Text>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>{t.subMarketIntelligence}</Text>
+            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.liveRatesPortfolioSignals}</Text>
           </View>
           <LiveDot />
         </View>
@@ -744,17 +748,17 @@ export default function AnalyticsScreen() {
         {/* Market Summary Cards — 3-up row */}
         <View style={s.marketRow}>
           <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>USD / EGP</Text>
+            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>USD/EGP</Text>
             <Text style={[s.mktPrice, { color: colors.text }]}>
               {prices?.usdToEgp ? prices.usdToEgp.toFixed(2) : '—'}
             </Text>
             <View style={[s.mktBadge, { backgroundColor: '#4A9EFF18' }]}>
-              <Text style={[s.mktBadgeTxt, { color: '#4A9EFF' }]}>LIVE</Text>
+              <Text style={[s.mktBadgeTxt, { color: '#4A9EFF' }]}>{t.liveLabel}</Text>
             </View>
           </View>
 
           <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}>
-            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Gold 21K / g</Text>
+            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>{t.gold21KPerGram}</Text>
             <Text style={[s.mktPrice, { color: colors.primary }]}>
               {prices ? Math.round(goldPricePerGram(prices, '21k')).toLocaleString('en-EG') : '—'}
             </Text>
@@ -768,7 +772,7 @@ export default function AnalyticsScreen() {
           </View>
 
           <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>Silver / g</Text>
+            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>{t.silverPerGram}</Text>
             <Text style={[s.mktPrice, { color: colors.silverColor }]}>
               {prices ? Math.round(silverPricePerGram(prices)).toLocaleString('en-EG') : '—'}
             </Text>
@@ -785,7 +789,7 @@ export default function AnalyticsScreen() {
         {/* Gold karat strip */}
         {prices && (
           <View style={[s.karatStrip, { backgroundColor: colors.card, borderColor: colors.primary + '25' }]}>
-            <Text style={[s.karatStripLabel, { color: colors.mutedForeground }]}>GOLD PRICES (EGP/g)</Text>
+            <Text style={[s.karatStripLabel, { color: colors.mutedForeground }]}>{t.goldPricesEGP}</Text>
             <View style={s.karatRow}>
               {(['24k', '22k', '21k', '18k'] as const).map(k => (
                 <View key={k} style={s.karatCol}>
@@ -802,14 +806,14 @@ export default function AnalyticsScreen() {
         {/* Personalized signals */}
         {marketInsights.length > 0 && (
           <View style={s.section}>
-            <SLabel icon="cpu" title="Personalized Insights" sub="Based on your portfolio" />
+            <SLabel icon="cpu" title={t.personalizedInsightsTitle} sub={t.basedOnPortfolio} />
             <View style={s.insightsList}>
               {marketInsights.map((ins, i) => (
                 <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
               ))}
             </View>
             <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-              Insights are informational only — not financial advice.
+              {t.insightsDisclaimer}
             </Text>
           </View>
         )}
@@ -818,16 +822,16 @@ export default function AnalyticsScreen() {
       {/* ══ SECTION 3: Portfolio Analytics ═══════════════════════════ */}
       <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
       <PremiumGate
-        feature="Portfolio Analytics"
-        description="Portfolio health score, performance chart, asset allocation, top performers, and smart insights."
+        feature={t.subPortfolioAnalytics}
+        description={t.portfolioAnalyticsDesc}
       >
         <View style={s.sectionHeader}>
           <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
             <Feather name="bar-chart-2" size={15} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.sectionTitle, { color: colors.text }]}>Portfolio Analytics</Text>
-            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Performance, health & allocation</Text>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>{t.subPortfolioAnalytics}</Text>
+            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.performanceHealthAllocation}</Text>
           </View>
         </View>
 
@@ -837,24 +841,24 @@ export default function AnalyticsScreen() {
           <>
             {/* ── Health hero ──────────────────────────────────────────── */}
             <View style={[s.healthHero, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[s.heroSectionLabel, { color: colors.mutedForeground }]}>PORTFOLIO HEALTH</Text>
+              <Text style={[s.heroSectionLabel, { color: colors.mutedForeground }]}>{t.portfolioHealthLabel}</Text>
               <View style={s.healthArcWrap}>
                 <HealthArc score={health.score} size={168} />
               </View>
               <View style={s.scoreBarsWrap}>
-                <ScoreBar label="Diversification" score={health.div} max={30} color={colors.primary} icon="layers" />
-                <ScoreBar label="Balance" score={health.conc} max={25} color="#4A9EFF" icon="sliders" />
-                <ScoreBar label="Inflation Hedge" score={health.hedge} max={25} color="#F59E0B" icon="shield" />
-                <ScoreBar label="Real Assets" score={health.real} max={20} color="#A47FCA" icon="home" />
+                <ScoreBar label={t.diversificationLabel} score={health.div} max={30} color={colors.primary} icon="layers" />
+                <ScoreBar label={t.balanceLabel} score={health.conc} max={25} color="#4A9EFF" icon="sliders" />
+                <ScoreBar label={t.inflationHedgeLabel} score={health.hedge} max={25} color="#F59E0B" icon="shield" />
+                <ScoreBar label={t.realAssetsLabel} score={health.real} max={20} color="#A47FCA" icon="home" />
               </View>
               <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-                Informational only — not financial advice.
+                {t.informationalDisclaimer}
               </Text>
             </View>
 
             {/* ── Performance chart ────────────────────────────────────── */}
             <View style={s.chartSection}>
-              <SLabel icon="activity" title="Performance" sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
+              <SLabel icon="activity" title={t.performanceLabel} sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
               <View
                 onLayout={(e: LayoutChangeEvent) => {
                   const w = e.nativeEvent.layout.width;
@@ -883,14 +887,14 @@ export default function AnalyticsScreen() {
                 })}
               </View>
               <Text style={[s.chartNote, { color: colors.mutedForeground }]}>
-                Simulated trend based on your portfolio's actual return
+                {t.simulatedTrendNote}
               </Text>
             </View>
 
             {/* ── Allocation bars ──────────────────────────────────────── */}
             {allocSegs.length > 0 && (
               <View style={s.section}>
-                <SLabel icon="pie-chart" title="Asset Allocation" sub={`${allocSegs.length} classes`} />
+                <SLabel icon="pie-chart" title={t.assetAllocationLabel} sub={`${allocSegs.length} ${t.classesCount}`} />
                 <AllocationBars segs={allocSegs} />
               </View>
             )}
@@ -898,7 +902,7 @@ export default function AnalyticsScreen() {
             {/* ── Performers ───────────────────────────────────────────── */}
             {performers.length > 0 && (
               <View style={s.section}>
-                <SLabel icon="award" title="Performers" sub={`${performers.length} investments`} />
+                <SLabel icon="award" title={t.performersLabel} sub={`${performers.length} ${t.investmentPlural}`} />
                 <View style={s.performersList}>
                   {performers.slice(0, 5).map((p, i) => (
                     <PodiumRow
@@ -916,23 +920,23 @@ export default function AnalyticsScreen() {
 
             {/* ── Smart insights ───────────────────────────────────────── */}
             <View style={s.section}>
-              <SLabel icon="zap" title="Smart Insights" sub={`${insights.length} observations`} />
+              <SLabel icon="zap" title={t.smartInsightsLabel} sub={`${insights.length} ${t.observationsLabel}`} />
               <View style={s.insightsList}>
                 {insights.map((ins, i) => (
                   <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
                 ))}
               </View>
               <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-                Insights are informational only — not financial advice.
+                {t.insightsDisclaimer}
               </Text>
             </View>
 
             {/* ── Gold spotlight ───────────────────────────────────────── */}
             {sm.goldV > 0 && (
               <View style={s.section}>
-                <SLabel icon="star" title="Gold Breakdown" />
+                <SLabel icon="star" title={t.goldBreakdownLabel} />
                 <MetalSpotlight
-                  title="GOLD HOLDINGS"
+                  title={t.goldHoldingsTitle}
                   grams={sm.totalGoldGrams}
                   value={sm.goldV}
                   avgBuy={sm.goldAvgBuy}
@@ -946,9 +950,9 @@ export default function AnalyticsScreen() {
             {/* ── Silver spotlight ─────────────────────────────────────── */}
             {sm.silverV > 0 && (
               <View style={s.section}>
-                <SLabel icon="circle" title="Silver Breakdown" />
+                <SLabel icon="circle" title={t.silverBreakdownLabel} />
                 <MetalSpotlight
-                  title="SILVER HOLDINGS"
+                  title={t.silverHoldingsTitle}
                   grams={sm.totalSilverGrams}
                   value={sm.silverV}
                   avgBuy={sm.silverAvgBuy}

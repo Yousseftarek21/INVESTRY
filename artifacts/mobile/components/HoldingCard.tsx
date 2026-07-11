@@ -2,8 +2,14 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 import { Holding, MarketPrices } from '@/types';
 import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+
+type HoldingLabels = {
+  gold: string; silver: string; realEstate: string; personalAsset: string;
+  sharesLabel: string; fiMatured: string; manualValue: string;
+};
 
 interface HoldingCardProps {
   holding: Holding;
@@ -63,19 +69,19 @@ function getIcon(holding: Holding): keyof typeof Feather.glyphMap {
   return 'home';
 }
 
-function getTitle(holding: Holding): string {
-  if (holding.type === 'gold') return `Gold ${holding.karat}`;
-  if (holding.type === 'silver') return 'Silver';
+function getTitle(holding: Holding, labels: HoldingLabels): string {
+  if (holding.type === 'gold') return `${holding.karat.toUpperCase()} ${labels.gold}`;
+  if (holding.type === 'silver') return labels.silver;
   if (holding.type === 'stock') return holding.symbol;
-  if (holding.type === 'personal_asset') return holding.name || 'Personal Asset';
+  if (holding.type === 'personal_asset') return holding.name || labels.personalAsset;
   if (holding.type === 'fixed_income') return holding.label || holding.institution;
-  return holding.propertyName || 'Real Estate';
+  return holding.propertyName || labels.realEstate;
 }
 
-function getSubtitle(holding: Holding): string {
+function getSubtitle(holding: Holding, labels: HoldingLabels): string {
   if (holding.type === 'gold') return `${holding.grams.toLocaleString()} g · ${holding.form}`;
   if (holding.type === 'silver') return `${holding.grams.toLocaleString()} g · ${holding.form}`;
-  if (holding.type === 'stock') return `${holding.shares.toLocaleString()} shares · ${holding.companyName}`;
+  if (holding.type === 'stock') return `${holding.shares.toLocaleString()} ${labels.sharesLabel} · ${holding.companyName}`;
   if (holding.type === 'personal_asset') {
     const c = holding.category;
     return c.charAt(0).toUpperCase() + c.slice(1);
@@ -88,7 +94,7 @@ function getSubtitle(holding: Holding): string {
       ? ''
       : maturityMs > today.getTime()
         ? `${Math.ceil((maturityMs - today.getTime()) / 86400000)}d left`
-        : 'Matured';
+        : labels.fiMatured;
     return `${holding.annualRate}% · ${holding.institution}${suffix ? ' · ' + suffix : ''}`;
   }
   const typeLabel = holding.propertyType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -107,6 +113,12 @@ const ICON_COLORS: Record<Holding['type'], string> = {
 
 export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues }: HoldingCardProps) {
   const colors = useColors();
+  const t = useT();
+  const labels: HoldingLabels = {
+    gold: t.gold, silver: t.silver, realEstate: t.realEstate,
+    personalAsset: t.personalAsset, sharesLabel: t.sharesLabel,
+    fiMatured: t.fiMatured, manualValue: t.manualValue,
+  };
   const currentValue = computeCurrentValue(holding, prices);
   const cost = computeCost(holding, prices);
   const gain = currentValue - cost;
@@ -125,8 +137,8 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues }: H
       </View>
 
       <View style={styles.info}>
-        <Text style={[styles.title, { color: colors.text }]}>{getTitle(holding)}</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding)}</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{getTitle(holding, labels)}</Text>
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>
       </View>
 
       <View style={styles.right}>
@@ -139,7 +151,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues }: H
             {holding.type === 'personal_asset' ? (
               <View style={[styles.manualPill, { backgroundColor: colors.mutedForeground + '18' }]}>
                 <Feather name="edit-3" size={9} color={colors.mutedForeground} />
-                <Text style={[styles.manualText, { color: colors.mutedForeground }]}>Manual Value</Text>
+                <Text style={[styles.manualText, { color: colors.mutedForeground }]}>{t.manualValue}</Text>
               </View>
             ) : (
               <View style={[styles.gainPill, { backgroundColor: gainColor + '18' }]}>

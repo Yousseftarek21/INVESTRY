@@ -1,20 +1,14 @@
-/**
- * Launch Access UI — shared, purely presentational pieces used wherever the
- * app would normally show a "Subscribe" / "Upgrade" button or a plan-status
- * badge. Every place that needs to know whether real purchases are disabled
- * must read `launchAccess` from `useSubscription()` (the single centralized
- * subscription service) and swap to these components — never re-derive the
- * flag locally.
- */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useT } from '@/hooks/useTranslation';
 
 export function LaunchBadge({ accent = '#C9A227', style }: { accent?: string; style?: object }) {
+  const t = useT();
   return (
     <View style={[lb.badge, { backgroundColor: accent + '18', borderColor: accent + '40' }, style]}>
       <Feather name="gift" size={13} color={accent} style={{ marginRight: 7 }} />
-      <Text style={[lb.text, { color: accent }]}>Included During Launch</Text>
+      <Text style={[lb.text, { color: accent }]}>{t.includedDuringLaunch}</Text>
     </View>
   );
 }
@@ -28,16 +22,14 @@ const lb = StyleSheet.create({
 });
 
 export function LaunchBanner() {
+  const t = useT();
   return (
     <View style={bn.wrap}>
       <View style={bn.iconRow}>
         <Text style={bn.emoji}>🎉</Text>
-        <Text style={bn.title}>Launch Offer</Text>
+        <Text style={bn.title}>{t.launchOfferTitle}</Text>
       </View>
-      <Text style={bn.body}>
-        To celebrate our launch, all users receive complimentary access to Pro features
-        for a limited time. Thank you for helping us build the future of investment tracking.
-      </Text>
+      <Text style={bn.body}>{t.launchOfferBody}</Text>
     </View>
   );
 }
