@@ -18,8 +18,7 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "INVSTRY.replit.app",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZmFjdHVhbC1kcnVtLTUzLmNsZXJrLmFjY291bnRzLmRldiQ"
+        "EXPO_PUBLIC_DOMAIN": "INVSTRY.replit.app"
       }
     }
   },

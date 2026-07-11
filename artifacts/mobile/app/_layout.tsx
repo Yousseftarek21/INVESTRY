@@ -11,7 +11,7 @@ import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -26,6 +26,7 @@ import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 import { useNotifications } from "@/hooks/useNotifications";
+import { getApiBaseUrl } from "@/utils/api";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -54,8 +55,10 @@ const tokenCache: TokenCache = Platform.OS === "web" ? webTokenCache : nativeTok
 
 const queryClient = new QueryClient();
 
-const publishableKey = (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim();
-const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
+interface ClerkConfig {
+  publishableKey: string;
+  proxyUrl?: string;
+}
 
 function RootLayoutNav() {
   return (
@@ -122,10 +125,43 @@ export default function RootLayout() {
     Inter_700Bold,
   });
   const [showCustomSplash, setShowCustomSplash] = React.useState(true);
+  const [clerkConfig, setClerkConfig] = useState<ClerkConfig | null>(null);
 
   // Hide the native splash immediately — our custom splash takes over from here
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  // Fetch the correct Clerk publishable key + proxy URL from the API server.
+  // The production server holds the pk_live_ key (auto-provisioned by Replit
+  // at deploy time). Baking the dev pk_test_ key into the EAS build would make
+  // the TestFlight app talk to the wrong Clerk instance and crash on auth.
+  useEffect(() => {
+    const apiBase = getApiBaseUrl();
+    fetch(`${apiBase}/api/config`)
+      .then((r) => r.json())
+      .then((data: { clerkPublishableKey?: string; clerkProxyUrl?: string }) => {
+        const key = (data.clerkPublishableKey ?? '').trim();
+        if (key) {
+          setClerkConfig({
+            publishableKey: key,
+            proxyUrl: data.clerkProxyUrl ?? undefined,
+          });
+        } else {
+          // Fallback: use the env var (works in Expo Go / dev builds)
+          setClerkConfig({
+            publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
+            proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
+          });
+        }
+      })
+      .catch(() => {
+        // Network error — fall back to env var so dev / offline still works
+        setClerkConfig({
+          publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
+          proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
+        });
+      });
   }, []);
 
   // Once fonts are ready, wait out whatever remains of MIN_SPLASH_DURATION
@@ -137,16 +173,20 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, [fontsLoaded, fontError]);
 
-  const appReady = fontsLoaded || !!fontError;
+  const appReady = (fontsLoaded || !!fontError) && clerkConfig !== null;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#121212" }}>
       {/* Custom splash renders immediately on first mount — no providers needed */}
       {showCustomSplash && <CustomSplash />}
 
-      {/* Full app tree mounts once fonts are ready, hidden behind the splash */}
+      {/* Full app tree mounts once fonts are ready and Clerk config is fetched */}
       {appReady && (
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
+        <ClerkProvider
+          publishableKey={clerkConfig.publishableKey}
+          tokenCache={tokenCache}
+          proxyUrl={clerkConfig.proxyUrl}
+        >
           <ClerkLoaded>
             <SafeAreaProvider>
               <AppSettingsProvider>
