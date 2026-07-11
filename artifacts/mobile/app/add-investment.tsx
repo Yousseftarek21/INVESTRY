@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView,
+  Alert, Animated, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -539,7 +539,7 @@ export default function AddInvestmentScreen() {
     if (match) setAssetIcon(match.icon);
   }, [assetCategory, assetIconTouched]);
 
-  const inputStyle = [styles.input, { backgroundColor: colors.cardSecondary, borderColor: colors.border, color: colors.text }];
+  const inputStyle = [styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }];
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
 
   const KARATS: GoldKarat[] = ['24k', '22k', '21k', '18k'];
@@ -616,15 +616,34 @@ export default function AddInvestmentScreen() {
     rePurchasePriceNum > rePricePerM2Num * 0.2 &&
     rePurchasePriceNum < rePricePerM2Num * 5;
 
+  const typeCardAnims = useRef<Record<InvestmentType, Animated.Value>>({
+    gold: new Animated.Value(1),
+    silver: new Animated.Value(1),
+    stock: new Animated.Value(1),
+    real_estate: new Animated.Value(1),
+    personal_asset: new Animated.Value(1),
+    fixed_income: new Animated.Value(1),
+  }).current;
+
+  const selectType = (key: InvestmentType) => {
+    if (isEditing) return;
+    Animated.sequence([
+      Animated.timing(typeCardAnims[key], { toValue: 0.94, duration: 80, useNativeDriver: true }),
+      Animated.timing(typeCardAnims[key], { toValue: 1, duration: 120, useNativeDriver: true }),
+    ]).start();
+    setType(key);
+  };
+
   const Chip = ({ value, selected, onPress, label }: { value: string; selected: boolean; onPress: () => void; label?: string }) => (
     <TouchableOpacity
       style={[styles.chip, {
-        backgroundColor: selected ? colors.primary : colors.muted,
+        backgroundColor: selected ? colors.primary + '10' : colors.card,
         borderColor: selected ? colors.primary : colors.border,
       }]}
       onPress={onPress}
+      activeOpacity={0.8}
     >
-      <Text style={[styles.chipText, { color: selected ? colors.primaryForeground : colors.text }]}>
+      <Text style={[styles.chipText, { color: selected ? colors.primary : colors.text }]}>
         {label ?? value}
       </Text>
     </TouchableOpacity>
@@ -834,19 +853,27 @@ export default function AddInvestmentScreen() {
                 const isActive = type === tp.key;
                 const isDisabled = isEditing && !isActive;
                 return (
-                  <TouchableOpacity
+                  <Animated.View
                     key={tp.key}
-                    style={[styles.typeCard, {
-                      backgroundColor: isActive ? tp.color + '22' : colors.card,
-                      borderColor: isActive ? tp.color : colors.border,
-                      opacity: isDisabled ? 0.35 : 1,
-                    }]}
-                    onPress={() => { if (!isEditing) setType(tp.key); }}
-                    activeOpacity={isEditing ? 1 : 0.7}
+                    style={{ flex: 1, minWidth: '40%', transform: [{ scale: typeCardAnims[tp.key] }], opacity: isDisabled ? 0.35 : 1 }}
                   >
-                    <Feather name={tp.icon} size={20} color={isActive ? tp.color : colors.mutedForeground} />
-                    <Text style={[styles.typeLabel, { color: isActive ? tp.color : colors.text }]}>{tp.label}</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.typeCard, {
+                        backgroundColor: isActive ? tp.color + '18' : colors.card,
+                        borderColor: isActive ? tp.color : colors.border,
+                      }]}
+                      onPress={() => selectType(tp.key)}
+                      activeOpacity={isEditing ? 1 : 0.85}
+                    >
+                      {isActive && (
+                        <View style={[styles.checkmark, { backgroundColor: tp.color }]}>
+                          <Feather name="check" size={9} color="#fff" />
+                        </View>
+                      )}
+                      <Feather name={tp.icon} size={20} color={isActive ? tp.color : colors.mutedForeground} />
+                      <Text style={[styles.typeLabel, { color: isActive ? tp.color : colors.text }]}>{tp.label}</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
                 );
               })}
             </View>
@@ -919,7 +946,7 @@ export default function AddInvestmentScreen() {
 
               {/* Dropdown trigger */}
               <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.primary }]}
+                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => { impact(); setStockPickerVisible(true); }}
                 activeOpacity={0.75}
               >
@@ -1337,11 +1364,6 @@ export default function AddInvestmentScreen() {
               placeholderTextColor={colors.mutedForeground} value={notes} onChangeText={setNotes} multiline />
           </View>
 
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]}
-            onPress={handleSave} activeOpacity={0.85}>
-            <Feather name="check" size={20} color={colors.primaryForeground} />
-            <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>{isEditing ? 'Save Changes' : t.addInvestment}</Text>
-          </TouchableOpacity>
           </>)}
         </ScrollView>
         )}
@@ -1399,8 +1421,13 @@ const styles = StyleSheet.create({
   section: { marginBottom: 16 },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 8, letterSpacing: 0.3 },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  typeCard: { flex: 1, minWidth: '40%', borderRadius: 12, borderWidth: 1.5, padding: 14, alignItems: 'center', gap: 6 },
+  typeCard: { borderRadius: 12, borderWidth: 1.5, padding: 14, alignItems: 'center', gap: 6, position: 'relative' },
   typeLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  checkmark: {
+    position: 'absolute', top: 8, right: 8,
+    width: 18, height: 18, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center',
+  },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipsScroll: { flexDirection: 'row', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
@@ -1429,7 +1456,7 @@ const styles = StyleSheet.create({
   // Dropdown
   dropdownTrigger: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: 14, borderWidth: 1.5, padding: 14,
+    borderRadius: 12, borderWidth: 1, padding: 14,
   },
   dropdownAvatar: {
     width: 42, height: 42, borderRadius: 10,
@@ -1445,7 +1472,7 @@ const styles = StyleSheet.create({
   // Collapsible sections (Real Estate — installment / rental)
   collapsibleHeader: {
     flexDirection: 'row', alignItems: 'center',
-    borderRadius: 14, borderWidth: 1.5, padding: 14,
+    borderRadius: 12, borderWidth: 1, padding: 14,
   },
   collapsibleTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold', marginBottom: 3 },
   collapsibleDesc: { fontSize: 12, fontFamily: 'Inter_400Regular' },
