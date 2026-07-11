@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { reloadAppAsync } from "expo";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useClerk } from "@clerk/expo";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -22,14 +24,29 @@ export type ErrorFallbackProps = {
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { signOut } = useClerk();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const handleRestart = async () => {
     try {
       await reloadAppAsync();
     } catch (restartError) {
       console.error("Failed to restart app:", restartError);
+      resetError();
+    }
+  };
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+    } catch {
+    }
+    try {
+      await reloadAppAsync();
+    } catch {
       resetError();
     }
   };
@@ -69,12 +86,16 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
       ) : null}
 
       <View style={styles.content}>
+        <View style={[styles.iconWrap, { backgroundColor: colors.red + '15' }]}>
+          <Feather name="alert-triangle" size={32} color={colors.red} />
+        </View>
+
         <Text style={[styles.title, { color: colors.foreground }]}>
           Something went wrong
         </Text>
 
         <Text style={[styles.message, { color: colors.mutedForeground }]}>
-          Please reload the app to continue.
+          Please reload the app to continue. If the problem persists, sign out and sign back in.
         </Text>
 
         <Pressable
@@ -88,14 +109,34 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             },
           ]}
         >
-          <Text
-            style={[
-              styles.buttonText,
-              { color: colors.primaryForeground },
-            ]}
-          >
+          <Feather name="refresh-cw" size={16} color={colors.primaryForeground} style={{ marginRight: 8 }} />
+          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>
             Try Again
           </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleSignOut}
+          disabled={signingOut}
+          style={({ pressed }) => [
+            styles.signOutBtn,
+            {
+              backgroundColor: colors.red + '12',
+              borderColor: colors.red + '30',
+              opacity: pressed || signingOut ? 0.7 : 1,
+            },
+          ]}
+        >
+          {signingOut ? (
+            <ActivityIndicator size="small" color={colors.red} />
+          ) : (
+            <>
+              <Feather name="log-out" size={16} color={colors.red} style={{ marginRight: 8 }} />
+              <Text style={[styles.buttonText, { color: colors.red }]}>
+                Sign Out &amp; Restart
+              </Text>
+            </>
+          )}
         </Pressable>
       </View>
 
@@ -185,18 +226,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 16,
     width: "100%",
-    maxWidth: 600,
+    maxWidth: 360,
+  },
+  iconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "700",
     textAlign: "center",
-    lineHeight: 40,
   },
   message: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
-    lineHeight: 24,
+    lineHeight: 22,
   },
   topButton: {
     position: "absolute",
@@ -210,18 +258,28 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   button: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 14,
     paddingHorizontal: 24,
-    minWidth: 200,
+    width: "100%",
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 15,
+    borderRadius: 14,
+    paddingHorizontal: 24,
+    width: "100%",
+    borderWidth: 1,
   },
   buttonText: {
     fontWeight: "600",

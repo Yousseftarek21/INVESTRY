@@ -821,12 +821,22 @@ export default function SettingsScreen() {
 
         {/* ── PROFILE HERO ─────────────────────────────────── */}
         {user && (
-          <ProfileHero
-            initials={initials} fullName={profileName} email={email}
-            verified={verified} holdingsCount={holdings.length}
-            plan={plan === 'pro' ? plan : null}
-            onPress={() => { haptic(); setEditProfileOpen(true); }}
-          />
+          <>
+            <ProfileHero
+              initials={initials} fullName={profileName} email={email}
+              verified={verified} holdingsCount={holdings.length}
+              plan={plan === 'pro' ? plan : null}
+              onPress={() => { haptic(); setEditProfileOpen(true); }}
+            />
+            <TouchableOpacity
+              onPress={handleSignOut}
+              activeOpacity={0.7}
+              style={[sc.switchAccountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
+              <Feather name="log-out" size={14} color={colors.mutedForeground} />
+              <Text style={[sc.switchAccountTxt, { color: colors.mutedForeground }]}>{t.signOutBtn}</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         {/* ── SUBSCRIPTION ─────────────────────────────────── */}
@@ -1108,6 +1118,13 @@ const sc = StyleSheet.create({
 
   signOut: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 17, gap: 10 },
   signOutTxt: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+
+  switchAccountBtn: {
+    alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderRadius: 10, borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12, paddingVertical: 7, marginTop: 8,
+  },
+  switchAccountTxt: { fontSize: 12, fontFamily: 'Inter_500Medium' },
 
   signInCard: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
   signInIconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#C9A22718', alignItems: 'center', justifyContent: 'center' },
