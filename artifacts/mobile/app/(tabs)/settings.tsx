@@ -732,7 +732,7 @@ export default function SettingsScreen() {
           value = h.shares * h.purchasePricePerShare; cost = h.shares * h.purchasePricePerShare;
         } else if (h.type === 'real_estate') {
           type = 'Real Estate'; name = h.propertyName || h.propertyType; details = h.propertyType;
-          value = h.currentValue; cost = h.purchasePrice;
+          value = h.currentValue ?? 0; cost = h.purchasePrice;
         } else if (h.type === 'personal_asset') {
           type = 'Personal Asset'; name = h.name; details = h.category;
           const cv = h.currentValue ?? h.purchasePrice;

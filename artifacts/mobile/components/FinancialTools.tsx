@@ -20,7 +20,7 @@ function computeValue(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
-  if (h.type === 'real_estate') return h.currentValue;
+  if (h.type === 'real_estate') return h.currentValue ?? 0;
   return 0;
 }
 function computeCost(h: Holding): number {

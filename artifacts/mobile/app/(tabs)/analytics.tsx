@@ -38,7 +38,7 @@ function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>):
 }
 function computeValue(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'fixed_income') return fixedIncomeAccruedValue(h);
-  if (h.type === 'real_estate') return h.currentValue;
+  if (h.type === 'real_estate') return h.currentValue ?? 0;
   if (!prices) return 0;
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);
