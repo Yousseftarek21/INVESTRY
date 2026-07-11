@@ -17,15 +17,15 @@ const ACCENT = '#C9A227';
 const BADGE = 'PRO';
 
 export function PremiumGate({ feature, description, children }: PremiumGateProps) {
-  const { isPro, launchAccess, showPaywall } = useSubscription();
+  const { isPro, launchAccess, isLoading, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
   const t = useT();
 
-  // Launch Access is the single source of truth for "is everything unlocked
-  // right now" — never rely on `plan` alone here, since it could momentarily
-  // be stale/unresolved (loading, cache, network hiccup) even though the
-  // backend has already granted everyone access.
-  if (launchAccess || isPro) return <>{children}</>;
+  // While the subscription is still loading from the API, optimistically
+  // show children rather than flashing the gate. Once resolved, if the user
+  // genuinely isn't Pro the gate renders. This prevents the "must be pro"
+  // wall from appearing for a second on every app open for launch-access users.
+  if (isLoading || launchAccess || isPro) return <>{children}</>;
 
   const accent = ACCENT;
   const badge = BADGE;

@@ -673,7 +673,7 @@ export default function SettingsScreen() {
   const { impact: haptic, notify } = useHaptic();
   const { signOut } = useClerk();
   const { user } = useUser();
-  const { plan, isPro, launchAccess, showPaywall, manageSubscription } = useSubscription();
+  const { plan, isPro, launchAccess, isLoading: subLoading, showPaywall, manageSubscription } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
     biometricLock, setBiometricLock,
@@ -830,7 +830,7 @@ export default function SettingsScreen() {
         )}
 
         {/* ── SUBSCRIPTION ─────────────────────────────────── */}
-        {!isPro ? (
+        {!subLoading && !isPro ? (
           <Pressable
             onPress={() => (user ? showPaywall() : router.push('/(auth)/sign-in' as any))}
             style={({ pressed }) => [sc.upgradeCard, { opacity: pressed ? 0.88 : 1 }]}
