@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useClerk } from "@clerk/expo";
+import { useRouter } from "expo-router";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -25,6 +26,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { signOut } = useClerk();
+  const router = useRouter();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -67,6 +69,25 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Help button — top-left, always visible */}
+      <Pressable
+        onPress={() => router.replace('/(auth)/sign-in' as any)}
+        accessibilityLabel="Go to sign in"
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          styles.helpButton,
+          {
+            top: insets.top + 16,
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            opacity: pressed ? 0.75 : 1,
+          },
+        ]}
+      >
+        <Feather name="help-circle" size={16} color={colors.mutedForeground} />
+        <Text style={[styles.helpText, { color: colors.mutedForeground }]}>Help</Text>
+      </Pressable>
+
       {__DEV__ ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
@@ -245,6 +266,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
     lineHeight: 22,
+  },
+  helpButton: {
+    position: "absolute",
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    zIndex: 10,
+  },
+  helpText: {
+    fontSize: 13,
+    fontWeight: "500",
   },
   topButton: {
     position: "absolute",
