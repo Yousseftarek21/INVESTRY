@@ -79,6 +79,15 @@ function NotificationsInitializer() {
   return null;
 }
 
+function DirectionWrapper({ children }: { children: React.ReactNode }) {
+  const { language } = useAppSettings();
+  return (
+    <View style={{ flex: 1, direction: language === 'ar' ? 'rtl' : 'ltr' }}>
+      {children}
+    </View>
+  );
+}
+
 function BiometricWrapper({ children }: { children: React.ReactNode }) {
   const { biometricLock } = useAppSettings();
   return <BiometricGate enabled={biometricLock}>{children}</BiometricGate>;
@@ -141,6 +150,7 @@ export default function RootLayout() {
           <ClerkLoaded>
             <SafeAreaProvider>
               <AppSettingsProvider>
+                <DirectionWrapper>
                 <BiometricWrapper>
                 <ErrorBoundary>
                   <QueryClientProvider client={queryClient}>
@@ -160,6 +170,7 @@ export default function RootLayout() {
                   </QueryClientProvider>
                 </ErrorBoundary>
                 </BiometricWrapper>
+                </DirectionWrapper>
               </AppSettingsProvider>
             </SafeAreaProvider>
           </ClerkLoaded>

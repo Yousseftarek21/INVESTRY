@@ -559,6 +559,84 @@ const en = {
   insightPortfolioDown: (pct: string) => `Portfolio is down ${pct}%. Dollar-cost averaging can reduce the impact of short-term volatility.`,
   insightGoldMovedUp: (pct: string) => `Gold up ${pct}% today — your metals investments are gaining.`,
   insightGoldMovedDown: (pct: string) => `Gold down ${pct}% today — a potential buy opportunity.`,
+
+  // Settings — sections
+  settingsSectAccount: 'ACCOUNT & SECURITY',
+  settingsSectAppearance: 'APPEARANCE',
+  settingsSectLanguage: 'LANGUAGE & REGION',
+  settingsSectPortfolio: 'PORTFOLIO',
+  settingsSectNotifications: 'NOTIFICATIONS',
+  settingsSectMarketData: 'MARKET DATA',
+  settingsSectPrivacy: 'PRIVACY & DATA',
+  settingsSectSupport: 'SUPPORT',
+  settingsSectLegal: 'LEGAL',
+
+  // Settings — account & security rows
+  changePassword: 'Change Password',
+  connectedAccounts: 'Connected Accounts',
+  betaLabel: 'Beta',
+  biometricLock: 'Biometric Lock',
+  biometricLockDesc: 'Require Face ID or Touch ID on launch',
+
+  // Settings — language & region rows
+  regionLabel: 'Region',
+  dateFormatLabel: 'Date Format',
+  numberFormatLabel: 'Number Format',
+  currencyRowLabel: 'Currency',
+
+  // Settings — portfolio rows
+  performanceCalc: 'Performance Calculation',
+
+  // Settings — notification rows
+  priceAlertsLabel: 'Price Alerts',
+  priceAlertsDesc: 'Gold, silver & FX movements',
+  portfolioAlertsLabel: 'Portfolio Alerts',
+  portfolioAlertsDesc: 'Significant portfolio changes',
+  dailySummaryLabel: 'Daily Summary',
+  dailySummaryDesc: 'Morning portfolio snapshot',
+  weeklyReportLabel: 'Weekly Report',
+  weeklyReportDesc: 'End-of-week performance recap',
+
+  // Settings — privacy rows
+  analyticsSharingLabel: 'Analytics Sharing',
+  analyticsSharingDesc: 'Anonymous usage data to improve the app',
+  crashReportsLabel: 'Crash Reports',
+  crashReportsDesc: 'Automatically send crash logs',
+  hapticFeedbackLabel: 'Haptic Feedback',
+  hapticFeedbackDesc: 'Vibration on interactions',
+  privacySettingsLabel: 'Privacy Settings',
+  privacySettingsDesc: 'Device-level permissions',
+  exportMyData: 'Export My Data',
+  deleteAllData: 'Delete All Data',
+  deleteAllDataDesc: 'Permanently remove all investments',
+  deleteAllDataConfirmMsg: 'Permanently removes all investments and preferences. This cannot be undone.',
+  deleteEverything: 'Delete Everything',
+
+  // Settings — support rows
+  helpCenter: 'Help Center',
+  contactSupport: 'Contact Support',
+  reportBug: 'Report a Bug',
+  requestFeature: 'Request a Feature',
+  rateAppStore: 'Rate on App Store',
+
+  // Settings — legal rows
+  regulatoryDisclaimer: 'Regulatory Disclaimer',
+  openSourceLicenses: 'Open Source Licenses',
+
+  // Settings — subscription card
+  proUpgradeSub: 'Unlock analytics, all tools & unlimited investments',
+  proSignInSub: 'Sign in to unlock — included free during launch',
+  allFeaturesUnlocked: 'All features unlocked',
+  allFeaturesManage: 'All features unlocked · Tap to manage',
+  proActiveLabel: 'ACTIVE',
+
+  // Settings — misc
+  marketDataDisclaimer: 'Market data is for informational purposes only and does not constitute financial advice. Prices may be delayed or inaccurate. Past performance does not indicate future results.',
+  couldNotOpenLink: 'Could not open link',
+  couldNotOpenLinkDesc: 'Please check your internet connection and try again.',
+  couldNotSave: 'Could not save',
+  exportFailed: 'Export Failed',
+  exportFailedDesc: 'Could not generate export. Please try again.',
 };
 
 const ar: typeof en = {
@@ -1120,6 +1198,84 @@ const ar: typeof en = {
   insightPortfolioDown: (pct: string) => `محفظتك انخفضت ${pct}%. المتوسط التكلفي يقلل تأثير التقلبات قصيرة المدى.`,
   insightGoldMovedUp: (pct: string) => `الذهب ارتفع ${pct}% اليوم — استثماراتك في المعادن في تصاعد.`,
   insightGoldMovedDown: (pct: string) => `الذهب انخفض ${pct}% اليوم — فرصة شراء محتملة.`,
+
+  // Settings — sections
+  settingsSectAccount: 'الحساب والأمان',
+  settingsSectAppearance: 'المظهر',
+  settingsSectLanguage: 'اللغة والمنطقة',
+  settingsSectPortfolio: 'المحفظة',
+  settingsSectNotifications: 'الإشعارات',
+  settingsSectMarketData: 'بيانات السوق',
+  settingsSectPrivacy: 'الخصوصية والبيانات',
+  settingsSectSupport: 'الدعم',
+  settingsSectLegal: 'القانونية',
+
+  // Settings — account & security rows
+  changePassword: 'تغيير كلمة المرور',
+  connectedAccounts: 'الحسابات المرتبطة',
+  betaLabel: 'تجريبي',
+  biometricLock: 'القفل البيومتري',
+  biometricLockDesc: 'طلب Face ID أو Touch ID عند الفتح',
+
+  // Settings — language & region rows
+  regionLabel: 'المنطقة',
+  dateFormatLabel: 'تنسيق التاريخ',
+  numberFormatLabel: 'تنسيق الأرقام',
+  currencyRowLabel: 'العملة',
+
+  // Settings — portfolio rows
+  performanceCalc: 'حساب الأداء',
+
+  // Settings — notification rows
+  priceAlertsLabel: 'تنبيهات الأسعار',
+  priceAlertsDesc: 'تحركات الذهب والفضة وأسعار الصرف',
+  portfolioAlertsLabel: 'تنبيهات المحفظة',
+  portfolioAlertsDesc: 'تغييرات جوهرية في المحفظة',
+  dailySummaryLabel: 'ملخص يومي',
+  dailySummaryDesc: 'لقطة صباحية لمحفظتك',
+  weeklyReportLabel: 'تقرير أسبوعي',
+  weeklyReportDesc: 'ملخص الأداء في نهاية الأسبوع',
+
+  // Settings — privacy rows
+  analyticsSharingLabel: 'مشاركة البيانات التحليلية',
+  analyticsSharingDesc: 'بيانات مجهولة لتحسين التطبيق',
+  crashReportsLabel: 'تقارير الأعطال',
+  crashReportsDesc: 'إرسال سجلات الأعطال تلقائياً',
+  hapticFeedbackLabel: 'التغذية الراجعة اللمسية',
+  hapticFeedbackDesc: 'اهتزاز عند التفاعلات',
+  privacySettingsLabel: 'إعدادات الخصوصية',
+  privacySettingsDesc: 'الأذونات على مستوى الجهاز',
+  exportMyData: 'تصدير بياناتي',
+  deleteAllData: 'حذف جميع البيانات',
+  deleteAllDataDesc: 'حذف جميع الاستثمارات نهائياً',
+  deleteAllDataConfirmMsg: 'يحذف جميع الاستثمارات والتفضيلات نهائياً. لا يمكن التراجع.',
+  deleteEverything: 'حذف كل شيء',
+
+  // Settings — support rows
+  helpCenter: 'مركز المساعدة',
+  contactSupport: 'تواصل مع الدعم',
+  reportBug: 'الإبلاغ عن خطأ',
+  requestFeature: 'طلب ميزة',
+  rateAppStore: 'تقييم على App Store',
+
+  // Settings — legal rows
+  regulatoryDisclaimer: 'إخلاء المسؤولية التنظيمية',
+  openSourceLicenses: 'تراخيص المصدر المفتوح',
+
+  // Settings — subscription card
+  proUpgradeSub: 'افتح التحليلات وجميع الأدوات واستثمارات غير محدودة',
+  proSignInSub: 'سجّل دخولك للوصول — مجاني خلال فترة الإطلاق',
+  allFeaturesUnlocked: 'جميع الميزات مفتوحة',
+  allFeaturesManage: 'جميع الميزات مفتوحة · اضغط للإدارة',
+  proActiveLabel: 'نشط',
+
+  // Settings — misc
+  marketDataDisclaimer: 'بيانات السوق للأغراض المعلوماتية فقط ولا تمثل نصيحة مالية. قد تكون الأسعار متأخرة أو غير دقيقة. الأداء السابق لا يضمن النتائج المستقبلية.',
+  couldNotOpenLink: 'تعذّر فتح الرابط',
+  couldNotOpenLinkDesc: 'تحقق من اتصالك بالإنترنت وحاول مرة أخرى.',
+  couldNotSave: 'تعذّر الحفظ',
+  exportFailed: 'فشل التصدير',
+  exportFailedDesc: 'تعذّر إنشاء الملف. حاول مرة أخرى.',
 };
 
 export const translations = { en, ar };

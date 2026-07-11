@@ -646,7 +646,7 @@ function SmartFooter({ lastUpdate }: { lastUpdate: string }) {
         © {COPYRIGHT_YEAR} INVESTRY. {t.allRightsReserved}
       </Text>
       <Text style={[sf.disc, { color: colors.mutedForeground }]}>
-        Market data is for informational purposes only and does not constitute financial advice. Prices may be delayed or inaccurate. Past performance does not indicate future results.
+        {t.marketDataDisclaimer}
       </Text>
     </View>
   );
@@ -706,11 +706,11 @@ export default function SettingsScreen() {
     : 'Never';
 
   const showModal = (title: string, content: string) => { haptic(); setModal({ title, content }); };
-  const openURL   = (url: string) => { haptic(); Linking.openURL(url).catch(() => showModal('Could not open link', 'Please check your internet connection and try again.')); };
+  const openURL   = (url: string) => { haptic(); Linking.openURL(url).catch(() => showModal(t.couldNotOpenLink, t.couldNotOpenLinkDesc)); };
 
   const handleDeleteAll = () => {
     haptic(Haptics.ImpactFeedbackStyle.Heavy);
-    setConfirm({ id: 'delete', title: 'Delete All Data', message: 'Permanently removes all investments and preferences. This cannot be undone.', label: 'Delete Everything', danger: true });
+    setConfirm({ id: 'delete', title: t.deleteAllData, message: t.deleteAllDataConfirmMsg, label: t.deleteEverything, danger: true });
   };
 
   const handleExport = async () => {
@@ -751,7 +751,7 @@ export default function SettingsScreen() {
       const date = new Date().toLocaleDateString('en-EG', { year: 'numeric', month: '2-digit', day: '2-digit' });
       await Share.share({ message: lines.join('\n'), title: `INVESTRY Portfolio — ${date}` });
     } catch {
-      Alert.alert('Export Failed', 'Could not generate export. Please try again.');
+      Alert.alert(t.exportFailed, t.exportFailedDesc);
     }
   };
 
@@ -768,7 +768,7 @@ export default function SettingsScreen() {
       await user.update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), displayName: name.trim() } });
       setEditProfileOpen(false);
     } catch {
-      showModal('Could not save', 'Please check your internet connection and try again.');
+      showModal(t.couldNotSave, t.couldNotOpenLinkDesc);
     } finally {
       setSavingProfile(false);
     }
@@ -847,7 +847,7 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Text style={sc.upgradeSub}>
-                  {user ? 'Unlock analytics, all tools & unlimited investments' : 'Sign in to unlock — included free during launch'}
+                  {user ? t.proUpgradeSub : t.proSignInSub}
                 </Text>
               </View>
             </View>
@@ -862,7 +862,7 @@ export default function SettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[sc.proBannerTitle, { color: colors.text }]}>Investry Pro</Text>
-              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>All features unlocked</Text>
+              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>{t.allFeaturesUnlocked}</Text>
             </View>
             <View style={[sc.activeTag, { backgroundColor: '#A47FCA18' }]}>
               <Text style={[sc.activeTagTxt, { color: '#A47FCA' }]}>FREE</Text>
@@ -887,25 +887,25 @@ export default function SettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[sc.proBannerTitle, { color: colors.text }]}>Investry Pro</Text>
-              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>All features unlocked · Tap to manage</Text>
+              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>{t.allFeaturesManage}</Text>
             </View>
             <View style={[sc.activeTag, { backgroundColor: '#A47FCA18' }]}>
-              <Text style={[sc.activeTagTxt, { color: '#A47FCA' }]}>ACTIVE</Text>
+              <Text style={[sc.activeTagTxt, { color: '#A47FCA' }]}>{t.proActiveLabel}</Text>
             </View>
           </Pressable>
         )}
 
         {/* ── ACCOUNT & SECURITY ─────────────────────────── */}
-        <Sect label="ACCOUNT & SECURITY">
-          <NavRow icon="lock"    iconBg="#1D4ED8" label="Change Password"    onPress={() => showModal('Change Password', 'To change your password, sign out and use "Forgot Password" on the sign-in screen. Password management is handled securely by Clerk authentication.')} />
-          <NavRow icon="link"    iconBg="#6366F1" label="Connected Accounts" value="Beta"
-            onPress={() => showModal('Connected Accounts', 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments. This feature is currently in beta testing.')} />
+        <Sect label={t.settingsSectAccount}>
+          <NavRow icon="lock"    iconBg="#1D4ED8" label={t.changePassword}    onPress={() => showModal(t.changePassword, 'To change your password, sign out and use "Forgot Password" on the sign-in screen. Password management is handled securely by Clerk authentication.')} />
+          <NavRow icon="link"    iconBg="#6366F1" label={t.connectedAccounts} value={t.betaLabel}
+            onPress={() => showModal(t.connectedAccounts, 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments. This feature is currently in beta testing.')} />
           <Div />
-          <ToggleRow icon="lock" iconBg="#6366F1" label="Biometric Lock" sublabel="Require Face ID or Touch ID on launch" value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last />
+          <ToggleRow icon="lock" iconBg="#6366F1" label={t.biometricLock} sublabel={t.biometricLockDesc} value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last />
         </Sect>
 
         {/* ── APPEARANCE ───────────────────────────────────── */}
-        <Sect label="APPEARANCE">
+        <Sect label={t.settingsSectAppearance}>
           {/* Theme label row */}
           <View style={sc.themeLabel}>
             <View style={[sc.themeLabelIcon, { backgroundColor: '#8B5CF620' }]}>
@@ -917,7 +917,7 @@ export default function SettingsScreen() {
         </Sect>
 
         {/* ── LANGUAGE & REGION ────────────────────────────── */}
-        <Sect label="LANGUAGE & REGION">
+        <Sect label={t.settingsSectLanguage}>
           {/* Language row with inline dropdown */}
           <TouchableOpacity
             style={rw.row}
@@ -960,18 +960,18 @@ export default function SettingsScreen() {
             </>
           )}
           <Div />
-          <NavRow icon="map-pin"   iconBg="#EF4444" label="Region"        value="Egypt (EG)"
-            onPress={() => showModal('Region', 'INVESTRY is built specifically for the Egyptian market — gold and silver prices, EGX stocks, and real estate values are all sourced and priced for Egypt.\n\nSupport for other regions may be added in a future update.')} />
-          <NavRow icon="hash"      iconBg="#374151" label="Date Format"   value="DD/MM/YYYY"
-            onPress={() => showModal('Date Format', 'Dates are currently shown in DD/MM/YYYY format, matching Egyptian conventions.\n\nCustom date formats are not yet configurable — this is coming in a future update.')} />
-          <NavRow icon="type"      iconBg="#6B7280" label="Number Format" value="1,234.56"
-            onPress={() => showModal('Number Format', 'Numbers are currently shown with a comma thousands separator and period decimal (e.g. 1,234.56).\n\nCustom number formats are not yet configurable — this is coming in a future update.')} />
-          <NavRow icon="dollar-sign" iconBg="#059669" label="Currency"    value="EGP (ج.م)"
-            onPress={() => showModal('Currency', 'INVESTRY displays all portfolio values in Egyptian Pounds (EGP), converting live gold, silver, and stock prices as needed.\n\nSupport for additional display currencies may be added in a future update.')} last />
+          <NavRow icon="map-pin"   iconBg="#EF4444" label={t.regionLabel}       value="Egypt (EG)"
+            onPress={() => showModal(t.regionLabel, 'INVESTRY is built specifically for the Egyptian market — gold and silver prices, EGX stocks, and real estate values are all sourced and priced for Egypt.\n\nSupport for other regions may be added in a future update.')} />
+          <NavRow icon="hash"      iconBg="#374151" label={t.dateFormatLabel}   value="DD/MM/YYYY"
+            onPress={() => showModal(t.dateFormatLabel, 'Dates are currently shown in DD/MM/YYYY format, matching Egyptian conventions.\n\nCustom date formats are not yet configurable — this is coming in a future update.')} />
+          <NavRow icon="type"      iconBg="#6B7280" label={t.numberFormatLabel} value="1,234.56"
+            onPress={() => showModal(t.numberFormatLabel, 'Numbers are currently shown with a comma thousands separator and period decimal (e.g. 1,234.56).\n\nCustom number formats are not yet configurable — this is coming in a future update.')} />
+          <NavRow icon="dollar-sign" iconBg="#059669" label={t.currencyRowLabel} value="EGP (ج.م)"
+            onPress={() => showModal(t.currencyRowLabel, 'INVESTRY displays all portfolio values in Egyptian Pounds (EGP), converting live gold, silver, and stock prices as needed.\n\nSupport for additional display currencies may be added in a future update.')} last />
         </Sect>
 
         {/* ── PORTFOLIO PREFERENCES ────────────────────────── */}
-        <Sect label="PORTFOLIO">
+        <Sect label={t.settingsSectPortfolio}>
           <View style={rw.row}>
             <Bdg icon="sliders" bg="#059669" />
             <View style={rw.body}>
@@ -998,56 +998,56 @@ export default function SettingsScreen() {
             </View>
           </View>
           <Div />
-          <NavRow icon="trending-up" iconBg="#6366F1"   label="Performance Calculation" value="FIFO"
-            onPress={() => showModal('Performance Calculation', 'Gain/loss is calculated using First-In, First-Out (FIFO): each investment\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
+          <NavRow icon="trending-up" iconBg="#6366F1"   label={t.performanceCalc} value="FIFO"
+            onPress={() => showModal(t.performanceCalc, 'Gain/loss is calculated using First-In, First-Out (FIFO): each investment\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
         </Sect>
 
         {/* ── NOTIFICATIONS ────────────────────────────────── */}
-        <Sect label="NOTIFICATIONS">
-          <ToggleRow icon="bell"      iconBg="#F59E0B" label="Price Alerts"    sublabel="Gold, silver & FX movements"    value={notifications.priceAlerts}    onChange={v => setNotification('priceAlerts', v)} />
-          <ToggleRow icon="briefcase" iconBg="#8B5CF6" label="Portfolio Alerts" sublabel="Significant portfolio changes"  value={notifications.portfolioAlerts} onChange={v => setNotification('portfolioAlerts', v)} />
-          <ToggleRow icon="sun"       iconBg="#EF4444" label="Daily Summary"    sublabel="Morning portfolio snapshot"     value={notifications.dailySummary}    onChange={v => setNotification('dailySummary', v)} />
-          <ToggleRow icon="calendar"  iconBg="#10B981" label="Weekly Report"    sublabel="End-of-week performance recap"  value={notifications.weeklySummary}   onChange={v => setNotification('weeklySummary', v)} last />
+        <Sect label={t.settingsSectNotifications}>
+          <ToggleRow icon="bell"      iconBg="#F59E0B" label={t.priceAlertsLabel}    sublabel={t.priceAlertsDesc}    value={notifications.priceAlerts}    onChange={v => setNotification('priceAlerts', v)} />
+          <ToggleRow icon="briefcase" iconBg="#8B5CF6" label={t.portfolioAlertsLabel} sublabel={t.portfolioAlertsDesc}  value={notifications.portfolioAlerts} onChange={v => setNotification('portfolioAlerts', v)} />
+          <ToggleRow icon="sun"       iconBg="#EF4444" label={t.dailySummaryLabel}    sublabel={t.dailySummaryDesc}     value={notifications.dailySummary}    onChange={v => setNotification('dailySummary', v)} />
+          <ToggleRow icon="calendar"  iconBg="#10B981" label={t.weeklyReportLabel}    sublabel={t.weeklyReportDesc}     value={notifications.weeklySummary}   onChange={v => setNotification('weeklySummary', v)} last />
         </Sect>
 
         {/* ── MARKET DATA ──────────────────────────────────── */}
-        <Sect label="MARKET DATA" noCard>
+        <Sect label={t.settingsSectMarketData} noCard>
           <MarketStatusCard onRefresh={() => { haptic(); refetchPrices(); }} />
         </Sect>
 
         {/* ── PRIVACY & DATA ───────────────────────────────── */}
-        <Sect label="PRIVACY & DATA">
-          <ToggleRow icon="activity"     iconBg="#6366F1" label="Analytics Sharing" sublabel="Anonymous usage data to improve the app" value={analyticsEnabled} onChange={v => setAnalyticsEnabled(v)} />
-          <ToggleRow icon="alert-circle" iconBg="#F97316" label="Crash Reports"     sublabel="Automatically send crash logs"           value={crashReportsEnabled} onChange={v => setCrashReportsEnabled(v)} />
-          <ToggleRow icon="zap"          iconBg="#FBBF24" label="Haptic Feedback"   sublabel="Vibration on interactions"               value={hapticsEnabled}   onChange={v => setHapticsEnabled(v)} />
-          <NavRow icon="shield"   iconBg="#047857" label="Privacy Settings"  sublabel="Device-level permissions" onPress={() => Linking.openSettings()} />
-          <NavRow icon="download" iconBg="#0EA5E9" label="Export My Data"
+        <Sect label={t.settingsSectPrivacy}>
+          <ToggleRow icon="activity"     iconBg="#6366F1" label={t.analyticsSharingLabel} sublabel={t.analyticsSharingDesc} value={analyticsEnabled} onChange={v => setAnalyticsEnabled(v)} />
+          <ToggleRow icon="alert-circle" iconBg="#F97316" label={t.crashReportsLabel}     sublabel={t.crashReportsDesc}     value={crashReportsEnabled} onChange={v => setCrashReportsEnabled(v)} />
+          <ToggleRow icon="zap"          iconBg="#FBBF24" label={t.hapticFeedbackLabel}   sublabel={t.hapticFeedbackDesc}   value={hapticsEnabled}   onChange={v => setHapticsEnabled(v)} />
+          <NavRow icon="shield"   iconBg="#047857" label={t.privacySettingsLabel}  sublabel={t.privacySettingsDesc} onPress={() => Linking.openSettings()} />
+          <NavRow icon="download" iconBg="#0EA5E9" label={t.exportMyData}
             sublabel={`${holdings.length} investment${holdings.length !== 1 ? 's' : ''} · CSV`}
             onPress={handleExport} />
-          <NavRow icon="trash-2"  iconBg={colors.red} label="Delete All Data" sublabel="Permanently remove all investments" onPress={handleDeleteAll} destructive last />
+          <NavRow icon="trash-2"  iconBg={colors.red} label={t.deleteAllData} sublabel={t.deleteAllDataDesc} onPress={handleDeleteAll} destructive last />
         </Sect>
 
         {/* ── SUPPORT ──────────────────────────────────────── */}
-        <Sect label="SUPPORT">
-          <NavRow icon="help-circle" iconBg="#0EA5E9" label="Help Center" onPress={() =>
-            showModal('Help Center', 'INVESTRY tracks your gold, silver, EGX stocks, and real estate in one place.\n\n• Pull down to refresh prices\n• Tap + on the Investments tab to add an investment\n• Swipe left on an investment to delete it\n• Toggle Arabic in Settings → Language & Region\n\nFor support: support@investry.app')} />
-          <NavRow icon="mail"   iconBg="#10B981" label="Contact Support"    onPress={() => openURL('mailto:support@investry.app?subject=INVESTRY Support')} />
-          <NavRow icon="flag"   iconBg="#F59E0B" label="Report a Bug"       onPress={() => openURL(`mailto:bugs@investry.app?subject=Bug Report — INVESTRY v${APP_VERSION}`)} />
-          <NavRow icon="edit-2" iconBg="#8B5CF6" label="Request a Feature"  onPress={() => openURL('mailto:feedback@investry.app?subject=Feature Request')} />
-          <NavRow icon="star"   iconBg="#EF4444" label="Rate on App Store"  onPress={() =>
-            showModal('Rate INVESTRY', 'Thank you for your support! App Store rating will be available once the app is published.')} last />
+        <Sect label={t.settingsSectSupport}>
+          <NavRow icon="help-circle" iconBg="#0EA5E9" label={t.helpCenter} onPress={() =>
+            showModal(t.helpCenter, 'INVESTRY tracks your gold, silver, EGX stocks, and real estate in one place.\n\n• Pull down to refresh prices\n• Tap + on the Investments tab to add an investment\n• Swipe left on an investment to delete it\n• Toggle Arabic in Settings → Language & Region\n\nFor support: support@investry.app')} />
+          <NavRow icon="mail"   iconBg="#10B981" label={t.contactSupport}    onPress={() => openURL('mailto:support@investry.app?subject=INVESTRY Support')} />
+          <NavRow icon="flag"   iconBg="#F59E0B" label={t.reportBug}         onPress={() => openURL(`mailto:bugs@investry.app?subject=Bug Report — INVESTRY v${APP_VERSION}`)} />
+          <NavRow icon="edit-2" iconBg="#8B5CF6" label={t.requestFeature}    onPress={() => openURL('mailto:feedback@investry.app?subject=Feature Request')} />
+          <NavRow icon="star"   iconBg="#EF4444" label={t.rateAppStore}       onPress={() =>
+            showModal(t.rateAppStore, 'Thank you for your support! App Store rating will be available once the app is published.')} last />
         </Sect>
 
         {/* ── LEGAL ────────────────────────────────────────── */}
-        <Sect label="LEGAL">
-          <NavRow icon="file-text"    iconBg="#374151" label="Terms of Service" onPress={() =>
-            showModal('Terms of Service', 'Last updated: July 2025\n\nINVESTRY is provided for informational purposes only. Nothing in this app constitutes financial advice, investment advice, or a recommendation to buy or sell any asset.\n\nAll investment data is sourced from third-party providers and may not be 100% accurate or up to date. Past performance does not guarantee future results.\n\nYou agree to use this app at your own risk. We are not liable for any financial decisions made based on information displayed in this app.\n\nAll investment data is stored locally on your device and is never transmitted to our servers.')} />
-          <NavRow icon="lock"         iconBg="#4B5563" label="Privacy Policy"   onPress={() =>
-            showModal('Privacy Policy', 'Last updated: July 2025\n\nINVESTRY does not collect or store any personal data on external servers. All portfolio data is stored locally on your device using AsyncStorage.\n\nThird-Party Services\nWe fetch live market prices from:\n• api.gold-api.com\n• Yahoo Finance\n• open.er-api.com\n\nAnalytics (optional): Anonymized usage data only. No personally identifiable information is collected.\n\nContact: privacy@investry.app')} />
-          <NavRow icon="alert-circle" iconBg="#7C3AED" label="Regulatory Disclaimer" onPress={() =>
-            showModal('Regulatory Disclaimer', 'INVESTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nAlways verify prices with a certified financial professional before making investment decisions.')} />
-          <NavRow icon="code"         iconBg="#6B7280" label="Open Source Licenses" onPress={() =>
-            showModal('Open Source', 'Built with open source software:\n\n• Expo SDK 54 (MIT)\n• React Native 0.81 (MIT)\n• @tanstack/react-query (MIT)\n• AsyncStorage (MIT)\n• expo-haptics (MIT)\n• Inter font (OFL)\n• @expo/vector-icons (MIT)\n• Clerk SDK (Commercial)\n• react-native-svg (MIT)')} last />
+        <Sect label={t.settingsSectLegal}>
+          <NavRow icon="file-text"    iconBg="#374151" label={t.termsOfService} onPress={() =>
+            showModal(t.termsOfService, 'Last updated: July 2025\n\nINVESTRY is provided for informational purposes only. Nothing in this app constitutes financial advice, investment advice, or a recommendation to buy or sell any asset.\n\nAll investment data is sourced from third-party providers and may not be 100% accurate or up to date. Past performance does not guarantee future results.\n\nYou agree to use this app at your own risk. We are not liable for any financial decisions made based on information displayed in this app.\n\nAll investment data is stored locally on your device and is never transmitted to our servers.')} />
+          <NavRow icon="lock"         iconBg="#4B5563" label={t.privacyPolicy}   onPress={() =>
+            showModal(t.privacyPolicy, 'Last updated: July 2025\n\nINVESTRY does not collect or store any personal data on external servers. All portfolio data is stored locally on your device using AsyncStorage.\n\nThird-Party Services\nWe fetch live market prices from:\n• api.gold-api.com\n• Yahoo Finance\n• open.er-api.com\n\nAnalytics (optional): Anonymized usage data only. No personally identifiable information is collected.\n\nContact: privacy@investry.app')} />
+          <NavRow icon="alert-circle" iconBg="#7C3AED" label={t.regulatoryDisclaimer} onPress={() =>
+            showModal(t.regulatoryDisclaimer, 'INVESTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nAlways verify prices with a certified financial professional before making investment decisions.')} />
+          <NavRow icon="code"         iconBg="#6B7280" label={t.openSourceLicenses} onPress={() =>
+            showModal(t.openSourceLicenses, 'Built with open source software:\n\n• Expo SDK 54 (MIT)\n• React Native 0.81 (MIT)\n• @tanstack/react-query (MIT)\n• AsyncStorage (MIT)\n• expo-haptics (MIT)\n• Inter font (OFL)\n• @expo/vector-icons (MIT)\n• Clerk SDK (Commercial)\n• react-native-svg (MIT)')} last />
         </Sect>
 
         {/* ── SIGN OUT ─────────────────────────────────────── */}
