@@ -16,7 +16,12 @@
         "simulator": true
       }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "INVSTRY.replit.app",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "https://INVSTRY.replit.app/api/clerk"
+      }
+    }
   },
   "submit": {
     "production": {
