@@ -37,6 +37,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'ADIB',  yahoo: 'ADIB.CA',  nameEn: 'Abu Dhabi Islamic Bank Egypt',        nameAr: 'بنك أبو ظبي الإسلامي مصر',        sector: 'Banking',               industry: 'Islamic Banking',         fallbackPrice: 47.00  },
   { ticker: 'HDBK',  yahoo: 'HDBK.CA',  nameEn: 'Housing & Development Bank',          nameAr: 'بنك التعمير والإسكان',             sector: 'Banking',               industry: 'Banks',                   fallbackPrice: 79.50  },
   { ticker: 'QNBE',  yahoo: 'QNBE.CA',  nameEn: 'QNB Alahli',                          nameAr: 'بنك قطر الأهلي',                  sector: 'Banking',               industry: 'Banks',                   fallbackPrice: 69.00  },
+  { ticker: 'NBKE',  yahoo: 'NBKE.CA',  nameEn: 'National Bank of Kuwait Egypt',       nameAr: 'بنك الكويت الوطني مصر',           sector: 'Banking',               industry: 'Banks',                   fallbackPrice: 33.00  },
 
   // ─── Financial Services ───────────────────────────────────────────────────
   { ticker: 'HRHO',  yahoo: 'HRHO.CA',  nameEn: 'EFG Holding',                         nameAr: 'هيرميس للأوراق المالية',           sector: 'Financial Services',    industry: 'Investment Banking',      fallbackPrice: 26.70  },
@@ -45,21 +46,31 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'GBCO',  yahoo: 'GBCO.CA',  nameEn: 'GB Capital Holding',                  nameAr: 'جي بي كابيتال القابضة',           sector: 'Financial Services',    industry: 'Consumer Finance',        fallbackPrice: 6.50   },
   { ticker: 'CCAP',  yahoo: 'CCAP.CA',  nameEn: 'Cairo Capital Market for Investment', nameAr: 'القاهرة لأسواق المال',            sector: 'Financial Services',    industry: 'Investment Banking',      fallbackPrice: 5.20   },
   { ticker: 'BINV',  yahoo: 'BINV.CA',  nameEn: 'Beltone Investments',                 nameAr: 'بلتون للاستثمارات المالية',       sector: 'Financial Services',    industry: 'Investment Banking',      fallbackPrice: 3.50   },
+  { ticker: 'BTFH',  yahoo: 'BTFH.CA',  nameEn: 'Beltone Holding',                     nameAr: 'بلتون القابضة',                   sector: 'Financial Services',    industry: 'Investment Banking',      fallbackPrice: 3.07   },
   { ticker: 'SVCE',  yahoo: 'SVCE.CA',  nameEn: 'Sarwa Capital Holding',               nameAr: 'صروة كابيتال القابضة',            sector: 'Financial Services',    industry: 'Diversified Financials',  fallbackPrice: 4.10   },
   { ticker: 'CNFN',  yahoo: 'CNFN.CA',  nameEn: 'Contact Financial Holding',           nameAr: 'كونتاكت للاستثمار المالي',        sector: 'Financial Services',    industry: 'Consumer Finance',        fallbackPrice: 12.50  },
   { ticker: 'MENA',  yahoo: 'MENA.CA',  nameEn: 'MENA Financial Investments',          nameAr: 'الشرق الأوسط للاستثمار المالي',  sector: 'Financial Services',    industry: 'Diversified Financials',  fallbackPrice: 4.30   },
   { ticker: 'RACC',  yahoo: 'RACC.CA',  nameEn: 'Raya Contact Center',                 nameAr: 'رايا لخدمات مراكز الاتصال',       sector: 'Financial Services',    industry: 'Business Services',       fallbackPrice: 3.20   },
+  { ticker: 'ACTF',  yahoo: 'ACTF.CA',  nameEn: 'Act Financial',                       nameAr: 'أكت للاستثمارات المالية',         sector: 'Financial Services',    industry: 'Brokerage',               fallbackPrice: 2.79   },
+  { ticker: 'EEII',  yahoo: 'EEII.CA',  nameEn: 'Egyptian Financial Group',            nameAr: 'المجموعة المصرية للتمويل',        sector: 'Financial Services',    industry: 'Diversified Financials',  fallbackPrice: 2.81   },
 
   // ─── Real Estate ──────────────────────────────────────────────────────────
-  { ticker: 'TMGH',  yahoo: 'TMGH.CA',  nameEn: 'Talaat Moustafa Group Holding',       nameAr: 'طلعت مصطفى للتشييد والبناء',      sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 97.00  },
-  { ticker: 'PHDC',  yahoo: 'PHDC.CA',  nameEn: 'Palm Hills Developments',             nameAr: 'بالم هيلز للتطوير العقاري',       sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 14.90  },
-  { ticker: 'MASR',  yahoo: 'MASR.CA',  nameEn: 'Madinet Masr Housing & Development',  nameAr: 'مدينة مصر للإسكان والتعمير',      sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 7.70   },
-  { ticker: 'OCDI',  yahoo: 'OCDI.CA',  nameEn: 'SODIC',                               nameAr: 'شركة أكتوبر للتنمية والاستثمار', sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 26.70 },
-  { ticker: 'EMFD',  yahoo: 'EMFD.CA',  nameEn: 'Emaar Misr for Development',          nameAr: 'إعمار مصر للتطوير العقاري',       sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 11.90  },
-  { ticker: 'ORHD',  yahoo: 'ORHD.CA',  nameEn: 'Ora Developers Egypt',               nameAr: 'أورا ديفلوبرز مصر',              sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 39.00  },
-  { ticker: 'HELI',  yahoo: 'HELI.CA',  nameEn: 'Heliopolis Housing',                  nameAr: 'مصر الجديدة للإسكان والتعمير',   sector: 'Real Estate',           industry: 'Real Estate',             fallbackPrice: 7.30   },
-  { ticker: 'ARCC',  yahoo: 'ARCC.CA',  nameEn: 'Arab Real Estate & Construction',     nameAr: 'العربية للتعمير والإنشاء',        sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 3.10   },
-  { ticker: 'EGTS',  yahoo: 'EGTS.CA',  nameEn: 'Egyptian Tourism Resorts',            nameAr: 'المجمعات السياحية المصرية',       sector: 'Real Estate',           industry: 'Real Estate',             fallbackPrice: 5.40   },
+  { ticker: 'TMGH',  yahoo: 'TMGH.CA',  nameEn: 'Talaat Moustafa Group Holding',       nameAr: 'طلعت مصطفى للتشييد والبناء',          sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 97.00  },
+  { ticker: 'PHDC',  yahoo: 'PHDC.CA',  nameEn: 'Palm Hills Developments',             nameAr: 'بالم هيلز للتطوير العقاري',           sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 14.90  },
+  { ticker: 'MASR',  yahoo: 'MASR.CA',  nameEn: 'Madinet Masr Housing & Development',  nameAr: 'مدينة مصر للإسكان والتعمير',          sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 7.70   },
+  { ticker: 'OCDI',  yahoo: 'OCDI.CA',  nameEn: 'SODIC',                               nameAr: 'شركة أكتوبر للتنمية والاستثمار',      sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 26.70  },
+  { ticker: 'EMFD',  yahoo: 'EMFD.CA',  nameEn: 'Emaar Misr for Development',          nameAr: 'إعمار مصر للتطوير العقاري',           sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 11.90  },
+  { ticker: 'ORHD',  yahoo: 'ORHD.CA',  nameEn: 'Ora Developers Egypt',               nameAr: 'أورا ديفلوبرز مصر',                  sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 39.00  },
+  { ticker: 'HELI',  yahoo: 'HELI.CA',  nameEn: 'Heliopolis Housing',                  nameAr: 'مصر الجديدة للإسكان والتعمير',        sector: 'Real Estate',           industry: 'Real Estate',             fallbackPrice: 7.30   },
+  { ticker: 'ARCC',  yahoo: 'ARCC.CA',  nameEn: 'Arab Real Estate & Construction',     nameAr: 'العربية للتعمير والإنشاء',            sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 3.10   },
+  { ticker: 'EGTS',  yahoo: 'EGTS.CA',  nameEn: 'Egyptian Tourism Resorts',            nameAr: 'المجمعات السياحية المصرية',           sector: 'Real Estate',           industry: 'Real Estate',             fallbackPrice: 5.40   },
+  { ticker: 'AMER',  yahoo: 'AMER.CA',  nameEn: 'Amer Group Holding',                  nameAr: 'مجموعة عامر القابضة',                sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 3.16   },
+  { ticker: 'UNIT',  yahoo: 'UNIT.CA',  nameEn: 'United Housing & Development',        nameAr: 'الاتحاد للإسكان والتعمير',            sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 19.51  },
+  { ticker: 'ELSH',  yahoo: 'ELSH.CA',  nameEn: 'El Shams Housing',                    nameAr: 'الشمس للإسكان والتعمير',              sector: 'Real Estate',           industry: 'Real Estate',             fallbackPrice: 14.80  },
+  { ticker: 'EHDR',  yahoo: 'EHDR.CA',  nameEn: 'Egyptians Housing Development',       nameAr: 'مصر للإسكان والتعمير',               sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 2.73   },
+  { ticker: 'IDRE',  yahoo: 'IDRE.CA',  nameEn: 'New Ismailia Development',            nameAr: 'الإسماعيلية الجديدة للتطوير العمراني', sector: 'Real Estate',          industry: 'Real Estate Development', fallbackPrice: 47.00  },
+  { ticker: 'ZMID',  yahoo: 'ZMID.CA',  nameEn: 'Zahraa Maadi Investment',             nameAr: 'زهراء المعادي للاستثمار والتعمير',   sector: 'Real Estate',           industry: 'Real Estate Development', fallbackPrice: 7.05   },
+  { ticker: 'RREI',  yahoo: 'RREI.CA',  nameEn: 'Real Estate Egyptian Consortium',     nameAr: 'الاتحاد العقاري المصري',              sector: 'Real Estate',           industry: 'Real Estate',             fallbackPrice: 3.81   },
 
   // ─── Telecommunications ───────────────────────────────────────────────────
   { ticker: 'ETEL',  yahoo: 'ETEL.CA',  nameEn: 'Telecom Egypt',                       nameAr: 'المصرية للاتصالات',               sector: 'Telecommunications',    industry: 'Fixed Line Telecoms',     fallbackPrice: 97.80  },
@@ -70,9 +81,14 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'ORAS',  yahoo: 'ORAS.CA',  nameEn: 'Orascom Construction',                nameAr: 'أوراسكوم للإنشاء والصناعة',      sector: 'Industrial',            industry: 'Construction & Engineering', fallbackPrice: 691.00 },
   { ticker: 'MOIL',  yahoo: 'MOIL.CA',  nameEn: 'Maridive & Oil Services',             nameAr: 'ماريديف والنفط للخدمات',          sector: 'Industrial',            industry: 'Oil Services',               fallbackPrice: 0.50   },
   { ticker: 'EGAL',  yahoo: 'EGAL.CA',  nameEn: 'Egypt Aluminum',                      nameAr: 'مصر للألومنيوم',                  sector: 'Industrial',            industry: 'Aluminum',                   fallbackPrice: 293.00 },
+  { ticker: 'ALUM',  yahoo: 'ALUM.CA',  nameEn: 'Arab Aluminum',                       nameAr: 'العربية للألومنيوم',              sector: 'Industrial',            industry: 'Aluminum',                   fallbackPrice: 22.86  },
   { ticker: 'OLFI',  yahoo: 'OLFI.CA',  nameEn: 'Olympic Group for Financial Investments', nameAr: 'المجموعة الأوليمبية للاستثمارات', sector: 'Industrial',         industry: 'Diversified Industrials',    fallbackPrice: 8.50   },
   { ticker: 'MPRC',  yahoo: 'MPRC.CA',  nameEn: 'Misr Printing & Packaging',           nameAr: 'مصر للطباعة والتغليف',            sector: 'Industrial',            industry: 'Packaging & Containers',     fallbackPrice: 23.00  },
   { ticker: 'ESRS',  yahoo: 'ESRS.CA',  nameEn: 'Ezz Steel',                           nameAr: 'عز للصلب',                        sector: 'Industrial',            industry: 'Metals & Mining',            fallbackPrice: 19.00  },
+  { ticker: 'ENGC',  yahoo: 'ENGC.CA',  nameEn: 'Engineering Industries (IDEAL)',       nameAr: 'الصناعات الهندسية إيديال',        sector: 'Industrial',            industry: 'Diversified Industrials',    fallbackPrice: 42.61  },
+  { ticker: 'ASCM',  yahoo: 'ASCM.CA',  nameEn: 'ASEC for Mining (Ascom)',             nameAr: 'أسيك للتعدين أسكوم',             sector: 'Industrial',            industry: 'Mining',                     fallbackPrice: 62.21  },
+  { ticker: 'COSG',  yahoo: 'COSG.CA',  nameEn: 'Cairo Oils & Soap',                   nameAr: 'القاهرة للزيوت والصابون',         sector: 'Industrial',            industry: 'Diversified Industrials',    fallbackPrice: 1.63   },
+  { ticker: 'UNIP',  yahoo: 'UNIP.CA',  nameEn: 'Universal For Paper Industries',       nameAr: 'الوحدة للأوراق والكرتون',         sector: 'Industrial',            industry: 'Packaging & Containers',     fallbackPrice: 0.34   },
 
   // ─── Chemicals & Fertilizers ──────────────────────────────────────────────
   { ticker: 'ABUK',  yahoo: 'ABUK.CA',  nameEn: 'Abu Kir Fertilizers & Chemical Industries', nameAr: 'أبو قير للأسمدة والصناعات الكيماوية', sector: 'Chemicals & Fertilizers', industry: 'Fertilizers',    fallbackPrice: 70.00  },
@@ -80,6 +96,8 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'MFPC',  yahoo: 'MFPC.CA',  nameEn: 'Misr Fertilizers Production (MOPCO)',  nameAr: 'موبكو لإنتاج الأسمدة',           sector: 'Chemicals & Fertilizers', industry: 'Fertilizers',      fallbackPrice: 37.00  },
   { ticker: 'EGCH',  yahoo: 'EGCH.CA',  nameEn: 'Egyptian Chemical Industries (KIMA)',  nameAr: 'الصناعات الكيماوية المصرية كيما', sector: 'Chemicals & Fertilizers', industry: 'Chemicals',        fallbackPrice: 13.00  },
   { ticker: 'PACH',  yahoo: 'PACH.CA',  nameEn: 'Egyptian Paints (Pachin)',             nameAr: 'باتشين للدهانات المصرية',          sector: 'Chemicals & Fertilizers', industry: 'Paints & Coatings', fallbackPrice: 55.00  },
+  { ticker: 'MICH',  yahoo: 'MICH.CA',  nameEn: 'Misr Chemical Industries',            nameAr: 'مصر للصناعات الكيماوية',          sector: 'Chemicals & Fertilizers', industry: 'Chemicals',        fallbackPrice: 37.51  },
+  { ticker: 'SMFR',  yahoo: 'SMFR.CA',  nameEn: 'Samad Misr (EGYFERT)',               nameAr: 'صامد مصر للأسمدة',                sector: 'Chemicals & Fertilizers', industry: 'Fertilizers',      fallbackPrice: 204.00 },
 
   // ─── Energy ───────────────────────────────────────────────────────────────
   { ticker: 'AMOC',  yahoo: 'AMOC.CA',  nameEn: 'Alexandria Mineral Oils Company',     nameAr: 'الإسكندرية للزيوت المعدنية',      sector: 'Energy',                industry: 'Oil Refining',            fallbackPrice: 7.90   },
@@ -91,6 +109,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'LCSW',  yahoo: 'LCSW.CA',  nameEn: 'Lecico Egypt',                        nameAr: 'ليسيكو مصر للسيراميك',           sector: 'Construction Materials', industry: 'Ceramics & Tiles',        fallbackPrice: 31.50  },
   { ticker: 'ASPI',  yahoo: 'ASPI.CA',  nameEn: 'ASEC Holding',                        nameAr: 'أسيك القابضة',                    sector: 'Construction Materials', industry: 'Cement',                  fallbackPrice: 3.40   },
   { ticker: 'CERA',  yahoo: 'CERA.CA',  nameEn: 'Ceramica Cleopatra Group',            nameAr: 'كليوباترا للسيراميك',             sector: 'Construction Materials', industry: 'Ceramics & Tiles',        fallbackPrice: 17.50  },
+  { ticker: 'SCEM',  yahoo: 'SCEM.CA',  nameEn: 'Sinai Cement',                        nameAr: 'أسمنت سيناء',                    sector: 'Construction Materials', industry: 'Cement',                  fallbackPrice: 62.53  },
 
   // ─── Healthcare ───────────────────────────────────────────────────────────
   { ticker: 'CLHO',  yahoo: 'CLHO.CA',  nameEn: 'Cleopatra Hospital Group',            nameAr: 'مجموعة مستشفيات كليوباترا',       sector: 'Healthcare',            industry: 'Hospitals',               fallbackPrice: 16.37  },
@@ -102,15 +121,18 @@ export const EGX_COMPANIES: EGXCompany[] = [
   // ─── Food & Beverage ──────────────────────────────────────────────────────
   { ticker: 'JUFO',  yahoo: 'JUFO.CA',  nameEn: 'Juhayna Food Industries',             nameAr: 'جهينة للأغذية والألبان',          sector: 'Food & Beverage',       industry: 'Food Production',         fallbackPrice: 30.90  },
   { ticker: 'DOMT',  yahoo: 'DOMT.CA',  nameEn: 'Domty',                               nameAr: 'الشركة العربية لصناعات الأغذية دومتي', sector: 'Food & Beverage', industry: 'Food Production',     fallbackPrice: 26.90  },
-  { ticker: 'EKHO',  yahoo: 'EKHO.CA',  nameEn: 'Edita Food Industries',               nameAr: 'أديتا للصناعات الغذائية',         sector: 'Food & Beverage',       industry: 'Food Production',         fallbackPrice: 22.50  },
+  { ticker: 'EFID',  yahoo: 'EFID.CA',  nameEn: 'Edita Food Industries',               nameAr: 'أديتا للصناعات الغذائية',         sector: 'Food & Beverage',       industry: 'Food Production',         fallbackPrice: 28.27  },
   { ticker: 'POUL',  yahoo: 'POUL.CA',  nameEn: 'Cairo Poultry Group',                 nameAr: 'القاهرة للدواجن',                 sector: 'Food & Beverage',       industry: 'Food Production',         fallbackPrice: 10.20  },
   { ticker: 'AJWA',  yahoo: 'AJWA.CA',  nameEn: 'Ajwa Group for Food Industries',      nameAr: 'مجموعة أجواء للصناعات الغذائية', sector: 'Food & Beverage',       industry: 'Food Production',         fallbackPrice: 17.40  },
   { ticker: 'KABO',  yahoo: 'KABO.CA',  nameEn: 'Kabo International',                  nameAr: 'كابو للتجارة الدولية',            sector: 'Food & Beverage',       industry: 'Food Production',         fallbackPrice: 7.00   },
+  { ticker: 'ISMA',  yahoo: 'ISMA.CA',  nameEn: 'Ismailia Misr Poultry',              nameAr: 'الإسماعيلية مصر للدواجن',        sector: 'Food & Beverage',       industry: 'Food Production',         fallbackPrice: 27.25  },
+  { ticker: 'IFAP',  yahoo: 'IFAP.CA',  nameEn: 'International Agricultural Products', nameAr: 'المنتجات الزراعية الدولية',       sector: 'Food & Beverage',       industry: 'Agriculture',             fallbackPrice: 19.55  },
 
   // ─── Technology ───────────────────────────────────────────────────────────
   { ticker: 'FWRY',  yahoo: 'FWRY.CA',  nameEn: 'Fawry for Banking Technology & Electronic Payment', nameAr: 'فوري للبنوك والمدفوعات الإلكترونية', sector: 'Technology', industry: 'Payment Technology',  fallbackPrice: 19.36 },
   { ticker: 'EFIH',  yahoo: 'EFIH.CA',  nameEn: 'e-finance for Digital & Financial Investments',     nameAr: 'إي فاينانس للاستثمارات الرقمية',      sector: 'Technology', industry: 'Digital Finance',     fallbackPrice: 22.00 },
   { ticker: 'RTVC',  yahoo: 'RTVC.CA',  nameEn: 'Raya Contact Center',                 nameAr: 'رايا للاتصالات وتقنية المعلومات', sector: 'Technology',            industry: 'Technology Services',     fallbackPrice: 3.10   },
+  { ticker: 'VERT',  yahoo: 'VERT.CA',  nameEn: 'Vertika Computer Systems',            nameAr: 'فيرتيكا للحاسبات والأنظمة',      sector: 'Technology',            industry: 'Technology Services',     fallbackPrice: 8.09   },
 
   // ─── Textile ──────────────────────────────────────────────────────────────
   { ticker: 'ORWE',  yahoo: 'ORWE.CA',  nameEn: 'Oriental Weavers',                    nameAr: 'الشرقية للسجاد',                  sector: 'Textile',               industry: 'Carpets & Flooring',      fallbackPrice: 22.80  },
@@ -119,6 +141,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
 
   // ─── Transportation ───────────────────────────────────────────────────────
   { ticker: 'ALCN',  yahoo: 'ALCN.CA',  nameEn: 'Alexandria Container & Cargo Handling', nameAr: 'الإسكندرية للحاويات والشحن',     sector: 'Transportation',        industry: 'Marine Shipping',         fallbackPrice: 29.00  },
+  { ticker: 'ETRS',  yahoo: 'ETRS.CA',  nameEn: 'Egyptian Transport (Egytrans)',          nameAr: 'مصر للنقل إيجيترانس',           sector: 'Transportation',        industry: 'Road Transport',          fallbackPrice: 10.90  },
 ];
 
 // ─── EGX Index Membership ─────────────────────────────────────────────────────
@@ -137,7 +160,7 @@ export const EGX_30_TICKERS = new Set<string>([
   'AMOC',                                     // Energy
   'LCSW',                                     // Construction
   'CLHO', 'SPMD',                             // Healthcare
-  'JUFO', 'EKHO',                             // Food & Beverage
+  'JUFO', 'EFID',                             // Food & Beverage
   'FWRY',                                     // Technology
   'ORWE',                                     // Textile
   'ALCN',                                     // Transportation
