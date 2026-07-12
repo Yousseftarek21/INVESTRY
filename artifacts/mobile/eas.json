@@ -17,6 +17,7 @@
       }
     },
     "production": {
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_DOMAIN": "INVSTRY.replit.app"
       }

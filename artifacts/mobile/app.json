@@ -8,6 +8,18 @@
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/02968d16-c91f-4aa0-a178-c2f13c1e33b5",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
       "image": "./assets/images/logo-mark.png",
       "resizeMode": "contain",
@@ -37,6 +49,7 @@
       ],
       "expo-font",
       "expo-web-browser",
+      "expo-updates",
       [
         "expo-build-properties",
         {
