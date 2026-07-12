@@ -6,7 +6,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data/egx-companies';
+import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies, EGXIndex, EGX_INDICES, EGX_30_TICKERS, EGX_70_TICKERS, getIndexCounts } from '@/data/egx-companies';
 import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 
@@ -178,6 +178,53 @@ const sp = StyleSheet.create({
     borderRadius: 20, borderWidth: 1,
   },
   label: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  badge: { borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+});
+
+// ─── Index Pills (EGX 30 / EGX 70 / All) ─────────────────────────────────────
+
+function IndexPills({
+  active, onChange, counts,
+}: {
+  active: EGXIndex; onChange: (i: EGXIndex) => void; counts: Record<string, number>;
+}) {
+  const colors = useColors();
+  return (
+    <View style={ix.row}>
+      {EGX_INDICES.map(idx => {
+        const isActive = idx === active;
+        return (
+          <Pressable
+            key={idx}
+            onPress={() => onChange(idx)}
+            style={[
+              ix.pill,
+              { backgroundColor: isActive ? colors.primary : colors.muted, borderColor: isActive ? colors.primary : 'transparent' },
+            ]}
+          >
+            <Text style={[ix.label, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
+              {idx}
+            </Text>
+            <View style={[ix.badge, { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.border }]}>
+              <Text style={[ix.badgeTxt, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
+                {counts[idx] ?? 0}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+const ix = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 8 },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingLeft: 13, paddingRight: 8, paddingVertical: 8,
+    borderRadius: 20, borderWidth: 1,
+  },
+  label: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   badge: { borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
   badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 });
@@ -444,12 +491,14 @@ export function EGXMarket() {
   const { data: allStocks = [], isLoading, refetch } = useEGXMarket();
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');
-  const counts = useMemo(() => getSectorCounts(), []);
+  const [activeIndex, setActiveIndex] = useState<EGXIndex>('All');
+  const sectorCounts = useMemo(() => getSectorCounts(), []);
+  const indexCounts = useMemo(() => getIndexCounts(), []);
 
-  // When user types, reset sector filter to 'All'
-  const handleQuery = useCallback((t: string) => {
-    setQuery(t);
-    if (t.length > 0) setSector('All');
+  // When user types, reset sector filter to 'All' (keep index filter)
+  const handleQuery = useCallback((q: string) => {
+    setQuery(q);
+    if (q.length > 0) setSector('All');
   }, []);
 
   // When user picks sector, clear search
@@ -458,16 +507,29 @@ export function EGXMarket() {
     setQuery('');
   }, []);
 
+  // When user picks index, clear search + reset sector
+  const handleIndex = useCallback((i: EGXIndex) => {
+    setActiveIndex(i);
+    setSector('All');
+    setQuery('');
+  }, []);
+
   const displayed = useMemo(() => {
+    let stocks = allStocks;
+    // Apply index filter first
+    if (activeIndex === 'EGX 30') stocks = stocks.filter(s => EGX_30_TICKERS.has(s.ticker));
+    else if (activeIndex === 'EGX 70') stocks = stocks.filter(s => EGX_70_TICKERS.has(s.ticker));
+    // Apply search
     if (query.trim()) {
       const matched = searchCompanies(query).map(c => c.ticker);
-      return allStocks.filter(s => matched.includes(s.ticker));
+      return stocks.filter(s => matched.includes(s.ticker));
     }
-    if (sector !== 'All') return allStocks.filter(s => s.sector === sector);
-    return allStocks;
-  }, [allStocks, query, sector]);
+    // Apply sector filter
+    if (sector !== 'All') return stocks.filter(s => s.sector === sector);
+    return stocks;
+  }, [allStocks, query, sector, activeIndex]);
 
-  // Group by sector for "All" view, flat for filtered view
+  // Group by sector when no search + no sector filter active
   const grouped = useMemo(() => {
     if (query.trim() || sector !== 'All') return null;
     const map = new Map<string, EGXStockLive[]>();
@@ -480,22 +542,33 @@ export function EGXMarket() {
 
   const hasLive = allStocks.some(s => s.isLive);
 
+  const resultSuffix = query
+    ? ` ${t.matchingLabel} "${query}"`
+    : sector !== 'All'
+    ? ` ${t.inLabel} ${sector}`
+    : activeIndex !== 'All'
+    ? ` ${t.inLabel} ${activeIndex}`
+    : ` ${t.listedLabel}`;
+
   return (
     <View style={em.wrap}>
       {/* Market status */}
       <MarketStatusBanner />
 
+      {/* Index filter (EGX 30 / EGX 70 / All) */}
+      <IndexPills active={activeIndex} onChange={handleIndex} counts={indexCounts} />
+
       {/* Search */}
       <SearchBar value={query} onChange={handleQuery} />
 
       {/* Sector pills */}
-      <SectorPills active={sector} onChange={handleSector} counts={counts} />
+      <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
 
       {/* Result count / live badge */}
       <View style={em.resultRow}>
         <Text style={[em.resultTxt, { color: colors.mutedForeground }]}>
           {displayed.length} {displayed.length === 1 ? t.companyLabel : t.companiesLabel}
-          {query ? ` ${t.matchingLabel} "${query}"` : sector !== 'All' ? ` ${t.inLabel} ${sector}` : ` ${t.listedLabel}`}
+          {resultSuffix}
         </Text>
         {hasLive ? (
           <View style={[em.livePill, { backgroundColor: colors.green + '18' }]}>

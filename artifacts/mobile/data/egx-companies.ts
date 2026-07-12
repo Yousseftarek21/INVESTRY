@@ -121,6 +121,41 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'ALCN',  yahoo: 'ALCN.CA',  nameEn: 'Alexandria Container & Cargo Handling', nameAr: 'الإسكندرية للحاويات والشحن',     sector: 'Transportation',        industry: 'Marine Shipping',         fallbackPrice: 29.00  },
 ];
 
+// ─── EGX Index Membership ─────────────────────────────────────────────────────
+
+export type EGXIndex = 'All' | 'EGX 30' | 'EGX 70';
+export const EGX_INDICES: EGXIndex[] = ['All', 'EGX 30', 'EGX 70'];
+
+// EGX 30 — blue-chip large-cap index (30 stocks)
+export const EGX_30_TICKERS = new Set<string>([
+  'COMI', 'CIEB', 'ADIB', 'HDBK', 'QNBE',  // Banking
+  'HRHO', 'EFIH',                             // Financial Services
+  'TMGH', 'PHDC', 'MASR', 'OCDI', 'EMFD', 'ORHD', 'HELI',  // Real Estate
+  'ETEL',                                     // Telecoms
+  'SWDY', 'EAST', 'ORAS', 'ESRS',            // Industrial
+  'ABUK', 'SKPC',                             // Chemicals
+  'AMOC',                                     // Energy
+  'LCSW',                                     // Construction
+  'CLHO', 'SPMD',                             // Healthcare
+  'JUFO', 'EKHO',                             // Food & Beverage
+  'FWRY',                                     // Technology
+  'ORWE',                                     // Textile
+  'ALCN',                                     // Transportation
+]);
+
+// EGX 70 — equal-weighted mid-cap index; all remaining companies in our database
+export const EGX_70_TICKERS = new Set<string>(
+  EGX_COMPANIES.filter(c => !EGX_30_TICKERS.has(c.ticker)).map(c => c.ticker)
+);
+
+export function getIndexCounts(): Record<string, number> {
+  return {
+    All: EGX_COMPANIES.length,
+    'EGX 30': EGX_30_TICKERS.size,
+    'EGX 70': EGX_70_TICKERS.size,
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export function getSectorCompanies(sector: EGXSector): EGXCompany[] {
