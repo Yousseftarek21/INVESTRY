@@ -13,6 +13,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
+import { EGX_COMPANIES } from '@/data/egx-companies';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
@@ -40,22 +41,17 @@ const PERSONAL_ASSET_ICONS: (keyof typeof Feather.glyphMap)[] = [
   'watch', 'gift', 'image', 'archive', 'star', 'monitor', 'home', 'music', 'package', 'briefcase',
 ];
 
-// ─── All major EGX listed stocks (deduplicated by symbol) ─────────────────────
-const EGX_SYMBOLS_RAW = [
-  { symbol: 'COMI', name: 'Commercial International Bank' },
-  { symbol: 'HRHO', name: 'EFG Hermes Holding' },
-  { symbol: 'TMGH', name: 'Talaat Moustafa Group' },
-  { symbol: 'ORWE', name: 'Oriental Weavers' },
-  { symbol: 'EAST', name: 'Eastern Company' },
-  { symbol: 'ORAS', name: 'Orascom Construction' },
-  { symbol: 'CLHO', name: 'Cleopatra Hospital Group' },
-  { symbol: 'EKHO', name: 'EK Holding' },
-  { symbol: 'ABUK', name: 'Abu Kir Fertilizers' },
-  { symbol: 'ACGC', name: 'Alexandria Container & Cargo' },
-  { symbol: 'ADIB', name: 'Abu Dhabi Islamic Bank Egypt' },
+// ─── EGX stock picker list ─────────────────────────────────────────────────────
+// Primary source: EGX_COMPANIES from egx-companies.ts — these have live prices,
+// correct names, and 4-letter tickers (no .CA). Adding a ticker there is enough.
+// Extended: additional valid EGX stocks without live price data (users can still
+// add holdings; price is entered manually at purchase time).
+
+const EGX_LIVE_SET = new Set(EGX_COMPANIES.map(c => c.ticker));
+
+const EGX_EXTRA_SYMBOLS: { symbol: string; name: string }[] = [
   { symbol: 'AIVC', name: 'Arabia Investments' },
   { symbol: 'ALEX', name: 'Alexandria Mineral Oils' },
-  { symbol: 'AMOC', name: 'Alexandria Petroleum' },
   { symbol: 'AMER', name: 'Americana Restaurants' },
   { symbol: 'ARAB', name: 'Arab Bank Egypt' },
   { symbol: 'ARKI', name: 'Ark Investment & Real Estate' },
@@ -66,11 +62,8 @@ const EGX_SYMBOLS_RAW = [
   { symbol: 'BMOS', name: 'Bank of Alexandria' },
   { symbol: 'BRCI', name: 'Beltone Financial Holding' },
   { symbol: 'BTFH', name: 'Beltone Capital Holding' },
-  { symbol: 'CCAP', name: 'Cairo Capital Holding' },
   { symbol: 'CCFH', name: 'Cairo for Housing & Development' },
   { symbol: 'CCSM', name: 'Ceramica Cleopatra Group' },
-  { symbol: 'CIEB', name: 'CIB Egypt' },
-  { symbol: 'CIRA', name: 'CIRA Education' },
   { symbol: 'COMD', name: 'Commercial Warehousing' },
   { symbol: 'CPTH', name: 'Cairo Pharmaceuticals' },
   { symbol: 'DCRC', name: 'Delta Construction & Rebuilding' },
@@ -83,34 +76,22 @@ const EGX_SYMBOLS_RAW = [
   { symbol: 'ECHO', name: 'Egyptian Company for Hotels' },
   { symbol: 'EDBE', name: 'Egyptian Arab Development Bank' },
   { symbol: 'EFID', name: 'Egyptian Financial & Industrial' },
-  { symbol: 'EGTS', name: 'Egyptian Tourism' },
   { symbol: 'ELKA', name: 'El Kahera Housing' },
   { symbol: 'ELSH', name: 'El Shams Housing' },
   { symbol: 'ELWS', name: 'El Wady Ceramics' },
-  { symbol: 'EMFD', name: 'Egypt Foods Group' },
   { symbol: 'EMIC', name: 'Egyptian Media Production City' },
   { symbol: 'ENPI', name: "Egyptian Nat'l Posts" },
-  { symbol: 'ESRS', name: 'Ezz Steel' },
   { symbol: 'ETRS', name: 'Egyptian Transport' },
   { symbol: 'EXPA', name: 'Export Development Bank' },
-  { symbol: 'FWRY', name: 'Fawry Banking & Payment Tech' },
   { symbol: 'GAMA', name: 'Ghabbour Auto' },
-  { symbol: 'GBCO', name: 'General Buildings' },
   { symbol: 'GTHE', name: 'GTHE' },
   { symbol: 'GWIC', name: 'Gulf Western Investments' },
-  { symbol: 'HDBK', name: 'Housing & Development Bank' },
-  { symbol: 'HELI', name: 'Heliopolis Housing' },
   { symbol: 'HERO', name: 'Egyptian Real Estate Group' },
   { symbol: 'ICON', name: 'Icon Real Estate' },
   { symbol: 'IDEG', name: 'IDEG' },
   { symbol: 'IFAP', name: 'Integrated Finance' },
   { symbol: 'IRAX', name: 'Arabia Real Estate' },
-  { symbol: 'ISPH', name: 'Ismailia for Real Estate Inv.' },
-  { symbol: 'JUFO', name: 'Juhayna Food Industries' },
-  { symbol: 'KABO', name: 'Kafr El Zayat Pesticides' },
   { symbol: 'KFSB', name: 'El Kahera El Watania Inv.' },
-  { symbol: 'LCSW', name: 'Lecico Egypt' },
-  { symbol: 'MASR', name: 'Misr Insurance Holding' },
   { symbol: 'MCIT', name: 'Misr Chemical Industries' },
   { symbol: 'MEDC', name: 'Middle East Glass' },
   { symbol: 'MNHD', name: 'Madinet Nasr for Housing' },
@@ -121,22 +102,15 @@ const EGX_SYMBOLS_RAW = [
   { symbol: 'NCGR', name: 'National Co. for Glass' },
   { symbol: 'NGAS', name: 'National Gas & Mining' },
   { symbol: 'NTGL', name: 'National Textile' },
-  { symbol: 'OCDI', name: 'Orascom Development Egypt' },
   { symbol: 'ORAM', name: 'Orascom Media' },
-  { symbol: 'ORHD', name: 'Orascom Hotels & Development' },
   { symbol: 'ORPD', name: 'Orascom Development' },
-  { symbol: 'PHDC', name: 'Palm Hills Developments' },
   { symbol: 'PORT', name: 'Alexandria Port Said' },
-  { symbol: 'POUL', name: 'Cairo Poultry' },
   { symbol: 'RAIA', name: 'Raia Medical Center' },
   { symbol: 'RCYC', name: 'Recyclomed' },
   { symbol: 'SDCH', name: 'Sidi Kerir Petrochemicals' },
   { symbol: 'SEMG', name: 'Americana Group Egypt' },
-  { symbol: 'SKPC', name: 'Sidi Kerir Petrochem' },
   { symbol: 'SMFR', name: 'Samcrete Egypt' },
-  { symbol: 'SPMD', name: 'Speed Medical' },
   { symbol: 'SUGR', name: 'Upper Egypt Sugar' },
-  { symbol: 'SWDY', name: 'El Sewedy Electric' },
   { symbol: 'TMHC', name: 'Trans Ocean Hotels' },
   { symbol: 'TOYS', name: 'Toys Home' },
   { symbol: 'UEGC', name: 'United Egypt Group' },
@@ -147,15 +121,14 @@ const EGX_SYMBOLS_RAW = [
   { symbol: 'WMCK', name: 'Wadi Kom Ombo' },
   { symbol: 'ZCAP', name: 'Zap Capital' },
   { symbol: 'ZNHO', name: 'Zahraa Nasr City' },
-];
+].filter(s => !EGX_LIVE_SET.has(s.symbol));
 
-// Deduplicate by symbol — keeps first occurrence
-const seen = new Set<string>();
-const EGX_SYMBOLS = EGX_SYMBOLS_RAW.filter(s => {
-  if (seen.has(s.symbol)) return false;
-  seen.add(s.symbol);
-  return true;
-});
+// Merge: live-data stocks first (correct names from egx-companies.ts), then extras
+// Sorted alphabetically so the picker is easy to scan.
+const EGX_SYMBOLS = [
+  ...EGX_COMPANIES.map(c => ({ symbol: c.ticker, name: c.nameEn })),
+  ...EGX_EXTRA_SYMBOLS,
+].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
