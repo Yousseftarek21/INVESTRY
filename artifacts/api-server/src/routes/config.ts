@@ -21,17 +21,16 @@ const router: IRouter = Router();
 router.get("/config", (req, res) => {
   const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY ?? null;
 
-  // Pick the best host — production first, dev fallback, req.host last resort.
-  const apiHost =
-    process.env.REPLIT_DOMAINS?.split(",")[0] ??
-    process.env.REPLIT_DEV_DOMAIN ??
-    req.get("host");
-
-  const protocol = process.env.REPLIT_DOMAINS ? "https" : req.protocol;
+  // The Clerk proxy middleware only runs in production (NODE_ENV === "production").
+  // Mirror that exact condition here so we never hand the client a proxy URL
+  // that points at a disabled middleware — which causes Clerk JS 404s on web.
+  // In dev, returning null lets Clerk load its script from the CDN directly.
+  const isProduction = process.env.NODE_ENV === "production";
+  const deployedDomain = process.env.REPLIT_DOMAINS?.split(",")[0];
 
   const clerkProxyUrl =
-    clerkPublishableKey && apiHost
-      ? `${protocol}://${apiHost}/api/__clerk`
+    isProduction && clerkPublishableKey && deployedDomain
+      ? `https://${deployedDomain}/api/__clerk`
       : null;
 
   res.json({ clerkPublishableKey, clerkProxyUrl });
