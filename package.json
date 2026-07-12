@@ -9,6 +9,7 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
+  "packageManager": "pnpm@11.10.0",
   "devDependencies": {
     "@babel/traverse": "^7.29.7",
     "prettier": "^3.8.4",
