@@ -3,8 +3,7 @@
     "version": ">= 13.0.0",
     "appVersionSource": "local",
     "promptToConfigurePushNotifications": false,
-    "requireCommit": false,
-    "packageManager": "pnpm"
+    "requireCommit": false
   },
   "build": {
     "development": {
