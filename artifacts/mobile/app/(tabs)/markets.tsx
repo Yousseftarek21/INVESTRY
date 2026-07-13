@@ -534,7 +534,6 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
       <View style={tab.section}>
         <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.goldSectionLabel} />
         <TableCard>
-          <MetalRow metalType="gold" accentColor={colors.primary} label={t.gold24K}   sublabel={t.gold24KSub}    price={gold24} changePercent={prices?.goldChangePercent} />
           <MetalRow metalType="gold" accentColor={colors.primary} label={t.gold22K}   sublabel={t.gold22KSub}    price={gold22} />
           <MetalRow metalType="gold" accentColor={colors.primary} label={t.gold21K}   sublabel={t.gold21KSub}    price={gold21} />
           <MetalRow metalType="gold" accentColor={colors.goldDark ?? '#A68700'} label={t.gold18K} sublabel={t.gold18KSub} price={gold18} />
@@ -557,7 +556,6 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
       <View style={tab.section}>
         <SLabel icon="disc" title={t.silverSectionLabel} />
         <TableCard>
-          <MetalRow metalType="silver" accentColor={colors.silverColor} label={t.silver999Label} sublabel={t.silver999Sub}    price={silver999} changePercent={prices?.silverChangePercent} />
           <MetalRow metalType="silver" accentColor={colors.silverColor} label={t.silver925Label} sublabel={t.silver925Sub}    price={silver925} />
           <MetalRow metalType="silver" accentColor={colors.silverColor} label={t.silverTroyOz}   sublabel={t.silverTroyOzSub} price={silverOz} unit="EGP" changePercent={prices?.silverChangePercent} isLast bold />
         </TableCard>
@@ -589,7 +587,6 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
       <View style={tab.section}>
         <SLabel icon="dollar-sign" title={t.exchangeRatesVsEGP} />
         <TableCard>
-          <CurrencyRow flag="🇺🇸" name={t.currencyUSD} pair="USD / EGP" rate={usd}  unit={`${t.currencyUnitEGP} USD`} />
           <CurrencyRow flag="🇪🇺" name={t.currencyEUR} pair="EUR / EGP" rate={eur}  unit={`${t.currencyUnitEGP} EUR`} />
           <CurrencyRow flag="🇬🇧" name={t.currencyGBP} pair="GBP / EGP" rate={gbp}  unit={`${t.currencyUnitEGP} GBP`} />
           <CurrencyRow flag="🇸🇦" name={t.currencySAR} pair="SAR / EGP" rate={sar}  unit={`${t.currencyUnitEGP} SAR`} />
