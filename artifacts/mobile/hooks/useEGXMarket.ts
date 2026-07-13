@@ -22,6 +22,12 @@ interface ServerEGXStock {
   previousClose: number;
   change: number;
   changePercent: number;
+  volume?: number;
+  marketCap?: number;
+  high52w?: number;
+  low52w?: number;
+  pe?: number;
+  dividendYield?: number;
 }
 
 const YF_HEADERS = {
@@ -41,7 +47,19 @@ async function fetchFromServer(): Promise<EGXStockLive[]> {
   return EGX_COMPANIES.map(company => {
     const s = bySymbol.get(company.ticker);
     if (!s || s.price === 0) return { ...company, price: company.fallbackPrice, change: 0, changePercent: 0, isLive: false };
-    return { ...company, price: s.price, change: s.change, changePercent: s.changePercent, isLive: true };
+    return {
+      ...company,
+      price:         s.price,
+      change:        s.change,
+      changePercent: s.changePercent,
+      volume:        s.volume,
+      marketCap:     s.marketCap,
+      high52w:       s.high52w,
+      low52w:        s.low52w,
+      pe:            s.pe,
+      dividendYield: s.dividendYield,
+      isLive:        true,
+    };
   });
 }
 

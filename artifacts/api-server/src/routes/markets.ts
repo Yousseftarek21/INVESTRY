@@ -47,6 +47,12 @@ interface EGXStockResponse {
   previousClose: number;
   change: number;
   changePercent: number;
+  volume?: number;
+  marketCap?: number;
+  high52w?: number;
+  low52w?: number;
+  pe?: number;
+  dividendYield?: number;
 }
 
 interface HistoricalRates {
@@ -833,16 +839,19 @@ const EGX_SYMBOL_SET: Set<string>        = new Set(EGX_TICKERS.map(t => t.symbol
 // Batch size kept at 150 — TradingView accepts it in one call with no rate issues.
 const TV_BATCH_SIZE = 150;
 
+// Columns returned per ticker: [close, change_abs, change%, volume, market_cap, 52w_high, 52w_low, P/E, div_yield]
+type TVRow = [number, number, number, number | null, number | null, number | null, number | null, number | null, number | null];
+
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   const allSymbols = EGX_TICKERS.map(t => t.symbol);
-  const priceMap: Record<string, [number, number, number]> = {};
+  const priceMap: Record<string, TVRow> = {};
 
   // Split into batches and query each with explicit symbol list so TradingView
   // returns prices for every ticker, not just its own "top active" subset.
   for (let i = 0; i < allSymbols.length; i += TV_BATCH_SIZE) {
     const batch = allSymbols.slice(i, i + TV_BATCH_SIZE);
     const body = JSON.stringify({
-      columns: ["close", "change_abs", "change"],
+      columns: ["close", "change_abs", "change", "volume", "market_cap_basic", "52_week_high", "52_week_low", "P.E", "dividends_yield_current"],
       symbols: { tickers: batch.map(s => `EGX:${s}`) },
     });
 
@@ -853,7 +862,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
     });
     if (!res?.ok) throw new Error(`TV scanner ${res?.status}`);
 
-    const data = await res.json() as { data: Array<{ s: string; d: [number, number, number] }> };
+    const data = await res.json() as { data: Array<{ s: string; d: TVRow }> };
     if (!data?.data) throw new Error("TV scanner: no data field");
 
     for (const item of data.data) {
@@ -866,7 +875,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   for (const { symbol, name } of EGX_TICKERS) {
     const d = priceMap[symbol];
     if (!d) continue;
-    const [close, changeAbs, changePct] = d;
+    const [close, changeAbs, changePct, volume, marketCap, high52w, low52w, pe, divYield] = d;
     if (!close) continue;                              // skip if TV returned no price
     results.push({
       symbol,
@@ -875,6 +884,12 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       previousClose: round2(close - changeAbs),
       change:        round2(changeAbs),
       changePercent: round2(changePct),
+      volume:        volume ?? undefined,
+      marketCap:     marketCap ?? undefined,
+      high52w:       high52w ?? undefined,
+      low52w:        low52w ?? undefined,
+      pe:            pe != null ? round2(pe) : undefined,
+      dividendYield: divYield != null ? round2(divYield) : undefined,
     });
   }
   return results;
