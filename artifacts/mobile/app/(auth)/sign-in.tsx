@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
-import { useSignIn, useSSO } from '@clerk/expo';
+import { useSignIn, useSSO, useClerk } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -30,6 +30,7 @@ export default function SignInScreen() {
   const insets = useSafeAreaInsets();
 
   const { signIn, errors, fetchStatus } = useSignIn();
+  const { setActive } = useClerk();
   const { startSSOFlow } = useSSO();
 
   const [email, setEmail] = useState('');
@@ -60,13 +61,18 @@ export default function SignInScreen() {
     }
   };
 
+  const activateSession = async (createdSessionId: string | null | undefined) => {
+    await setActive!({ session: createdSessionId });
+    router.replace('/(tabs)' as any);
+  };
+
   const handleSignIn = async () => {
     setGlobalError('');
-    const { error } = await signIn.password({ emailAddress: email, password });
-    if (error) { setGlobalError(error.message ?? 'Incorrect email or password.'); return; }
+    const result = await signIn.password({ emailAddress: email, password });
+    if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
 
-    if (signIn.status === 'complete') {
-      await signIn.finalize({ navigate: finalizeNavigate });
+    if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
+      await activateSession(signIn.createdSessionId);
     } else {
       setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
     }
@@ -76,14 +82,14 @@ export default function SignInScreen() {
     setGlobalError('');
     setDemoLoading(true);
     try {
-      const { error } = await signIn.password({
+      const result = await signIn.password({
         emailAddress: 'demo@investry.app',
         password: 'Investry_Demo_2025!',
       });
-      if (error) throw new Error(error.message ?? 'Demo sign-in failed');
+      if (result.error) throw new Error(result.error.message ?? 'Demo sign-in failed');
 
-      if (signIn.status === 'complete') {
-        await signIn.finalize({ navigate: finalizeNavigate });
+      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
+        await activateSession(signIn.createdSessionId);
       } else {
         throw new Error(`Unexpected sign-in status: ${signIn.status}`);
       }
