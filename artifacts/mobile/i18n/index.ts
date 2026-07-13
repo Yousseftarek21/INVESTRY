@@ -347,6 +347,8 @@ const en = {
   passwordPlaceholder: 'Enter password',
   signInBtnLabel: 'Sign In',
   useDemoAccount: 'Use Demo Account',
+  demoAccountSubtitle: 'Explore the app with pre-loaded sample data',
+  orSignInWith: 'or sign in with',
   dontHaveAccount: "Don't have an account? ",
   createOne: 'Create one',
 
@@ -986,6 +988,8 @@ const ar: typeof en = {
   passwordPlaceholder: 'أدخل كلمة المرور',
   signInBtnLabel: 'تسجيل الدخول',
   useDemoAccount: 'استخدام الحساب التجريبي',
+  demoAccountSubtitle: 'استكشف التطبيق ببيانات تجريبية جاهزة',
+  orSignInWith: 'أو تسجيل الدخول باستخدام',
   dontHaveAccount: 'ليس لديك حساب؟ ',
   createOne: 'أنشئ حساباً',
 

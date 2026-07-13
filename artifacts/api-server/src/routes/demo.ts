@@ -7,6 +7,9 @@ import { logger } from "../lib/logger";
 const router = Router();
 
 const DEMO_EMAIL = "demo@investry.app";
+// Stable password — registered in App Store Connect "Sign-in required" section
+// so Apple reviewers can also authenticate via email/password if the token flow fails.
+const DEMO_PASSWORD = "Investry_Demo_2025!";
 
 function genId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -21,7 +24,7 @@ async function getOrCreateDemoUser(): Promise<string> {
     firstName: "Demo",
     lastName: "Account",
     skipPasswordChecks: true,
-    password: `Investry_Demo_${Math.random().toString(36).slice(2, 10)}!`,
+    password: DEMO_PASSWORD,
   });
   return created.id;
 }

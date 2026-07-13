@@ -157,6 +157,39 @@ export default function SignInScreen() {
             </Text>
           </View>
 
+          {/* Demo account — prominent card for App Store reviewers */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.demoCard,
+              {
+                borderColor: colors.primary + '40',
+                backgroundColor: colors.primary + '12',
+                opacity: (pressed || demoLoading) ? 0.7 : 1,
+              },
+            ]}
+            onPress={handleDemoSignIn}
+            disabled={demoLoading}
+          >
+            <View style={styles.demoCardIcon}>
+              <Feather name="user" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.demoCardText}>
+              <Text style={[styles.demoCardTitle, { color: colors.text }]}>{t.useDemoAccount}</Text>
+              <Text style={[styles.demoCardSub, { color: colors.mutedForeground }]}>{t.demoAccountSubtitle}</Text>
+            </View>
+            {demoLoading
+              ? <ActivityIndicator size="small" color={colors.primary} />
+              : <Feather name="arrow-right" size={16} color={colors.primary} />
+            }
+          </Pressable>
+
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>{t.orSignInWith}</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+          </View>
+
           {/* Apple (iOS only, satisfies App Store guideline 4.8) */}
           {Platform.OS === 'ios' && (
             <Pressable
@@ -261,21 +294,6 @@ export default function SignInScreen() {
             }
           </Pressable>
 
-          {/* Demo account — for App Store reviewers */}
-          <Pressable
-            style={({ pressed }) => [styles.demoBtn, { borderColor: colors.border, backgroundColor: colors.card, opacity: (pressed || demoLoading) ? 0.7 : 1 }]}
-            onPress={handleDemoSignIn}
-            disabled={demoLoading}
-          >
-            {demoLoading
-              ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-              : <>
-                  <Feather name="user" size={14} color={colors.mutedForeground} />
-                  <Text style={[styles.demoBtnText, { color: colors.mutedForeground }]}>{t.useDemoAccount}</Text>
-                </>
-            }
-          </Pressable>
-
           {/* Footer */}
           <View style={styles.footerRow}>
             <Text style={[styles.footerText, { color: colors.mutedForeground }]}>{t.dontHaveAccount}</Text>
@@ -344,9 +362,16 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
   linkText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 
-  demoBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    borderWidth: 1, borderRadius: 14, paddingVertical: 12,
+  demoCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderRadius: 16, padding: 14,
   },
-  demoBtnText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  demoCardIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(212,172,13,0.15)',
+  },
+  demoCardText: { flex: 1, gap: 2 },
+  demoCardTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  demoCardSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
 });

@@ -1,0 +1,84 @@
+Hello, 
+
+
+We noticed this is your first app submission and want to congratulate you on joining the Apple Developer Program. We look forward to working together on your submissions.
+
+
+When App Review identifies an issue with a submission, we’ll contact you with a message in App Store Connect with details about what we found and how to resolve the issue. Learn more about App Review and tips for a smooth review experience. 
+
+
+See below for additional information about the issues that require your attention for this submission. If you have any questions, we are here to help. Reply to this message in App Store Connect and let us know.
+
+
+Review Environment
+
+Review date: July 13, 2026
+
+Review Device: iPhone 17 Pro Max
+
+Build version reviewed: 1.0.0 (41)
+
+
+Guideline 2.1(a) - Performance - App Completeness
+
+
+Issue Description
+
+
+We discovered one or more bugs in the app. 
+
+
+Specifically, when we attempted to log in, your app displayed an error message and we were unable to access the app.
+
+
+Please review the details below and complete the next steps. 
+
+
+Review device details:
+
+
+- Device type: iPhone 17 Pro Max 
+
+- OS version: iOS 26.5.2
+
+
+Next Steps
+
+
+Please run the app on a device to reproduce the issues, then revise and submit the app for review. If at first you're unable to reproduce the issue, try the following: 
+
+
+- For new apps, uninstall all previous versions of the app from a device, then install and follow the steps to reproduce. 
+
+- For app updates, install the new version as an update to the previous version, then follow the steps to reproduce.
+
+
+If we misunderstood the intended behavior of the app, please reply to this message in App Store Connect to provide information on how these features were intended to work.
+
+
+Resources
+
+
+- For information about testing apps and preparing them for review, see Testing a Release Build. 
+
+- To learn about troubleshooting networking issues, see About Networking.
+
+- Watch a video from App Review with tips for preventing common rejections.
+
+Support
+
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+
+- Provide feedback on this message and your review experience by completing a short survey.
+
+
+Test on the latest betas
+
+Betas of iOS 27, iPadOS 27, macOS 27, tvOS 27 and visionOS 27 are now available. Download the latest betas to prepare your app for upcoming software releases. Learn more about installing and using Apple beta software.
+
+
+Message Attachments:
+
+Screenshot-0713-084744.pngDownload
