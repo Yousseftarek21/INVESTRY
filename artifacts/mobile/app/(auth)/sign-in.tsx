@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { getApiBaseUrl } from '@/utils/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -82,6 +83,10 @@ export default function SignInScreen() {
     setGlobalError('');
     setDemoLoading(true);
     try {
+      // Call the setup endpoint to ensure the demo user exists with the stable
+      // password. We don't need the response — fire and move on regardless.
+      try { await fetch(`${getApiBaseUrl()}/api/demo/token`); } catch { /* non-fatal */ }
+
       const result = await signIn.password({
         emailAddress: 'demo@investry.app',
         password: 'Investry_Demo_2025!',
