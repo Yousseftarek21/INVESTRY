@@ -474,7 +474,7 @@ export default function HomeScreen() {
               segments={[
                 {
                   label: t.gold,     value: summary.goldV,   color: colors.primary,
-                  icon: 'award',     quantity: summary.goldGrams > 0 ? `${summary.goldGrams.toFixed(1)}g` : undefined,
+                  icon: 'layers',    quantity: summary.goldGrams > 0 ? `${summary.goldGrams.toFixed(1)}g` : undefined,
                 },
                 {
                   label: t.silver,   value: summary.silverV, color: colors.silverColor,

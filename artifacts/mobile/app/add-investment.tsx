@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useHaptic } from '@/hooks/useHaptic';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/expo';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -517,13 +517,13 @@ export default function AddInvestmentScreen() {
 
   const KARATS: GoldKarat[] = ['24k', '22k', '21k', '18k'];
 
-  const TYPES: { key: InvestmentType; label: string; icon: keyof typeof Feather.glyphMap; color: string }[] = [
-    { key: 'gold', label: t.gold, icon: 'award', color: colors.primary },
-    { key: 'silver', label: t.silver, icon: 'circle', color: colors.silverColor },
-    { key: 'stock', label: t.egxStock, icon: 'bar-chart-2', color: '#4A9EFF' },
-    { key: 'real_estate', label: t.realEstate, icon: 'home', color: '#A47FCA' },
-    { key: 'personal_asset', label: t.personalAsset, icon: 'star', color: '#E08E45' },
-    { key: 'fixed_income', label: t.fixedIncome, icon: 'percent', color: '#22C55E' },
+  const TYPES: { key: InvestmentType; label: string; renderIcon: (size: number, color: string) => React.ReactNode; color: string }[] = [
+    { key: 'gold',           label: t.gold,         renderIcon: (s, c) => <MaterialCommunityIcons name="gold"          size={s} color={c} />, color: colors.primary },
+    { key: 'silver',         label: t.silver,        renderIcon: (s, c) => <Feather name="disc"                         size={s} color={c} />, color: colors.silverColor },
+    { key: 'stock',          label: t.egxStock,      renderIcon: (s, c) => <Feather name="trending-up"                  size={s} color={c} />, color: '#4A9EFF' },
+    { key: 'real_estate',    label: t.realEstate,    renderIcon: (s, c) => <MaterialCommunityIcons name="home-city"     size={s} color={c} />, color: '#A47FCA' },
+    { key: 'personal_asset', label: t.personalAsset, renderIcon: (s, c) => <MaterialCommunityIcons name="tag-multiple"  size={s} color={c} />, color: '#E08E45' },
+    { key: 'fixed_income',   label: t.fixedIncome,   renderIcon: (s, c) => <Feather name="percent"                     size={s} color={c} />, color: '#22C55E' },
   ];
 
 
@@ -843,7 +843,7 @@ export default function AddInvestmentScreen() {
                           <Feather name="check" size={9} color="#fff" />
                         </View>
                       )}
-                      <Feather name={tp.icon} size={20} color={isActive ? tp.color : colors.mutedForeground} />
+                      {tp.renderIcon(20, isActive ? tp.color : colors.mutedForeground)}
                       <Text style={[styles.typeLabel, { color: isActive ? tp.color : colors.text }]}>{tp.label}</Text>
                     </TouchableOpacity>
                   </Animated.View>

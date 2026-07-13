@@ -655,7 +655,7 @@ export default function AnalyticsScreen() {
       items.push({ icon: 'shield', color: '#A47FCA', text: t.insightLowMetals });
     }
     if ((prices?.goldChangePercent ?? 0) > 1) {
-      items.push({ icon: 'award', color: colors.primary, text: t.insightGoldUp((prices?.goldChangePercent ?? 0).toFixed(2)) });
+      items.push({ icon: 'trending-up', color: colors.primary, text: t.insightGoldUp((prices?.goldChangePercent ?? 0).toFixed(2)) });
     }
     return items.slice(0, 4);
   }, [holdings, performers, typeCount, sm, prices, colors]);
@@ -674,7 +674,7 @@ export default function AnalyticsScreen() {
     if (metalPct > 0) items.push({ icon: 'shield', color: colors.primary, text: t.insightMetalsPct(metalPct.toFixed(0)) });
     if (sm.goldV > 0 && sm.gain > 0) {
       const goldContrib = sm.totalValue > 0 ? (sm.goldV / sm.totalValue) * 100 : 0;
-      items.push({ icon: 'award', color: colors.primary, text: t.insightGoldLargest(goldContrib.toFixed(0)) });
+      items.push({ icon: 'layers', color: colors.primary, text: t.insightGoldLargest(goldContrib.toFixed(0)) });
     }
     if (sm.stockV > 0) {
       const stockPct = sm.totalValue > 0 ? (sm.stockV / sm.totalValue) * 100 : 0;

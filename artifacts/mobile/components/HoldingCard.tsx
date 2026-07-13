@@ -5,6 +5,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { Holding, MarketPrices } from '@/types';
 import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { AssetIcon } from '@/components/AssetIcon';
 
 type HoldingLabels = {
   gold: string; silver: string; realEstate: string; personalAsset: string;
@@ -60,13 +61,8 @@ function computeCost(holding: Holding, prices?: MarketPrices): number {
   return 0;
 }
 
-function getIcon(holding: Holding): keyof typeof Feather.glyphMap {
-  if (holding.type === 'gold') return 'award';
-  if (holding.type === 'silver') return 'circle';
-  if (holding.type === 'stock') return 'bar-chart-2';
-  if (holding.type === 'personal_asset') return (holding.icon as keyof typeof Feather.glyphMap) || 'star';
-  if (holding.type === 'fixed_income') return 'percent';
-  return 'home';
+function getPersonalAssetFeatherIcon(holding: Extract<Holding, { type: 'personal_asset' }>): keyof typeof Feather.glyphMap {
+  return (holding.icon as keyof typeof Feather.glyphMap) || 'star';
 }
 
 function getTitle(holding: Holding, labels: HoldingLabels): string {
@@ -133,7 +129,10 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues }: H
       <View style={[styles.leftAccent, { backgroundColor: iconColor }]} />
 
       <View style={[styles.iconWrap, { backgroundColor: iconColor + '20' }]}>
-        <Feather name={getIcon(holding)} size={17} color={iconColor} />
+        {holding.type === 'personal_asset'
+          ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={17} color={iconColor} />
+          : <AssetIcon type={holding.type} size={17} color={iconColor} />
+        }
       </View>
 
       <View style={styles.info}>
