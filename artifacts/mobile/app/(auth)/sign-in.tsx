@@ -11,7 +11,6 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { getApiBaseUrl } from '@/utils/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -77,17 +76,16 @@ export default function SignInScreen() {
     setGlobalError('');
     setDemoLoading(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/api/demo/token`);
-      const data = await res.json();
-      if (!res.ok || !data.token) throw new Error(data.error ?? 'Could not load demo token');
-
-      const { error } = await (signIn as any).create({ strategy: 'ticket', ticket: data.token });
+      const { error } = await signIn.password({
+        emailAddress: 'demo@investry.app',
+        password: 'Investry_Demo_2025!',
+      });
       if (error) throw new Error(error.message ?? 'Demo sign-in failed');
 
       if (signIn.status === 'complete') {
         await signIn.finalize({ navigate: finalizeNavigate });
       } else {
-        throw new Error(`Unexpected status: ${signIn.status}`);
+        throw new Error(`Unexpected sign-in status: ${signIn.status}`);
       }
     } catch (err: any) {
       setGlobalError(err.message ?? 'Demo sign-in failed. Please try again.');

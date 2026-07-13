@@ -17,7 +17,22 @@ function genId(): string {
 
 async function getOrCreateDemoUser(): Promise<string> {
   const list = await clerkClient.users.getUserList({ emailAddress: [DEMO_EMAIL] });
-  if (list.data.length > 0) return list.data[0].id;
+
+  if (list.data.length > 0) {
+    const userId = list.data[0].id;
+    // Best-effort password reset — ensures the stable password works for new builds.
+    // Swallow any error so the endpoint always succeeds even if the Clerk instance
+    // doesn't allow programmatic password resets (e.g. strict password policies).
+    try {
+      await clerkClient.users.updateUser(userId, {
+        password: DEMO_PASSWORD,
+        skipPasswordChecks: true,
+      });
+    } catch {
+      // non-fatal — demo user already exists, existing password is still usable
+    }
+    return userId;
+  }
 
   const created = await clerkClient.users.createUser({
     emailAddress: [DEMO_EMAIL],
@@ -175,16 +190,12 @@ router.get("/demo/token", async (req, res) => {
   try {
     const userId = await getOrCreateDemoUser();
     await ensureDemoData(userId);
-
-    const tokenObj = await clerkClient.signInTokens.createSignInToken({
-      userId,
-      expiresInSeconds: 3600,
-    });
-
-    res.json({ token: tokenObj.token });
+    // Return success — the mobile client signs in via email/password directly.
+    // The token field is kept for backwards compatibility with any old builds.
+    res.json({ ok: true, token: null });
   } catch (err: any) {
-    req.log.error({ err }, "Failed to create demo sign-in token");
-    res.status(500).json({ error: "Failed to create demo token" });
+    req.log.error({ err }, "Failed to set up demo account");
+    res.status(500).json({ error: "Failed to set up demo account" });
   }
 });
 
