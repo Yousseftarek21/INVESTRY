@@ -167,10 +167,7 @@ function MetalHeroCard({
         <View style={mh.topRow}>
           <View style={mh.metalInfo}>
             <View style={[mh.iconWrap, { backgroundColor: accentColor + '1A' }]}>
-              {metalType === 'gold'
-                ? <MaterialCommunityIcons name="gold" size={22} color={accentColor} />
-                : <Feather name="disc" size={22} color={accentColor} />
-              }
+              <MaterialCommunityIcons name="gold" size={22} color={accentColor} />
             </View>
             <Text style={[mh.metalLabel, { color: colors.mutedForeground }]}>{label}</Text>
           </View>
@@ -242,10 +239,7 @@ function MetalRow({
     ]}>
       <View style={mr.left}>
         <View style={[mr.iconWrap, { backgroundColor: accentColor + '18' }]}>
-          {metalType === 'gold'
-            ? <MaterialCommunityIcons name="gold" size={17} color={accentColor} />
-            : <Feather name="disc" size={17} color={accentColor} />
-          }
+          <MaterialCommunityIcons name="gold" size={17} color={accentColor} />
         </View>
         <View style={mr.labels}>
           <Text style={[mr.label, { color: colors.text }, bold && mr.labelBold]}>{label}</Text>
@@ -519,20 +513,18 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
 
   return (
     <View style={tab.group}>
-      {/* Gold hero */}
-      <MetalHeroCard
-        metalType="gold"
-        accentColor={colors.primary}
-        label={t.gold24K}
-        price={gold24}
-        usdPrice={prices?.goldUsd}
-        troyEgp={goldOz}
-        changePercent={prices?.goldChangePercent}
-      />
-
-      {/* Gold table */}
+      {/* Gold section */}
       <View style={tab.section}>
         <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.goldSectionLabel} />
+        <MetalHeroCard
+          metalType="gold"
+          accentColor={colors.primary}
+          label={t.gold24K}
+          price={gold24}
+          usdPrice={prices?.goldUsd}
+          troyEgp={goldOz}
+          changePercent={prices?.goldChangePercent}
+        />
         <TableCard>
           <MetalRow metalType="gold" accentColor={colors.primary} label={t.gold22K}   sublabel={t.gold22KSub}    price={gold22} />
           <MetalRow metalType="gold" accentColor={colors.primary} label={t.gold21K}   sublabel={t.gold21KSub}    price={gold21} />
@@ -541,20 +533,18 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
         </TableCard>
       </View>
 
-      {/* Silver hero */}
-      <MetalHeroCard
-        metalType="silver"
-        accentColor={colors.silverColor}
-        label={t.silver999Label}
-        price={silver999}
-        usdPrice={prices?.silverUsd}
-        troyEgp={silverOz}
-        changePercent={prices?.silverChangePercent}
-      />
-
-      {/* Silver table */}
+      {/* Silver section */}
       <View style={tab.section}>
-        <SLabel icon="disc" title={t.silverSectionLabel} />
+        <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.silverSectionLabel} />
+        <MetalHeroCard
+          metalType="silver"
+          accentColor={colors.silverColor}
+          label={t.silver999Label}
+          price={silver999}
+          usdPrice={prices?.silverUsd}
+          troyEgp={silverOz}
+          changePercent={prices?.silverChangePercent}
+        />
         <TableCard>
           <MetalRow metalType="silver" accentColor={colors.silverColor} label={t.silver925Label} sublabel={t.silver925Sub}    price={silver925} />
           <MetalRow metalType="silver" accentColor={colors.silverColor} label={t.silverTroyOz}   sublabel={t.silverTroyOzSub} price={silverOz} unit="EGP" changePercent={prices?.silverChangePercent} isLast bold />
