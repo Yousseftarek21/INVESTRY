@@ -830,31 +830,47 @@ async function fetchTickersViaSpark(
 const EGX_NAMES: Record<string, string>  = Object.fromEntries(EGX_TICKERS.map(t => [t.symbol, t.name]));
 const EGX_SYMBOL_SET: Set<string>        = new Set(EGX_TICKERS.map(t => t.symbol));
 
+// Batch size kept at 150 — TradingView accepts it in one call with no rate issues.
+const TV_BATCH_SIZE = 150;
+
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
-  const body = JSON.stringify({
-    columns: ["close", "change_abs", "change", "volume"],
-    sort: { sortBy: "name", sortOrder: "asc" },
-    range: [0, 300],
-  });
+  const allSymbols = EGX_TICKERS.map(t => t.symbol);
+  const priceMap: Record<string, [number, number, number]> = {};
 
-  const res = await safeFetch("https://scanner.tradingview.com/egypt/scan", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
-    body,
-  });
-  if (!res?.ok) throw new Error(`TV scanner ${res?.status}`);
+  // Split into batches and query each with explicit symbol list so TradingView
+  // returns prices for every ticker, not just its own "top active" subset.
+  for (let i = 0; i < allSymbols.length; i += TV_BATCH_SIZE) {
+    const batch = allSymbols.slice(i, i + TV_BATCH_SIZE);
+    const body = JSON.stringify({
+      columns: ["close", "change_abs", "change"],
+      symbols: { tickers: batch.map(s => `EGX:${s}`) },
+    });
 
-  const data = await res.json() as { data: Array<{ s: string; d: [number, number, number, number] }> };
-  if (!data?.data?.length) throw new Error("TV scanner: empty");
+    const res = await safeFetch("https://scanner.tradingview.com/egypt/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
+      body,
+    });
+    if (!res?.ok) throw new Error(`TV scanner ${res?.status}`);
+
+    const data = await res.json() as { data: Array<{ s: string; d: [number, number, number] }> };
+    if (!data?.data) throw new Error("TV scanner: no data field");
+
+    for (const item of data.data) {
+      const sym = item.s.replace(/^EGX:/, "");
+      priceMap[sym] = item.d;
+    }
+  }
 
   const results: EGXStockResponse[] = [];
-  for (const item of data.data) {
-    const sym = item.s.replace(/^EGX:/, "");
-    if (!EGX_SYMBOL_SET.has(sym)) continue;          // skip non-EGX / unwanted tickers
-    const [close, changeAbs, changePct] = item.d;
+  for (const { symbol, name } of EGX_TICKERS) {
+    const d = priceMap[symbol];
+    if (!d) continue;
+    const [close, changeAbs, changePct] = d;
+    if (!close) continue;                              // skip if TV returned no price
     results.push({
-      symbol:        sym,
-      name:          EGX_NAMES[sym] ?? sym,
+      symbol,
+      name:          EGX_NAMES[symbol] ?? name,
       price:         round2(close),
       previousClose: round2(close - changeAbs),
       change:        round2(changeAbs),
