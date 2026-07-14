@@ -32,7 +32,7 @@ import * as Updates from "expo-updates";
 SplashScreen.preventAutoHideAsync();
 
 const splashStartTime = Date.now();
-const MIN_SPLASH_DURATION_MS = 2500;
+const MIN_SPLASH_DURATION_MS = Platform.OS === 'web' ? 0 : 2500;
 
 const webTokenCache: TokenCache = {
   getToken: (key: string) => Promise.resolve(localStorage.getItem(key)),
