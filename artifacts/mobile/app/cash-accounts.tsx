@@ -203,8 +203,7 @@ export default function CashAccountsScreen() {
       }]}>
         <TouchableOpacity
           onPress={() => {
-            if (showForm && !editingId && openAddParam === '1') { router.back(); }
-            else if (showForm) { setShowForm(false); resetForm(); }
+            if (showForm) { setShowForm(false); resetForm(); }
             else { router.back(); }
           }}
           hitSlop={12}
