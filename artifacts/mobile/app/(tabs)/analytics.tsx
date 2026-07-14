@@ -4,7 +4,7 @@ import {
   ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, {
   Defs, LinearGradient, Stop,
   Circle, Path,
@@ -477,14 +477,18 @@ const ms = StyleSheet.create({
 
 // ─── Section label ─────────────────────────────────────────────────────────────
 
+type SLabelIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
 function SLabel({ icon, title, sub }: {
-  icon: keyof typeof Feather.glyphMap; title: string; sub?: string;
+  icon: SLabelIcon; title: string; sub?: string;
 }) {
   const colors = useColors();
+  const ic = typeof icon === 'object' && icon.lib === 'mci'
+    ? <MaterialCommunityIcons name={icon.name as any} size={13} color={colors.mutedForeground} />
+    : <Feather name={icon as keyof typeof Feather.glyphMap} size={13} color={colors.mutedForeground} />;
   return (
     <View style={sl.row}>
       <View style={[sl.iconWrap, { backgroundColor: colors.muted }]}>
-        <Feather name={icon} size={13} color={colors.mutedForeground} />
+        {ic}
       </View>
       <Text style={[sl.title, { color: colors.text }]}>{title}</Text>
       {sub && <Text style={[sl.sub, { color: colors.mutedForeground }]}>{sub}</Text>}
@@ -934,7 +938,7 @@ export default function AnalyticsScreen() {
             {/* ── Gold spotlight ───────────────────────────────────────── */}
             {sm.goldV > 0 && (
               <View style={s.section}>
-                <SLabel icon="star" title={t.goldBreakdownLabel} />
+                <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.goldBreakdownLabel} />
                 <MetalSpotlight
                   title={t.goldHoldingsTitle}
                   grams={sm.totalGoldGrams}
@@ -950,7 +954,7 @@ export default function AnalyticsScreen() {
             {/* ── Silver spotlight ─────────────────────────────────────── */}
             {sm.silverV > 0 && (
               <View style={s.section}>
-                <SLabel icon="circle" title={t.silverBreakdownLabel} />
+                <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.silverBreakdownLabel} />
                 <MetalSpotlight
                   title={t.silverHoldingsTitle}
                   grams={sm.totalSilverGrams}

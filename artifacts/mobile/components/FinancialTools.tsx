@@ -7,7 +7,7 @@ import {
   Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
@@ -37,10 +37,11 @@ function parseNum(s: string) { return parseFloat(s.replace(/,/g, '')) || 0; }
 
 // ─── Shared Modal Shell ────────────────────────────────────────────────────────
 
+type ModalIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
 function ModalShell({
   visible, title, icon, iconColor, onClose, children,
 }: {
-  visible: boolean; title: string; icon: keyof typeof Feather.glyphMap;
+  visible: boolean; title: string; icon: ModalIcon;
   iconColor: string; onClose: () => void; children: React.ReactNode;
 }) {
   const colors = useColors();
@@ -75,7 +76,9 @@ function ModalShell({
             {/* Header */}
             <View style={sh.header}>
               <View style={[sh.iconWrap, { backgroundColor: iconColor + '18' }]}>
-                <Feather name={icon} size={18} color={iconColor} />
+                {typeof icon === 'object' && icon.lib === 'mci'
+                  ? <MaterialCommunityIcons name={icon.name as any} size={18} color={iconColor} />
+                  : <Feather name={icon as keyof typeof Feather.glyphMap} size={18} color={iconColor} />}
               </View>
               <Text style={[sh.title, { color: colors.text }]}>{title}</Text>
               <TouchableOpacity onPress={onClose} style={[sh.closeBtn, { backgroundColor: colors.muted }]}>
@@ -261,12 +264,12 @@ function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => voi
 
       <View style={[zk.assetList, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {[
-          { label: 'Gold', value: goldWealth, icon: 'award' as const, color: colors.primary },
-          { label: 'Silver', value: silverWealth, icon: 'circle' as const, color: colors.silverColor },
+          { label: 'Gold',   value: goldWealth,   icon: { lib: 'mci', name: 'gold' } as const, color: colors.primary },
+          { label: 'Silver', value: silverWealth, icon: { lib: 'mci', name: 'gold' } as const, color: colors.silverColor },
         ].map((item, i) => (
           <View key={i} style={[zk.assetRow, i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
             <View style={[zk.assetIcon, { backgroundColor: item.color + '18' }]}>
-              <Feather name={item.icon} size={13} color={item.color} />
+              <MaterialCommunityIcons name="gold" size={13} color={item.color} />
             </View>
             <Text style={[zk.assetLabel, { color: colors.text }]}>{item.label}</Text>
             <Text style={[zk.assetVal, { color: colors.text }]}>{fmt(item.value)} EGP</Text>
@@ -322,7 +325,7 @@ function GoldValueModal({ visible, onClose }: { visible: boolean; onClose: () =>
   const value = parseNum(grams) * pricePerGram;
 
   return (
-    <ModalShell visible={visible} title="Gold Value Calculator" icon="award" iconColor="#C9A227" onClose={onClose}>
+    <ModalShell visible={visible} title="Gold Value Calculator" icon={{ lib: 'mci', name: 'gold' }} iconColor="#C9A227" onClose={onClose}>
       <SegPicker
         options={[{ key: '24k', label: '24K' }, { key: '22k', label: '22K' }, { key: '21k', label: '21K' }, { key: '18k', label: '18K' }]}
         value={karat}
@@ -346,7 +349,7 @@ function SilverValueModal({ visible, onClose }: { visible: boolean; onClose: () 
   const value = parseNum(grams) * pricePerGram;
 
   return (
-    <ModalShell visible={visible} title="Silver Value Calculator" icon="circle" iconColor="#C0C8D4" onClose={onClose}>
+    <ModalShell visible={visible} title="Silver Value Calculator" icon={{ lib: 'mci', name: 'gold' }} iconColor="#C0C8D4" onClose={onClose}>
       <CalcInput label="Weight (grams)" value={grams} onChange={setGrams} unit="g" />
       <ResultCard rows={[
         { label: 'Live Price', value: pricePerGram > 0 ? `${fmt(pricePerGram, 2)} EGP/g` : 'Loading…' },
@@ -450,7 +453,7 @@ function GoldPurityModal({ visible, onClose }: { visible: boolean; onClose: () =
   const pureGold = parseNum(grams) * purities[fromK];
 
   return (
-    <ModalShell visible={visible} title="Gold Purity Converter" icon="layers" iconColor="#C9A227" onClose={onClose}>
+    <ModalShell visible={visible} title="Gold Purity Converter" icon={{ lib: 'mci', name: 'gold' }} iconColor="#C9A227" onClose={onClose}>
       <SegPicker
         options={[{ key: '24', label: '24K' }, { key: '22', label: '22K' }, { key: '21', label: '21K' }, { key: '18', label: '18K' }]}
         value={fromK}
@@ -497,12 +500,12 @@ function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => vo
 
 const TOOLS = [
   { id: 'zakat',    icon: 'moon',         label: 'Zakat',           sub: 'Smart Calculator', color: '#10B981' },
-  { id: 'gold',     icon: 'award',        label: 'Gold Value',      sub: 'Live price',       color: '#C9A227' },
-  { id: 'silver',   icon: 'circle',       label: 'Silver Value',    sub: 'Live price',       color: '#C0C8D4' },
+  { id: 'gold',     icon: { lib: 'mci', name: 'gold' } as const, label: 'Gold Value',   sub: 'Live price',       color: '#C9A227' },
+  { id: 'silver',   icon: { lib: 'mci', name: 'gold' } as const, label: 'Silver Value', sub: 'Live price',       color: '#C0C8D4' },
   { id: 'currency', icon: 'refresh-cw',   label: 'Currency',        sub: 'EGP ↔ USD',       color: '#4A9EFF' },
   { id: 'roi',      icon: 'trending-up',  label: 'ROI',             sub: 'Return on invest', color: '#00D4AA' },
   { id: 'compound', icon: 'bar-chart-2',  label: 'Compound',        sub: 'Growth calc',      color: '#A47FCA' },
-  { id: 'purity',   icon: 'layers',       label: 'Gold Purity',     sub: '24K → 21K → 18K', color: '#C9A227' },
+  { id: 'purity',   icon: { lib: 'mci', name: 'gold' } as const, label: 'Gold Purity', sub: '24K → 21K → 18K', color: '#C9A227' },
   { id: 'weight',   icon: 'maximize-2',   label: 'Weight',          sub: 'g ↔ Troy Oz',     color: '#F59E0B' },
 ] as const;
 type ToolId = typeof TOOLS[number]['id'];
@@ -528,7 +531,9 @@ function ToolCard({ tool, onPress }: { tool: typeof TOOLS[number]; onPress: () =
         <View style={[tc.topAccent, { backgroundColor: tool.color }]} />
         {/* Icon */}
         <View style={[tc.iconWrap, { backgroundColor: tool.color + '1A' }]}>
-          <Feather name={tool.icon as any} size={22} color={tool.color} />
+          {typeof tool.icon === 'object' && tool.icon.lib === 'mci'
+            ? <MaterialCommunityIcons name={tool.icon.name as any} size={22} color={tool.color} />
+            : <Feather name={tool.icon as any} size={22} color={tool.color} />}
         </View>
         {/* Label */}
         <Text style={[tc.label, { color: colors.text }]} numberOfLines={1}>{tool.label}</Text>

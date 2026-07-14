@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 
 function fmtCpt(n: number): string {
@@ -9,12 +9,23 @@ function fmtCpt(n: number): string {
   return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
 
+export type SegmentIcon =
+  | string
+  | { lib: 'mci'; name: string };
+
 export interface AllocationSegment {
   label: string;
   value: number;
   color: string;
-  icon: string;
+  icon: SegmentIcon;
   quantity?: string;
+}
+
+function SegIcon({ icon, size, color }: { icon: SegmentIcon; size: number; color: string }) {
+  if (typeof icon === 'object' && icon.lib === 'mci') {
+    return <MaterialCommunityIcons name={icon.name as any} size={size} color={color} />;
+  }
+  return <Feather name={icon as any} size={size} color={color} />;
 }
 
 interface Props {
@@ -103,7 +114,7 @@ function AllocationRow({
     <View style={row.wrap}>
       {/* Icon */}
       <View style={[row.iconCircle, { backgroundColor: seg.color + '1E' }]}>
-        <Feather name={seg.icon as any} size={12} color={seg.color} />
+        <SegIcon icon={seg.icon} size={12} color={seg.color} />
       </View>
 
       {/* Middle: label + bar */}

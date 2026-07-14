@@ -474,11 +474,11 @@ export default function HomeScreen() {
               segments={[
                 {
                   label: t.gold,     value: summary.goldV,   color: colors.primary,
-                  icon: 'layers',    quantity: summary.goldGrams > 0 ? `${summary.goldGrams.toFixed(1)}g` : undefined,
+                  icon: { lib: 'mci' as const, name: 'gold' }, quantity: summary.goldGrams > 0 ? `${summary.goldGrams.toFixed(1)}g` : undefined,
                 },
                 {
                   label: t.silver,   value: summary.silverV, color: colors.silverColor,
-                  icon: 'disc',      quantity: summary.silverGrams > 0 ? `${summary.silverGrams.toFixed(1)}g` : undefined,
+                  icon: { lib: 'mci' as const, name: 'gold' }, quantity: summary.silverGrams > 0 ? `${summary.silverGrams.toFixed(1)}g` : undefined,
                 },
                 {
                   label: t.egxStock, value: summary.stockV,  color: '#4A9EFF',
