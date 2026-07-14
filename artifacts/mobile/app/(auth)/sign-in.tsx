@@ -70,9 +70,11 @@ export default function SignInScreen() {
   const handleSignIn = async () => {
     setGlobalError('');
     try {
-      const result = await signIn.password({ emailAddress: email, password });
-      if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
-      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
+      // signIn.create() mutates `signIn` in place and returns { error }.
+      // Status/sessionId must be read from `signIn` AFTER the call, not from the return value.
+      const { error } = await signIn.create({ identifier: email, password });
+      if (error) { setGlobalError(error.message ?? 'Incorrect email or password.'); return; }
+      if (signIn.status === 'complete') {
         await activateSession(signIn.createdSessionId);
       } else {
         setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
@@ -90,12 +92,14 @@ export default function SignInScreen() {
       // password. We don't need the response — fire and move on regardless.
       try { await fetch(`${getApiBaseUrl()}/api/demo/token`); } catch { /* non-fatal */ }
 
-      const result = await signIn.password({
-        emailAddress: 'demo@investry.app',
+      // signIn.create() mutates `signIn` in place and returns { error }.
+      // Status/sessionId must be read from `signIn` AFTER the call, not from the return value.
+      const { error } = await signIn.create({
+        identifier: 'demo@investry.app',
         password: 'Investry_Demo_2025!',
       });
-      if (result.error) throw new Error(result.error.message ?? 'Demo sign-in failed');
-      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
+      if (error) throw new Error(error.message ?? 'Demo sign-in failed');
+      if (signIn.status === 'complete') {
         await activateSession(signIn.createdSessionId);
       } else {
         throw new Error(`Demo sign-in could not complete. Status: ${signIn.status}`);
