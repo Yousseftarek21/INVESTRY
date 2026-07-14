@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import {
-  Animated, AppState, Image, LayoutChangeEvent, Platform, Pressable, RefreshControl,
+  Animated, AppState, LayoutChangeEvent, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -300,40 +300,17 @@ export default function HomeScreen() {
     >
       {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
-        {/* Left: avatar + two-line greeting */}
         <View style={styles.headerLeft}>
-          {user?.imageUrl ? (
-            <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: colors.primary + '22' }]}>
-              <Text style={[styles.avatarInitial, { color: colors.primary }]}>
-                {firstName ? firstName[0].toUpperCase() : '?'}
-              </Text>
-            </View>
-          )}
           <View style={styles.greetingBlock}>
-            <Text style={[styles.greetingHi, { color: colors.mutedForeground }]}>
-              {(() => { const h = new Date().getHours(); return h < 12 ? t.greetingMorning : h < 18 ? t.greetingAfternoon : t.greetingEvening; })()}
+            <Text style={[styles.greetingHi, { color: colors.mutedForeground }]}>{t.hiGreeting}</Text>
+            <Text style={[styles.greetingName, { color: colors.text }]} numberOfLines={1}>
+              {firstName || t.thereGreeting}
             </Text>
-            <View style={styles.greetingNameRow}>
-              <Text style={[styles.greetingName, { color: colors.text }]} numberOfLines={1}>
-                {firstName || t.thereGreeting}
-              </Text>
-              {isPro && <PremiumBadge size="sm" />}
-            </View>
+            {isPro && <PremiumBadge size="sm" />}
           </View>
         </View>
-
-        {/* Right: bell + live chip */}
         <View style={styles.headerRight}>
           <LiveChip lastUpdated={prices?.lastUpdated ?? null} />
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[styles.bellBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            accessibilityLabel="Notifications"
-          >
-            <Feather name="bell" size={18} color={colors.text} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -627,17 +604,12 @@ const styles = StyleSheet.create({
   scrollTransparent: { flex: 1, backgroundColor: 'transparent' },
   content:          { paddingHorizontal: 20, gap: 20 },
 
-  header:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 },
-  headerLeft:    { flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1, minWidth: 0 },
-  headerRight:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  avatar:        { width: 44, height: 44, borderRadius: 22 },
-  avatarFallback:{ alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 18, fontFamily: 'Inter_700Bold' },
-  greetingBlock: { gap: 1, flex: 1, minWidth: 0 },
-  greetingHi:    { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  greetingNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  greetingName:  { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3, flexShrink: 1 },
-  bellBtn:       { width: 38, height: 38, borderRadius: 19, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 },
+  headerLeft:    { alignItems: 'flex-start' },
+  headerRight:   { flexDirection: 'row', alignItems: 'flex-end', gap: 10, paddingBottom: 4, marginTop: 10 },
+  greetingBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
+  greetingHi:    { fontSize: 15, fontFamily: 'Inter_400Regular' },
+  greetingName:  { fontSize: 15, fontFamily: 'Inter_500Medium', flexShrink: 1 },
   screenTitle:   { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 

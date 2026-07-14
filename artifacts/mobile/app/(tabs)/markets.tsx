@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Animated, Platform, Pressable, RefreshControl,
+  Animated, InteractionManager, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -719,6 +719,12 @@ export default function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const [activeTab, setActiveTab] = useState<TabKey>('metals');
+  // Pre-render EGXTab silently after Markets tab animation settles so first EGX tap is instant
+  const [egxPrimed, setEgxPrimed] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setEgxPrimed(true));
+    return () => task.cancel();
+  }, []);
 
   const isLoading = lP;
 
@@ -768,10 +774,13 @@ export default function MarketsScreen() {
 
       {activeTab === 'metals'      && <MetalsTab prices={prices} />}
       {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
-      {/* EGX: always mounted, just hidden — prevents remounting 283 StockCards on every tab tap */}
-      <View style={activeTab !== 'egx' ? { display: 'none' } : undefined}>
-        <EGXTab />
-      </View>
+      {/* EGX: pre-rendered after tab animation settles (InteractionManager), then kept mounted
+           with display:none so every subsequent tap is instant with 0 delay */}
+      {(egxPrimed || activeTab === 'egx') && (
+        <View style={activeTab !== 'egx' ? { display: 'none' } : undefined}>
+          <EGXTab />
+        </View>
+      )}
       {activeTab === 'real_estate' && <RealEstateTab />}
       {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
       {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
