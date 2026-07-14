@@ -338,7 +338,7 @@ function CurrencyHeroCard({ rate }: { rate: number }) {
           <Text style={[ch.rateUnit, { color: colors.mutedForeground }]}> EGP</Text>
         </View>
         <Text style={[ch.sub, { color: colors.mutedForeground }]}>
-          {t.currencyUnitEGP} 1 US Dollar
+          {t.currencyUnitEGP} US Dollar
         </Text>
       </View>
     </View>
