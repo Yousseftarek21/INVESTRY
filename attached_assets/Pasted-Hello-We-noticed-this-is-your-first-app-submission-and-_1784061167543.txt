@@ -1,0 +1,71 @@
+Hello, 
+
+
+We noticed this is your first app submission and want to congratulate you on joining the Apple Developer Program. We look forward to working together on your submissions.
+
+
+When App Review identifies an issue with a submission, we’ll contact you with a message in App Store Connect with details about what we found and how to resolve the issue. Learn more about App Review and tips for a smooth review experience. 
+
+
+See below for additional information about the issues that require your attention for this submission. If you have any questions, we are here to help. Reply to this message in App Store Connect and let us know.
+
+
+Review Environment
+
+Review date: July 14, 2026
+
+Review Device: iPhone 17 Pro Max
+
+Build version reviewed: 1.0.0 (43)
+
+
+Guideline 2.1 - Information Needed
+
+
+We’re looking forward to reviewing your beta app, but we were unable to sign in with the following demo account credentials you provided in App Store Connect:
+
+
+User name: investry.demo@atomicmail.io
+
+Password: INVESTRY@2026
+
+
+Next Steps
+
+
+To help us proceed with the review of your beta app, please provide a user name and password in the Beta App Review Information section for the app in App Store Connect. Please be sure to include content in your beta app that demonstrates the features and functionality available in the app.
+
+
+To provide demo account information:
+
+
+- Log in to App Store Connect
+
+- Click on "My Apps"
+
+- Select the app
+
+- Navigate to the "TestFlight" tab
+
+- Select "Test Information"
+
+- Scroll down to "Beta App Review Information"
+
+- Select the "Sign-in required" box
+
+- Enter demo credentials in the "User Name" and "Password" fields
+
+- Click "Save"
+
+- Reply to this message in App Store Connect
+
+Support
+
+- Reply to this message in your preferred language if you need assistance. If you need additional support, use the Contact Us module.
+
+- Consult with fellow developers and Apple engineers on the Apple Developer Forums.
+
+
+Test on the latest betas
+
+Betas of iOS 27, iPadOS 27, macOS 27, tvOS 27 and visionOS 27 are now available. Download the latest betas to prepare your app for upcoming software releases. Learn more about installing and using Apple beta software.
