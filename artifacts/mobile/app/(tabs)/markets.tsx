@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Animated, Platform, Pressable, RefreshControl,
+  ActivityIndicator, Animated, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -782,8 +782,8 @@ export default function MarketsScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
         >
-          {activeTab === 'metals'      && <MetalsTab prices={prices} />}
-          {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
+          {activeTab === 'metals'      && (prices ? <MetalsTab prices={prices} /> : <View style={{ paddingTop: 60, alignItems: 'center' }}><ActivityIndicator size="large" color={colors.primary} /></View>)}
+          {activeTab === 'currencies'  && (prices ? <CurrenciesTab prices={prices} /> : <View style={{ paddingTop: 60, alignItems: 'center' }}><ActivityIndicator size="large" color={colors.primary} /></View>)}
           {activeTab === 'real_estate' && <RealEstateTab />}
           {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
           {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
