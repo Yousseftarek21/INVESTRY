@@ -10,8 +10,6 @@ import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
-import { useEGXMarket } from '@/hooks/useEGXMarket';
-import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 
@@ -602,12 +600,6 @@ export default function MarketsScreen() {
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const [activeTab, setActiveTab] = useState<TabKey>('metals');
 
-  // Prefetch heavy data the moment this screen mounts so it's cached by the
-  // time the user taps EGX or US Stocks — results unused here, React Query
-  // caches them and the child components pick them up instantly.
-  useEGXMarket();
-  useGlobalStocks();
-
   const isLoading = lP;
 
   const prevGoldUsd  = useRef<number | undefined>(undefined);
@@ -654,27 +646,12 @@ export default function MarketsScreen() {
 
       <TabBar active={activeTab} onChange={setActiveTab} />
 
-      {/* All tabs stay mounted — switching is instant (display:none hides inactive
-          tabs without unmounting). EGX + US Stocks data is pre-fetched above so
-          their content is ready before the user even taps them. */}
-      <View style={{ display: activeTab === 'metals' ? 'flex' : 'none' }}>
-        <MetalsTab prices={prices} />
-      </View>
-      <View style={{ display: activeTab === 'currencies' ? 'flex' : 'none' }}>
-        <CurrenciesTab prices={prices} />
-      </View>
-      <View style={{ display: activeTab === 'egx' ? 'flex' : 'none' }}>
-        <EGXTab />
-      </View>
-      <View style={{ display: activeTab === 'real_estate' ? 'flex' : 'none' }}>
-        <ComingSoon icon="home" title={t.realEstateMarketTitle} description={t.realEstateMarketDesc} />
-      </View>
-      <View style={{ display: activeTab === 'us_stocks' ? 'flex' : 'none' }}>
-        <GlobalStocksMarket />
-      </View>
-      <View style={{ display: activeTab === 'indices' ? 'flex' : 'none' }}>
-        <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />
-      </View>
+      {activeTab === 'metals'      && <MetalsTab prices={prices} />}
+      {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
+      {activeTab === 'egx'         && <EGXTab />}
+      {activeTab === 'real_estate' && <ComingSoon icon="home" title={t.realEstateMarketTitle} description={t.realEstateMarketDesc} />}
+      {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
+      {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
 
       {prices?.lastUpdated && (activeTab === 'metals' || activeTab === 'currencies' || activeTab === 'egx') && (
         <View style={s.tsRow}>
