@@ -271,10 +271,11 @@ export default function HomeScreen() {
   const todayColor = isTodayGain ? colors.green : colors.red;
   const hasHoldings = holdings.length > 0;
 
-  const topHoldings = useMemo(
-    () => [...holdings].sort((a, b) => computeValue(b, prices) - computeValue(a, prices)).slice(0, 5),
-    [holdings, prices]
-  );
+  const topHoldings = useMemo(() => {
+    const withValue = holdings.map(h => ({ h, v: computeValue(h, prices) }));
+    withValue.sort((a, b) => b.v - a.v);
+    return withValue.slice(0, 5).map(x => x.h);
+  }, [holdings, prices]);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;

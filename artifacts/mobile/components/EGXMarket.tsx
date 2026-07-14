@@ -523,8 +523,8 @@ export function EGXMarket() {
     else if (activeIndex === 'EGX 70') stocks = stocks.filter(s => EGX_70_TICKERS.has(s.ticker));
     // Apply search
     if (query.trim()) {
-      const matched = searchCompanies(query).map(c => c.ticker);
-      return stocks.filter(s => matched.includes(s.ticker));
+      const matchedSet = new Set(searchCompanies(query).map(c => c.ticker));
+      return stocks.filter(s => matchedSet.has(s.ticker));
     }
     // Apply sector filter
     if (sector !== 'All') return stocks.filter(s => s.sector === sector);

@@ -357,8 +357,8 @@ export function GlobalStocksMarket() {
 
   const displayed = useMemo(() => {
     if (query.trim()) {
-      const matched = searchGlobalCompanies(GLOBAL_COMPANIES, query).map(c => c.ticker);
-      return allStocks.filter(s => matched.includes(s.ticker));
+      const matchedSet = new Set(searchGlobalCompanies(GLOBAL_COMPANIES, query).map(c => c.ticker));
+      return allStocks.filter(s => matchedSet.has(s.ticker));
     }
     if (category !== 'All') return allStocks.filter(s => s.category === category);
     return allStocks;
