@@ -768,7 +768,10 @@ export default function MarketsScreen() {
 
       {activeTab === 'metals'      && <MetalsTab prices={prices} />}
       {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
-      {activeTab === 'egx'         && <EGXTab />}
+      {/* EGX: always mounted, just hidden — prevents remounting 283 StockCards on every tab tap */}
+      <View style={activeTab !== 'egx' ? { display: 'none' } : undefined}>
+        <EGXTab />
+      </View>
       {activeTab === 'real_estate' && <RealEstateTab />}
       {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
       {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
