@@ -318,9 +318,9 @@ const en = {
   displayNameHint: 'Used to personalize your experience.',
 
   // Greetings
-  greetingMorning: 'Good morning',
-  greetingAfternoon: 'Good afternoon',
-  greetingEvening: 'Good evening',
+  greetingMorning: 'Good Morning',
+  greetingAfternoon: 'Good Afternoon',
+  greetingEvening: 'Good Evening',
 
   // Auth — welcome onboarding slides
   onboardSlide1Title: 'Track Gold & Silver',

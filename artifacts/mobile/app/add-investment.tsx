@@ -486,7 +486,13 @@ export default function AddInvestmentScreen() {
       setCity(editingHolding.city);
       setDistrict(editingHolding.district);
       setArea(String(editingHolding.area ?? 0));
-      setCurrentMarketPricePerM2(String(editingHolding.currentMarketPricePerM2 ?? 0));
+      // Restore auto-filled area from reAreaId if available
+      if (editingHolding.reAreaId) {
+        const found = RE_PRICES.find(p => p.id === editingHolding.reAreaId);
+        if (found) setAutoFilledArea(found);
+      } else if (editingHolding.currentMarketPricePerM2) {
+        setCurrentMarketPricePerM2(String(editingHolding.currentMarketPricePerM2));
+      }
       setLastValuationDate(editingHolding.lastValuationDate ?? new Date().toISOString().split('T')[0]);
       setValuationSource(editingHolding.valuationSource ?? 'manual');
       setPurchasePrice(String(editingHolding.purchasePrice ?? 0));
@@ -595,7 +601,7 @@ export default function AddInvestmentScreen() {
   ];
 
   const reAreaNum = parseAmount(area) || 0;
-  const rePricePerM2Num = parseAmount(currentMarketPricePerM2) || 0;
+  const rePricePerM2Num = autoFilledArea ? autoFilledArea.avgPricePerM2 : (parseAmount(currentMarketPricePerM2) || 0);
   const rePurchasePriceNum = parseAmount(purchasePrice) || 0;
   const reCurrentValue = reAreaNum * rePricePerM2Num;
   const rePurchasePricePerM2 = reAreaNum > 0 ? rePurchasePriceNum / reAreaNum : 0;
@@ -687,14 +693,13 @@ export default function AddInvestmentScreen() {
       const finalDistrict = district.trim();
       if (
         !propertyName.trim() || !finalGovernorate || !finalCity || !finalDistrict ||
-        !area || !purchasePrice || !realEstatePurchaseDate || !currentMarketPricePerM2
+        !area || !purchasePrice || !realEstatePurchaseDate || rePricePerM2Num === 0
       ) {
         Alert.alert(t.missingFields, t.enterRealEstateRequired);
         return;
       }
       const parsedArea = parseAmount(area);
-      const parsedPricePerM2 = parseAmount(currentMarketPricePerM2);
-      const computedCurrentValue = parsedArea * parsedPricePerM2;
+      const computedCurrentValue = parsedArea * rePricePerM2Num;
       holding = {
         id, type: 'real_estate',
         propertyName: propertyName.trim(),
@@ -703,7 +708,8 @@ export default function AddInvestmentScreen() {
         city: finalCity,
         district: finalDistrict,
         area: parsedArea,
-        currentMarketPricePerM2: parsedPricePerM2,
+        reAreaId: autoFilledArea?.id,
+        currentMarketPricePerM2: rePricePerM2Num,
         currentValue: computedCurrentValue,
         lastValuationDate: lastValuationDate || undefined,
         valuationSource,
@@ -1076,19 +1082,42 @@ export default function AddInvestmentScreen() {
               <DatePickerField label={t.purchaseDate} value={realEstatePurchaseDate} onChange={setRealEstatePurchaseDate} />
             </View>
 
+            {/* Current Market Price — auto-synced from RE data, not user-entered */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentMarketPricePerM2}</Text>
-              <TextInput style={inputStyle} placeholder={t.currentMarketPricePerM2Placeholder} placeholderTextColor={colors.mutedForeground}
-                value={currentMarketPricePerM2}
-                onChangeText={(v) => { setCurrentMarketPricePerM2(formatAmountInput(v)); setAutoFilledArea(null); }}
-                keyboardType="decimal-pad" />
-              {autoFilledArea && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                  <Feather name="map-pin" size={11} color={colors.green} />
-                  <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.green }}>
-                    Auto-filled · {autoFilledArea.area} avg (range: {autoFilledArea.minPricePerM2.toLocaleString()}–{autoFilledArea.maxPricePerM2.toLocaleString()} EGP/m²)
+              {autoFilledArea ? (
+                /* Live data card — like gold/stocks pulling market price */
+                <View style={[inputStyle, { paddingVertical: 12, paddingHorizontal: 14, flexDirection: 'column', gap: 6, height: undefined }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 20, fontFamily: 'Inter_700Bold', color: colors.text, letterSpacing: -0.5 }}>
+                      {autoFilledArea.avgPricePerM2.toLocaleString()} <Text style={{ fontSize: 12, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>EGP/m²</Text>
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Feather name="bar-chart-2" size={10} color={colors.green} />
+                      <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>LIVE DATA</Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>
+                    {autoFilledArea.area} · Range: {autoFilledArea.minPricePerM2.toLocaleString()}–{autoFilledArea.maxPricePerM2.toLocaleString()} EGP/m² · YoY {autoFilledArea.changePercent > 0 ? '+' : ''}{autoFilledArea.changePercent}%
                   </Text>
                 </View>
+              ) : (
+                /* Fallback for areas not in dataset — manual entry */
+                <>
+                  <TextInput
+                    style={inputStyle}
+                    placeholder={city ? 'No data for this area — enter manually' : t.currentMarketPricePerM2Placeholder}
+                    placeholderTextColor={colors.mutedForeground}
+                    value={currentMarketPricePerM2}
+                    onChangeText={(v) => setCurrentMarketPricePerM2(formatAmountInput(v))}
+                    keyboardType="decimal-pad"
+                  />
+                  {city && !autoFilledArea && (
+                    <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 4 }}>
+                      No market data for {city} yet — you can enter it manually.
+                    </Text>
+                  )}
+                </>
               )}
             </View>
             <View style={styles.section}>
@@ -1389,7 +1418,7 @@ export default function AddInvestmentScreen() {
         title={t.selectGovernorate}
         options={GOVERNORATE_NAMES}
         selected={governorate}
-        onSelect={(v) => { setGovernorate(v); setCity(''); setDistrict(''); }}
+        onSelect={(v) => { setGovernorate(v); setCity(''); setDistrict(''); setAutoFilledArea(null); setCurrentMarketPricePerM2(''); }}
         onClose={() => setGovernoratePickerVisible(false)}
         otherLabel={t.enterManually}
       />

@@ -13,6 +13,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
@@ -38,7 +39,7 @@ function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>):
 }
 function computeValue(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'fixed_income') return fixedIncomeAccruedValue(h);
-  if (h.type === 'real_estate') return h.currentValue ?? 0;
+  if (h.type === 'real_estate') return getRECurrentValue(h);
   if (!prices) return 0;
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);

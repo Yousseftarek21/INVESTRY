@@ -55,10 +55,11 @@ export interface RealEstateHolding {
 
   area: number;
 
-  // Valuation — currentValue is derived (area × currentMarketPricePerM2) but
-  // stored so downstream consumers can keep reading it directly.
-  currentMarketPricePerM2: number;
-  currentValue: number;
+  // Valuation — currentValue is derived (area × currentMarketPricePerM2).
+  // reAreaId links to RE_PRICES for live price updates via OTA; takes priority.
+  reAreaId?: string;
+  currentMarketPricePerM2?: number;
+  currentValue?: number;
   lastValuationDate?: string;
   valuationSource?: ValuationSource;
 

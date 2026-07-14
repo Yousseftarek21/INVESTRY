@@ -12,6 +12,7 @@ import { useColors } from '@/hooks/useColors';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { Holding, MarketPrices } from '@/types';
+import { getRECurrentValue } from '@/utils/rePrice';
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ function computeValue(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'gold') return h.grams * goldPricePerGram(prices, h.karat);
   if (h.type === 'silver') return h.grams * silverPricePerGram(prices);
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
-  if (h.type === 'real_estate') return h.currentValue ?? 0;
+  if (h.type === 'real_estate') return getRECurrentValue(h);
   return 0;
 }
 function computeCost(h: Holding): number {

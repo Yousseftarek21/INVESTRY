@@ -5,6 +5,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { Holding, MarketPrices } from '@/types';
 import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { getRECurrentValue } from '@/utils/rePrice';
 import { AssetIcon } from '@/components/AssetIcon';
 
 type HoldingLabels = {
@@ -43,7 +44,7 @@ function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>):
 
 function computeCurrentValue(holding: Holding, prices?: MarketPrices): number {
   if (holding.type === 'fixed_income') return fixedIncomeAccruedValue(holding);
-  if (holding.type === 'real_estate') return holding.currentValue ?? 0;
+  if (holding.type === 'real_estate') return getRECurrentValue(holding);
   if (!prices) return 0;
   if (holding.type === 'gold') return holding.grams * goldPricePerGram(prices, holding.karat);
   if (holding.type === 'silver') return holding.grams * silverPricePerGram(prices);
