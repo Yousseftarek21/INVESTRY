@@ -1086,11 +1086,12 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentMarketPricePerM2}</Text>
               {autoFilledArea ? (
-                /* Live data card — like gold/stocks pulling market price */
+                /* Live data card — price pulled from dataset, not user input */
                 <View style={[inputStyle, { paddingVertical: 12, paddingHorizontal: 14, flexDirection: 'column', gap: 6, height: undefined }]}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={{ fontSize: 20, fontFamily: 'Inter_700Bold', color: colors.text, letterSpacing: -0.5 }}>
-                      {autoFilledArea.avgPricePerM2.toLocaleString()} <Text style={{ fontSize: 12, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>EGP/m²</Text>
+                      {autoFilledArea.avgPricePerM2.toLocaleString()}{' '}
+                      <Text style={{ fontSize: 12, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>EGP/m²</Text>
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
                       <Feather name="bar-chart-2" size={10} color={colors.green} />
@@ -1098,26 +1099,17 @@ export default function AddInvestmentScreen() {
                     </View>
                   </View>
                   <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>
-                    {autoFilledArea.area} · Range: {autoFilledArea.minPricePerM2.toLocaleString()}–{autoFilledArea.maxPricePerM2.toLocaleString()} EGP/m² · YoY {autoFilledArea.changePercent > 0 ? '+' : ''}{autoFilledArea.changePercent}%
+                    {autoFilledArea.area} · {autoFilledArea.minPricePerM2.toLocaleString()}–{autoFilledArea.maxPricePerM2.toLocaleString()} EGP/m² · YoY {autoFilledArea.changePercent > 0 ? '+' : ''}{autoFilledArea.changePercent}%
                   </Text>
                 </View>
               ) : (
-                /* Fallback for areas not in dataset — manual entry */
-                <>
-                  <TextInput
-                    style={inputStyle}
-                    placeholder={city ? 'No data for this area — enter manually' : t.currentMarketPricePerM2Placeholder}
-                    placeholderTextColor={colors.mutedForeground}
-                    value={currentMarketPricePerM2}
-                    onChangeText={(v) => setCurrentMarketPricePerM2(formatAmountInput(v))}
-                    keyboardType="decimal-pad"
-                  />
-                  {city && !autoFilledArea && (
-                    <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 4 }}>
-                      No market data for {city} yet — you can enter it manually.
-                    </Text>
-                  )}
-                </>
+                /* No area selected or no data for area — prompt user */
+                <View style={[inputStyle, { paddingVertical: 14, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8, height: undefined }]}>
+                  <Feather name="map-pin" size={14} color={colors.mutedForeground} />
+                  <Text style={{ fontSize: 13, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }}>
+                    {city ? `No market data for ${city} yet` : 'Select your city or district to load price'}
+                  </Text>
+                </View>
               )}
             </View>
             <View style={styles.section}>
