@@ -69,13 +69,16 @@ export default function SignInScreen() {
 
   const handleSignIn = async () => {
     setGlobalError('');
-    const result = await signIn.password({ emailAddress: email, password });
-    if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
-
-    if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
-      await activateSession(signIn.createdSessionId);
-    } else {
-      setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
+    try {
+      const result = await signIn.password({ emailAddress: email, password });
+      if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
+      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
+        await activateSession(signIn.createdSessionId);
+      } else {
+        setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
+      }
+    } catch (err: any) {
+      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Incorrect email or password.');
     }
   };
 
@@ -92,14 +95,13 @@ export default function SignInScreen() {
         password: 'Investry_Demo_2025!',
       });
       if (result.error) throw new Error(result.error.message ?? 'Demo sign-in failed');
-
       if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
         await activateSession(signIn.createdSessionId);
       } else {
-        throw new Error(`Unexpected sign-in status: ${signIn.status}`);
+        throw new Error(`Demo sign-in could not complete. Status: ${signIn.status}`);
       }
     } catch (err: any) {
-      setGlobalError(err.message ?? 'Demo sign-in failed. Please try again.');
+      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Demo sign-in failed. Please try again.');
     } finally {
       setDemoLoading(false);
     }
