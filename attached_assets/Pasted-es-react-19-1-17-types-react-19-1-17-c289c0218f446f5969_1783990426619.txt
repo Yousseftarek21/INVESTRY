@@ -1,0 +1,35 @@
+es+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/forward.png (188 B)
+[expo-cli] ../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/pkg.png (364 B)
+[expo-cli] ../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/sitemap.png (465 B)
+[expo-cli] ../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/unmatched.png (4.75 kB)
+[expo-cli] assets/images/logo-mark.png (262 kB)
+[expo-cli] 
+[expo-cli] › ios bundles (2):
+[expo-cli] _expo/static/js/ios/entry-27c108ca16794ca256124855a181835d.hbc (4.44 MB)
+[expo-cli] _expo/static/js/ios/entry-27c108ca16794ca256124855a181835d.hbc.map (13.2 MB)
+[expo-cli] 
+[expo-cli] › android bundles (2):
+[expo-cli] _expo/static/js/android/entry-f565576d9b1b09852738a3b7477bbe31.hbc (4.45 MB)
+[expo-cli] _expo/static/js/android/entry-f565576d9b1b09852738a3b7477bbe31.hbc.map (13.2 MB)
+[expo-cli] 
+[expo-cli] › Files (2):
+[expo-cli] assetmap.json (49.4 kB)
+[expo-cli] metadata.json (8.31 kB)
+[expo-cli] 
+[expo-cli] Exported: dist
+✔ Exported bundle(s)
+✔ Uploaded 2 app bundles
+✔ Uploading assets skipped - no new assets found
+ℹ 65 iOS assets, 65 Android assets (maximum: 2000 total per update). Learn more about asset limits: https://expo.fyi/eas-update-asset-limits
+✔ Computed project fingerprints
+✔ Published!
+
+Branch             production
+Runtime version    1.0.0
+Platform           android, ios
+Update group ID    9b68a2f4-ee72-4267-850d-0c8f633dba3b
+Android update ID  019f5e1d-5b97-791a-9337-34792aa55bba
+iOS update ID      019f5e1d-5b97-7f11-9d49-4b2f9ddb39fd
+Message            EGX market hours fix, icon consistency, USD label fix
+Commit             cae455afa48526dd87f959ce48b69a8728d49229
+EAS Dashboard      https://expo.dev/accounts/investrytest2/projects/mobile/updates/9b68a2f4-ee72-4267-850d-0c8f633dba3b
