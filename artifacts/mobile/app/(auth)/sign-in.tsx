@@ -275,11 +275,13 @@ export default function SignInScreen() {
                 secureTextEntry={!showPass}
                 autoComplete="password"
               />
-              {password.length > 0 && (
-                <Pressable onPress={() => setShowPass(v => !v)} style={styles.eyeBtn}>
-                  <Feather name={showPass ? 'eye' : 'eye-off'} size={16} color={colors.mutedForeground} />
-                </Pressable>
-              )}
+              <Pressable
+                onPress={() => setShowPass(v => !v)}
+                style={[styles.eyeBtn, { opacity: password.length > 0 ? 1 : 0 }]}
+                disabled={password.length === 0}
+              >
+                <Feather name={showPass ? 'eye' : 'eye-off'} size={16} color={colors.mutedForeground} />
+              </Pressable>
             </View>
             {errors.fields.password && (
               <Text style={[styles.fieldError, { color: colors.red }]}>{errors.fields.password.message}</Text>
