@@ -480,13 +480,15 @@ function RERow({ area, isLast }: { area: REAreaPrice; isLast: boolean }) {
       </View>
       <View style={rer.info}>
         <Text style={[rer.name, { color: colors.text }]} numberOfLines={1}>{area.area}</Text>
-        <Text style={[rer.range, { color: colors.mutedForeground }]}>
-          {fmtKEGP(area.minPricePerM2)} – {fmtKEGP(area.maxPricePerM2)} EGP/m²
+        <Text style={[rer.range, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {fmtKEGP(area.minPricePerM2)}–{fmtKEGP(area.maxPricePerM2)} EGP/m²
         </Text>
       </View>
       <View style={rer.right}>
-        <Text style={[rer.price, { color: colors.text }]}>{fmtKEGP(area.avgPricePerM2)}</Text>
-        <Text style={[rer.unit, { color: colors.mutedForeground }]}>EGP/m²</Text>
+        <Text style={[rer.price, { color: colors.text }]}>
+          {fmtKEGP(area.avgPricePerM2)}{' '}
+          <Text style={[rer.unit, { color: colors.mutedForeground }]}>EGP/m²</Text>
+        </Text>
         <View style={[rer.badge, { backgroundColor: tc + '18' }]}>
           <Text style={[rer.badgeTxt, { color: tc }]}>
             {isUp ? '↑' : isDown ? '↓' : '–'} {area.changePercent > 0 ? '+' : ''}{area.changePercent}%
@@ -498,13 +500,13 @@ function RERow({ area, isLast }: { area: REAreaPrice; isLast: boolean }) {
 }
 const rer = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
-  icon: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  icon: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   info: { flex: 1, gap: 2, minWidth: 0 },
   name: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   range: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  right: { alignItems: 'flex-end', gap: 2, flexShrink: 0 },
-  price: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
-  unit: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  right: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
+  price: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: -0.2 },
+  unit: { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 0 },
   badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 });
@@ -523,16 +525,16 @@ function RealEstateTab() {
               <View style={[reh.iconWrap, { backgroundColor: colors.primary + '18' }]}>
                 <Feather name="home" size={15} color={colors.primary} />
               </View>
-              <Text style={[reh.label, { color: colors.mutedForeground }]}>EGYPT PROPERTY MARKET</Text>
+              <Text style={[reh.label, { color: colors.mutedForeground }]} numberOfLines={1}>
+                EGYPT PROPERTY MARKET
+              </Text>
             </View>
             <View style={[reh.pill, { backgroundColor: colors.muted }]}>
-              <Text style={[reh.pillTxt, { color: colors.mutedForeground }]}>
-                {t.reMarketLastUpdated}: {LAST_UPDATED}
-              </Text>
+              <Text style={[reh.pillTxt, { color: colors.mutedForeground }]}>Q2 2026</Text>
             </View>
           </View>
           <Text style={[reh.title, { color: colors.text }]}>{RE_PRICES.length} areas · avg price/m²</Text>
-          <Text style={[reh.sub, { color: colors.mutedForeground }]}>Q2 2026 estimates · EGP/m²</Text>
+          <Text style={[reh.sub, { color: colors.mutedForeground }]}>EGP/m² · {t.reMarketDisclaimer.split('(')[0].trim()}</Text>
         </View>
       </View>
 
@@ -555,12 +557,12 @@ function RealEstateTab() {
 const reh = StyleSheet.create({
   card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
   accent: { width: 3, alignSelf: 'stretch' },
-  body: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, gap: 6 },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  iconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1 },
-  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  body: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, gap: 5, minWidth: 0 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 },
+  iconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  label: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, flexShrink: 1 },
+  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexShrink: 0 },
   pillTxt: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
   title: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.4 },
   sub: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 15 },

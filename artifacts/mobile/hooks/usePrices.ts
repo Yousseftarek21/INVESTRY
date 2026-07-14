@@ -183,8 +183,9 @@ export function useMarketPrices() {
   return useQuery({
     queryKey: ['market-prices'],
     queryFn: fetchMarketPrices,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     retry: 2,
     placeholderData: FALLBACK,
   });
