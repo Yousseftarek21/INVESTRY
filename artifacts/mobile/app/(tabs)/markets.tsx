@@ -10,6 +10,8 @@ import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
+import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 
@@ -599,18 +601,12 @@ export default function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const [activeTab, setActiveTab] = useState<TabKey>('metals');
-  // Lazy mount: a tab mounts on first visit and stays alive — no re-fetch on
-  // every switch, but heavy tabs (EGX, US Stocks) don't load until first tap.
-  const [visited, setVisited] = useState<Set<TabKey>>(() => new Set<TabKey>(['metals']));
-  const handleTabChange = (key: TabKey) => {
-    setActiveTab(key);
-    setVisited(prev => {
-      if (prev.has(key)) return prev;
-      const next = new Set(prev);
-      next.add(key);
-      return next;
-    });
-  };
+
+  // Prefetch heavy data the moment this screen mounts so it's cached by the
+  // time the user taps EGX or US Stocks — results unused here, React Query
+  // caches them and the child components pick them up instantly.
+  useEGXMarket();
+  useGlobalStocks();
 
   const isLoading = lP;
 
@@ -656,36 +652,29 @@ export default function MarketsScreen() {
         <LiveDot />
       </View>
 
-      <TabBar active={activeTab} onChange={handleTabChange} />
+      <TabBar active={activeTab} onChange={setActiveTab} />
 
-      {/* Lazy mount: each tab mounts on first visit, then stays alive hidden.
-          Heavy tabs (EGX, US Stocks) only start loading when first tapped. */}
+      {/* All tabs stay mounted — switching is instant (display:none hides inactive
+          tabs without unmounting). EGX + US Stocks data is pre-fetched above so
+          their content is ready before the user even taps them. */}
       <View style={{ display: activeTab === 'metals' ? 'flex' : 'none' }}>
         <MetalsTab prices={prices} />
       </View>
       <View style={{ display: activeTab === 'currencies' ? 'flex' : 'none' }}>
         <CurrenciesTab prices={prices} />
       </View>
-      {visited.has('egx') && (
-        <View style={{ display: activeTab === 'egx' ? 'flex' : 'none' }}>
-          <EGXTab />
-        </View>
-      )}
-      {visited.has('real_estate') && (
-        <View style={{ display: activeTab === 'real_estate' ? 'flex' : 'none' }}>
-          <ComingSoon icon="home" title={t.realEstateMarketTitle} description={t.realEstateMarketDesc} />
-        </View>
-      )}
-      {visited.has('us_stocks') && (
-        <View style={{ display: activeTab === 'us_stocks' ? 'flex' : 'none' }}>
-          <GlobalStocksMarket />
-        </View>
-      )}
-      {visited.has('indices') && (
-        <View style={{ display: activeTab === 'indices' ? 'flex' : 'none' }}>
-          <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />
-        </View>
-      )}
+      <View style={{ display: activeTab === 'egx' ? 'flex' : 'none' }}>
+        <EGXTab />
+      </View>
+      <View style={{ display: activeTab === 'real_estate' ? 'flex' : 'none' }}>
+        <ComingSoon icon="home" title={t.realEstateMarketTitle} description={t.realEstateMarketDesc} />
+      </View>
+      <View style={{ display: activeTab === 'us_stocks' ? 'flex' : 'none' }}>
+        <GlobalStocksMarket />
+      </View>
+      <View style={{ display: activeTab === 'indices' ? 'flex' : 'none' }}>
+        <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />
+      </View>
 
       {prices?.lastUpdated && (activeTab === 'metals' || activeTab === 'currencies' || activeTab === 'egx') && (
         <View style={s.tsRow}>
