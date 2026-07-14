@@ -678,15 +678,7 @@ function SmartFooter({ lastUpdate }: { lastUpdate: string }) {
       <View style={sf.meta}>
         <View style={sf.metaRow}>
           <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>{t.versionLabel}</Text>
-          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>{APP_VERSION} (Build {BUILD})</Text>
-        </View>
-        <View style={sf.metaRow}>
-          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>{t.lastApiUpdateLabel}</Text>
-          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>{lastUpdate}</Text>
-        </View>
-        <View style={sf.metaRow}>
-          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>{t.dataStorageLabel}</Text>
-          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>{t.onDeviceOnly}</Text>
+          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>{APP_VERSION}</Text>
         </View>
       </View>
       <Text style={[sf.copy, { color: colors.mutedForeground }]}>
