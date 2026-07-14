@@ -11,7 +11,7 @@ import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -118,36 +118,37 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Keeps the splash screen visible until Clerk auth state is determined,
-// preventing the black gap between splash and first screen.
+/**
+ * Waits for Clerk auth state to be determined, then calls onDone after
+ * the minimum splash duration has elapsed. Renders no UI itself — the
+ * single CustomSplash instance in the parent stays visible until onDone fires.
+ */
 function SplashGate({
-  updateStatus,
+  onDone,
   children,
 }: {
-  updateStatus: string;
+  onDone: () => void;
   children: React.ReactNode;
 }) {
   const { isLoaded } = useAuth();
-  const [splashDone, setSplashDone] = useState(false);
 
-  // Dismiss splash once Clerk is loaded AND minimum duration has elapsed.
+  // Dismiss once Clerk is ready AND minimum duration has passed.
   useEffect(() => {
     if (!isLoaded) return;
     const elapsed = Date.now() - splashStartTime;
     const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
-    const t = setTimeout(() => setSplashDone(true), remaining);
+    const t = setTimeout(onDone, remaining);
     return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded]);
 
-  // Safety net: never show splash longer than 8 s.
+  // Safety net: never block longer than 8 s.
   useEffect(() => {
-    const t = setTimeout(() => setSplashDone(true), 8000);
+    const t = setTimeout(onDone, 8000);
     return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!splashDone) {
-    return <CustomSplash statusMessage={updateStatus} />;
-  }
   return <>{children}</>;
 }
 
@@ -158,10 +159,14 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  // Single splash instance — dismissed only after Clerk + timer are both done.
+  const [showSplash, setShowSplash] = useState(true);
   const [clerkConfig, setClerkConfig] = useState<ClerkConfig | null>(null);
-  const [updateStatus, setUpdateStatus] = React.useState<string>('');
+  const [updateStatus, setUpdateStatus] = useState<string>('');
 
-  // Hide the native splash immediately — our custom splash takes over from here
+  const hideSplash = useCallback(() => setShowSplash(false), []);
+
+  // Hide the native splash immediately — our custom splash takes over from here.
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
@@ -187,7 +192,7 @@ export default function RootLayout() {
     })();
   }, []);
 
-  // Fetch Clerk publishable key from the API server.
+  // Fetch Clerk publishable key + proxy URL from the API server.
   useEffect(() => {
     const apiBase = getApiBaseUrl();
     fetch(`${apiBase}/api/config`)
@@ -195,10 +200,7 @@ export default function RootLayout() {
       .then((data: { clerkPublishableKey?: string; clerkProxyUrl?: string }) => {
         const key = (data.clerkPublishableKey ?? '').trim();
         if (key) {
-          setClerkConfig({
-            publishableKey: key,
-            proxyUrl: data.clerkProxyUrl ?? undefined,
-          });
+          setClerkConfig({ publishableKey: key, proxyUrl: data.clerkProxyUrl ?? undefined });
         } else {
           setClerkConfig({
             publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
@@ -215,47 +217,49 @@ export default function RootLayout() {
   }, []);
 
   const validClerkConfig =
-    clerkConfig !== null && clerkConfig.publishableKey.length > 0
-      ? clerkConfig
-      : null;
+    clerkConfig !== null && clerkConfig.publishableKey.length > 0 ? clerkConfig : null;
 
+  // Both fonts AND the Clerk config must be ready before mounting the app tree.
   const appReady = (fontsLoaded || !!fontError) && validClerkConfig !== null;
 
-  // While fonts/config aren't ready yet, show the custom splash on top of a dark bg.
-  // Once appReady, ClerkProvider mounts and SplashGate takes over timing.
   return (
     <View style={{ flex: 1, backgroundColor: "#060D1A" }}>
-      {!appReady && <CustomSplash statusMessage={updateStatus} />}
+      {/* Single CustomSplash — mounts immediately, dismissed when SplashGate
+          calls hideSplash (Clerk ready + MIN_SPLASH_DURATION_MS elapsed).
+          absoluteFillObject keeps it on top of the app tree while visible. */}
+      {showSplash && <CustomSplash statusMessage={updateStatus} />}
 
+      {/* App tree mounts behind the splash as soon as fonts + config are ready.
+          SplashGate fires hideSplash once Clerk auth state is determined. */}
       {appReady && validClerkConfig && (
         <ClerkProvider
           publishableKey={validClerkConfig.publishableKey}
           tokenCache={tokenCache}
           proxyUrl={validClerkConfig.proxyUrl}
         >
-          <SplashGate updateStatus={updateStatus}>
+          <SplashGate onDone={hideSplash}>
             <SafeAreaProvider>
               <AppSettingsProvider>
                 <DirectionWrapper>
-                <BiometricWrapper>
-                <ErrorBoundary>
-                  <QueryClientProvider client={queryClient}>
-                    <SubscriptionProvider>
-                      <GestureHandlerRootView style={{ flex: 1 }}>
-                        <KeyboardProvider>
-                          <HoldingsProvider>
-                            <CashProvider>
-                              <AppWithPaywall>
-                                <RootLayoutNav />
-                              </AppWithPaywall>
-                            </CashProvider>
-                          </HoldingsProvider>
-                        </KeyboardProvider>
-                      </GestureHandlerRootView>
-                    </SubscriptionProvider>
-                  </QueryClientProvider>
-                </ErrorBoundary>
-                </BiometricWrapper>
+                  <BiometricWrapper>
+                    <ErrorBoundary>
+                      <QueryClientProvider client={queryClient}>
+                        <SubscriptionProvider>
+                          <GestureHandlerRootView style={{ flex: 1 }}>
+                            <KeyboardProvider>
+                              <HoldingsProvider>
+                                <CashProvider>
+                                  <AppWithPaywall>
+                                    <RootLayoutNav />
+                                  </AppWithPaywall>
+                                </CashProvider>
+                              </HoldingsProvider>
+                            </KeyboardProvider>
+                          </GestureHandlerRootView>
+                        </SubscriptionProvider>
+                      </QueryClientProvider>
+                    </ErrorBoundary>
+                  </BiometricWrapper>
                 </DirectionWrapper>
               </AppSettingsProvider>
             </SafeAreaProvider>
