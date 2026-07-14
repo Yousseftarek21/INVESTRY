@@ -6,7 +6,7 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
 
 // On web (preview), skip Clerk auth gate so the UI is always visible.
 const IS_WEB = Platform.OS === "web";
@@ -92,12 +92,7 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: t.portfolio,
-          tabBarIcon: ({ color }) => (
-            <Image
-              source={require('../../assets/icon-home.png')}
-              style={{ width: 24, height: 24, tintColor: color }}
-            />
-          ),
+          tabBarIcon: ({ color }) => <Feather name="home" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -145,12 +140,7 @@ function ClassicTabLayout() {
         name="settings"
         options={{
           title: t.settings,
-          tabBarIcon: ({ color }) => (
-            <Image
-              source={require('../../assets/icon-person.png')}
-              style={{ width: 24, height: 24, tintColor: color }}
-            />
-          ),
+          tabBarIcon: ({ color }) => <Feather name="user" size={22} color={color} />,
         }}
       />
     </Tabs>
