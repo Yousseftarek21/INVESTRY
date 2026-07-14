@@ -163,7 +163,7 @@ export default function SignUpScreen() {
   if (needsVerification) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.inner, { paddingTop: topPad + 24, paddingBottom: botPad + 24 }]}>
+        <View style={[styles.inner, { paddingTop: topPad + 24, paddingBottom: botPad + 24, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}>
           <Pressable onPress={() => router.replace('/(auth)/sign-up' as any)} style={styles.backBtn}>
             <Feather name="arrow-left" size={20} color={colors.text} />
           </Pressable>
@@ -225,7 +225,7 @@ export default function SignUpScreen() {
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim }]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={[styles.inner, { paddingTop: topPad + 16, paddingBottom: botPad + 40 }]}
+          contentContainerStyle={[styles.inner, { paddingTop: topPad + 16, paddingBottom: botPad + 40, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >

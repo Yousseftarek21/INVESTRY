@@ -148,7 +148,7 @@ export default function SignInScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={[styles.inner, { paddingTop: topPad + 16, paddingBottom: botPad + 40 }]}
+          contentContainerStyle={[styles.inner, { paddingTop: topPad + 16, paddingBottom: botPad + 40, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
