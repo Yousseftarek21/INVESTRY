@@ -11,6 +11,7 @@ import Svg, {
 } from 'react-native-svg';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { getRECurrentValue } from '@/utils/rePrice';
@@ -561,6 +562,7 @@ const em = StyleSheet.create({
 export default function AnalyticsScreen() {
   const t = useT();
   const colors = useColors();
+  const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
@@ -890,7 +892,7 @@ export default function AnalyticsScreen() {
                   return (
                     <Pressable
                       key={p}
-                      onPress={() => setPeriod(p)}
+                      onPress={() => { impact(); setPeriod(p); }}
                       style={[s.periodPill, {
                         backgroundColor: active ? colors.primary : colors.muted,
                       }]}
@@ -905,6 +907,20 @@ export default function AnalyticsScreen() {
               <Text style={[s.chartNote, { color: colors.mutedForeground }]}>
                 {t.simulatedTrendNote}
               </Text>
+              {sm.totalCost > 0 && (
+                <View style={s.inflationRow}>
+                  <Feather
+                    name={sm.gainPct >= 25 ? 'check-circle' : 'alert-circle'}
+                    size={11}
+                    color={sm.gainPct >= 25 ? colors.green : '#F59E0B'}
+                  />
+                  <Text style={[s.inflationNote, { color: colors.mutedForeground }]}>
+                    {sm.gainPct >= 25
+                      ? t.egpInflationBeating((sm.gainPct - 25).toFixed(1))
+                      : t.egpInflationLagging(`${sm.gainPct >= 0 ? '+' : ''}${sm.gainPct.toFixed(1)}%`)}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* ── Allocation bars ──────────────────────────────────────── */}
@@ -1014,6 +1030,8 @@ const s = StyleSheet.create({
   periodPill: { borderRadius: 9, paddingHorizontal: 11, paddingVertical: 5 },
   periodTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
   chartNote: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  inflationRow: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
+  inflationNote: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16, flexShrink: 1 },
 
   // Generic section
   section: { gap: 14 },

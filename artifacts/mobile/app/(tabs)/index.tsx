@@ -444,6 +444,18 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
 
+          {/* Net worth (investments + cash) — additive row, only when user has cash accounts */}
+          {cashTotalEGP > 0 && (
+            <View style={styles.netWorthRow}>
+              <Feather name="plus-circle" size={10} color={colors.mutedForeground + '88'} />
+              <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]}>
+                {hideValues
+                  ? `${t.netWorthLabel}: ••••••`
+                  : `${t.netWorthLabel}: ${fmtCompact(summary.totalValue + cashTotalEGP)} EGP`}
+              </Text>
+            </View>
+          )}
+
           {/* Invested · Current · Return strip */}
           {summary.totalCost > 0 && (
             <View style={[styles.iStrip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
@@ -731,6 +743,8 @@ const styles = StyleSheet.create({
   heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
   heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52 },
   heroCurrency:   { fontSize: 16, fontFamily: 'Inter_400Regular', letterSpacing: 0, paddingBottom: 6 },
+  netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
+  netWorthTxt:    { fontSize: 11, fontFamily: 'Inter_400Regular' },
 
   iStrip:         { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: -24, paddingHorizontal: 24 },
   iCell:          { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 4 },

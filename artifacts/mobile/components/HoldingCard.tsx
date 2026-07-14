@@ -76,8 +76,14 @@ function getTitle(holding: Holding, labels: HoldingLabels): string {
   return holding.propertyName || labels.realEstate;
 }
 
+const KARAT_PURITY: Record<string, number> = { '24k': 1, '22k': 0.9167, '21k': 0.875, '18k': 0.75 };
+
 function getSubtitle(holding: Holding, labels: HoldingLabels): string {
-  if (holding.type === 'gold') return `${holding.grams.toLocaleString()} g · ${holding.form}`;
+  if (holding.type === 'gold') {
+    const purity = KARAT_PURITY[holding.karat] ?? 1;
+    const fineGrams = (holding.grams * purity).toFixed(2);
+    return `${holding.grams.toLocaleString()} g · ${fineGrams}g fine · ${holding.form}`;
+  }
   if (holding.type === 'silver') return `${holding.grams.toLocaleString()} g · ${holding.form}`;
   if (holding.type === 'stock') return `${holding.shares.toLocaleString()} ${labels.sharesLabel} · ${holding.companyName}`;
   if (holding.type === 'personal_asset') {

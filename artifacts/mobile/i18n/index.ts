@@ -14,6 +14,7 @@ const en = {
 
   // Home
   totalPortfolioValue: 'Total Portfolio Value',
+  netWorthLabel: 'Net Worth incl. cash',
   allocation: 'Allocation',
   topHoldings: 'ALL INVESTMENTS',
   noInvestmentsYet: 'No investments yet',
@@ -549,6 +550,8 @@ const en = {
   informationalDisclaimer: 'Informational only — not financial advice.',
   performanceLabel: 'Performance',
   simulatedTrendNote: "Simulated trend based on your portfolio's actual return",
+  egpInflationBeating: (diff: string) => `Beating EGP inflation · +${diff}% above ~25%/yr` as string,
+  egpInflationLagging: (ret: string) => `EGP inflation ~25%/yr · Your all-time return: ${ret}` as string,
   assetAllocationLabel: 'Asset Allocation',
   classesCount: 'classes',
   performersLabel: 'Performers',
@@ -670,6 +673,7 @@ const ar: typeof en = {
 
   // Home
   totalPortfolioValue: 'إجمالي قيمة المحفظة',
+  netWorthLabel: 'صافي الثروة شامل النقدية',
   allocation: 'توزيع الأصول',
   topHoldings: 'جميع الاستثمارات',
   noInvestmentsYet: 'لا توجد استثمارات بعد',
@@ -1205,6 +1209,8 @@ const ar: typeof en = {
   informationalDisclaimer: 'للأغراض المعلوماتية فقط — وليست نصيحة مالية.',
   performanceLabel: 'الأداء',
   simulatedTrendNote: 'اتجاه محاكى بناءً على عائد محفظتك الفعلي',
+  egpInflationBeating: (diff: string) => `تتفوق على التضخم · +${diff}% فوق ~٢٥٪/سنة` as string,
+  egpInflationLagging: (ret: string) => `التضخم في مصر ~٢٥٪/سنة · عائدك الكلي: ${ret}` as string,
   assetAllocationLabel: 'توزيع الأصول',
   classesCount: 'فئة',
   performersLabel: 'الأفضل أداءً',

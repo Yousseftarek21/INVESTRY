@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useHaptic } from '@/hooks/useHaptic';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
@@ -722,6 +723,7 @@ export default function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const [activeTab, setActiveTab] = useState<TabKey>(_persistedTab);
+  const { impact } = useHaptic();
 
   const handleTabChange = (k: TabKey) => {
     _persistedTab = k;
@@ -750,6 +752,7 @@ export default function MarketsScreen() {
   }, [prices?.goldUsd]);
 
   const refetch = () => {
+    impact();
     didManualRefresh.current = true;
     prevGoldUsd.current = prices?.goldUsd;
     rP();

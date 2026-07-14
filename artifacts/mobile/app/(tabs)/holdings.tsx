@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -12,6 +12,22 @@ import { useMarketPrices } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding } from '@/types';
+
+function FadeInCard({ index, children }: { index: number; children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 280, delay: index * 45, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 280, delay: index * 45, useNativeDriver: true }),
+    ]).start();
+  }, []);
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+}
 
 const TYPE_ORDER: Holding['type'][] = ['gold', 'silver', 'stock', 'real_estate', 'personal_asset', 'fixed_income'];
 
@@ -173,15 +189,16 @@ export default function HoldingsScreen() {
                 </View>
               </View>
               <View style={styles.groupItems}>
-                {grouped[type].map(h => (
-                  <HoldingCard
-                    key={h.id}
-                    holding={h}
-                    prices={prices}
-                    hideSubtitle
-                    onEdit={() => handleEdit(h.id)}
-                    onDelete={() => handleDelete(h.id)}
-                  />
+                {grouped[type].map((h, idx) => (
+                  <FadeInCard key={h.id} index={idx}>
+                    <HoldingCard
+                      holding={h}
+                      prices={prices}
+                      hideSubtitle
+                      onEdit={() => handleEdit(h.id)}
+                      onDelete={() => handleDelete(h.id)}
+                    />
+                  </FadeInCard>
                 ))}
               </View>
             </View>
