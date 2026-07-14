@@ -21,9 +21,9 @@ const TABS_CONFIG = [
   { key: 'metals',      icon: { lib: 'mci',    name: 'gold' }          as TabIconSpec },
   { key: 'currencies',  icon: { lib: 'feather', name: 'dollar-sign' }  as TabIconSpec },
   { key: 'egx',        icon: { lib: 'feather', name: 'bar-chart-2' }  as TabIconSpec },
-  { key: 'stocks',     icon: { lib: 'feather', name: 'trending-up' }  as TabIconSpec },
-  { key: 'global',     icon: { lib: 'feather', name: 'globe' }        as TabIconSpec },
   { key: 'real_estate',icon: { lib: 'mci',    name: 'home-city' }     as TabIconSpec },
+  { key: 'us_stocks',  icon: { lib: 'feather', name: 'trending-up' }  as TabIconSpec },
+  { key: 'indices',    icon: { lib: 'feather', name: 'globe' }        as TabIconSpec },
 ] as const;
 
 type TabKey = typeof TABS_CONFIG[number]['key'];
@@ -72,9 +72,9 @@ function TabBar({ active, onChange }: { active: TabKey; onChange: (k: TabKey) =>
     metals: t.tabMetals,
     currencies: t.tabCurrencies,
     egx: t.tabEGX,
-    stocks: t.tabStocks,
-    global: t.tabGlobal,
     real_estate: t.tabRealEstate,
+    us_stocks: t.tabUsStocks,
+    indices: t.tabIndices,
   };
 
   return (
@@ -599,6 +599,18 @@ export default function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const [activeTab, setActiveTab] = useState<TabKey>('metals');
+  // Lazy mount: a tab mounts on first visit and stays alive — no re-fetch on
+  // every switch, but heavy tabs (EGX, US Stocks) don't load until first tap.
+  const [visited, setVisited] = useState<Set<TabKey>>(() => new Set<TabKey>(['metals']));
+  const handleTabChange = (key: TabKey) => {
+    setActiveTab(key);
+    setVisited(prev => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  };
 
   const isLoading = lP;
 
@@ -644,28 +656,36 @@ export default function MarketsScreen() {
         <LiveDot />
       </View>
 
-      <TabBar active={activeTab} onChange={setActiveTab} />
+      <TabBar active={activeTab} onChange={handleTabChange} />
 
-      {/* All tabs stay mounted — only visibility toggles. This keeps EGX and
-          GlobalStocks data in memory so switching tabs is instant. */}
+      {/* Lazy mount: each tab mounts on first visit, then stays alive hidden.
+          Heavy tabs (EGX, US Stocks) only start loading when first tapped. */}
       <View style={{ display: activeTab === 'metals' ? 'flex' : 'none' }}>
         <MetalsTab prices={prices} />
       </View>
       <View style={{ display: activeTab === 'currencies' ? 'flex' : 'none' }}>
         <CurrenciesTab prices={prices} />
       </View>
-      <View style={{ display: activeTab === 'egx' ? 'flex' : 'none' }}>
-        <EGXTab />
-      </View>
-      <View style={{ display: activeTab === 'stocks' ? 'flex' : 'none' }}>
-        <GlobalStocksMarket />
-      </View>
-      <View style={{ display: activeTab === 'global' ? 'flex' : 'none' }}>
-        <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />
-      </View>
-      <View style={{ display: activeTab === 'real_estate' ? 'flex' : 'none' }}>
-        <ComingSoon icon="home" title={t.realEstateMarketTitle} description={t.realEstateMarketDesc} />
-      </View>
+      {visited.has('egx') && (
+        <View style={{ display: activeTab === 'egx' ? 'flex' : 'none' }}>
+          <EGXTab />
+        </View>
+      )}
+      {visited.has('real_estate') && (
+        <View style={{ display: activeTab === 'real_estate' ? 'flex' : 'none' }}>
+          <ComingSoon icon="home" title={t.realEstateMarketTitle} description={t.realEstateMarketDesc} />
+        </View>
+      )}
+      {visited.has('us_stocks') && (
+        <View style={{ display: activeTab === 'us_stocks' ? 'flex' : 'none' }}>
+          <GlobalStocksMarket />
+        </View>
+      )}
+      {visited.has('indices') && (
+        <View style={{ display: activeTab === 'indices' ? 'flex' : 'none' }}>
+          <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />
+        </View>
+      )}
 
       {prices?.lastUpdated && (activeTab === 'metals' || activeTab === 'currencies' || activeTab === 'egx') && (
         <View style={s.tsRow}>

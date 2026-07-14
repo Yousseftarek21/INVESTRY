@@ -384,9 +384,9 @@ const en = {
   tabMetals: 'Metals',
   tabCurrencies: 'Currencies',
   tabEGX: 'EGX',
-  tabStocks: 'Stocks',
-  tabGlobal: 'Global',
   tabRealEstate: 'Real Estate',
+  tabUsStocks: 'US Stocks',
+  tabIndices: 'Indices',
   marketsTitle: 'Markets',
   // Gold
   goldSectionLabel: 'GOLD',
@@ -1025,9 +1025,9 @@ const ar: typeof en = {
   tabMetals: 'المعادن',
   tabCurrencies: 'العملات',
   tabEGX: 'البورصة',
-  tabStocks: 'الأسهم',
-  tabGlobal: 'عالمي',
   tabRealEstate: 'العقارات',
+  tabUsStocks: 'أسهم أمريكية',
+  tabIndices: 'مؤشرات',
   marketsTitle: 'الأسواق',
   // Gold
   goldSectionLabel: 'الذهب',
