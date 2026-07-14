@@ -5,7 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
+import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/expo";
 import type { TokenCache } from "@clerk/expo";
 import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -95,6 +95,20 @@ function DirectionWrapper({ children }: { children: React.ReactNode }) {
 function BiometricWrapper({ children }: { children: React.ReactNode }) {
   const { biometricLock } = useAppSettings();
   return <BiometricGate enabled={biometricLock}>{children}</BiometricGate>;
+}
+
+// Called from inside the ClerkLoaded tree so the splash only hides once
+// Clerk has fully initialised — prevents the black-gap between splash and app.
+let _hideSplash: (() => void) | null = null;
+function ClerkReadySignal() {
+  const { isLoaded } = useAuth();
+  useEffect(() => {
+    if (isLoaded && _hideSplash) {
+      _hideSplash();
+      _hideSplash = null;
+    }
+  }, [isLoaded]);
+  return null;
 }
 
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
@@ -191,14 +205,17 @@ export default function RootLayout() {
   // App tree requires ClerkProvider — wait until fonts + valid Clerk key ready.
   const appReady = (fontsLoaded || !!fontError) && validClerkConfig !== null;
 
-  // Dismiss splash as soon as the app is ready to render.
+  // Register the callback that ClerkReadySignal will call once Clerk is loaded.
+  // This ensures the splash stays visible until the app tree is truly ready,
+  // preventing the black gap between splash dismiss and first app frame.
   useEffect(() => {
-    if (!appReady) return;
-    const elapsed = Date.now() - splashStartTime;
-    const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
-    const timer = setTimeout(() => setShowCustomSplash(false), remaining);
-    return () => clearTimeout(timer);
-  }, [appReady]);
+    _hideSplash = () => {
+      const elapsed = Date.now() - splashStartTime;
+      const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
+      setTimeout(() => setShowCustomSplash(false), remaining);
+    };
+    return () => { _hideSplash = null; };
+  }, []);
 
   // Safety net: dismiss after 8 s no matter what (prevents infinite splash).
   useEffect(() => {
@@ -217,6 +234,7 @@ export default function RootLayout() {
           proxyUrl={validClerkConfig.proxyUrl}
         >
           <ClerkLoaded>
+            <ClerkReadySignal />
             <SafeAreaProvider>
               <AppSettingsProvider>
                 <DirectionWrapper>
