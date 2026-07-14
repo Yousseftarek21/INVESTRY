@@ -390,12 +390,14 @@ export default function AddInvestmentScreen() {
   const { addHolding, updateHolding, holdings } = useHoldings();
   const { isPro, launchAccess, isLoading: subLoading, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
-  const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
+  const { holdingId, mode } = useLocalSearchParams<{ holdingId?: string; mode?: string }>();
 
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
   const isEditing = editingHolding !== null;
 
-  const [screenMode, setScreenMode] = useState<'choose' | 'investment'>(isEditing ? 'investment' : 'choose');
+  const [screenMode, setScreenMode] = useState<'choose' | 'investment'>(
+    isEditing || mode === 'investment' ? 'investment' : 'choose'
+  );
 
   const [type, setType] = useState<InvestmentType>('gold');
   const [karat, setKarat] = useState<GoldKarat>('21k');

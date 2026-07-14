@@ -5,8 +5,9 @@ import { Redirect, Tabs, router } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
-import React from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
+import { AddChooserSheet } from "@/components/AddChooserSheet";
 
 // On web (preview), skip Clerk auth gate so the UI is always visible.
 const IS_WEB = Platform.OS === "web";
@@ -57,8 +58,10 @@ function ClassicTabLayout() {
   const { resolvedTheme } = useAppSettings();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const [showChooser, setShowChooser] = useState(false);
 
   return (
+    <>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
@@ -112,7 +115,7 @@ function ClassicTabLayout() {
           title: t.addTab,
           tabBarButton: () => (
             <Pressable
-              onPress={() => router.push('/add-investment' as any)}
+              onPress={() => setShowChooser(true)}
               style={tabStyles.addWrap}
               accessibilityLabel={t.addInvestment}
             >
@@ -143,6 +146,8 @@ function ClassicTabLayout() {
         }}
       />
     </Tabs>
+    <AddChooserSheet visible={showChooser} onClose={() => setShowChooser(false)} />
+  </>
   );
 }
 
