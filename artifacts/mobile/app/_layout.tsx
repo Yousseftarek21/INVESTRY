@@ -5,7 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
+import { ClerkProvider, useAuth } from "@clerk/expo";
 import type { TokenCache } from "@clerk/expo";
 import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -118,6 +118,39 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Keeps the splash screen visible until Clerk auth state is determined,
+// preventing the black gap between splash and first screen.
+function SplashGate({
+  updateStatus,
+  children,
+}: {
+  updateStatus: string;
+  children: React.ReactNode;
+}) {
+  const { isLoaded } = useAuth();
+  const [splashDone, setSplashDone] = useState(false);
+
+  // Dismiss splash once Clerk is loaded AND minimum duration has elapsed.
+  useEffect(() => {
+    if (!isLoaded) return;
+    const elapsed = Date.now() - splashStartTime;
+    const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
+    const t = setTimeout(() => setSplashDone(true), remaining);
+    return () => clearTimeout(t);
+  }, [isLoaded]);
+
+  // Safety net: never show splash longer than 8 s.
+  useEffect(() => {
+    const t = setTimeout(() => setSplashDone(true), 8000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (!splashDone) {
+    return <CustomSplash statusMessage={updateStatus} />;
+  }
+  return <>{children}</>;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -125,7 +158,6 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-  const [showCustomSplash, setShowCustomSplash] = React.useState(true);
   const [clerkConfig, setClerkConfig] = useState<ClerkConfig | null>(null);
   const [updateStatus, setUpdateStatus] = React.useState<string>('');
 
@@ -134,8 +166,7 @@ export default function RootLayout() {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
 
-  // Check for OTA update on launch. If one is available, show status in the
-  // splash screen, download, then reload — user sees it happen, no blind wait.
+  // Check for OTA update on launch.
   useEffect(() => {
     if (Platform.OS === 'web' || !Updates.isEnabled) return;
     (async () => {
@@ -156,10 +187,7 @@ export default function RootLayout() {
     })();
   }, []);
 
-  // Fetch the correct Clerk publishable key + proxy URL from the API server.
-  // The production server holds the pk_live_ key (auto-provisioned by Replit
-  // at deploy time). Baking the dev pk_test_ key into the EAS build would make
-  // the TestFlight app talk to the wrong Clerk instance and crash on auth.
+  // Fetch Clerk publishable key from the API server.
   useEffect(() => {
     const apiBase = getApiBaseUrl();
     fetch(`${apiBase}/api/config`)
@@ -172,7 +200,6 @@ export default function RootLayout() {
             proxyUrl: data.clerkProxyUrl ?? undefined,
           });
         } else {
-          // Fallback: use the env var (works in Expo Go / dev builds)
           setClerkConfig({
             publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
             proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
@@ -180,7 +207,6 @@ export default function RootLayout() {
         }
       })
       .catch(() => {
-        // Network error — fall back to env var so dev / offline still works
         setClerkConfig({
           publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
           proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
@@ -188,46 +214,26 @@ export default function RootLayout() {
       });
   }, []);
 
-  // Guard: only mount ClerkProvider when we have a non-empty publishable key.
   const validClerkConfig =
     clerkConfig !== null && clerkConfig.publishableKey.length > 0
       ? clerkConfig
       : null;
 
-  // App tree requires ClerkProvider — wait until fonts + valid Clerk key ready.
   const appReady = (fontsLoaded || !!fontError) && validClerkConfig !== null;
 
-  // Dismiss splash as soon as the app is ready to render.
-  // On web MIN_SPLASH_DURATION_MS = 0 so it clears the instant both are ready
-  // (typically ~200-400 ms for the /api/config fetch). On native we honour the
-  // full 2 500 ms animation so the splash never flashes away too soon.
-  useEffect(() => {
-    if (!appReady) return;
-    const elapsed = Date.now() - splashStartTime;
-    const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
-    const timer = setTimeout(() => setShowCustomSplash(false), remaining);
-    return () => clearTimeout(timer);
-  }, [appReady]);
-
-  // Safety net: dismiss after 8 s no matter what (prevents infinite splash).
-  useEffect(() => {
-    const timer = setTimeout(() => setShowCustomSplash(false), 8000);
-    return () => clearTimeout(timer);
-  }, []);
-
+  // While fonts/config aren't ready yet, show the custom splash on top of a dark bg.
+  // Once appReady, ClerkProvider mounts and SplashGate takes over timing.
   return (
-    <View style={{ flex: 1, backgroundColor: "#121212" }}>
-      {/* Custom splash renders immediately on first mount — no providers needed */}
-      {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
+    <View style={{ flex: 1, backgroundColor: "#060D1A" }}>
+      {!appReady && <CustomSplash statusMessage={updateStatus} />}
 
-      {/* Full app tree — only mounts once fonts + valid Clerk key are ready */}
       {appReady && validClerkConfig && (
         <ClerkProvider
           publishableKey={validClerkConfig.publishableKey}
           tokenCache={tokenCache}
           proxyUrl={validClerkConfig.proxyUrl}
         >
-          <ClerkLoaded>
+          <SplashGate updateStatus={updateStatus}>
             <SafeAreaProvider>
               <AppSettingsProvider>
                 <DirectionWrapper>
@@ -253,7 +259,7 @@ export default function RootLayout() {
                 </DirectionWrapper>
               </AppSettingsProvider>
             </SafeAreaProvider>
-          </ClerkLoaded>
+          </SplashGate>
         </ClerkProvider>
       )}
     </View>
