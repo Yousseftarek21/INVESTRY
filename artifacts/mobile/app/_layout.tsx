@@ -127,26 +127,31 @@ export default function RootLayout() {
   });
   const [showCustomSplash, setShowCustomSplash] = React.useState(true);
   const [clerkConfig, setClerkConfig] = useState<ClerkConfig | null>(null);
+  const [updateStatus, setUpdateStatus] = React.useState<string>('');
 
   // Hide the native splash immediately — our custom splash takes over from here
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
 
-  // Check for OTA update on launch. If one is available, download and reload
-  // immediately while the splash screen is still visible — so the user never
-  // sees the reload.
+  // Check for OTA update on launch. If one is available, show status in the
+  // splash screen, download, then reload — user sees it happen, no blind wait.
   useEffect(() => {
     if (Platform.OS === 'web' || !Updates.isEnabled) return;
     (async () => {
       try {
+        setUpdateStatus('Checking for updates…');
         const check = await Updates.checkForUpdateAsync();
         if (check.isAvailable) {
+          setUpdateStatus('Downloading update…');
           await Updates.fetchUpdateAsync();
+          setUpdateStatus('Applying update…');
           await Updates.reloadAsync();
+        } else {
+          setUpdateStatus('');
         }
       } catch {
-        // Network error or no update — continue normally
+        setUpdateStatus('');
       }
     })();
   }, []);
@@ -205,7 +210,7 @@ export default function RootLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: "#121212" }}>
       {/* Custom splash renders immediately on first mount — no providers needed */}
-      {showCustomSplash && <CustomSplash />}
+      {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
 
       {/* Full app tree mounts once fonts are ready and Clerk config is fetched */}
       {appReady && validClerkConfig && (

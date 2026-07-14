@@ -1,7 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Image, Platform, StyleSheet, Text, View } from "react-native";
 
-export function CustomSplash() {
+interface Props {
+  statusMessage?: string;
+}
+
+export function CustomSplash({ statusMessage }: Props) {
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -30,6 +34,10 @@ export function CustomSplash() {
       <View style={styles.barTrack}>
         <Animated.View style={[styles.barFill, { width: barWidth }]} />
       </View>
+
+      <Text style={styles.status}>
+        {statusMessage ?? ""}
+      </Text>
     </View>
   );
 }
@@ -72,5 +80,12 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 2,
     backgroundColor: "#C9A227",
+  },
+  status: {
+    marginTop: 16,
+    fontSize: 12,
+    color: "#8E8E93",
+    letterSpacing: 0.3,
+    minHeight: 16,
   },
 });
