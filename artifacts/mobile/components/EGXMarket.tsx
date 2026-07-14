@@ -3,6 +3,7 @@ import {
   ActivityIndicator, Animated, FlatList, ListRenderItem, Platform, Pressable,
   RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -496,6 +497,8 @@ export function EGXMarket({
 } = {}) {
   const colors = useColors();
   const t = useT();
+  const insets = useSafeAreaInsets();
+  const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
   const { data: allStocks = [], isLoading } = useEGXMarket();
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');
@@ -649,7 +652,7 @@ export function EGXMarket({
   return (
     <FlatList
       style={[{ flex: 1 }, style]}
-      contentContainerStyle={em.listContent}
+      contentContainerStyle={[em.listContent, { paddingBottom: botPad + 120 }]}
       data={listData}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
