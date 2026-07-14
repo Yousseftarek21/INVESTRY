@@ -145,10 +145,9 @@ const cb = StyleSheet.create({
 // ─── Metal hero card ───────────────────────────────────────────────────────────
 
 function MetalHeroCard({
-  metalType, accentColor, label, price, unit = 'EGP/g',
+  accentColor, label, price, unit = 'EGP/g',
   usdPrice, troyEgp, changePercent,
 }: {
-  metalType: 'gold' | 'silver';
   accentColor: string;
   label: string;
   price: number;
@@ -160,64 +159,49 @@ function MetalHeroCard({
   const colors = useColors();
   const priceStr = price.toLocaleString('en-EG', { maximumFractionDigits: price < 10 ? 2 : 0 });
 
+  const refs: string[] = [];
+  if (usdPrice && usdPrice > 0) refs.push(`$${usdPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD`);
+  if (troyEgp && troyEgp > 0) refs.push(`Troy ${troyEgp.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`);
+
   return (
     <View style={[mh.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[mh.accent, { backgroundColor: accentColor }]} />
       <View style={mh.body}>
+        {/* Top: icon + name | change */}
         <View style={mh.topRow}>
-          <View style={mh.metalInfo}>
-            <View style={[mh.iconWrap, { backgroundColor: accentColor + '1A' }]}>
-              <MaterialCommunityIcons name="gold" size={22} color={accentColor} />
+          <View style={mh.nameRow}>
+            <View style={[mh.iconWrap, { backgroundColor: accentColor + '18' }]}>
+              <MaterialCommunityIcons name="gold" size={16} color={accentColor} />
             </View>
-            <Text style={[mh.metalLabel, { color: colors.mutedForeground }]}>{label}</Text>
+            <Text style={[mh.label, { color: colors.mutedForeground }]}>{label}</Text>
           </View>
           {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
         </View>
-
+        {/* Price */}
         <View style={mh.priceRow}>
           <Text style={[mh.price, { color: colors.text }]}>{priceStr}</Text>
           <Text style={[mh.unit, { color: colors.mutedForeground }]}> {unit}</Text>
         </View>
-
-        {(usdPrice !== undefined || troyEgp !== undefined) && (
-          <View style={mh.metaRow}>
-            {usdPrice !== undefined && usdPrice > 0 && (
-              <View style={[mh.metaPill, { backgroundColor: colors.muted }]}>
-                <Text style={[mh.metaTxt, { color: colors.mutedForeground }]}>
-                  ${usdPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
-                </Text>
-              </View>
-            )}
-            {troyEgp !== undefined && troyEgp > 0 && (
-              <View style={[mh.metaPill, { backgroundColor: colors.muted }]}>
-                <Text style={[mh.metaTxt, { color: colors.mutedForeground }]}>
-                  Troy: {troyEgp.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
-                </Text>
-              </View>
-            )}
-          </View>
+        {/* Reference prices inline */}
+        {refs.length > 0 && (
+          <Text style={[mh.refs, { color: colors.mutedForeground }]}>{refs.join('  ·  ')}</Text>
         )}
       </View>
     </View>
   );
 }
 const mh = StyleSheet.create({
-  card: {
-    borderRadius: 20, borderWidth: 1, flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  accent: { width: 4, alignSelf: 'stretch' },
-  body: { flex: 1, padding: 18, gap: 10 },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  metalInfo: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  metalLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  priceRow: { flexDirection: 'row', alignItems: 'flex-end' },
-  price: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
-  unit: { fontSize: 13, fontFamily: 'Inter_400Regular', paddingBottom: 4 },
-  metaRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  metaPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  metaTxt: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
+  accent: { width: 3, alignSelf: 'stretch' },
+  body: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, gap: 4 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  iconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 1 },
+  price: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -0.8 },
+  unit: { fontSize: 11, fontFamily: 'Inter_400Regular', paddingBottom: 3 },
+  refs: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });
 
 // ─── Metal row ─────────────────────────────────────────────────────────────────
@@ -332,10 +316,11 @@ function CurrencyHeroCard({ rate }: { rate: number }) {
     <View style={[ch.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[ch.accent, { backgroundColor: '#4A9EFF' }]} />
       <View style={ch.body}>
+        {/* Top: flag + name/pair | live badge */}
         <View style={ch.topRow}>
           <View style={ch.flagRow}>
             <Text style={ch.flag}>🇺🇸</Text>
-            <View>
+            <View style={ch.nameGroup}>
               <Text style={[ch.name, { color: colors.text }]}>{t.currencyUSD}</Text>
               <Text style={[ch.pair, { color: colors.mutedForeground }]}>USD / EGP</Text>
             </View>
@@ -345,6 +330,7 @@ function CurrencyHeroCard({ rate }: { rate: number }) {
             <Text style={[ch.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
           </View>
         </View>
+        {/* Rate */}
         <View style={ch.rateRow}>
           <Text style={[ch.rate, { color: colors.text }]}>
             {rate.toLocaleString('en-EG', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
@@ -359,21 +345,22 @@ function CurrencyHeroCard({ rate }: { rate: number }) {
   );
 }
 const ch = StyleSheet.create({
-  card: { borderRadius: 20, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
-  accent: { width: 4, alignSelf: 'stretch' },
-  body: { flex: 1, padding: 18, gap: 8 },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  flagRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  flag: { fontSize: 28 },
-  name: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  pair: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  livePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
-  liveDot: { width: 6, height: 6, borderRadius: 3 },
-  liveTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
+  card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
+  accent: { width: 3, alignSelf: 'stretch' },
+  body: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, gap: 4 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  flagRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  flag: { fontSize: 22 },
+  nameGroup: { gap: 1 },
+  name: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  pair: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  liveDot: { width: 5, height: 5, borderRadius: 3 },
+  liveTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.6 },
   rateRow: { flexDirection: 'row', alignItems: 'flex-end' },
-  rate: { fontSize: 38, fontFamily: 'Inter_700Bold', letterSpacing: -1.5 },
-  rateUnit: { fontSize: 14, fontFamily: 'Inter_400Regular', paddingBottom: 5 },
-  sub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  rate: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
+  rateUnit: { fontSize: 12, fontFamily: 'Inter_400Regular', paddingBottom: 3 },
+  sub: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });
 
 // ─── Currency row ──────────────────────────────────────────────────────────────
@@ -517,7 +504,6 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
       <View style={tab.section}>
         <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.goldSectionLabel} />
         <MetalHeroCard
-          metalType="gold"
           accentColor={colors.primary}
           label={t.gold24K}
           price={gold24}
@@ -537,7 +523,6 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
       <View style={tab.section}>
         <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.silverSectionLabel} />
         <MetalHeroCard
-          metalType="silver"
           accentColor={colors.silverColor}
           label={t.silver999Label}
           price={silver999}
