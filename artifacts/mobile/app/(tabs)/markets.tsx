@@ -10,6 +10,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
+import RealEstateMarket from '@/components/RealEstateMarket';
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 
@@ -649,7 +650,7 @@ export default function MarketsScreen() {
       {activeTab === 'metals'      && <MetalsTab prices={prices} />}
       {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
       {activeTab === 'egx'         && <EGXTab />}
-      {activeTab === 'real_estate' && <ComingSoon icon="home" title={t.realEstateMarketTitle} description={t.realEstateMarketDesc} />}
+      {activeTab === 'real_estate' && <RealEstateMarket />}
       {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
       {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
 
