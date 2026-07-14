@@ -15,6 +15,7 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { EGX_COMPANIES } from '@/data/egx-companies';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
+import { RE_PRICES, REAreaPrice } from '@/data/egypt-real-estate-prices';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { DatePickerField } from '@/components/DatePickerField';
@@ -132,6 +133,27 @@ const EGX_SYMBOLS = [
 
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+}
+
+// ─── RE Price Lookup ──────────────────────────────────────────────────────────
+// Match a selected city/district to our curated RE_PRICES dataset.
+// District is more specific so it takes priority over city.
+function lookupREPrice(gov: string, cityName: string, districtName: string): REAreaPrice | null {
+  const norm = (s: string) => s.toLowerCase().replace(/['''\-–—]/g, '').replace(/\s+/g, ' ').trim();
+  const govNorm = norm(gov);
+  const candidates = RE_PRICES.filter(p =>
+    !govNorm || norm(p.governorate).includes(govNorm) || govNorm.includes(norm(p.governorate))
+  );
+  const match = (target: string): REAreaPrice | null => {
+    if (!target) return null;
+    const t = norm(target);
+    // exact area match
+    const exact = candidates.find(p => norm(p.area) === t);
+    if (exact) return exact;
+    // area contains target word or vice-versa
+    return candidates.find(p => norm(p.area).includes(t) || t.includes(norm(p.area))) ?? null;
+  };
+  return match(districtName) ?? match(cityName);
 }
 
 // ─── Stock Picker Modal ───────────────────────────────────────────────────────
@@ -395,6 +417,7 @@ export default function AddInvestmentScreen() {
   const [districtPickerVisible, setDistrictPickerVisible] = useState(false);
   const [area, setArea] = useState('');
   const [currentMarketPricePerM2, setCurrentMarketPricePerM2] = useState('');
+  const [autoFilledArea, setAutoFilledArea] = useState<REAreaPrice | null>(null);
   const [lastValuationDate, setLastValuationDate] = useState(new Date().toISOString().split('T')[0]);
   const [valuationSource, setValuationSource] = useState<ValuationSource>('manual');
   const [developer, setDeveloper] = useState('');
@@ -1056,7 +1079,17 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentMarketPricePerM2}</Text>
               <TextInput style={inputStyle} placeholder={t.currentMarketPricePerM2Placeholder} placeholderTextColor={colors.mutedForeground}
-                value={currentMarketPricePerM2} onChangeText={(v) => setCurrentMarketPricePerM2(formatAmountInput(v))} keyboardType="decimal-pad" />
+                value={currentMarketPricePerM2}
+                onChangeText={(v) => { setCurrentMarketPricePerM2(formatAmountInput(v)); setAutoFilledArea(null); }}
+                keyboardType="decimal-pad" />
+              {autoFilledArea && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                  <Feather name="map-pin" size={11} color={colors.green} />
+                  <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.green }}>
+                    Auto-filled · {autoFilledArea.area} avg (range: {autoFilledArea.minPricePerM2.toLocaleString()}–{autoFilledArea.maxPricePerM2.toLocaleString()} EGP/m²)
+                  </Text>
+                </View>
+              )}
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.lastValuationDate}</Text>
@@ -1365,7 +1398,17 @@ export default function AddInvestmentScreen() {
         title={t.selectCity}
         options={citiesForGovernorate(governorate).map(c => c.name)}
         selected={city}
-        onSelect={(v) => { setCity(v); setDistrict(''); }}
+        onSelect={(v) => {
+          setCity(v);
+          setDistrict('');
+          const match = lookupREPrice(governorate, v, '');
+          if (match) {
+            setCurrentMarketPricePerM2(String(match.avgPricePerM2));
+            setAutoFilledArea(match);
+          } else {
+            setAutoFilledArea(null);
+          }
+        }}
         onClose={() => setCityPickerVisible(false)}
         otherLabel={t.enterManually}
       />
@@ -1374,7 +1417,16 @@ export default function AddInvestmentScreen() {
         title={t.selectDistrict}
         options={districtsForCity(governorate, city)}
         selected={district}
-        onSelect={setDistrict}
+        onSelect={(v) => {
+          setDistrict(v);
+          const match = lookupREPrice(governorate, city, v);
+          if (match) {
+            setCurrentMarketPricePerM2(String(match.avgPricePerM2));
+            setAutoFilledArea(match);
+          } else {
+            setAutoFilledArea(null);
+          }
+        }}
         onClose={() => setDistrictPickerVisible(false)}
         otherLabel={t.enterManually}
       />
