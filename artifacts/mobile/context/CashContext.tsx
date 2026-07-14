@@ -138,34 +138,73 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [isSignedIn, userId]);
 
-  // ── Add (optimistic) ──────────────────────────────────────────────────────
+  // ── Add (optimistic, with rollback) ──────────────────────────────────────
   const addCashAccount = useCallback(async (account: CashAccount) => {
     if (!userId) return;
-    setCashAccounts(prev => { const next = [...prev, account]; persist(next, userId); return next; });
+    let snapshot: CashAccount[] = [];
+    setCashAccounts(prev => {
+      snapshot = prev;
+      const next = [...prev, account];
+      persist(next, userId);
+      return next;
+    });
     try {
       const t = await token();
-      if (t) await apiFetch('/api/cash-accounts', t, { method: 'POST', body: JSON.stringify(account) });
-    } catch { setSyncError('Saved locally — will sync when online.'); }
+      if (t) {
+        const res = await apiFetch('/api/cash-accounts', t, { method: 'POST', body: JSON.stringify(account) });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch {
+      setCashAccounts(snapshot);
+      persist(snapshot, userId);
+      setSyncError('Failed to save — please try again.');
+    }
   }, [token, persist, userId]);
 
-  // ── Remove (optimistic) ───────────────────────────────────────────────────
+  // ── Remove (optimistic, with rollback) ───────────────────────────────────
   const removeCashAccount = useCallback(async (id: string) => {
     if (!userId) return;
-    setCashAccounts(prev => { const next = prev.filter(a => a.id !== id); persist(next, userId); return next; });
+    let snapshot: CashAccount[] = [];
+    setCashAccounts(prev => {
+      snapshot = prev;
+      const next = prev.filter(a => a.id !== id);
+      persist(next, userId);
+      return next;
+    });
     try {
       const t = await token();
-      if (t) await apiFetch(`/api/cash-accounts/${id}`, t, { method: 'DELETE' });
-    } catch { setSyncError('Removed locally — will sync when online.'); }
+      if (t) {
+        const res = await apiFetch(`/api/cash-accounts/${id}`, t, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch {
+      setCashAccounts(snapshot);
+      persist(snapshot, userId);
+      setSyncError('Could not remove — please try again.');
+    }
   }, [token, persist, userId]);
 
-  // ── Update (optimistic) ───────────────────────────────────────────────────
+  // ── Update (optimistic, with rollback) ───────────────────────────────────
   const updateCashAccount = useCallback(async (account: CashAccount) => {
     if (!userId) return;
-    setCashAccounts(prev => { const next = prev.map(a => a.id === account.id ? account : a); persist(next, userId); return next; });
+    let snapshot: CashAccount[] = [];
+    setCashAccounts(prev => {
+      snapshot = prev;
+      const next = prev.map(a => a.id === account.id ? account : a);
+      persist(next, userId);
+      return next;
+    });
     try {
       const t = await token();
-      if (t) await apiFetch(`/api/cash-accounts/${account.id}`, t, { method: 'PUT', body: JSON.stringify(account) });
-    } catch { setSyncError('Updated locally — will sync when online.'); }
+      if (t) {
+        const res = await apiFetch(`/api/cash-accounts/${account.id}`, t, { method: 'PUT', body: JSON.stringify(account) });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch {
+      setCashAccounts(snapshot);
+      persist(snapshot, userId);
+      setSyncError('Could not update — please try again.');
+    }
   }, [token, persist, userId]);
 
   const totalCash = cashAccounts.reduce((sum, a) => sum + a.balance, 0);

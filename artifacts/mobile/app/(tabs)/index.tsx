@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
+import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useUser } from '@clerk/expo';
@@ -99,6 +100,63 @@ function useCounterDisplay(target: number): string {
 
   return text;
 }
+
+// ─── Skeleton shimmer ─────────────────────────────────────────────────────────
+
+function useShimmer() {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return anim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] });
+}
+
+function SkeletonBox({ w, h, radius = 8, style }: { w: number | string; h: number; radius?: number; style?: object }) {
+  const opacity = useShimmer();
+  return (
+    <Animated.View style={[{ width: w as number, height: h, borderRadius: radius, opacity }, style]} />
+  );
+}
+
+function HeroSkeleton() {
+  const colors = useColors();
+  const bg = colors.muted + 'CC';
+  return (
+    <View style={[heroSkSt.body, { gap: 16 }]}>
+      <SkeletonBox w={140} h={11} radius={6} style={{ backgroundColor: bg, alignSelf: 'center' }} />
+      <SkeletonBox w={200} h={48} radius={10} style={{ backgroundColor: bg, alignSelf: 'center' }} />
+      <View style={[heroSkSt.strip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
+        {[0, 1, 2].map(i => (
+          <View key={i} style={heroSkSt.stripCell}>
+            <SkeletonBox w={50} h={9} radius={5} style={{ backgroundColor: bg }} />
+            <SkeletonBox w={70} h={14} radius={6} style={{ backgroundColor: bg }} />
+          </View>
+        ))}
+      </View>
+      <View style={heroSkSt.plRow}>
+        <View style={heroSkSt.plCell}>
+          <SkeletonBox w="100%" h={56} radius={12} style={{ backgroundColor: bg }} />
+        </View>
+        <View style={heroSkSt.plCell}>
+          <SkeletonBox w="100%" h={56} radius={12} style={{ backgroundColor: bg }} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const heroSkSt = StyleSheet.create({
+  body:     { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24 },
+  strip:    { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: -24, paddingHorizontal: 24, paddingVertical: 14 },
+  stripCell:{ flex: 1, alignItems: 'center', gap: 6 },
+  plRow:    { flexDirection: 'row', gap: 8 },
+  plCell:   { flex: 1 },
+});
 
 // ─── Refresh button ───────────────────────────────────────────────────────────
 
@@ -203,12 +261,16 @@ export default function HomeScreen() {
   const { hideValues, setHideValues } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
 
-  // Convert each cash account to EGP using the live USD/EGP rate.
-  // Non-EGP/USD currencies are added at face value as a safe fallback
-  // (rates for EUR/GBP/SAR/AED are not in the price feed yet).
+  // Convert each cash account to EGP using live FX rates.
+  // USD uses the dedicated usdToEgp field; EUR/GBP/SAR/AED/etc use fxRates
+  // (a Record<string,number> of EGP-per-unit rates from the Wise feed).
+  // Unknown currencies fall back to face value so totals are never silently dropped.
   const cashTotalEGP = useMemo(() => cashAccounts.reduce((sum, a) => {
     const bal = Number(a.balance) || 0;
+    if (a.currency === 'EGP') return sum + bal;
     if (a.currency === 'USD' && prices?.usdToEgp) return sum + bal * prices.usdToEgp;
+    const fxRate = prices?.fxRates?.[a.currency];
+    if (fxRate) return sum + bal * fxRate;
     return sum + bal;
   }, 0), [cashAccounts, prices]);
   const hasForeignCash = cashAccounts.some(a => a.currency !== 'EGP');
@@ -263,6 +325,7 @@ export default function HomeScreen() {
   }, [holdings, prices]);
 
   const chartSeed = useMemo(() => Math.floor(summary.totalCost) % 99991 || 7, [summary.totalCost]);
+  const { snapshots } = usePortfolioSnapshots(summary.totalValue);
 
   const displayValue = useCounterDisplay(summary.totalValue);
 
@@ -354,6 +417,10 @@ export default function HomeScreen() {
           style={styles.heroAccent}
         />
 
+        {/* Show pulsing skeleton while prices haven't arrived yet */}
+        {pricesLoading && !rawPrices ? (
+          <HeroSkeleton />
+        ) : (
         <View style={styles.heroBody}>
           {/* Label */}
           <View style={styles.heroLabelRow}>
@@ -463,6 +530,7 @@ export default function HomeScreen() {
                   seed={chartSeed}
                   width={sparkWidth}
                   height={78}
+                  snapshots={snapshots}
                 />
               </View>
 
@@ -503,6 +571,7 @@ export default function HomeScreen() {
             </>
           )}
         </View>
+        )}
 
         {/* Allocation strip */}
         {hasHoldings && summary.totalValue > 0 && (

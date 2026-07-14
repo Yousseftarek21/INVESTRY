@@ -3,7 +3,35 @@ export type ChartPeriod = typeof CHART_PERIODS[number];
 
 export type ChartPt = { x: number; y: number; value: number };
 
-export function genCurve(gainPct: number, period: ChartPeriod, seed: number, n = 40): number[] {
+export interface PortfolioSnapshotItem { date: string; value: number; }
+
+/** Days of history each period requires to use real snapshot data. */
+const PERIOD_DAYS: Record<ChartPeriod, number> = {
+  '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365, 'ALL': 9999,
+};
+
+/** Minimum real snapshots needed before we show real data (not the seeded curve). */
+const MIN_REAL_PTS = 3;
+
+/**
+ * Converts stored portfolio snapshots into chart values for the given period.
+ * Returns null when there isn't enough real history to draw a meaningful line.
+ */
+export function snapshotsToValues(
+  snapshots: PortfolioSnapshotItem[],
+  period: ChartPeriod,
+): number[] | null {
+  if (period === '1D') return null; // no intraday data
+  const days = PERIOD_DAYS[period];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const filtered = snapshots.filter(s => s.date >= cutoffStr);
+  if (filtered.length < MIN_REAL_PTS) return null;
+  return filtered.map(s => s.value);
+}
+
+export function genCurve(gainPct: number, period: ChartPeriod, seed: number, n = 60): number[] {
   const scale: Record<ChartPeriod, number> = { '1D': 0.12, '1W': 0.35, '1M': 0.9, '3M': 1.8, '1Y': 3.5, 'ALL': 6 };
   const s = scale[period];
   let r = (seed || 7) % 99991;

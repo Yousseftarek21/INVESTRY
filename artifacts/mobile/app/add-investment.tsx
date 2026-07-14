@@ -601,7 +601,7 @@ export default function AddInvestmentScreen() {
   ];
 
   const reAreaNum = parseAmount(area) || 0;
-  const rePricePerM2Num = autoFilledArea ? autoFilledArea.avgPricePerM2 : (parseAmount(currentMarketPricePerM2) || 0);
+  const rePricePerM2Num = parseAmount(currentMarketPricePerM2) || (autoFilledArea?.avgPricePerM2 ?? 0);
   const rePurchasePriceNum = parseAmount(purchasePrice) || 0;
   const reCurrentValue = reAreaNum * rePricePerM2Num;
   const rePurchasePricePerM2 = reAreaNum > 0 ? rePurchasePriceNum / reAreaNum : 0;
@@ -1082,35 +1082,31 @@ export default function AddInvestmentScreen() {
               <DatePickerField label={t.purchaseDate} value={realEstatePurchaseDate} onChange={setRealEstatePurchaseDate} />
             </View>
 
-            {/* Current Market Price — auto-synced from RE data, not user-entered */}
+            {/* Current Market Price — editable, pre-filled from live data when available */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentMarketPricePerM2}</Text>
-              {autoFilledArea ? (
-                /* Live data card — price pulled from dataset, not user input */
-                <View style={[inputStyle, { paddingVertical: 12, paddingHorizontal: 14, flexDirection: 'column', gap: 6, height: undefined }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 20, fontFamily: 'Inter_700Bold', color: colors.text, letterSpacing: -0.5 }}>
-                      {autoFilledArea.avgPricePerM2.toLocaleString()}{' '}
-                      <Text style={{ fontSize: 12, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>EGP/m²</Text>
-                    </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Feather name="bar-chart-2" size={10} color={colors.green} />
-                      <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>LIVE DATA</Text>
-                    </View>
+              {autoFilledArea && (
+                /* Live data reference — shown above the editable input */
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6, paddingHorizontal: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
+                    <Feather name="bar-chart-2" size={9} color={colors.green} />
+                    <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>LIVE DATA</Text>
                   </View>
-                  <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground }}>
-                    {autoFilledArea.area} · {autoFilledArea.minPricePerM2.toLocaleString()}–{autoFilledArea.maxPricePerM2.toLocaleString()} EGP/m² · YoY {autoFilledArea.changePercent > 0 ? '+' : ''}{autoFilledArea.changePercent}%
-                  </Text>
-                </View>
-              ) : (
-                /* No area selected or no data for area — prompt user */
-                <View style={[inputStyle, { paddingVertical: 14, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8, height: undefined }]}>
-                  <Feather name="map-pin" size={14} color={colors.mutedForeground} />
-                  <Text style={{ fontSize: 13, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }}>
-                    {city ? `No market data for ${city} yet` : 'Select your city or district to load price'}
+                  <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }}>
+                    {autoFilledArea.minPricePerM2.toLocaleString()}–{autoFilledArea.maxPricePerM2.toLocaleString()} EGP/m² · YoY {autoFilledArea.changePercent > 0 ? '+' : ''}{autoFilledArea.changePercent}%
                   </Text>
                 </View>
               )}
+              <TextInput
+                style={inputStyle}
+                placeholder={autoFilledArea
+                  ? `Market avg: ${autoFilledArea.avgPricePerM2.toLocaleString()} EGP/m²`
+                  : t.currentMarketPricePerM2Placeholder}
+                placeholderTextColor={colors.mutedForeground}
+                value={currentMarketPricePerM2}
+                onChangeText={setCurrentMarketPricePerM2}
+                keyboardType="numeric"
+              />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.lastValuationDate}</Text>

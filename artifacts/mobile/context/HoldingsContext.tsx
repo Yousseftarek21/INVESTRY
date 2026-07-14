@@ -137,34 +137,73 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [isSignedIn, userId]);
 
-  // ── Add (optimistic) ──────────────────────────────────────────────────────
+  // ── Add (optimistic, with rollback) ──────────────────────────────────────
   const addHolding = useCallback(async (holding: Holding) => {
     if (!userId) return;
-    setHoldings(prev => { const next = [...prev, holding]; persist(next, userId); return next; });
+    let snapshot: Holding[] = [];
+    setHoldings(prev => {
+      snapshot = prev;
+      const next = [...prev, holding];
+      persist(next, userId);
+      return next;
+    });
     try {
       const t = await token();
-      if (t) await apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(holding) });
-    } catch { setSyncError('Saved locally — will sync when online.'); }
+      if (t) {
+        const res = await apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(holding) });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch {
+      setHoldings(snapshot);
+      persist(snapshot, userId);
+      setSyncError('Failed to save — please try again.');
+    }
   }, [token, persist, userId]);
 
-  // ── Remove (optimistic) ───────────────────────────────────────────────────
+  // ── Remove (optimistic, with rollback) ───────────────────────────────────
   const removeHolding = useCallback(async (id: string) => {
     if (!userId) return;
-    setHoldings(prev => { const next = prev.filter(h => h.id !== id); persist(next, userId); return next; });
+    let snapshot: Holding[] = [];
+    setHoldings(prev => {
+      snapshot = prev;
+      const next = prev.filter(h => h.id !== id);
+      persist(next, userId);
+      return next;
+    });
     try {
       const t = await token();
-      if (t) await apiFetch(`/api/holdings/${id}`, t, { method: 'DELETE' });
-    } catch { setSyncError('Removed locally — will sync when online.'); }
+      if (t) {
+        const res = await apiFetch(`/api/holdings/${id}`, t, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch {
+      setHoldings(snapshot);
+      persist(snapshot, userId);
+      setSyncError('Could not remove — please try again.');
+    }
   }, [token, persist, userId]);
 
-  // ── Update (optimistic) ───────────────────────────────────────────────────
+  // ── Update (optimistic, with rollback) ───────────────────────────────────
   const updateHolding = useCallback(async (holding: Holding) => {
     if (!userId) return;
-    setHoldings(prev => { const next = prev.map(h => h.id === holding.id ? holding : h); persist(next, userId); return next; });
+    let snapshot: Holding[] = [];
+    setHoldings(prev => {
+      snapshot = prev;
+      const next = prev.map(h => h.id === holding.id ? holding : h);
+      persist(next, userId);
+      return next;
+    });
     try {
       const t = await token();
-      if (t) await apiFetch(`/api/holdings/${holding.id}`, t, { method: 'PUT', body: JSON.stringify(holding) });
-    } catch { setSyncError('Updated locally — will sync when online.'); }
+      if (t) {
+        const res = await apiFetch(`/api/holdings/${holding.id}`, t, { method: 'PUT', body: JSON.stringify(holding) });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch {
+      setHoldings(snapshot);
+      persist(snapshot, userId);
+      setSyncError('Could not update — please try again.');
+    }
   }, [token, persist, userId]);
 
   return (
