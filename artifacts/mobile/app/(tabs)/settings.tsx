@@ -4,11 +4,12 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Alert, Animated, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
+  Alert, Animated, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
   ScrollView, Share, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -245,11 +246,11 @@ const cm = StyleSheet.create({
 // ─── Profile hero card ────────────────────────────────────────────────────────
 
 function ProfileHero({
-  initials, fullName, email, verified, holdingsCount, onPress, plan,
+  initials, fullName, email, verified, holdingsCount, onPress, plan, imageUrl,
 }: {
   initials: string; fullName: string; email: string;
   verified: boolean; holdingsCount: number; onPress: () => void;
-  plan?: 'pro' | null;
+  plan?: 'pro' | null; imageUrl?: string;
 }) {
   const colors = useColors();
   const t = useT();
@@ -270,9 +271,13 @@ function ProfileHero({
         {/* Avatar */}
         <View style={ph.avatarArea}>
           <View style={[ph.avatarRing, { borderColor: colors.primary }]}>
-            <View style={[ph.avatarCircle, { backgroundColor: colors.primary + '1A' }]}>
-              <Text style={[ph.avatarText, { color: colors.primary }]}>{initials}</Text>
-            </View>
+            {imageUrl ? (
+              <Image source={{ uri: imageUrl }} style={ph.avatarPhoto} />
+            ) : (
+              <View style={[ph.avatarCircle, { backgroundColor: colors.primary + '1A' }]}>
+                <Text style={[ph.avatarText, { color: colors.primary }]}>{initials}</Text>
+              </View>
+            )}
           </View>
           {verified && (
             <View style={[ph.verifyDot, { backgroundColor: colors.green, borderColor: colors.card }]}>
@@ -319,6 +324,7 @@ const ph = StyleSheet.create({
   inner: { flexDirection: 'row', alignItems: 'flex-start', padding: 18, gap: 15 },
   avatarArea: { flexShrink: 0, position: 'relative' },
   avatarRing: { width: 74, height: 74, borderRadius: 37, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  avatarPhoto: { width: 66, height: 66, borderRadius: 33 },
   avatarCircle: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   verifyDot: { position: 'absolute', bottom: 2, right: 2, width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
@@ -334,19 +340,44 @@ const ph = StyleSheet.create({
 // ─── Edit profile modal ────────────────────────────────────────────────────────
 
 function EditProfileModal({
-  visible, initials, email, initialDisplayName, saving, onSave, onClose,
+  visible, initials, email, initialDisplayName, imageUrl, saving, onSave, onPhotoSave, onClose,
 }: {
   visible: boolean; initials: string; email: string; initialDisplayName: string;
-  saving: boolean; onSave: (name: string) => void; onClose: () => void;
+  imageUrl?: string; saving: boolean;
+  onSave: (name: string) => void;
+  onPhotoSave: (uri: string) => Promise<void>;
+  onClose: () => void;
 }) {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
   const [value, setValue] = useState(initialDisplayName);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     if (visible) setValue(initialDisplayName);
   }, [visible, initialDisplayName]);
+
+  const pickPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Please allow photo library access to set a profile picture.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    setUploadingPhoto(true);
+    try {
+      await onPhotoSave(result.assets[0].uri);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   if (!visible) return null;
 
@@ -366,13 +397,25 @@ function EditProfileModal({
         </View>
 
         <View style={epm.body}>
-          {/* Profile picture (initials avatar) */}
+          {/* Profile picture */}
           <View style={epm.avatarRow}>
-            <View style={[epm.avatarRing, { borderColor: colors.primary }]}>
-              <View style={[epm.avatarCircle, { backgroundColor: colors.primary + '1A' }]}>
-                <Text style={[epm.avatarText, { color: colors.primary }]}>{initials}</Text>
+            <TouchableOpacity onPress={pickPhoto} activeOpacity={0.75} style={epm.avatarTouchable}>
+              <View style={[epm.avatarRing, { borderColor: colors.primary }]}>
+                {imageUrl ? (
+                  <Image source={{ uri: imageUrl }} style={epm.avatarPhoto} />
+                ) : (
+                  <View style={[epm.avatarCircle, { backgroundColor: colors.primary + '1A' }]}>
+                    <Text style={[epm.avatarText, { color: colors.primary }]}>{initials}</Text>
+                  </View>
+                )}
               </View>
-            </View>
+              <View style={[epm.cameraBadge, { backgroundColor: colors.primary }]}>
+                {uploadingPhoto
+                  ? <Feather name="loader" size={11} color="#000" />
+                  : <Feather name="camera" size={11} color="#000" />}
+              </View>
+            </TouchableOpacity>
+            <Text style={[epm.photoHint, { color: colors.mutedForeground }]}>Tap to change photo</Text>
           </View>
 
           {/* Display Name field */}
@@ -417,10 +460,14 @@ function EditProfileModal({
 const epm = StyleSheet.create({
   sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
   body: { padding: 24, gap: 18 },
-  avatarRow: { alignItems: 'center', marginBottom: 4 },
-  avatarRing: { width: 74, height: 74, borderRadius: 37, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
-  avatarCircle: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
+  avatarRow: { alignItems: 'center', marginBottom: 4, gap: 8 },
+  avatarTouchable: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  avatarRing: { width: 82, height: 82, borderRadius: 41, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  avatarPhoto: { width: 74, height: 74, borderRadius: 37 },
+  avatarCircle: { width: 74, height: 74, borderRadius: 37, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
+  cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  photoHint: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   field: { gap: 7 },
   fieldLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2, marginLeft: 2 },
   input: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
@@ -774,6 +821,18 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleSavePhoto = async (uri: string) => {
+    if (!user) return;
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      await user.setProfileImage({ file });
+    } catch {
+      Alert.alert('Upload failed', 'Could not update your profile photo. Please try again.');
+    }
+  };
+
   const handleConfirm = async () => {
     if (!confirm) return;
     if (confirm.id === 'delete') {
@@ -826,6 +885,7 @@ export default function SettingsScreen() {
               initials={initials} fullName={profileName} email={email}
               verified={verified} holdingsCount={holdings.length}
               plan={plan === 'pro' ? plan : null}
+              imageUrl={user.imageUrl ?? undefined}
               onPress={() => { haptic(); setEditProfileOpen(true); }}
             />
             <TouchableOpacity
@@ -1092,8 +1152,10 @@ export default function SettingsScreen() {
         initials={initials}
         email={email}
         initialDisplayName={displayName}
+        imageUrl={user?.imageUrl ?? undefined}
         saving={savingProfile}
         onSave={handleSaveProfile}
+        onPhotoSave={handleSavePhoto}
         onClose={() => setEditProfileOpen(false)}
       />
     </>
