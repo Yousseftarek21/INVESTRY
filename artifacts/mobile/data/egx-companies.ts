@@ -424,26 +424,46 @@ export interface EGXMarketStatus {
   nextEvent: string;
 }
 
+// Extract Cairo time parts directly — avoids the toLocaleString→new Date() round-trip
+// which re-parses the string in the *device's* local timezone and gives wrong hours
+// on any device not set to Cairo time.
+function getCairoTimeParts(now: Date = new Date()): { day: number; h: number; m: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '0';
+  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  // hour12:false can return '24' for midnight on some platforms — normalise
+  const rawH = parseInt(get('hour'));
+  return {
+    day: dayMap[get('weekday')] ?? 1,
+    h: rawH === 24 ? 0 : rawH,
+    m: parseInt(get('minute')),
+  };
+}
+
 export function getEGXMarketStatus(): EGXMarketStatus {
-  const now = new Date();
-  const cairo = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
-  const day = cairo.getDay();
-  const h = cairo.getHours();
-  const m = cairo.getMinutes();
+  const { day, h, m } = getCairoTimeParts();
   const mins = h * 60 + m;
 
-  const PRE_OPEN  = 9  * 60 + 30;
-  const OPEN      = 10 * 60;
-  const CLOSE     = 14 * 60 + 30;
-  const POST_CLOSE = 15 * 60;
+  const PRE_OPEN   = 9  * 60 + 30; // 09:30
+  const OPEN       = 10 * 60;      // 10:00
+  const CLOSE      = 14 * 60 + 30; // 14:30
+  const POST_CLOSE = 15 * 60;      // 15:00
 
-  const isWeekday = day >= 0 && day <= 4; // Sun–Thu
+  const isWeekday = day >= 0 && day <= 4; // Sun(0)–Thu(4)
 
   if (!isWeekday) {
     return { session: 'closed', label: 'Closed', nextEvent: 'Opens Sunday 10:00' };
   }
   if (mins < PRE_OPEN) {
-    return { session: 'closed', label: 'Closed', nextEvent: `Pre-session at 09:30` };
+    return { session: 'closed', label: 'Closed', nextEvent: 'Pre-session at 09:30' };
   }
   if (mins < OPEN) {
     return { session: 'pre', label: 'Pre-Session', nextEvent: 'Opens at 10:00' };

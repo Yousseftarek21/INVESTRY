@@ -11,9 +11,11 @@ import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/use
 import { getEGXMarketStatus } from '@/data/egx-companies';
 
 // ─── Timezone helpers ─────────────────────────────────────────────────────────
-// Egypt is always UTC+2 (no DST since 2011).
+// Egypt observes EEST (UTC+3) Apr–Oct and EET (UTC+2) Nov–Mar (DST reintroduced 2023).
 // US Eastern uses EDT (UTC-4) from 2nd Sunday of March to 1st Sunday of November,
-// and EST (UTC-5) otherwise. Cairo is UTC+2, so offset from ET = +6 (EDT) or +7 (EST).
+// and EST (UTC-5) otherwise.
+// EGX session open/closed logic lives in egx-companies.ts and uses Intl.DateTimeFormat
+// with timeZone:'Africa/Cairo' to avoid device-timezone drift.
 
 function isUSOnEDT(d: Date = new Date()): boolean {
   const y = d.getFullYear();
