@@ -630,19 +630,6 @@ export default function MarketsScreen() {
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
-  function renderContent() {
-    switch (activeTab) {
-      case 'metals':      return <MetalsTab prices={prices} />;
-      case 'currencies':  return <CurrenciesTab prices={prices} />;
-      case 'egx':         return <EGXTab />;
-      case 'stocks':      return <GlobalStocksMarket />;
-      case 'global':
-        return <ComingSoon icon="globe"  title={t.globalIndicesTitle}     description={t.globalIndicesDesc} />;
-      case 'real_estate':
-        return <ComingSoon icon="home"   title={t.realEstateMarketTitle}  description={t.realEstateMarketDesc} />;
-    }
-  }
-
   return (
     <ScrollView
       style={[s.container, { backgroundColor: colors.background }]}
@@ -659,7 +646,26 @@ export default function MarketsScreen() {
 
       <TabBar active={activeTab} onChange={setActiveTab} />
 
-      {renderContent()}
+      {/* All tabs stay mounted — only visibility toggles. This keeps EGX and
+          GlobalStocks data in memory so switching tabs is instant. */}
+      <View style={{ display: activeTab === 'metals' ? 'flex' : 'none' }}>
+        <MetalsTab prices={prices} />
+      </View>
+      <View style={{ display: activeTab === 'currencies' ? 'flex' : 'none' }}>
+        <CurrenciesTab prices={prices} />
+      </View>
+      <View style={{ display: activeTab === 'egx' ? 'flex' : 'none' }}>
+        <EGXTab />
+      </View>
+      <View style={{ display: activeTab === 'stocks' ? 'flex' : 'none' }}>
+        <GlobalStocksMarket />
+      </View>
+      <View style={{ display: activeTab === 'global' ? 'flex' : 'none' }}>
+        <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />
+      </View>
+      <View style={{ display: activeTab === 'real_estate' ? 'flex' : 'none' }}>
+        <ComingSoon icon="home" title={t.realEstateMarketTitle} description={t.realEstateMarketDesc} />
+      </View>
 
       {prices?.lastUpdated && (activeTab === 'metals' || activeTab === 'currencies' || activeTab === 'egx') && (
         <View style={s.tsRow}>
