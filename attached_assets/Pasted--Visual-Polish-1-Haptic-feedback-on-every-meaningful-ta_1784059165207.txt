@@ -1,0 +1,89 @@
+🎨 Visual Polish
+1. Haptic feedback on every meaningful tap
+Right now haptics are only on a few buttons. Markets refresh, holding card delete confirmation, period filter — all should fire a light impact. Makes the app feel alive.
+
+2. Swipe-to-delete on Holdings cards
+Right now delete is a tap on a trash icon. A left-swipe gesture (like iOS Mail) revealing a red delete zone is far more natural. The HoldingCard already has the action buttons — just needs gesture wrapping.
+
+3. "Value hidden" mask refinement
+The •••••• mask currently replaces numbers with bullets that vary in width across screens, causing layout jumps. Replace with a fixed-width blur overlay (like iOS banking apps) so the card doesn't shift size when toggling.
+
+4. Animated tab bar active indicator
+On the ClassicTabLayout (Android/web), the active tab just changes color. A subtle animated dot or underline that slides between tabs would feel much more premium.
+
+5. Empty state illustrations for Markets sections
+When a section (e.g., Real Estate zones) has no data, it falls to a plain text message. Small inline SVG illustrations per section would feel polished.
+
+6. Card entrance animations
+Holdings cards and HoldingCard items snap in instantly on load. Staggered fade-up animations (each card delayed by 40ms × index) as the screen mounts makes the data feel like it's arriving, not just appearing.
+
+7. Gold gradient accent on the hero card
+The accent bar is currently a flat linear gradient of the primary color. A shimmer that slowly sweeps across it (like a light reflection on gold) would be stunning and unique.
+
+📊 Data & Charts
+8. Donut chart on Portfolio tab
+Replace the plain AllocationBar horizontal strip with an interactive donut chart. The DonutChart component already exists — it just isn't used on the home screen. Tap a segment to highlight that asset class.
+
+9. Real 1D intraday simulation using gold tick data
+The 1D chart falls back to seeded curves. Since the API already fetches gold price with a change%, we can reconstruct an estimated intraday curve (open → now, shaped by the gold trend) that looks real rather than random.
+
+10. Sparkline mini-charts on each HoldingCard
+A tiny 20pt-high sparkline showing 7-day trend next to each holding value. For gold/silver it's calculable from the price change data. Makes the Holdings tab look like a proper brokerage app.
+
+11. Portfolio vs. gold benchmark line
+On the analytics chart, overlay a second line showing how gold performed over the same period. Lets users see if they're beating the local store-of-value benchmark.
+
+12. Markets tab: price change pill animation
+When prices update, the change % pill (green/red) should briefly flash and scale up before settling. Right now prices silently update — users don't notice the refresh happened.
+
+🧭 Navigation & UX
+13. Bottom sheet for "Add Investment" instead of full-screen modal
+add-investment currently pushes as a full screen. A BottomSheet that slides up (dismissable by drag) is more native and lets the user see their portfolio behind it.
+
+14. Long-press on a holding to quick-edit
+Long press on a HoldingCard opens an action sheet: Edit / Delete / Copy value. Faster than navigating to the edit screen for common actions.
+
+15. Pull-to-refresh visual improvement
+The refresh control uses the system spinner. A custom animated INVESTRY logo that spins during refresh would be distinctive and on-brand.
+
+16. Onboarding flow for first-time users
+First open after sign-up: a 3-step swipe-through card (What to track → Add your first holding → See your wealth). Right now new users land on an empty portfolio with no guidance.
+
+17. "What's new" modal on app update
+Show a bottom sheet once after an OTA update with 2-3 bullet points of what changed. Simple AsyncStorage version key to track if the user has seen it.
+
+🔢 Numbers & Finance
+18. Realized vs. unrealized P/L split
+Currently gain/loss is always unrealized (current vs. purchase price). Users who've partially sold holdings have no way to track realized gains. Add a "Realized" field to the holding model.
+
+19. Gold purity cost basis
+When a user adds 21k gold, the app stores grams and price/gram. But the "real" gold content is 87.5% pure. Show both the face-weight value and the fine-gold equivalent value in the HoldingCard detail view.
+
+20. EGP inflation-adjusted return
+Show a secondary "Real Return" figure adjusted for Egypt's inflation rate (available as a static constant or API). Nominal 40% return looks different when inflation was 35%.
+
+21. Net worth total including cash
+The portfolio hero card shows investment value only. Total net worth = investments + cash. A toggle between "Investments" and "Net Worth" on the hero card would be powerful.
+
+⚙️ Settings & Personalization
+22. App icon selector
+Offer 3 alternate app icons (dark gold, light, black) selectable from Settings. Expo supports this natively with expo-alternate-app-icon.
+
+23. Currency display preference
+Let users choose whether secondary values show in USD or EGP. Some users think in dollars.
+
+24. Widget support (iOS)
+An iOS home screen widget showing total portfolio value + daily change. Requires expo-widget-extension but would be a major differentiator.
+
+🐛 Fixes
+25. Analytics screen "Health Arc" gauge label overlaps on small screens
+On iPhone SE the arc gauge's label text clips into the arc itself. Needs a min-font-size guard.
+
+26. Real estate "Current Value" not updating when price/m² changes
+If a user edits a real estate holding and updates the market price/m², the stored currentValue doesn't recompute — it stays at the original. The save handler needs to recompute before persisting.
+
+27. Markets tab selected segment resets on tab switch
+If you're on "EGX" in the Markets tab and switch to Holdings then back, the selected segment resets to "Metals". The selected segment should persist while the app is open.
+
+28. Add investment form: keyboard covers the "Save" button on short phones
+On iPhone SE with the numeric keyboard open, the Save button is hidden behind it. KeyboardAwareScrollViewCompat is in the codebase — it just isn't applied to the add-investment screen.
