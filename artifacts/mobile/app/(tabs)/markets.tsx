@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Animated, InteractionManager, Platform, Pressable, RefreshControl,
+  Animated, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -697,12 +697,12 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
   );
 }
 
-function EGXTab() {
-  return (
-    <View style={tab.group}>
-      <EGXMarket />
-    </View>
-  );
+function EGXTab({ style, refreshing, onRefresh }: {
+  style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+}) {
+  return <EGXMarket style={style} refreshing={refreshing} onRefresh={onRefresh} />;
 }
 
 const tab = StyleSheet.create({
@@ -719,16 +719,10 @@ export default function MarketsScreen() {
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
   const [activeTab, setActiveTab] = useState<TabKey>('metals');
-  // Pre-render EGXTab silently after Markets tab animation settles so first EGX tap is instant
-  const [egxPrimed, setEgxPrimed] = useState(false);
-  useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => setEgxPrimed(true));
-    return () => task.cancel();
-  }, []);
 
   const isLoading = lP;
 
-  const prevGoldUsd  = useRef<number | undefined>(undefined);
+  const prevGoldUsd   = useRef<number | undefined>(undefined);
   const followUpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didManualRefresh = useRef(false);
 
@@ -756,51 +750,54 @@ export default function MarketsScreen() {
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
+  const timestamp = prices?.lastUpdated && (activeTab === 'metals' || activeTab === 'currencies') ? (
+    <View style={s.tsRow}>
+      <Feather name="clock" size={11} color={colors.mutedForeground} />
+      <Text style={[s.ts, { color: colors.mutedForeground }]}>
+        {t.updatedAt}
+        {new Date(prices.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      </Text>
+    </View>
+  ) : null;
+
   return (
-    <ScrollView
-      style={[s.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[s.content, { paddingTop: topPad + 20, paddingBottom: botPad + 100 }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
-    >
-      <View style={s.header}>
-        <View>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
+      {/* Fixed header — title + TabBar always at top, never scroll away */}
+      <View style={[s.fixedHeader, { paddingTop: topPad + 16 }]}>
+        <View style={s.header}>
           <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
+          <LiveDot />
         </View>
-        <LiveDot />
+        <TabBar active={activeTab} onChange={setActiveTab} />
       </View>
 
-      <TabBar active={activeTab} onChange={setActiveTab} />
-
-      {activeTab === 'metals'      && <MetalsTab prices={prices} />}
-      {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
-      {/* EGX: pre-rendered after tab animation settles (InteractionManager), then kept mounted
-           with display:none so every subsequent tap is instant with 0 delay */}
-      {(egxPrimed || activeTab === 'egx') && (
-        <View style={activeTab !== 'egx' ? { display: 'none' } : undefined}>
-          <EGXTab />
-        </View>
+      {/* EGX: own FlatList that fills remaining space — true virtualization, 0 delay */}
+      {activeTab === 'egx' ? (
+        <EGXTab style={{ flex: 1 }} refreshing={isLoading} onRefresh={refetch} />
+      ) : (
+        /* All other tabs: ScrollView content area */
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[s.content, { paddingBottom: botPad + 100 }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+        >
+          {activeTab === 'metals'      && <MetalsTab prices={prices} />}
+          {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
+          {activeTab === 'real_estate' && <RealEstateTab />}
+          {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
+          {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
+          {timestamp}
+        </ScrollView>
       )}
-      {activeTab === 'real_estate' && <RealEstateTab />}
-      {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
-      {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
-
-      {prices?.lastUpdated && (activeTab === 'metals' || activeTab === 'currencies' || activeTab === 'egx') && (
-        <View style={s.tsRow}>
-          <Feather name="clock" size={11} color={colors.mutedForeground} />
-          <Text style={[s.ts, { color: colors.mutedForeground }]}>
-            {t.updatedAt}
-            {new Date(prices.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 20 },
+  fixedHeader: { paddingHorizontal: 20, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
   tsRow: { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center', marginTop: 8 },

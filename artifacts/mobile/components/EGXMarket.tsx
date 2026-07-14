@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import {
-  ActivityIndicator, Animated, Platform, Pressable,
-  ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Animated, FlatList, ListRenderItem, Platform, Pressable,
+  RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -431,85 +431,88 @@ const sc = StyleSheet.create({
 
 // ─── Sector Group ─────────────────────────────────────────────────────────────
 
-function SectorGroup({ sector, stocks }: { sector: string; stocks: EGXStockLive[] }) {
+function SectorGroupHeader({ sector, count }: { sector: string; count: number }) {
   const colors = useColors();
   const t = useT();
   return (
-    <View style={sg.wrap}>
-      <View style={sg.header}>
-        <Text style={[sg.title, { color: colors.mutedForeground }]}>
-          {sector.toUpperCase()}
-        </Text>
-        <Text style={[sg.count, { color: colors.mutedForeground }]}>
-          {stocks.length} {stocks.length === 1 ? t.companyLabel : t.companiesLabel}
-        </Text>
-      </View>
-      {stocks.map((s, i) => (
-        <StockCard key={s.ticker} stock={s} isLast={i === stocks.length - 1} />
-      ))}
+    <View style={sg.header}>
+      <Text style={[sg.title, { color: colors.mutedForeground }]}>
+        {sector.toUpperCase()}
+      </Text>
+      <Text style={[sg.count, { color: colors.mutedForeground }]}>
+        {count} {count === 1 ? t.companyLabel : t.companiesLabel}
+      </Text>
     </View>
   );
 }
 const sg = StyleSheet.create({
-  wrap: { gap: 8 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2, paddingTop: 12, paddingBottom: 6 },
   title: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.3 },
   count: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });
 
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 
-function LoadingSkeleton() {
+function SkeletonCard() {
   const colors = useColors();
   const anim = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(anim, { toValue: 0.9, duration: 800, useNativeDriver: true }),
         Animated.timing(anim, { toValue: 0.4, duration: 800, useNativeDriver: true }),
       ])
-    ).start();
-  }, []);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim]);
   return (
-    <>
-      {[1, 2, 3, 4, 5].map(i => (
-        <Animated.View
-          key={i}
-          style={[sk.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: anim }]}
-        />
-      ))}
-    </>
+    <Animated.View
+      style={[sk.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: anim }]}
+    />
   );
 }
 const sk = StyleSheet.create({
   card: { height: 90, borderRadius: 16, borderWidth: 1, marginBottom: 8 },
 });
 
+// ─── FlatList item types ────────────────────────────────────────────────────────
+
+type ListItem =
+  | { kind: 'skeleton'; id: number }
+  | { kind: 'sectorHeader'; sector: string; count: number }
+  | { kind: 'stock'; stock: EGXStockLive; isLast: boolean; isSectorEnd: boolean };
+
 // ─── Main EGXMarket Component ─────────────────────────────────────────────────
 
-export function EGXMarket() {
+export function EGXMarket({
+  style,
+  refreshing,
+  onRefresh,
+}: {
+  style?: StyleProp<ViewStyle>;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+} = {}) {
   const colors = useColors();
   const t = useT();
-  const { data: allStocks = [], isLoading, refetch } = useEGXMarket();
+  const { data: allStocks = [], isLoading } = useEGXMarket();
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');
   const [activeIndex, setActiveIndex] = useState<EGXIndex>('All');
   const sectorCounts = useMemo(() => getSectorCounts(), []);
   const indexCounts = useMemo(() => getIndexCounts(), []);
 
-  // When user types, reset sector filter to 'All' (keep index filter)
   const handleQuery = useCallback((q: string) => {
     setQuery(q);
     if (q.length > 0) setSector('All');
   }, []);
 
-  // When user picks sector, clear search
   const handleSector = useCallback((s: EGXSector) => {
     setSector(s);
     setQuery('');
   }, []);
 
-  // When user picks index, clear search + reset sector
   const handleIndex = useCallback((i: EGXIndex) => {
     setActiveIndex(i);
     setSector('All');
@@ -518,20 +521,16 @@ export function EGXMarket() {
 
   const displayed = useMemo(() => {
     let stocks = allStocks;
-    // Apply index filter first
     if (activeIndex === 'EGX 30') stocks = stocks.filter(s => EGX_30_TICKERS.has(s.ticker));
     else if (activeIndex === 'EGX 70') stocks = stocks.filter(s => EGX_70_TICKERS.has(s.ticker));
-    // Apply search
     if (query.trim()) {
       const matchedSet = new Set(searchCompanies(query).map(c => c.ticker));
       return stocks.filter(s => matchedSet.has(s.ticker));
     }
-    // Apply sector filter
     if (sector !== 'All') return stocks.filter(s => s.sector === sector);
     return stocks;
   }, [allStocks, query, sector, activeIndex]);
 
-  // Group by sector when no search + no sector filter active
   const grouped = useMemo(() => {
     if (query.trim() || sector !== 'All') return null;
     const map = new Map<string, EGXStockLive[]>();
@@ -552,21 +551,59 @@ export function EGXMarket() {
     ? ` ${t.inLabel} ${activeIndex}`
     : ` ${t.listedLabel}`;
 
-  return (
-    <View style={em.wrap}>
-      {/* Market status */}
+  // ── Flatten all items into a single array for FlatList virtualization ──────
+  const listData = useMemo((): ListItem[] => {
+    if (isLoading && allStocks.every(s => !s.isLive)) {
+      return [1, 2, 3, 4, 5, 6].map(id => ({ kind: 'skeleton' as const, id }));
+    }
+    if (grouped) {
+      const items: ListItem[] = [];
+      for (const [sec, stocks] of grouped.entries()) {
+        items.push({ kind: 'sectorHeader', sector: sec, count: stocks.length });
+        stocks.forEach((s, i) =>
+          items.push({
+            kind: 'stock',
+            stock: s,
+            isLast: i === stocks.length - 1,
+            isSectorEnd: i === stocks.length - 1,
+          })
+        );
+      }
+      return items;
+    }
+    return displayed.map((s, i) => ({
+      kind: 'stock' as const,
+      stock: s,
+      isLast: i === displayed.length - 1,
+      isSectorEnd: false,
+    }));
+  }, [isLoading, allStocks, grouped, displayed]);
+
+  const keyExtractor = useCallback((item: ListItem, index: number): string => {
+    if (item.kind === 'skeleton') return `skel-${item.id}`;
+    if (item.kind === 'sectorHeader') return `sh-${item.sector}`;
+    return item.stock.ticker;
+  }, []);
+
+  const renderItem: ListRenderItem<ListItem> = useCallback(({ item }) => {
+    if (item.kind === 'skeleton') return <SkeletonCard />;
+    if (item.kind === 'sectorHeader') return <SectorGroupHeader sector={item.sector} count={item.count} />;
+    return <StockCard stock={item.stock} isLast={item.isLast} />;
+  }, []);
+
+  const ItemSeparator = useCallback(({ leadingItem }: { leadingItem: ListItem }) => {
+    if (leadingItem.kind === 'stock' && leadingItem.isSectorEnd) {
+      return <View style={{ height: 12 }} />;
+    }
+    return null;
+  }, []);
+
+  const ListHeader = useMemo(() => (
+    <View style={em.listHeaderWrap}>
       <MarketStatusBanner />
-
-      {/* Index filter (EGX 30 / EGX 70 / All) */}
       <IndexPills active={activeIndex} onChange={handleIndex} counts={indexCounts} />
-
-      {/* Search */}
       <SearchBar value={query} onChange={handleQuery} />
-
-      {/* Sector pills */}
       <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
-
-      {/* Result count / live badge */}
       <View style={em.resultRow}>
         <Text style={[em.resultTxt, { color: colors.mutedForeground }]}>
           {displayed.length} {displayed.length === 1 ? t.companyLabel : t.companiesLabel}
@@ -583,50 +620,61 @@ export function EGXMarket() {
           </View>
         )}
       </View>
-
-      {/* List */}
-      {isLoading && allStocks.every(s => !s.isLive) ? (
-        <LoadingSkeleton />
-      ) : grouped ? (
-        // Grouped by sector
-        <View style={{ gap: 20 }}>
-          {Array.from(grouped.entries()).map(([sec, stocks]) => (
-            <SectorGroup key={sec} sector={sec} stocks={stocks} />
-          ))}
-        </View>
-      ) : (
-        // Flat list (search or single sector)
-        <View style={{ gap: 0 }}>
-          {displayed.map((s, i) => (
-            <StockCard key={s.ticker} stock={s} isLast={i === displayed.length - 1} />
-          ))}
-          {displayed.length === 0 && (
-            <View style={[em.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="search" size={28} color={colors.mutedForeground} />
-              <Text style={[em.emptyTxt, { color: colors.mutedForeground }]}>
-                {t.noCompaniesFound} "{query}"
-              </Text>
-              <Text style={[em.emptySub, { color: colors.mutedForeground }]}>
-                {t.egxSearchTip}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Web note */}
-      {!hasLive && (
-        <Text style={[em.webNote, { color: colors.mutedForeground }]}>
-          {t.liveRequiresExpo}{'\n'}
-          {t.webPreviewNote}
-        </Text>
-      )}
     </View>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [activeIndex, query, sector, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
+
+  const ListEmpty = useMemo(() => (
+    !isLoading && displayed.length === 0 ? (
+      <View style={[em.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Feather name="search" size={28} color={colors.mutedForeground} />
+        <Text style={[em.emptyTxt, { color: colors.mutedForeground }]}>
+          {t.noCompaniesFound} "{query}"
+        </Text>
+        <Text style={[em.emptySub, { color: colors.mutedForeground }]}>
+          {t.egxSearchTip}
+        </Text>
+      </View>
+    ) : null
+  ), [isLoading, displayed.length, query, colors.card, colors.border, colors.mutedForeground]);
+
+  const ListFooter = useMemo(() => (
+    !hasLive ? (
+      <Text style={[em.webNote, { color: colors.mutedForeground }]}>
+        {t.liveRequiresExpo}{'\n'}{t.webPreviewNote}
+      </Text>
+    ) : null
+  ), [hasLive, colors.mutedForeground]);
+
+  return (
+    <FlatList
+      style={[{ flex: 1 }, style]}
+      contentContainerStyle={em.listContent}
+      data={listData}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      ItemSeparatorComponent={ItemSeparator}
+      ListHeaderComponent={ListHeader}
+      ListEmptyComponent={ListEmpty}
+      ListFooterComponent={ListFooter}
+      initialNumToRender={12}
+      maxToRenderPerBatch={8}
+      windowSize={5}
+      removeClippedSubviews={true}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+        ) : undefined
+      }
+    />
   );
 }
 
 const em = StyleSheet.create({
-  wrap: { gap: 14 },
+  listHeaderWrap: { gap: 14, paddingBottom: 8 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 40 },
   resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   resultTxt: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   livePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
