@@ -64,7 +64,15 @@ export default function SignInScreen() {
 
   const activateSession = async (createdSessionId: string | null | undefined) => {
     await setActive!({ session: createdSessionId });
-    router.replace('/(tabs)' as any);
+    // On web, a full-page reload is required so Clerk re-reads the session
+    // from localStorage and populates useUser()/useAuth() correctly.
+    // router.replace alone only does an in-app navigation — Clerk's React
+    // context doesn't re-sync in that case and settings still shows "Sign in".
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = '/';
+    } else {
+      router.replace('/(tabs)' as any);
+    }
   };
 
   const handleSignIn = async () => {
