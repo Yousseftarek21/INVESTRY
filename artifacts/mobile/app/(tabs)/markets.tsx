@@ -29,6 +29,9 @@ const TABS_CONFIG = [
 
 type TabKey = typeof TABS_CONFIG[number]['key'];
 
+// Persists the selected tab in memory so navigating away and back keeps the user's place
+let _persistedTab: TabKey = 'metals';
+
 function TabIcon({ spec, size, color }: { spec: TabIconSpec; size: number; color: string }) {
   if (spec.lib === 'mci') {
     return <MaterialCommunityIcons name={spec.name as any} size={size} color={color} />;
@@ -718,7 +721,12 @@ export default function MarketsScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
-  const [activeTab, setActiveTab] = useState<TabKey>('metals');
+  const [activeTab, setActiveTab] = useState<TabKey>(_persistedTab);
+
+  const handleTabChange = (k: TabKey) => {
+    _persistedTab = k;
+    setActiveTab(k);
+  };
 
   const isLoading = lP;
 
@@ -768,7 +776,7 @@ export default function MarketsScreen() {
           <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
           <LiveDot />
         </View>
-        <TabBar active={activeTab} onChange={setActiveTab} />
+        <TabBar active={activeTab} onChange={handleTabChange} />
       </View>
 
       {/* EGX: own FlatList that fills remaining space — true virtualization, 0 delay */}

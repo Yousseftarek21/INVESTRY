@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import {
   Animated, LayoutChangeEvent, Platform, Pressable, RefreshControl,
-  ScrollView, StyleSheet, Text, View,
+  ScrollView, StyleSheet, Text, useWindowDimensions, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -116,11 +116,16 @@ function buildSmoothPath(pts: Pt[]): string {
 function HealthArc({ score, size = 160 }: { score: number; size: number }) {
   const colors = useColors();
   const t = useT();
+  const { width: screenWidth } = useWindowDimensions();
   const anim = useRef(new Animated.Value(0)).current;
   const scoreColor =
     score >= 75 ? colors.green : score >= 50 ? '#F59E0B' : colors.red;
   const grade =
     score >= 75 ? t.healthExcellent : score >= 50 ? t.healthGood : score > 0 ? t.healthNeedsWork : t.healthNoData;
+
+  // Scale down the arc on small screens (iPhone SE = 320pt wide)
+  const effectiveSize = Math.min(size, Math.floor(screenWidth * 0.44));
+  const scoreFontSize = Math.max(28, Math.floor(effectiveSize * 0.26));
 
   useEffect(() => {
     Animated.timing(anim, {
@@ -130,10 +135,10 @@ function HealthArc({ score, size = 160 }: { score: number; size: number }) {
     }).start();
   }, [score]);
 
-  const sw = 14;
-  const r = (size - sw) / 2;
-  const cx = size / 2;
-  const cy = size / 2;
+  const sw = Math.max(10, Math.floor(effectiveSize * 0.083));
+  const r = (effectiveSize - sw) / 2;
+  const cx = effectiveSize / 2;
+  const cy = effectiveSize / 2;
 
   // Arc from 150° to 390° (240° sweep) — bottom-left to bottom-right
   const startDeg = 150;
@@ -152,8 +157,8 @@ function HealthArc({ score, size = 160 }: { score: number; size: number }) {
   const filled = (score / 100) * arcLen;
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+    <View style={{ width: effectiveSize, height: effectiveSize, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={effectiveSize} height={effectiveSize} style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="0">
             <Stop offset="0" stopColor={scoreColor} stopOpacity="0.6" />
@@ -179,10 +184,16 @@ function HealthArc({ score, size = 160 }: { score: number; size: number }) {
         />
       </Svg>
       <View style={{ alignItems: 'center', gap: 2, marginTop: -12 }}>
-        <Text style={[ha.score, { color: scoreColor }]}>{score}</Text>
+        <Text
+          style={[ha.score, { color: scoreColor, fontSize: scoreFontSize }]}
+          adjustsFontSizeToFit
+          numberOfLines={1}
+        >
+          {score}
+        </Text>
         <Text style={[ha.outOf, { color: colors.mutedForeground }]}>out of 100</Text>
         <View style={[ha.gradePill, { backgroundColor: scoreColor + '22', borderColor: scoreColor + '44' }]}>
-          <Text style={[ha.gradeText, { color: scoreColor }]}>{grade}</Text>
+          <Text style={[ha.gradeText, { color: scoreColor }]} numberOfLines={1}>{grade}</Text>
         </View>
       </View>
     </View>
