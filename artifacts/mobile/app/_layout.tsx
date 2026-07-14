@@ -188,16 +188,22 @@ export default function RootLayout() {
       });
   }, []);
 
-  // Once BOTH fonts and Clerk config are ready, wait out whatever remains of
-  // MIN_SPLASH_DURATION before revealing the app. Waiting for clerkConfig
-  // prevents a black-screen flash if the API call resolves after fonts load.
+  // Once fonts are ready, wait out whatever remains of MIN_SPLASH_DURATION
+  // before revealing the app. We no longer block on clerkConfig so the web
+  // preview always gets past the splash (Clerk key may be empty on web).
   useEffect(() => {
-    if ((!fontsLoaded && !fontError) || clerkConfig === null) return;
+    if (!fontsLoaded && !fontError) return;
     const elapsed = Date.now() - splashStartTime;
     const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
     const timer = setTimeout(() => setShowCustomSplash(false), remaining);
     return () => clearTimeout(timer);
-  }, [fontsLoaded, fontError, clerkConfig]);
+  }, [fontsLoaded, fontError]);
+
+  // Hard-cap: never stay on splash more than 6 s regardless of anything.
+  useEffect(() => {
+    const timer = setTimeout(() => setShowCustomSplash(false), 6000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Guard: only mount ClerkProvider when we have a non-empty publishable key.
   const validClerkConfig =
@@ -205,49 +211,58 @@ export default function RootLayout() {
       ? clerkConfig
       : null;
 
-  const appReady = (fontsLoaded || !!fontError) && validClerkConfig !== null;
+  const appReady = fontsLoaded || !!fontError;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#121212" }}>
       {/* Custom splash renders immediately on first mount — no providers needed */}
       {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
 
-      {/* Full app tree mounts once fonts are ready and Clerk config is fetched */}
-      {appReady && validClerkConfig && (
-        <ClerkProvider
-          publishableKey={validClerkConfig.publishableKey}
-          tokenCache={tokenCache}
-          proxyUrl={validClerkConfig.proxyUrl}
-        >
-          <ClerkLoaded>
-            <SafeAreaProvider>
-              <AppSettingsProvider>
-                <DirectionWrapper>
-                <BiometricWrapper>
-                <ErrorBoundary>
-                  <QueryClientProvider client={queryClient}>
-                    <SubscriptionProvider>
-                      <GestureHandlerRootView style={{ flex: 1 }}>
-                        <KeyboardProvider>
-                          <HoldingsProvider>
-                            <CashProvider>
-                              <AppWithPaywall>
-                                <RootLayoutNav />
-                              </AppWithPaywall>
-                            </CashProvider>
-                          </HoldingsProvider>
-                        </KeyboardProvider>
-                      </GestureHandlerRootView>
-                    </SubscriptionProvider>
-                  </QueryClientProvider>
-                </ErrorBoundary>
-                </BiometricWrapper>
-                </DirectionWrapper>
-              </AppSettingsProvider>
-            </SafeAreaProvider>
-          </ClerkLoaded>
-        </ClerkProvider>
-      )}
+      {/* Full app tree mounts once fonts are ready. ClerkProvider is only
+          wrapped when a valid publishable key is available (native builds).
+          On web the key is often absent so we render without auth — markets,
+          holdings (local) and settings still work fine without Clerk. */}
+      {appReady && (() => {
+        const inner = (
+          <SafeAreaProvider>
+            <AppSettingsProvider>
+              <DirectionWrapper>
+              <BiometricWrapper>
+              <ErrorBoundary>
+                <QueryClientProvider client={queryClient}>
+                  <SubscriptionProvider>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <KeyboardProvider>
+                        <HoldingsProvider>
+                          <CashProvider>
+                            <AppWithPaywall>
+                              <RootLayoutNav />
+                            </AppWithPaywall>
+                          </CashProvider>
+                        </HoldingsProvider>
+                      </KeyboardProvider>
+                    </GestureHandlerRootView>
+                  </SubscriptionProvider>
+                </QueryClientProvider>
+              </ErrorBoundary>
+              </BiometricWrapper>
+              </DirectionWrapper>
+            </AppSettingsProvider>
+          </SafeAreaProvider>
+        );
+        if (validClerkConfig) {
+          return (
+            <ClerkProvider
+              publishableKey={validClerkConfig.publishableKey}
+              tokenCache={tokenCache}
+              proxyUrl={validClerkConfig.proxyUrl}
+            >
+              <ClerkLoaded>{inner}</ClerkLoaded>
+            </ClerkProvider>
+          );
+        }
+        return inner;
+      })()}
     </View>
   );
 }
