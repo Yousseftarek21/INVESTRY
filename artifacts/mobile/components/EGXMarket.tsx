@@ -652,7 +652,7 @@ export function EGXMarket({
   return (
     <FlatList
       style={[{ flex: 1 }, style]}
-      contentContainerStyle={[em.listContent, { paddingBottom: botPad + 120 }]}
+      contentContainerStyle={[em.listContent, { paddingTop: 16, paddingBottom: botPad + 120 }]}
       data={listData}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
