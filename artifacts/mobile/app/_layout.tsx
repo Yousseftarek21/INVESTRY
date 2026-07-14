@@ -27,6 +27,7 @@ import { SubscriptionProvider, _registerPaywallCallback } from "@/context/Subscr
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 import { useNotifications } from "@/hooks/useNotifications";
 import { getApiBaseUrl } from "@/utils/api";
+import * as Updates from "expo-updates";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -130,6 +131,24 @@ export default function RootLayout() {
   // Hide the native splash immediately — our custom splash takes over from here
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  // Check for OTA update on launch. If one is available, download and reload
+  // immediately while the splash screen is still visible — so the user never
+  // sees the reload.
+  useEffect(() => {
+    if (Platform.OS === 'web' || !Updates.isEnabled) return;
+    (async () => {
+      try {
+        const check = await Updates.checkForUpdateAsync();
+        if (check.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch {
+        // Network error or no update — continue normally
+      }
+    })();
   }, []);
 
   // Fetch the correct Clerk publishable key + proxy URL from the API server.
