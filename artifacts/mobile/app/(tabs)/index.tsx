@@ -188,7 +188,7 @@ export default function HomeScreen() {
   const displayName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading } = useHoldings();
-  const { cashAccounts } = useCash();
+  const { cashAccounts, totalCash } = useCash();
   const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
@@ -201,16 +201,6 @@ export default function HomeScreen() {
   const { impact } = useHaptic();
   const { hideValues, setHideValues } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
-
-  // Convert each cash account to EGP using the live USD/EGP rate.
-  // Non-EGP/USD currencies are added at face value as a safe fallback
-  // (rates for EUR/GBP/SAR/AED are not in the price feed yet).
-  const cashTotalEGP = useMemo(() => cashAccounts.reduce((sum, a) => {
-    const bal = Number(a.balance) || 0;
-    if (a.currency === 'USD' && prices?.usdToEgp) return sum + bal * prices.usdToEgp;
-    return sum + bal;
-  }, 0), [cashAccounts, prices]);
-  const hasForeignCash = cashAccounts.some(a => a.currency !== 'EGP');
 
   // Auto-refresh prices when app comes back to foreground
   useEffect(() => {
@@ -522,7 +512,7 @@ export default function HomeScreen() {
           <View style={styles.cashInfo}>
             <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
             <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
-              {hideValues ? '••••••' : `${hasForeignCash ? '≈ ' : ''}${cashTotalEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })}`} EGP
+              {hideValues ? '••••••' : totalCash.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
             </Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
