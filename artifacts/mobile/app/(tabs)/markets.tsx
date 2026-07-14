@@ -763,7 +763,7 @@ export default function MarketsScreen() {
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
       {/* Fixed header — title + TabBar always at top, never scroll away */}
-      <View style={[s.fixedHeader, { paddingTop: topPad + 16 }]}>
+      <View style={[s.fixedHeader, { paddingTop: topPad + 16, backgroundColor: colors.background }]}>
         <View style={s.header}>
           <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
           <LiveDot />
@@ -778,7 +778,7 @@ export default function MarketsScreen() {
         /* All other tabs: ScrollView content area */
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[s.content, { paddingBottom: botPad + 100 }]}
+          contentContainerStyle={[s.content, { paddingTop: 16, paddingBottom: botPad + 100 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
         >

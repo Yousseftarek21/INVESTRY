@@ -6,7 +6,7 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, View } from "react-native";
 
 // On web (preview), skip Clerk auth gate so the UI is always visible.
 const IS_WEB = Platform.OS === "web";
@@ -85,22 +85,19 @@ function ClassicTabLayout() {
               style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
-        tabBarLabelStyle: {
-          fontFamily: 'Inter_500Medium',
-          fontSize: 10,
-        },
+        tabBarShowLabel: false,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: t.portfolio,
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="chart.pie.fill" tintColor={color} size={22} />
-            ) : (
-              <Feather name="pie-chart" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => (
+            <Image
+              source={require('../../assets/icon-home.png')}
+              style={{ width: 24, height: 24, tintColor: color }}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -128,7 +125,6 @@ function ClassicTabLayout() {
               <View style={[tabStyles.addBtn, { backgroundColor: colors.primary }]}>
                 <Feather name="plus" size={26} color="#000" />
               </View>
-              <Text style={[tabStyles.addLabel, { color: colors.primary }]}>{t.addTab}</Text>
             </Pressable>
           ),
         }}
@@ -149,12 +145,12 @@ function ClassicTabLayout() {
         name="settings"
         options={{
           title: t.settings,
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="gearshape.fill" tintColor={color} size={22} />
-            ) : (
-              <Feather name="settings" size={22} color={color} />
-            ),
+          tabBarIcon: ({ color }) => (
+            <Image
+              source={require('../../assets/icon-person.png')}
+              style={{ width: 24, height: 24, tintColor: color }}
+            />
+          ),
         }}
       />
     </Tabs>
