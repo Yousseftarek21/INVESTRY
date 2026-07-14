@@ -39,15 +39,20 @@ const PERMANENT_FREE_EMAILS = (process.env.PERMANENT_FREE_EMAILS ?? "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+// The demo account used by App Store reviewers always gets Pro so they can
+// exercise every feature without hitting the free-tier holding limit.
+const DEMO_EMAIL = "demo@investry.app";
+
 function isLaunchWindowActive(): boolean {
   return LAUNCH_ACCESS_UNTIL !== null && new Date() < LAUNCH_ACCESS_UNTIL;
 }
 
 async function isPermanentFreeUser(userId: string): Promise<boolean> {
-  if (PERMANENT_FREE_EMAILS.length === 0) return false;
   const clerkUser = await clerkClient.users.getUser(userId);
   const email = clerkUser.emailAddresses[0]?.emailAddress?.toLowerCase();
-  return !!email && PERMANENT_FREE_EMAILS.includes(email);
+  if (!email) return false;
+  if (email === DEMO_EMAIL) return true;
+  return PERMANENT_FREE_EMAILS.includes(email);
 }
 
 // Require a valid Clerk session for all subscription/checkout routes

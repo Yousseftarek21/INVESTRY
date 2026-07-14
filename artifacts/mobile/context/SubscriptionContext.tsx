@@ -156,8 +156,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [isRestoring, setIsRestoring] = useState(false);
   const loadedUserRef = useRef<string | null>(null);
 
-  const cachePlan = useCallback(async (uid: string, p: Plan, bp: BillingPeriod) => {
-    await AsyncStorage.setItem(subscriptionKey(uid), JSON.stringify({ plan: p, billingPeriod: bp }));
+  const cachePlan = useCallback(async (uid: string, p: Plan, bp: BillingPeriod, la?: boolean) => {
+    await AsyncStorage.setItem(subscriptionKey(uid), JSON.stringify({ plan: p, billingPeriod: bp, launchAccess: la ?? false }));
   }, []);
 
   const fetchSubscription = useCallback(async (uid: string): Promise<{ plan: Plan; billingPeriod: BillingPeriod; launchAccess: boolean } | null> => {
@@ -225,9 +225,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       .then((v) => {
         if (!active || loadedUserRef.current !== capturedUserId || !v) return;
         try {
-          const cached = JSON.parse(v) as { plan: Plan; billingPeriod: BillingPeriod };
+          const cached = JSON.parse(v) as { plan: Plan; billingPeriod: BillingPeriod; launchAccess?: boolean };
           setPlan(cached.plan ?? 'free');
           setBillingPeriod(cached.billingPeriod ?? 'monthly');
+          // Restore launchAccess from cache so the holding limit isn't enforced
+          // while the live fetch is in-flight on cold starts.
+          if (cached.launchAccess) setLaunchAccess(true);
         } catch { /* ignore */ }
       })
       .catch(() => null);
@@ -237,10 +240,11 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         if (!active || loadedUserRef.current !== capturedUserId) return;
         const resolvedPlan = data?.plan ?? 'free';
         const resolvedPeriod = data?.billingPeriod ?? 'monthly';
+        const resolvedLaunchAccess = data?.launchAccess ?? false;
         setPlan(resolvedPlan);
         setBillingPeriod(resolvedPeriod);
-        setLaunchAccess(data?.launchAccess ?? false);
-        cachePlanRef.current(capturedUserId, resolvedPlan, resolvedPeriod).catch(() => null);
+        setLaunchAccess(resolvedLaunchAccess);
+        cachePlanRef.current(capturedUserId, resolvedPlan, resolvedPeriod, resolvedLaunchAccess).catch(() => null);
       })
       .catch(() => {
         // Network/backend error: keep whatever was loaded from cache (or free).
