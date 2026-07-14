@@ -207,7 +207,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#060D1A" }}>
+    <View style={{ flex: 1, backgroundColor: "#121212" }}>
       {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
 
       {appReady && validClerkConfig && (
