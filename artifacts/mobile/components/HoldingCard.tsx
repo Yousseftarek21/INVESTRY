@@ -18,6 +18,7 @@ interface HoldingCardProps {
   onDelete?: () => void;
   onEdit?: () => void;
   hideValues?: boolean;
+  hideSubtitle?: boolean;
 }
 
 function personalAssetValueEGP(holding: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -107,7 +108,7 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   fixed_income: '#22C55E',
 };
 
-export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues }: HoldingCardProps) {
+export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hideSubtitle }: HoldingCardProps) {
   const colors = useColors();
   const t = useT();
   const labels: HoldingLabels = {
@@ -137,7 +138,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues }: H
 
       <View style={styles.info}>
         <Text style={[styles.title, { color: colors.text }]}>{getTitle(holding, labels)}</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>
+        {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>}
       </View>
 
       <View style={styles.right}>

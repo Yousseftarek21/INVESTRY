@@ -562,6 +562,7 @@ export default function HomeScreen() {
                 holding={h}
                 prices={prices}
                 hideValues={hideValues}
+                hideSubtitle
                 onEdit={() => router.push(`/add-investment?holdingId=${h.id}` as any)}
               />
             ))}
