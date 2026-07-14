@@ -74,7 +74,7 @@ export default function SignInScreen() {
       // Status/sessionId must be read from `signIn` AFTER the call, not from the return value.
       const { error } = await signIn.create({ identifier: email, password });
       if (error) { setGlobalError(error.message ?? 'Incorrect email or password.'); return; }
-      if (signIn.status === 'complete') {
+      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
         await activateSession(signIn.createdSessionId);
       } else {
         setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
@@ -99,7 +99,7 @@ export default function SignInScreen() {
         password: 'Investry_Demo_2025!',
       });
       if (error) throw new Error(error.message ?? 'Demo sign-in failed');
-      if (signIn.status === 'complete') {
+      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
         await activateSession(signIn.createdSessionId);
       } else {
         throw new Error(`Demo sign-in could not complete. Status: ${signIn.status}`);
