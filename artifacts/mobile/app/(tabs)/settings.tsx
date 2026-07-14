@@ -1061,15 +1061,13 @@ export default function SettingsScreen() {
         </Sect>
 
         {/* ── SIGN OUT ─────────────────────────────────────── */}
-        {user && (
-          <TouchableOpacity
-            style={[sc.signOut, { backgroundColor: colors.red + '12', borderColor: colors.red + '30' }]}
-            onPress={handleSignOut} activeOpacity={0.7}
-          >
-            <Feather name="log-out" size={17} color={colors.red} />
-            <Text style={[sc.signOutTxt, { color: colors.red }]}>{t.signOutBtn}</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={[sc.signOut, { backgroundColor: colors.red + '12', borderColor: colors.red + '30' }]}
+          onPress={handleSignOut} activeOpacity={0.7}
+        >
+          <Feather name="log-out" size={17} color={colors.red} />
+          <Text style={[sc.signOutTxt, { color: colors.red }]}>{t.signOutBtn}</Text>
+        </TouchableOpacity>
 
         {/* ── SMART FOOTER ─────────────────────────────────── */}
         <SmartFooter lastUpdate={lastUpdate} />

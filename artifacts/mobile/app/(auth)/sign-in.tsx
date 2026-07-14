@@ -64,31 +64,18 @@ export default function SignInScreen() {
 
   const activateSession = async (createdSessionId: string | null | undefined) => {
     await setActive!({ session: createdSessionId });
-    // On web, a full-page reload is required so Clerk re-reads the session
-    // from localStorage and populates useUser()/useAuth() correctly.
-    // router.replace alone only does an in-app navigation — Clerk's React
-    // context doesn't re-sync in that case and settings still shows "Sign in".
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.location.href = '/';
-    } else {
-      router.replace('/(tabs)' as any);
-    }
+    router.replace('/(tabs)' as any);
   };
 
   const handleSignIn = async () => {
     setGlobalError('');
-    try {
-      // signIn.create() mutates `signIn` in place and returns { error }.
-      // Status/sessionId must be read from `signIn` AFTER the call, not from the return value.
-      const { error } = await signIn.create({ identifier: email, password });
-      if (error) { setGlobalError(error.message ?? 'Incorrect email or password.'); return; }
-      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
-        await activateSession(signIn.createdSessionId);
-      } else {
-        setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
-      }
-    } catch (err: any) {
-      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Incorrect email or password.');
+    const result = await signIn.password({ emailAddress: email, password });
+    if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
+
+    if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
+      await activateSession(signIn.createdSessionId);
+    } else {
+      setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
     }
   };
 
@@ -100,20 +87,19 @@ export default function SignInScreen() {
       // password. We don't need the response — fire and move on regardless.
       try { await fetch(`${getApiBaseUrl()}/api/demo/token`); } catch { /* non-fatal */ }
 
-      // signIn.create() mutates `signIn` in place and returns { error }.
-      // Status/sessionId must be read from `signIn` AFTER the call, not from the return value.
-      const { error } = await signIn.create({
-        identifier: 'demo@investry.app',
+      const result = await signIn.password({
+        emailAddress: 'demo@investry.app',
         password: 'Investry_Demo_2025!',
       });
-      if (error) throw new Error(error.message ?? 'Demo sign-in failed');
+      if (result.error) throw new Error(result.error.message ?? 'Demo sign-in failed');
+
       if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
         await activateSession(signIn.createdSessionId);
       } else {
-        throw new Error(`Demo sign-in could not complete. Status: ${signIn.status}`);
+        throw new Error(`Unexpected sign-in status: ${signIn.status}`);
       }
     } catch (err: any) {
-      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Demo sign-in failed. Please try again.');
+      setGlobalError(err.message ?? 'Demo sign-in failed. Please try again.');
     } finally {
       setDemoLoading(false);
     }

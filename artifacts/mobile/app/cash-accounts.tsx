@@ -15,6 +15,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { CashAccount, CashAccountType } from '@/types';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
+import { useMarketPrices } from '@/hooks/usePrices';
 
 const CURRENCIES_DEFAULT = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 const CURRENCIES_FOREIGN  = ['USD', 'EUR', 'GBP', 'SAR', 'AED', 'EGP'];
@@ -33,6 +34,7 @@ export default function CashAccountsScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { cashAccounts, addCashAccount, updateCashAccount, removeCashAccount } = useCash();
+  const { data: prices } = useMarketPrices();
   const { impact, notify } = useHaptic();
 
   const { openAdd: openAddParam } = useLocalSearchParams<{ openAdd?: string }>();
@@ -182,15 +184,12 @@ export default function CashAccountsScreen() {
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
-  // Sum only EGP accounts so the total label is always accurate.
-  // Foreign-currency balances are visible on each individual card below.
-  const egpTotal = cashAccounts.reduce((sum, a) =>
-    a.currency === 'EGP' ? sum + (Number(a.balance) || 0) : sum, 0);
-
-  // Group non-EGP currencies for the summary line (e.g. "USD · SAR")
-  const foreignCurrencies = [...new Set(
-    cashAccounts.filter(a => a.currency !== 'EGP').map(a => a.currency)
-  )];
+  const totalCash = cashAccounts.reduce((sum, a) => {
+    const bal = Number(a.balance) || 0;
+    if (a.currency === 'USD' && prices?.usdToEgp) return sum + bal * prices.usdToEgp;
+    return sum + bal;
+  }, 0);
+  const hasForeignCash = cashAccounts.some(a => a.currency !== 'EGP');
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
   const inputStyle = [styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.card }];
 
@@ -349,13 +348,8 @@ export default function CashAccountsScreen() {
               <View style={[styles.totalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>{t.totalCash}</Text>
                 <Text style={[styles.totalValue, { color: colors.text }]}>
-                  {egpTotal.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                  {hasForeignCash ? '≈ ' : ''}{totalCash.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
                 </Text>
-                {foreignCurrencies.length > 0 && (
-                  <Text style={[styles.totalLabel, { color: colors.mutedForeground, marginTop: 4 }]}>
-                    + {foreignCurrencies.join(' · ')} accounts
-                  </Text>
-                )}
               </View>
             )}
 
