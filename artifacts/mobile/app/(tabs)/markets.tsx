@@ -10,7 +10,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
-import RealEstateMarket from '@/components/RealEstateMarket';
+import { RE_PRICES, LAST_UPDATED, REAreaPrice } from '@/data/egypt-real-estate-prices';
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 
@@ -449,6 +449,123 @@ const sr = StyleSheet.create({
   price: { fontSize: 15, fontFamily: 'Inter_700Bold' },
 });
 
+// ─── Real estate ───────────────────────────────────────────────────────────────
+
+// Precompute grouped sections once at module level — pure static data, zero cost.
+const GOV_SECTIONS: { gov: string; areas: REAreaPrice[] }[] = (() => {
+  const map = new Map<string, REAreaPrice[]>();
+  RE_PRICES.forEach(a => {
+    if (!map.has(a.governorate)) map.set(a.governorate, []);
+    map.get(a.governorate)!.push(a);
+  });
+  return Array.from(map.entries()).map(([gov, areas]) => ({ gov, areas }));
+})();
+
+function fmtKEGP(n: number): string {
+  return `${Math.round(n / 1_000)}K`;
+}
+
+function RERow({ area, isLast }: { area: REAreaPrice; isLast: boolean }) {
+  const colors = useColors();
+  const isUp   = area.trend === 'up';
+  const isDown = area.trend === 'down';
+  const tc = isUp ? colors.green : isDown ? colors.red : colors.mutedForeground;
+  return (
+    <View style={[
+      rer.row,
+      !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+    ]}>
+      <View style={[rer.icon, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '28' }]}>
+        <Feather name="home" size={14} color={colors.primary} />
+      </View>
+      <View style={rer.info}>
+        <Text style={[rer.name, { color: colors.text }]} numberOfLines={1}>{area.area}</Text>
+        <Text style={[rer.range, { color: colors.mutedForeground }]}>
+          {fmtKEGP(area.minPricePerM2)} – {fmtKEGP(area.maxPricePerM2)} EGP/m²
+        </Text>
+      </View>
+      <View style={rer.right}>
+        <Text style={[rer.price, { color: colors.text }]}>{fmtKEGP(area.avgPricePerM2)}</Text>
+        <Text style={[rer.unit, { color: colors.mutedForeground }]}>EGP/m²</Text>
+        <View style={[rer.badge, { backgroundColor: tc + '18' }]}>
+          <Text style={[rer.badgeTxt, { color: tc }]}>
+            {isUp ? '↑' : isDown ? '↓' : '–'} {area.changePercent > 0 ? '+' : ''}{area.changePercent}%
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+const rer = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
+  icon: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  info: { flex: 1, gap: 2, minWidth: 0 },
+  name: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  range: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  right: { alignItems: 'flex-end', gap: 2, flexShrink: 0 },
+  price: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
+  unit: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+});
+
+function RealEstateTab() {
+  const colors = useColors();
+  const t = useT();
+  return (
+    <View style={tab.group}>
+      {/* Hero info card */}
+      <View style={[reh.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[reh.accent, { backgroundColor: colors.primary }]} />
+        <View style={reh.body}>
+          <View style={reh.topRow}>
+            <View style={reh.nameRow}>
+              <View style={[reh.iconWrap, { backgroundColor: colors.primary + '18' }]}>
+                <Feather name="home" size={15} color={colors.primary} />
+              </View>
+              <Text style={[reh.label, { color: colors.mutedForeground }]}>EGYPT PROPERTY MARKET</Text>
+            </View>
+            <View style={[reh.pill, { backgroundColor: colors.muted }]}>
+              <Text style={[reh.pillTxt, { color: colors.mutedForeground }]}>
+                {t.reMarketLastUpdated}: {LAST_UPDATED}
+              </Text>
+            </View>
+          </View>
+          <Text style={[reh.title, { color: colors.text }]}>{RE_PRICES.length} areas · avg price/m²</Text>
+          <Text style={[reh.sub, { color: colors.mutedForeground }]}>Q2 2026 estimates · EGP/m²</Text>
+        </View>
+      </View>
+
+      {/* One section per governorate */}
+      {GOV_SECTIONS.map(({ gov, areas }) => (
+        <View key={gov} style={tab.section}>
+          <SLabel icon={{ lib: 'feather', name: 'map-pin' }} title={gov.toUpperCase()} />
+          <TableCard>
+            {areas.map((area, idx) => (
+              <RERow key={area.id} area={area} isLast={idx === areas.length - 1} />
+            ))}
+          </TableCard>
+        </View>
+      ))}
+
+      <Text style={tab.note}>{t.reMarketDisclaimer}</Text>
+    </View>
+  );
+}
+const reh = StyleSheet.create({
+  card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
+  accent: { width: 3, alignSelf: 'stretch' },
+  body: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, gap: 6 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  iconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1 },
+  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  pillTxt: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
+  title: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.4 },
+  sub: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 15 },
+});
+
 // ─── Coming soon ───────────────────────────────────────────────────────────────
 
 function ComingSoon({ icon, title, description }: {
@@ -650,7 +767,7 @@ export default function MarketsScreen() {
       {activeTab === 'metals'      && <MetalsTab prices={prices} />}
       {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
       {activeTab === 'egx'         && <EGXTab />}
-      {activeTab === 'real_estate' && <RealEstateMarket />}
+      {activeTab === 'real_estate' && <RealEstateTab />}
       {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
       {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
 

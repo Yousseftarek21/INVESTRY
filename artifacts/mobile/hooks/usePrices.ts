@@ -47,27 +47,34 @@ const EGX_FALLBACK: EGXStock[] = [
 // ─── Direct client-side fallback (used if API server unreachable) ─────────────
 
 async function fetchMarketPricesDirect(): Promise<MarketPrices> {
-  const [goldRes, silverRes, erRes] = await Promise.allSettled([
-    fetch('https://api.gold-api.com/price/XAU', { headers: { Accept: 'application/json' } }),
-    fetch('https://api.gold-api.com/price/XAG', { headers: { Accept: 'application/json' } }),
+  // TradingView CFD scanner — free, no key, same source the server uses
+  const [tvRes, erRes] = await Promise.allSettled([
+    fetch('https://scanner.tradingview.com/global/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Origin': 'https://www.tradingview.com' },
+      body: JSON.stringify({
+        symbols: { tickers: ['TVC:GOLD', 'TVC:SILVER'] },
+        columns: ['close', 'change_abs', 'change'],
+      }),
+    }),
     fetch('https://open.er-api.com/v6/latest/USD'),
   ]);
 
   let goldUsd = FALLBACK.goldUsd;
   let silverUsd = FALLBACK.silverUsd;
+  let goldChangePercent = 0;
+  let silverChangePercent = 0;
   let usdToEgp = FALLBACK.usdToEgp;
 
   try {
-    if (goldRes.status === 'fulfilled' && goldRes.value.ok) {
-      const d = await goldRes.value.json();
-      if (d?.price > 0) goldUsd = d.price;
-    }
-  } catch { /* use fallback */ }
-
-  try {
-    if (silverRes.status === 'fulfilled' && silverRes.value.ok) {
-      const d = await silverRes.value.json();
-      if (d?.price > 0) silverUsd = d.price;
+    if (tvRes.status === 'fulfilled' && tvRes.value.ok) {
+      const d = await tvRes.value.json() as { data?: Array<{ s: string; d: [number, number, number] }> };
+      const byS: Record<string, [number, number, number]> = {};
+      for (const item of d?.data ?? []) byS[item.s] = item.d;
+      const gold = byS['TVC:GOLD'];
+      const silver = byS['TVC:SILVER'];
+      if (gold?.[0] > 0)   { goldUsd = gold[0];     goldChangePercent = gold[2];   }
+      if (silver?.[0] > 0) { silverUsd = silver[0]; silverChangePercent = silver[2]; }
     }
   } catch { /* use fallback */ }
 
@@ -80,8 +87,8 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
 
   return {
     goldUsd, silverUsd, usdToEgp,
-    goldChange: 0, goldChangePercent: 0,
-    silverChange: 0, silverChangePercent: 0,
+    goldChange: 0, goldChangePercent,
+    silverChange: 0, silverChangePercent,
     lastUpdated: new Date(),
   };
 }

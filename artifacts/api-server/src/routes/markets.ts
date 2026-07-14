@@ -394,8 +394,6 @@ const FALLBACK_GOLD   = 4018;
 const FALLBACK_SILVER = 58.5;
 const FALLBACK_EGP    = 51.0;
 
-const COMMODITY_API_BASE = "https://api.commoditypriceapi.com/v2";
-
 // Yahoo Finance spark endpoint
 const YF_SPARK_BASE = "https://query1.finance.yahoo.com/v7/finance/spark";
 
@@ -541,68 +539,51 @@ function yesterdayDate(): string {
   return d.toISOString().slice(0, 10);
 }
 
-// ─── CommodityPriceAPI — latest metals ────────────────────────────────────────
 
-interface CommodityLatestResponse {
-  success: boolean;
-  timestamp: number;
-  rates: { XAU?: number; XAG?: number };
-}
+// ─── Metals via TradingView CFD scanner (TVC:GOLD / TVC:SILVER) ──────────────
+// Free, no API key, same source as TradingView charts. Returns USD/oz spot.
+// change_abs = today_close - prev_close  →  prevClose = close - change_abs
 
-async function fetchCommodityLatest(): Promise<{ xau: number; xag: number } | null> {
-  const key = process.env.COMMODITY_API_KEY;
-  if (!key) { logger.warn("COMMODITY_API_KEY not set"); return null; }
+interface TVMetalsRow { s: string; d: [number, number, number] }
 
-  const url = `${COMMODITY_API_BASE}/rates/latest?apiKey=${key}&symbols=XAU,XAG`;
-  const data = await safeJson<CommodityLatestResponse>(await safeFetch(url), "CommodityPriceAPI latest");
+async function fetchMetalsViaTradingView(): Promise<{
+  xau: number; xag: number;
+  xauPrevClose: number; xagPrevClose: number;
+} | null> {
+  const res = await safeFetch("https://scanner.tradingview.com/global/scan", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Origin":  "https://www.tradingview.com",
+      "Referer": "https://www.tradingview.com/",
+    },
+    body: JSON.stringify({
+      symbols: { tickers: ["TVC:GOLD", "TVC:SILVER"] },
+      columns: ["close", "change_abs", "change"],
+    }),
+  });
 
-  if (!data?.success || !data.rates) {
-    logger.warn({ data }, "CommodityPriceAPI latest: unexpected response");
+  if (!res?.ok) {
+    logger.warn({ status: res?.status }, "TradingView metals scanner: bad response");
     return null;
   }
 
-  const xau = data.rates.XAU;
-  const xag = data.rates.XAG;
-  if (!xau || !xag || xau <= 0 || xag <= 0) return null;
+  const data = await res.json() as { data: TVMetalsRow[] };
+  if (!data?.data?.length) return null;
 
-  return { xau, xag };
-}
+  const bySym: Record<string, [number, number, number]> = {};
+  for (const item of data.data) bySym[item.s] = item.d;
 
-// ─── CommodityPriceAPI — historical (yesterday close) for 24 h change ─────────
+  const gold   = bySym["TVC:GOLD"];
+  const silver = bySym["TVC:SILVER"];
+  if (!gold || !silver || gold[0] <= 0 || silver[0] <= 0) return null;
 
-interface CommodityHistoricalResponse {
-  success: boolean;
-  date: string;
-  rates: {
-    XAU?: { open: number; high: number; low: number; close: number };
-    XAG?: { open: number; high: number; low: number; close: number };
+  return {
+    xau:          gold[0],
+    xag:          silver[0],
+    xauPrevClose: gold[0]   - gold[1],
+    xagPrevClose: silver[0] - silver[1],
   };
-}
-
-async function fetchCommodityHistorical(): Promise<HistoricalRates | null> {
-  const cached = historicalCache.get();
-  if (cached) return cached;
-
-  const key = process.env.COMMODITY_API_KEY;
-  if (!key) return null;
-
-  const date = yesterdayDate();
-  const url = `${COMMODITY_API_BASE}/rates/historical?apiKey=${key}&symbols=XAU,XAG&date=${date}`;
-  const data = await safeJson<CommodityHistoricalResponse>(await safeFetch(url), "CommodityPriceAPI historical");
-
-  if (!data?.success || !data.rates?.XAU || !data.rates?.XAG) {
-    logger.warn({ data }, "CommodityPriceAPI historical: unexpected response");
-    return null;
-  }
-
-  const result: HistoricalRates = {
-    xauClose: data.rates.XAU.close,
-    xagClose: data.rates.XAG.close,
-    date: data.date,
-  };
-
-  historicalCache.set(result);
-  return result;
 }
 
 // ─── USD → EGP exchange rate ───────────────────────────────────────────────────
@@ -698,26 +679,26 @@ async function fetchFxCrossRates(usdToEgp: number): Promise<Record<string, numbe
 // ─── Assemble prices ──────────────────────────────────────────────────────────
 
 async function fetchPrices(): Promise<MarketPricesResponse> {
-  const [latest, historical, usdToEgp] = await Promise.all([
-    fetchCommodityLatest(),
-    fetchCommodityHistorical(),
+  // All three run in parallel — TradingView scanner is ~100-200 ms, no key needed.
+  // fetchFxCrossRates uses FALLBACK_EGP only for its ER-API cross-rate fallback;
+  // Wise fetches each pair directly so it doesn't need usdToEgp at fetch time.
+  const [metals, usdToEgp, fxRates] = await Promise.all([
+    fetchMetalsViaTradingView(),
     fetchUsdToEgp(),
+    fetchFxCrossRates(FALLBACK_EGP),
   ]);
 
-  const goldUsd   = latest?.xau   ?? FALLBACK_GOLD;
-  const silverUsd = latest?.xag   ?? FALLBACK_SILVER;
+  const goldUsd   = metals?.xau ?? FALLBACK_GOLD;
+  const silverUsd = metals?.xag ?? FALLBACK_SILVER;
 
-  const goldChange    = historical ? round2(goldUsd   - historical.xauClose) : 0;
-  const goldChangePct = historical && historical.xauClose > 0
-    ? round2((goldChange / historical.xauClose) * 100) : 0;
+  const goldChange    = metals ? round2(goldUsd   - metals.xauPrevClose) : 0;
+  const goldChangePct = metals && metals.xauPrevClose > 0
+    ? round2((goldChange / metals.xauPrevClose) * 100) : 0;
 
-  const silverChange    = historical ? round2(silverUsd - historical.xagClose) : 0;
-  const silverChangePct = historical && historical.xagClose > 0
-    ? round2((silverChange / historical.xagClose) * 100) : 0;
+  const silverChange    = metals ? round2(silverUsd - metals.xagPrevClose) : 0;
+  const silverChangePct = metals && metals.xagPrevClose > 0
+    ? round2((silverChange / metals.xagPrevClose) * 100) : 0;
 
-  // Exact formula per user spec:
-  //   Step 1 — 24K (EGP/g) = (GoldOzUSD × USD_EGP) / 31.1034768
-  //   Step 2 — 22K = 24K × 22/24 | 21K = 24K × 21/24 | 18K = 24K × 18/24
   const price24k = round2((goldUsd * usdToEgp) / TROY_OZ);
   const goldEgpPerGram: Record<string, number> = {
     "24k": price24k,
@@ -726,16 +707,7 @@ async function fetchPrices(): Promise<MarketPricesResponse> {
     "18k": round2(price24k * (18 / 24)),
   };
   const silverEgpPerGram = round2((silverUsd * usdToEgp) / TROY_OZ);
-
-  // Round usdToEgp to 4dp so the displayed rate is precise enough
-  // that consumers can verify the gram-price calculation themselves.
-  const usdToEgpDisplay = Math.round(usdToEgp * 10000) / 10000;
-
-  const sources: string[] = latest ? ["commoditypriceapi.com"] : ["fallback"];
-
-  // Fetch FX cross rates in parallel with the existing requests would be
-  // ideal, but usdToEgp must be known first to compute EGP-based rates.
-  const fxRates = await fetchFxCrossRates(usdToEgp);
+  const usdToEgpDisplay  = Math.round(usdToEgp * 10000) / 10000;
 
   return {
     goldUsd:             round2(goldUsd),
@@ -749,7 +721,7 @@ async function fetchPrices(): Promise<MarketPricesResponse> {
     silverEgpPerGram,
     fxRates,
     lastUpdated: new Date().toISOString(),
-    sources,
+    sources:     metals ? ["tradingview-cfd"] : ["fallback"],
   };
 }
 
@@ -1086,11 +1058,25 @@ function sampledDates(totalDays: number, count: number): string[] {
   return result;
 }
 
-async function fetchOneClose(date: string, key: string): Promise<number | null> {
-  const url = `${COMMODITY_API_BASE}/rates/historical?apiKey=${key}&symbols=XAU&date=${date}`;
-  const data = await safeJson<CommodityHistoricalResponse>(await safeFetch(url));
-  const c = data?.rates?.XAU?.close;
-  return c && c > 0 ? c : null;
+// Map our chart ranges to Yahoo Finance range/interval params for GC=F (Gold Futures)
+const YF_GOLD_RANGES: Record<string, { yfRange: string; yfInterval: string }> = {
+  '1W':  { yfRange: '5d',  yfInterval: '1d'  },
+  '1M':  { yfRange: '1mo', yfInterval: '1d'  },
+  '3M':  { yfRange: '3mo', yfInterval: '1wk' },
+  '1Y':  { yfRange: '1y',  yfInterval: '1wk' },
+  'ALL': { yfRange: '5y',  yfInterval: '1mo' },
+};
+
+async function fetchGoldClosesFromYF(range: string): Promise<number[]> {
+  const yf = YF_GOLD_RANGES[range];
+  if (!yf) return [];
+  const session = await getYFSession();
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=${yf.yfRange}&interval=${yf.yfInterval}`;
+  const res = await safeFetch(url, { headers: yfAuthHeaders(session) });
+  if (!res?.ok) return [];
+  const data = await res.json() as { chart?: { result?: Array<{ indicators?: { quote?: Array<{ close?: (number | null)[] }> } }> } };
+  const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
+  return closes.filter((c): c is number => c !== null && c > 0);
 }
 
 async function buildGoldHistory(range: string): Promise<number[]> {
@@ -1098,44 +1084,29 @@ async function buildGoldHistory(range: string): Promise<number[]> {
   if (cached) return cached;
 
   if (range === '1D') {
-    // Reuse already-fetched yesterday close + today's current price — no extra API calls.
-    // Tolerate either call failing individually (unlike a strict Promise.all) so a single
-    // flaky/rate-limited leg doesn't blank out the whole 1D chart.
-    const [histResult, latestResult] = await Promise.allSettled([
-      fetchCommodityHistorical(),
-      fetchCommodityLatest(),
-    ]);
-    const hist = histResult.status === 'fulfilled' ? histResult.value : null;
-    const latest = latestResult.status === 'fulfilled' ? latestResult.value : null;
+    // Use TradingView metals data: [prevClose, currentClose]
+    const metals = await fetchMetalsViaTradingView();
+    const cachedPrices = pricesCache.get();
+    const weekly = histCaches['1W']?.get();
 
     let pts: number[] | null = null;
-    if (hist && latest) {
-      pts = [hist.xauClose, latest.xau];
+    if (metals) {
+      pts = [metals.xauPrevClose, metals.xau];
     } else {
-      // Fall back to the cached prices response (populated by /markets/prices) so we
-      // still have *some* today value, and/or the tail of the 1W series for yesterday.
-      const cachedPrices = pricesCache.get();
-      const weekly = histCaches['1W']?.get();
-      const yesterdayClose = hist?.xauClose ?? (weekly && weekly.length >= 2 ? weekly[weekly.length - 2] : null);
-      const todayValue = latest?.xau ?? cachedPrices?.goldUsd ?? null;
-      if (yesterdayClose != null && todayValue != null) {
-        pts = [yesterdayClose, todayValue];
-      }
+      const yesterdayClose = weekly && weekly.length >= 2 ? weekly[weekly.length - 2] : null;
+      const todayValue = cachedPrices?.goldUsd ?? null;
+      if (yesterdayClose != null && todayValue != null) pts = [yesterdayClose, todayValue];
     }
-
     if (!pts) return [];
     histCaches['1D'].set(pts);
     return pts;
   }
 
-  const key = process.env.COMMODITY_API_KEY;
-  if (!key) return [];
   const cfg = HISTORY_CFG[range];
   if (!cfg) return [];
 
-  const dates = sampledDates(cfg.totalDays, cfg.count);
-  const closes = await Promise.all(dates.map(d => fetchOneClose(d, key)));
-  const valid = closes.filter((c): c is number => c !== null);
+  const closes = await fetchGoldClosesFromYF(range);
+  const valid = closes;
   if (valid.length < 2) return [];
 
   histCaches[range].set(valid);
