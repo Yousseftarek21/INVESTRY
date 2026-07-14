@@ -25,28 +25,22 @@ function LoadingScreen() {
 }
 
 function NativeTabLayout() {
-  const t = useT();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "chart.pie", selected: "chart.pie.fill" }} />
-        <Label>{t.portfolio}</Label>
+        <Icon sf={{ default: "house", selected: "house.fill" }} />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="markets">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>{t.markets}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="holdings">
         <Icon sf={{ default: "plus.circle.fill", selected: "plus.circle.fill" }} />
-        <Label>{t.addTab}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="analytics">
         <Icon sf={{ default: "chart.xyaxis.line", selected: "chart.xyaxis.line" }} />
-        <Label>{t.analytics}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
-        <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
-        <Label>{t.settings}</Label>
+        <Icon sf={{ default: "person", selected: "person.fill" }} />
       </NativeTabs.Trigger>
     </NativeTabs>
   );
