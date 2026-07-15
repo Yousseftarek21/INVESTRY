@@ -94,9 +94,13 @@ export default function SignUpScreen() {
     if (!signUp) return;
     if (!agreedToTerms) { setGlobalError('Please accept the Terms & Privacy Policy to continue.'); return; }
     setGlobalError('');
-    const { error } = await signUp.password({ emailAddress: email, password });
-    if (error) { setGlobalError(error.message ?? 'Sign up failed'); return; }
-    await signUp.verifications.sendEmailCode();
+    try {
+      const { error } = await signUp.password({ emailAddress: email, password });
+      if (error) { setGlobalError(error.message ?? 'Sign up failed'); return; }
+      await signUp.verifications.sendEmailCode();
+    } catch (err: any) {
+      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Sign up failed. Please try again.');
+    }
   };
 
   const finalizeNavigate = ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
@@ -111,11 +115,15 @@ export default function SignUpScreen() {
 
   const handleVerify = async () => {
     setGlobalError('');
-    await signUp.verifications.verifyEmailCode({ code });
-    if (signUp.status === 'complete') {
-      await signUp.finalize({ navigate: finalizeNavigate });
-    } else {
-      setGlobalError('Invalid code. Please check and try again.');
+    try {
+      await signUp.verifications.verifyEmailCode({ code });
+      if (signUp.status === 'complete') {
+        await signUp.finalize({ navigate: finalizeNavigate });
+      } else {
+        setGlobalError('Invalid code. Please check and try again.');
+      }
+    } catch (err: any) {
+      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Verification failed. Please try again.');
     }
   };
 

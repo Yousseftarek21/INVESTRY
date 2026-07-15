@@ -70,13 +70,16 @@ export default function SignInScreen() {
   const handleSignIn = async () => {
     if (!signIn) return;
     setGlobalError('');
-    const result = await signIn.password({ emailAddress: email, password });
-    if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
-
-    if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
-      await activateSession(signIn.createdSessionId);
-    } else {
-      setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
+    try {
+      const result = await signIn.password({ emailAddress: email, password });
+      if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
+      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
+        await activateSession(signIn.createdSessionId);
+      } else {
+        setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
+      }
+    } catch (err: any) {
+      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Sign in failed. Please try again.');
     }
   };
 
