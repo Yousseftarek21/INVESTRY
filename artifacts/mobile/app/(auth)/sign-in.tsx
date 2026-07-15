@@ -68,6 +68,7 @@ export default function SignInScreen() {
   };
 
   const handleSignIn = async () => {
+    if (!signIn) return;
     setGlobalError('');
     const result = await signIn.password({ emailAddress: email, password });
     if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
@@ -80,6 +81,7 @@ export default function SignInScreen() {
   };
 
   const handleDemoSignIn = async () => {
+    if (!signIn) return;
     setGlobalError('');
     setDemoLoading(true);
     try {
@@ -297,9 +299,9 @@ export default function SignInScreen() {
 
           {/* Sign In button */}
           <Pressable
-            style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: (!email || !password || isFetching) ? 0.5 : 1 }]}
+            style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: (!email || !password || isFetching || !signIn) ? 0.5 : 1 }]}
             onPress={handleSignIn}
-            disabled={!email || !password || isFetching}
+            disabled={!email || !password || isFetching || !signIn}
           >
             {isFetching
               ? <ActivityIndicator color={colors.primaryForeground} />

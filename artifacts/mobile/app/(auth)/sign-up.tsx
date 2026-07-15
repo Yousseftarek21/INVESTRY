@@ -91,6 +91,7 @@ export default function SignUpScreen() {
 
   const isFetching = fetchStatus === 'fetching';
   const handleSignUp = async () => {
+    if (!signUp) return;
     if (!agreedToTerms) { setGlobalError('Please accept the Terms & Privacy Policy to continue.'); return; }
     setGlobalError('');
     const { error } = await signUp.password({ emailAddress: email, password });
@@ -356,10 +357,10 @@ export default function SignUpScreen() {
           <Pressable
             style={[styles.primaryBtn, {
               backgroundColor: colors.primary,
-              opacity: (!email || !password || isFetching || !agreedToTerms) ? 0.5 : 1,
+              opacity: (!email || !password || isFetching || !agreedToTerms || !signUp) ? 0.5 : 1,
             }]}
             onPress={handleSignUp}
-            disabled={!email || !password || isFetching || !agreedToTerms}
+            disabled={!email || !password || isFetching || !agreedToTerms || !signUp}
           >
             {isFetching
               ? <ActivityIndicator color={colors.primaryForeground} />
