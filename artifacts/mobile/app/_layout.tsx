@@ -103,8 +103,8 @@ function BiometricWrapper({ children }: { children: React.ReactNode }) {
 let _hideSplash: (() => void) | null = null;
 let _onClerkReady: (() => void) | null = null;
 
-// Lives inside <ClerkProvider> — useAuth() works there without ClerkLoaded.
-// Fires _hideSplash and _onClerkReady once Clerk finishes initialising.
+// Lives inside <ClerkProvider> — useAuth() works there without needing a
+// ClerkLoaded gate. Fires _hideSplash and _onClerkReady once Clerk is ready.
 function ClerkReadySignal() {
   const { isLoaded } = useAuth();
   useEffect(() => {
@@ -114,6 +114,17 @@ function ClerkReadySignal() {
     }
   }, [isLoaded]);
   return null;
+}
+
+// @clerk/expo v3.x does not export a <ClerkLoaded> component, so we build
+// the equivalent: renders children only after Clerk has fully initialised.
+// This guarantees that useSignIn()/useSignUp() are never undefined inside
+// auth screens — without this guard, accessing signUp.status or errors.fields
+// before isLoaded crashes the component on every render.
+function ClerkLoaded({ children }: { children: React.ReactNode }) {
+  const { isLoaded } = useAuth();
+  if (!isLoaded) return null;
+  return <>{children}</>;
 }
 
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
@@ -288,15 +299,15 @@ export default function RootLayout() {
           proxyUrl={validClerkConfig.proxyUrl}
         >
           {/*
-           * ClerkReadySignal uses useAuth() which works inside ClerkProvider
-           * without needing ClerkLoaded. We intentionally do NOT wrap the app
-           * tree in <ClerkLoaded> — that component renders null until Clerk
-           * finishes initialising, which caused a permanent black screen when
-           * the 8s safety net fired before Clerk was ready. Instead, we let
-           * the router render immediately and the auth route guards (which
-           * already check isLoaded) handle the loading state gracefully.
+           * ClerkReadySignal sits outside ClerkLoaded so it can fire and hide
+           * the splash the moment isLoaded becomes true, before the app tree
+           * is visible. The app tree (inside ClerkLoaded) only renders once
+           * Clerk is fully initialised, ensuring useSignIn()/useSignUp() are
+           * never undefined in auth screens. If Clerk never loads (no network),
+           * the 8s safety net sets networkError=true and NoNetworkScreen shows.
            */}
           <ClerkReadySignal />
+          <ClerkLoaded>
           <SafeAreaProvider>
             <AppSettingsProvider>
               <DirectionWrapper>
@@ -322,6 +333,7 @@ export default function RootLayout() {
               </DirectionWrapper>
             </AppSettingsProvider>
           </SafeAreaProvider>
+          </ClerkLoaded>
         </ClerkProvider>
       )}
     </View>
