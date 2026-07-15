@@ -810,7 +810,7 @@ const s = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 20 },
   fixedHeader: { paddingHorizontal: 20, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
+  title: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   tsRow: { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center', marginTop: 8 },
   ts: { fontSize: 10, fontFamily: 'Inter_400Regular' },
 });
