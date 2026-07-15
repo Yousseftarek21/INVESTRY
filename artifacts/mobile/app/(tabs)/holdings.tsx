@@ -3,7 +3,7 @@ import { Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, Touchab
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -32,11 +32,12 @@ function FadeInCard({ index, children }: { index: number; children: React.ReactN
 
 const TYPE_ORDER: Holding['type'][] = ['gold', 'silver', 'stock', 'real_estate', 'personal_asset', 'fixed_income'];
 
-const TYPE_ICONS: Record<Holding['type'], keyof typeof Feather.glyphMap> = {
+type HoldingIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
+const TYPE_ICONS: Record<Holding['type'], HoldingIcon> = {
   gold: 'award',
   silver: 'circle',
   stock: 'bar-chart-2',
-  real_estate: 'home',
+  real_estate: { lib: 'mci', name: 'home-city' },
   personal_asset: 'star',
   fixed_income: 'percent',
 };
@@ -176,7 +177,9 @@ export default function HoldingsScreen() {
             <View key={type} style={styles.group}>
               <View style={styles.groupHeader}>
                 <View style={[styles.groupIconWrap, { backgroundColor: TYPE_COLORS[type] + '20' }]}>
-                  <Feather name={TYPE_ICONS[type]} size={13} color={TYPE_COLORS[type]} />
+                  {typeof TYPE_ICONS[type] === 'object'
+                    ? <MaterialCommunityIcons name={(TYPE_ICONS[type] as { lib: 'mci'; name: string }).name as any} size={13} color={TYPE_COLORS[type]} />
+                    : <Feather name={TYPE_ICONS[type] as keyof typeof Feather.glyphMap} size={13} color={TYPE_COLORS[type]} />}
                 </View>
                 <Text style={[styles.groupLabel, { color: colors.mutedForeground }]}>
                   {TYPE_LABELS[type]}

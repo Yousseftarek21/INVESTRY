@@ -604,7 +604,7 @@ export default function HomeScreen() {
                 },
                 {
                   label: t.realEstate, value: summary.reV,  color: '#A47FCA',
-                  icon: 'home',      quantity: summary.reCount > 0 ? `${summary.reCount} propert${summary.reCount !== 1 ? 'ies' : 'y'}` : undefined,
+                  icon: { lib: 'mci' as const, name: 'home-city' }, quantity: summary.reCount > 0 ? `${summary.reCount} propert${summary.reCount !== 1 ? 'ies' : 'y'}` : undefined,
                 },
                 {
                   label: t.personalAsset, value: summary.paV, color: '#E08E45',

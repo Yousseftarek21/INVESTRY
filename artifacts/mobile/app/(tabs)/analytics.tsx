@@ -389,8 +389,10 @@ const ic = StyleSheet.create({
 
 // ─── Health score bars ─────────────────────────────────────────────────────────
 
+type ScoreBarIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
+
 function ScoreBar({ label, score, max, color, icon }: {
-  label: string; score: number; max: number; color: string; icon: keyof typeof Feather.glyphMap;
+  label: string; score: number; max: number; color: string; icon: ScoreBarIcon;
 }) {
   const colors = useColors();
   const anim = useRef(new Animated.Value(0)).current;
@@ -401,7 +403,9 @@ function ScoreBar({ label, score, max, color, icon }: {
   return (
     <View style={sb.row}>
       <View style={[sb.iconBox, { backgroundColor: color + '1A' }]}>
-        <Feather name={icon} size={12} color={color} />
+        {typeof icon === 'object' && icon.lib === 'mci'
+          ? <MaterialCommunityIcons name={icon.name as any} size={12} color={color} />
+          : <Feather name={icon as keyof typeof Feather.glyphMap} size={12} color={color} />}
       </View>
       <View style={sb.body}>
         <View style={sb.topRow}>
@@ -867,7 +871,7 @@ export default function AnalyticsScreen() {
                 <ScoreBar label={t.diversificationLabel} score={health.div} max={30} color={colors.primary} icon="layers" />
                 <ScoreBar label={t.balanceLabel} score={health.conc} max={25} color="#4A9EFF" icon="sliders" />
                 <ScoreBar label={t.inflationHedgeLabel} score={health.hedge} max={25} color="#F59E0B" icon="shield" />
-                <ScoreBar label={t.realAssetsLabel} score={health.real} max={20} color="#A47FCA" icon="home" />
+                <ScoreBar label={t.realAssetsLabel} score={health.real} max={20} color="#A47FCA" icon={{ lib: 'mci', name: 'home-city' }} />
               </View>
               <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
                 {t.informationalDisclaimer}
