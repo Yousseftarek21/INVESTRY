@@ -13,6 +13,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef, useState } from "react";
 import { Platform, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -127,6 +128,11 @@ function ClerkLoaded({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function StatusBarManager() {
+  const { resolvedTheme } = useAppSettings();
+  return <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} translucent />;
+}
+
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
   const [paywallVisible, setPaywallVisible] = React.useState(false);
 
@@ -138,6 +144,7 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <StatusBarManager />
       <NotificationsInitializer />
       {children}
       <SubscriptionScreen
