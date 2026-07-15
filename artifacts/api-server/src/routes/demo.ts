@@ -140,7 +140,7 @@ async function ensureDemoData(userId: string): Promise<void> {
         governorate: "Cairo",
         city: "New Cairo",
         district: "Fifth Settlement",
-        areaSqm: 120,
+        area: 120,
         purchaseDate: "2023-05-01",
         purchasePrice: 2400000,
         currentMarketPricePerM2: 28000,

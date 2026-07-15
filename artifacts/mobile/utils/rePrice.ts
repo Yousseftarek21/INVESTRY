@@ -20,6 +20,8 @@ export function getREPricePerM2(h: RealEstateHolding): number {
  */
 export function getRECurrentValue(h: RealEstateHolding): number {
   const pricePerM2 = getREPricePerM2(h);
-  if (pricePerM2 > 0) return h.area * pricePerM2;
+  // Guard: area may be stored as `areaSqm` in older records
+  const area = h.area ?? (h as any).areaSqm ?? 0;
+  if (pricePerM2 > 0 && area > 0) return area * pricePerM2;
   return h.currentValue ?? 0;
 }
