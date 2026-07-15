@@ -10,7 +10,7 @@ const en = {
   markets: 'Markets',
   holdings: 'Investments',
   analytics: 'Analytics',
-  settings: 'Settings',
+  settings: 'Profile',
 
   // Home
   totalPortfolioValue: 'Total Portfolio Value',
@@ -669,7 +669,7 @@ const ar: typeof en = {
   markets: 'الأسواق',
   holdings: 'استثماراتي',
   analytics: 'التحليلات',
-  settings: 'الإعدادات',
+  settings: 'الملف الشخصي',
 
   // Home
   totalPortfolioValue: 'إجمالي قيمة المحفظة',
