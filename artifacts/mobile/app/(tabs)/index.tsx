@@ -600,7 +600,7 @@ export default function HomeScreen() {
                 },
                 {
                   label: t.egxStock, value: summary.stockV,  color: '#4A9EFF',
-                  icon: 'bar-chart-2', quantity: summary.stockCount > 0 ? `${summary.stockCount} stock${summary.stockCount !== 1 ? 's' : ''}` : undefined,
+                  icon: 'trending-up', quantity: summary.stockCount > 0 ? `${summary.stockCount} stock${summary.stockCount !== 1 ? 's' : ''}` : undefined,
                 },
                 {
                   label: t.realEstate, value: summary.reV,  color: '#A47FCA',
@@ -608,7 +608,7 @@ export default function HomeScreen() {
                 },
                 {
                   label: t.personalAsset, value: summary.paV, color: '#E08E45',
-                  icon: 'star',      quantity: summary.paCount > 0 ? `${summary.paCount} asset${summary.paCount !== 1 ? 's' : ''}` : undefined,
+                  icon: { lib: 'mci' as const, name: 'tag-multiple' }, quantity: summary.paCount > 0 ? `${summary.paCount} asset${summary.paCount !== 1 ? 's' : ''}` : undefined,
                 },
               ]}
               hideValues={hideValues}

@@ -34,12 +34,12 @@ const TYPE_ORDER: Holding['type'][] = ['gold', 'silver', 'stock', 'real_estate',
 
 type HoldingIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
 const TYPE_ICONS: Record<Holding['type'], HoldingIcon> = {
-  gold: 'award',
-  silver: 'circle',
-  stock: 'bar-chart-2',
-  real_estate: { lib: 'mci', name: 'home-city' },
-  personal_asset: 'star',
-  fixed_income: 'percent',
+  gold:           { lib: 'mci', name: 'gold' },
+  silver:         { lib: 'mci', name: 'gold' },
+  stock:          'trending-up',
+  real_estate:    { lib: 'mci', name: 'home-city' },
+  personal_asset: { lib: 'mci', name: 'tag-multiple' },
+  fixed_income:   { lib: 'mci', name: 'bank-transfer' },
 };
 
 const TYPE_COLORS: Record<Holding['type'], string> = {
