@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -55,7 +55,7 @@ export default function HoldingsScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { holdings, removeHolding } = useHoldings();
+  const { holdings, removeHolding, isLoading } = useHoldings();
   const { data: rawPrices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
@@ -155,8 +155,14 @@ export default function HoldingsScreen() {
           )}
         </View>
 
-        {holdings.length === 0 ? (
-          /* ── Empty state ── */
+        {isLoading && holdings.length === 0 ? (
+          /* ── Loading state — fetching from API after sign-in ── */
+          <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'center', gap: 12 }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>Loading your investments…</Text>
+          </View>
+        ) : holdings.length === 0 ? (
+          /* ── True empty state ── */
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.muted }]}>
               <Feather name="briefcase" size={32} color={colors.mutedForeground} />

@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import {
-  Animated, AppState, Image, LayoutChangeEvent, Platform, Pressable, RefreshControl,
+  ActivityIndicator, Animated, AppState, Image, LayoutChangeEvent, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -660,7 +660,12 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {topHoldings.length === 0 ? (
+        {holdingsLoading && holdings.length === 0 ? (
+          <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'center' }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.emptySub, { color: colors.mutedForeground, marginTop: 12 }]}>Loading your investments…</Text>
+          </View>
+        ) : topHoldings.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.emptyRing2, { borderColor: colors.primary + '10' }]} />
             <View style={[styles.emptyRing1, { borderColor: colors.primary + '20' }]} />
