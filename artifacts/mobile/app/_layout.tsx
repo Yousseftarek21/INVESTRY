@@ -177,8 +177,13 @@ export default function RootLayout() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
+    // Publishable keys are designed to be in client bundles — not a secret.
+    // Hardcoding the live key here ensures old binaries (where the env var
+    // was not baked in at build time) always have a working fallback via OTA.
+    const HARDCODED_LIVE_CLERK_KEY = 'pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA';
+    const envKey = (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim();
     const fallbackConfig: ClerkConfig = {
-      publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
+      publishableKey: envKey || HARDCODED_LIVE_CLERK_KEY,
       proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
     };
 
