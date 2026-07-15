@@ -5,7 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/expo";
+import { ClerkProvider, useAuth } from "@clerk/expo";
 import type { TokenCache } from "@clerk/expo";
 import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -97,8 +97,8 @@ function BiometricWrapper({ children }: { children: React.ReactNode }) {
   return <BiometricGate enabled={biometricLock}>{children}</BiometricGate>;
 }
 
-// Called from inside the ClerkLoaded tree so the splash only hides once
-// Clerk has fully initialised — prevents the black-gap between splash and app.
+// Hides the custom splash once Clerk signals it has initialised.
+// Lives inside <ClerkProvider> (useAuth works there without needing ClerkLoaded).
 let _hideSplash: (() => void) | null = null;
 function ClerkReadySignal() {
   const { isLoaded } = useAuth();
@@ -178,20 +178,15 @@ export default function RootLayout() {
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     // Publishable keys are designed to be in client bundles — not a secret.
-    // Hardcoding the live key here ensures old binaries (where the env var
-    // was not baked in at build time) always have a working fallback via OTA.
-    const HARDCODED_LIVE_CLERK_KEY = 'pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA';
+    // Hardcoding the live key + proxy here ensures old binaries always have a
+    // working fallback via OTA even if the API fetch times out.
+    const HARDCODED_LIVE_KEY = 'pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA';
+    const HARDCODED_LIVE_PROXY = 'https://invstry.replit.app/api/__clerk';
     const envKey = (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim();
-    // On native (TestFlight / App Store), the Clerk proxy is not needed —
-    // the native SDK talks directly to api.clerk.com. Passing a proxyUrl on
-    // native routes every auth call through your Replit server, adding
-    // latency and making Clerk initialization hang for users on slow
-    // connections. Only use the proxy on web (where it avoids CORS issues).
-    const isNative = Platform.OS !== 'web';
 
     const fallbackConfig: ClerkConfig = {
-      publishableKey: envKey || HARDCODED_LIVE_CLERK_KEY,
-      proxyUrl: isNative ? undefined : (process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined),
+      publishableKey: envKey || HARDCODED_LIVE_KEY,
+      proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || HARDCODED_LIVE_PROXY,
     };
 
     fetch(`${apiBase}/api/config`, { signal: controller.signal })
@@ -200,7 +195,7 @@ export default function RootLayout() {
         const key = (data.clerkPublishableKey ?? '').trim();
         setClerkConfig(
           key
-            ? { publishableKey: key, proxyUrl: isNative ? undefined : (data.clerkProxyUrl ?? undefined) }
+            ? { publishableKey: key, proxyUrl: data.clerkProxyUrl ?? undefined }
             : fallbackConfig,
         );
       })
@@ -219,8 +214,6 @@ export default function RootLayout() {
   const appReady = (fontsLoaded || !!fontError) && validClerkConfig !== null;
 
   // Register the callback that ClerkReadySignal will call once Clerk is loaded.
-  // This ensures the splash stays visible until the app tree is truly ready,
-  // preventing the black gap between splash dismiss and first app frame.
   useEffect(() => {
     _hideSplash = () => {
       const elapsed = Date.now() - splashStartTime;
@@ -230,16 +223,16 @@ export default function RootLayout() {
     return () => { _hideSplash = null; };
   }, []);
 
-  // Safety net: dismiss splash after 8 s no matter what (prevents infinite splash).
-  // Also force-resolves clerkConfig to the baked-in fallback if the API fetch
-  // is still pending — ensures the app tree renders even on bad connectivity.
+  // Safety net: dismiss splash after 8 s no matter what.
+  // Also force-resolves clerkConfig if still pending — ensures the app tree
+  // always renders and never stays on a permanent black screen.
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowCustomSplash(false);
       setClerkConfig((prev) =>
         prev ?? {
-          publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
-          proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
+          publishableKey: 'pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA',
+          proxyUrl: 'https://invstry.replit.app/api/__clerk',
         },
       );
     }, 8000);
@@ -256,34 +249,41 @@ export default function RootLayout() {
           tokenCache={tokenCache}
           proxyUrl={validClerkConfig.proxyUrl}
         >
-          <ClerkLoaded>
-            <ClerkReadySignal />
-            <SafeAreaProvider>
-              <AppSettingsProvider>
-                <DirectionWrapper>
-                <BiometricWrapper>
-                <ErrorBoundary>
-                  <QueryClientProvider client={queryClient}>
-                    <SubscriptionProvider>
-                      <GestureHandlerRootView style={{ flex: 1 }}>
-                        <KeyboardProvider>
-                          <HoldingsProvider>
-                            <CashProvider>
-                              <AppWithPaywall>
-                                <RootLayoutNav />
-                              </AppWithPaywall>
-                            </CashProvider>
-                          </HoldingsProvider>
-                        </KeyboardProvider>
-                      </GestureHandlerRootView>
-                    </SubscriptionProvider>
-                  </QueryClientProvider>
-                </ErrorBoundary>
-                </BiometricWrapper>
-                </DirectionWrapper>
-              </AppSettingsProvider>
-            </SafeAreaProvider>
-          </ClerkLoaded>
+          {/*
+           * ClerkReadySignal uses useAuth() which works inside ClerkProvider
+           * without needing ClerkLoaded. We intentionally do NOT wrap the app
+           * tree in <ClerkLoaded> — that component renders null until Clerk
+           * finishes initialising, which caused a permanent black screen when
+           * the 8s safety net fired before Clerk was ready. Instead, we let
+           * the router render immediately and the auth route guards (which
+           * already check isLoaded) handle the loading state gracefully.
+           */}
+          <ClerkReadySignal />
+          <SafeAreaProvider>
+            <AppSettingsProvider>
+              <DirectionWrapper>
+              <BiometricWrapper>
+              <ErrorBoundary>
+                <QueryClientProvider client={queryClient}>
+                  <SubscriptionProvider>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <KeyboardProvider>
+                        <HoldingsProvider>
+                          <CashProvider>
+                            <AppWithPaywall>
+                              <RootLayoutNav />
+                            </AppWithPaywall>
+                          </CashProvider>
+                        </HoldingsProvider>
+                      </KeyboardProvider>
+                    </GestureHandlerRootView>
+                  </SubscriptionProvider>
+                </QueryClientProvider>
+              </ErrorBoundary>
+              </BiometricWrapper>
+              </DirectionWrapper>
+            </AppSettingsProvider>
+          </SafeAreaProvider>
         </ClerkProvider>
       )}
     </View>
