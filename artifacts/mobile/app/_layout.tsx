@@ -171,30 +171,31 @@ export default function RootLayout() {
   }, []);
 
   // Fetch the correct Clerk publishable key + proxy URL from the API server.
+  // 5-second timeout so a slow/unreachable backend never blocks app startup.
   useEffect(() => {
     const apiBase = getApiBaseUrl();
-    fetch(`${apiBase}/api/config`)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const fallbackConfig: ClerkConfig = {
+      publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
+      proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
+    };
+
+    fetch(`${apiBase}/api/config`, { signal: controller.signal })
       .then((r) => r.json())
       .then((data: { clerkPublishableKey?: string; clerkProxyUrl?: string }) => {
         const key = (data.clerkPublishableKey ?? '').trim();
-        if (key) {
-          setClerkConfig({
-            publishableKey: key,
-            proxyUrl: data.clerkProxyUrl ?? undefined,
-          });
-        } else {
-          setClerkConfig({
-            publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
-            proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
-          });
-        }
+        setClerkConfig(
+          key
+            ? { publishableKey: key, proxyUrl: data.clerkProxyUrl ?? undefined }
+            : fallbackConfig,
+        );
       })
       .catch(() => {
-        setClerkConfig({
-          publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
-          proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
-        });
-      });
+        setClerkConfig(fallbackConfig);
+      })
+      .finally(() => clearTimeout(timeoutId));
   }, []);
 
   const validClerkConfig =
@@ -217,9 +218,19 @@ export default function RootLayout() {
     return () => { _hideSplash = null; };
   }, []);
 
-  // Safety net: dismiss after 8 s no matter what (prevents infinite splash).
+  // Safety net: dismiss splash after 8 s no matter what (prevents infinite splash).
+  // Also force-resolves clerkConfig to the baked-in fallback if the API fetch
+  // is still pending — ensures the app tree renders even on bad connectivity.
   useEffect(() => {
-    const timer = setTimeout(() => setShowCustomSplash(false), 8000);
+    const timer = setTimeout(() => {
+      setShowCustomSplash(false);
+      setClerkConfig((prev) =>
+        prev ?? {
+          publishableKey: (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim(),
+          proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
+        },
+      );
+    }, 8000);
     return () => clearTimeout(timer);
   }, []);
 
