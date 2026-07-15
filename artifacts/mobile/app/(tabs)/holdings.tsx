@@ -55,7 +55,21 @@ export default function HoldingsScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { holdings, removeHolding, isLoading } = useHoldings();
+  const { holdings, removeHolding, isLoading, syncError } = useHoldings();
+
+  // Auto-dismissing sync error toast
+  const [showSyncError, setShowSyncError] = useState(false);
+  const syncErrorAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!syncError) return;
+    setShowSyncError(true);
+    Animated.timing(syncErrorAnim, { toValue: 1, duration: 250, useNativeDriver: Platform.OS !== 'web' }).start();
+    const timer = setTimeout(() => {
+      Animated.timing(syncErrorAnim, { toValue: 0, duration: 250, useNativeDriver: Platform.OS !== 'web' }).start(() => setShowSyncError(false));
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [syncError]);
+
   const { data: rawPrices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
@@ -127,6 +141,21 @@ export default function HoldingsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ title: t.holdings, headerShown: false }} />
+
+      {/* Sync error toast — floats above content, auto-dismisses in 4s */}
+      {showSyncError && (
+        <Animated.View
+          style={[
+            styles.syncToast,
+            { backgroundColor: colors.red + 'EE', top: topInsets + 12, opacity: syncErrorAnim },
+          ]}
+          pointerEvents="none"
+        >
+          <Feather name="alert-circle" size={14} color="#fff" />
+          <Text style={styles.syncToastText}>{syncError}</Text>
+        </Animated.View>
+      )}
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingTop: topInsets + 20, paddingBottom: botInsets + 100 }]}
@@ -285,6 +314,12 @@ const styles = StyleSheet.create({
     borderRadius: 16, marginTop: 8,
   },
   inlineBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  syncToast: {
+    position: 'absolute', left: 16, right: 16, zIndex: 99,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14,
+  },
+  syncToastText: { color: '#fff', fontSize: 13, fontFamily: 'Inter_500Medium', flex: 1 },
 });
 
 const confirmStyles = StyleSheet.create({

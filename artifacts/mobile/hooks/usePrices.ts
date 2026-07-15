@@ -90,6 +90,7 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
     goldChange: 0, goldChangePercent,
     silverChange: 0, silverChangePercent,
     lastUpdated: new Date(),
+    fxRates: FALLBACK.fxRates,
   };
 }
 

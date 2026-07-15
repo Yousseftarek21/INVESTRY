@@ -219,7 +219,11 @@ export default function SignUpScreen() {
             }
           </Pressable>
 
-          <Pressable onPress={() => signUp.verifications.sendEmailCode()}>
+          <Pressable onPress={async () => {
+            try { await signUp.verifications.sendEmailCode(); } catch (err: any) {
+              setGlobalError(err?.errors?.[0]?.message ?? 'Failed to resend. Please try again.');
+            }
+          }}>
             <Text style={[styles.linkText, { color: colors.primary, textAlign: 'center' }]}>{t.resendCode}</Text>
           </Pressable>
 

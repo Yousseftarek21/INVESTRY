@@ -246,7 +246,7 @@ export default function HomeScreen() {
   const { user } = useUser();
   const displayName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
   const firstName = displayName.trim().split(' ')[0] || '';
-  const { holdings, isLoading: holdingsLoading } = useHoldings();
+  const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
   const { cashAccounts } = useCash();
   const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
@@ -260,6 +260,19 @@ export default function HomeScreen() {
   const { impact } = useHaptic();
   const { hideValues, setHideValues } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
+
+  // Auto-dismissing sync error toast for failed holdings CRUD
+  const [showSyncError, setShowSyncError] = useState(false);
+  const syncErrorAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!holdingsSyncError) return;
+    setShowSyncError(true);
+    Animated.timing(syncErrorAnim, { toValue: 1, duration: 250, useNativeDriver: Platform.OS !== 'web' }).start();
+    const timer = setTimeout(() => {
+      Animated.timing(syncErrorAnim, { toValue: 0, duration: 250, useNativeDriver: Platform.OS !== 'web' }).start(() => setShowSyncError(false));
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [holdingsSyncError]);
 
   // Convert each cash account to EGP using live FX rates.
   // USD uses the dedicated usdToEgp field; EUR/GBP/SAR/AED/etc use fxRates
@@ -346,6 +359,17 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Sync error toast */}
+      {showSyncError && (
+        <Animated.View
+          style={[styles.syncToast, { backgroundColor: colors.red + 'EE', top: topPad + 12, opacity: syncErrorAnim }]}
+          pointerEvents="none"
+        >
+          <Feather name="alert-circle" size={14} color="#fff" />
+          <Text style={styles.syncToastText}>{holdingsSyncError}</Text>
+        </Animated.View>
+      )}
+
       {/* Gradient bloom — upper half only */}
       <ExpoLinearGradient
         colors={[colors.primary + '28', colors.primary + '10', 'transparent']}
@@ -791,4 +815,11 @@ const styles = StyleSheet.create({
   holdingsList: { gap: 8 },
   seeAllBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14, borderRadius: 14, borderWidth: 1 },
   seeAllTxt:    { fontSize: 13, fontFamily: 'Inter_500Medium' },
+
+  syncToast: {
+    position: 'absolute', left: 16, right: 16, zIndex: 99,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14,
+  },
+  syncToastText: { color: '#fff', fontSize: 13, fontFamily: 'Inter_500Medium', flex: 1 },
 });
