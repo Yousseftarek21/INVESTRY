@@ -182,9 +182,16 @@ export default function RootLayout() {
     // was not baked in at build time) always have a working fallback via OTA.
     const HARDCODED_LIVE_CLERK_KEY = 'pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA';
     const envKey = (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim();
+    // On native (TestFlight / App Store), the Clerk proxy is not needed —
+    // the native SDK talks directly to api.clerk.com. Passing a proxyUrl on
+    // native routes every auth call through your Replit server, adding
+    // latency and making Clerk initialization hang for users on slow
+    // connections. Only use the proxy on web (where it avoids CORS issues).
+    const isNative = Platform.OS !== 'web';
+
     const fallbackConfig: ClerkConfig = {
       publishableKey: envKey || HARDCODED_LIVE_CLERK_KEY,
-      proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined,
+      proxyUrl: isNative ? undefined : (process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined),
     };
 
     fetch(`${apiBase}/api/config`, { signal: controller.signal })
@@ -193,7 +200,7 @@ export default function RootLayout() {
         const key = (data.clerkPublishableKey ?? '').trim();
         setClerkConfig(
           key
-            ? { publishableKey: key, proxyUrl: data.clerkProxyUrl ?? undefined }
+            ? { publishableKey: key, proxyUrl: isNative ? undefined : (data.clerkProxyUrl ?? undefined) }
             : fallbackConfig,
         );
       })
