@@ -14,7 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useClerk, useUser } from '@clerk/expo';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -843,6 +843,7 @@ export default function SettingsScreen() {
 
   return (
     <>
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         style={[sc.container, { backgroundColor: colors.background }]}
         contentContainerStyle={[sc.content, { paddingTop: topPad + 16, paddingBottom: botPad + 120 }]}

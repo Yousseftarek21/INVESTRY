@@ -9,7 +9,7 @@ import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { useColors } from '@/hooks/useColors';
@@ -359,6 +359,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Sync error toast */}
       {showSyncError && (
         <Animated.View

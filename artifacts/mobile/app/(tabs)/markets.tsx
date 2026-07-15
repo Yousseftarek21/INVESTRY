@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { Stack } from 'expo-router';
 import {
   Animated, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, View,
@@ -773,6 +774,7 @@ export default function MarketsScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Fixed header — title + TabBar always at top, never scroll away */}
       <View style={[s.fixedHeader, { paddingTop: topPad + 16, backgroundColor: colors.background }]}>
         <View style={s.header}>

@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
+import { Stack } from 'expo-router';
 import {
   Animated, LayoutChangeEvent, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, useWindowDimensions, View,
@@ -722,6 +723,8 @@ export default function AnalyticsScreen() {
   const healthColor = health.score >= 75 ? colors.green : health.score >= 50 ? '#F59E0B' : colors.red;
 
   return (
+    <>
+    <Stack.Screen options={{ headerShown: false }} />
     <ScrollView
       style={[s.container, { backgroundColor: colors.background }]}
       contentContainerStyle={[s.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
@@ -1002,6 +1005,7 @@ export default function AnalyticsScreen() {
         )}
       </PremiumGate>
     </ScrollView>
+    </>
   );
 }
 
