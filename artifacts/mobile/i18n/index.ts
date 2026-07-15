@@ -6,7 +6,7 @@ const en = {
   appTagline: 'Know Your Wealth',
 
   // Tabs
-  portfolio: 'Portfolio',
+  portfolio: 'Overview',
   markets: 'Markets',
   holdings: 'Investments',
   analytics: 'Analytics',
@@ -665,7 +665,7 @@ const ar: typeof en = {
   appTagline: 'اعرف ثروتك',
 
   // Tabs
-  portfolio: 'المحفظة',
+  portfolio: 'نظرة عامة',
   markets: 'الأسواق',
   holdings: 'استثماراتي',
   analytics: 'التحليلات',
