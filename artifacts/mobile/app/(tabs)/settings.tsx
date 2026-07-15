@@ -816,9 +816,9 @@ export default function SettingsScreen() {
   const handleSavePhoto = async (uri: string) => {
     if (!user) return;
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      // React Native doesn't have the File constructor — pass a file-like object
+      // with the local URI directly. Clerk's SDK accepts this for native uploads.
+      const file = { uri, name: 'avatar.jpg', type: 'image/jpeg' } as unknown as File;
       await user.setProfileImage({ file });
     } catch {
       Alert.alert('Upload failed', 'Could not update your profile photo. Please try again.');
