@@ -132,7 +132,7 @@ function AllocationRow({
 
       {/* Right: percentage + value */}
       <View style={row.right}>
-        <Text style={[row.pct, { color: seg.color }]}>{hideValues ? '••' : `${pct.toFixed(1)}%`}</Text>
+        <Text style={[row.pct, { color: seg.color }]}>{`${pct.toFixed(1)}%`}</Text>
         <Text style={[row.val, { color: colors.mutedForeground }]}>
           {hideValues ? '•••••' : `${fmtCpt(seg.value)} EGP`}
         </Text>

@@ -479,13 +479,11 @@ export default function HomeScreen() {
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.returnLabel}</Text>
                 <View style={styles.iCellValueRow}>
                   <Text style={[styles.iCellValue, { color: gainColor }]}>
-                    {hideValues ? '••••' : `${isGain ? '+' : ''}${summary.gainPct.toFixed(1)}%`}
+                    {`${isGain ? '+' : ''}${summary.gainPct.toFixed(1)}%`}
                   </Text>
-                  {!hideValues && (
-                    <Text style={[styles.iCellCur, { color: gainColor + 'AA' }]}>
-                      {isGain ? '▲' : '▼'}
-                    </Text>
-                  )}
+                  <Text style={[styles.iCellCur, { color: gainColor + 'AA' }]}>
+                    {isGain ? '▲' : '▼'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -500,7 +498,7 @@ export default function HomeScreen() {
                   <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
                   <View style={[styles.plBadge, { backgroundColor: todayColor + '1A' }]}>
                     <Text style={[styles.plBadgeText, { color: todayColor }]}>
-                      {hideValues ? '••' : `${isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
+                      {`${isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
                     </Text>
                   </View>
                 </View>
@@ -515,7 +513,7 @@ export default function HomeScreen() {
                   <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.totalPL}</Text>
                   <View style={[styles.plBadge, { backgroundColor: gainColor + '1A' }]}>
                     <Text style={[styles.plBadgeText, { color: gainColor }]}>
-                      {hideValues ? '••' : `${isGain ? '+' : ''}${summary.gainPct.toFixed(2)}%`}
+                      {`${isGain ? '+' : ''}${summary.gainPct.toFixed(2)}%`}
                     </Text>
                   </View>
                 </View>

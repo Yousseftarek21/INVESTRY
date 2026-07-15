@@ -164,7 +164,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
               <View style={[styles.gainPill, { backgroundColor: gainColor + '18' }]}>
                 <Feather name={isPositive ? 'arrow-up' : 'arrow-down'} size={9} color={gainColor} />
                 <Text style={[styles.gainText, { color: gainColor }]}>
-                  {hideValues ? '••' : `${isPositive ? '+' : ''}${gainPercent.toFixed(1)}%`}
+                  {`${isPositive ? '+' : ''}${gainPercent.toFixed(1)}%`}
                 </Text>
               </View>
             )}
