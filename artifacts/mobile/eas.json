@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 13.0.0",
+    "version": ">= 16.0.0",
     "appVersionSource": "local",
     "promptToConfigurePushNotifications": false,
     "requireCommit": false
@@ -23,6 +23,11 @@
         "EXPO_PUBLIC_DOMAIN": "INVSTRY.replit.app",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA"
       }
+    }
+  },
+  "update": {
+    "production": {
+      "channel": "production"
     }
   },
   "submit": {
