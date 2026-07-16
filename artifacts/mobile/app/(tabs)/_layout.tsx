@@ -7,8 +7,6 @@ import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
-import { AddChooserSheet } from "@/components/AddChooserSheet";
-
 // On web (preview), skip Clerk auth gate so the UI is always visible.
 const IS_WEB = Platform.OS === "web";
 
@@ -59,7 +57,6 @@ function ClassicTabLayout() {
   const { resolvedTheme } = useAppSettings();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
-  const [showChooser, setShowChooser] = useState(false);
 
   return (
     <>
@@ -116,7 +113,7 @@ function ClassicTabLayout() {
           title: t.addTab,
           tabBarButton: () => (
             <Pressable
-              onPress={() => setShowChooser(true)}
+              onPress={() => router.push('/add-investment' as any)}
               style={tabStyles.addWrap}
               accessibilityLabel={t.addInvestment}
             >
@@ -147,7 +144,6 @@ function ClassicTabLayout() {
         }}
       />
     </Tabs>
-    <AddChooserSheet visible={showChooser} onClose={() => setShowChooser(false)} />
   </>
   );
 }

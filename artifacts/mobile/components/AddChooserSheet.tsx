@@ -67,7 +67,7 @@ export function AddChooserSheet({ visible, onClose }: Props) {
 
   const goCash = () =>
     close(() =>
-      setTimeout(() => router.push('/cash-accounts?openAdd=1' as any), 30)
+      setTimeout(() => router.push('/add-investment' as any), 30)
     );
 
   const bottomPad = insets.bottom + (Platform.OS === 'android' ? 16 : 8);
