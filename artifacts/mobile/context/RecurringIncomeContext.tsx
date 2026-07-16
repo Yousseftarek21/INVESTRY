@@ -112,6 +112,9 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
   // ── CRUD ─────────────────────────────────────────────────────────────────
   const addRecurringIncome = useCallback(async (r: RecurringIncome) => {
     if (!userId) return;
+    // Allow the credit processor to re-evaluate so a same-month income
+    // (startDate ≤ today and today ≥ creditDay) gets credited immediately.
+    processedKeyRef.current = null;
     setIncomes(prev => {
       const next = [...prev, r];
       persist(next, userId!);

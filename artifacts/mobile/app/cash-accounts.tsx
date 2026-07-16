@@ -188,6 +188,10 @@ export default function CashAccountsScreen() {
         Alert.alert(t.amount, 'Please enter a valid monthly amount.');
         return;
       }
+      if (cashAccounts.length > 0 && !depositAccountId) {
+        Alert.alert(t.depositInto, t.selectAccount);
+        return;
+      }
       const day = Math.min(Math.max(parseInt(creditDay) || 25, 1), 31);
       const income: RecurringIncome = {
         id: editingId ?? generateId(),
@@ -393,7 +397,6 @@ export default function CashAccountsScreen() {
                     value={incomeAmount}
                     onChangeText={v => setIncomeAmount(formatAmountInput(v))}
                   />
-                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.autoMonthlyIncome}</Text>
                 </View>
 
                 {/* ── Currency ────────────────────────────────────── */}
@@ -611,11 +614,18 @@ export default function CashAccountsScreen() {
                       </View>
                       <View style={styles.accountInfo}>
                         <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{r.name}</Text>
-                        <Text style={[styles.accountType, { color: colors.mutedForeground }]}>{t.recurringIncome}</Text>
+                        <Text style={[styles.accountType, { color: colors.mutedForeground }]}>
+                          {t.recurringIncome} · {t.creditDay} {r.creditDay}
+                        </Text>
                         <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
                           {r.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {r.currency}
                           <Text style={[styles.accountType, { color: colors.mutedForeground }]}> / {t.fiMonthly}</Text>
                         </Text>
+                        {cashAccounts.find(a => a.id === r.cashAccountId) && (
+                          <Text style={[styles.accountType, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {'→ '}{cashAccounts.find(a => a.id === r.cashAccountId)!.accountName}
+                          </Text>
+                        )}
                       </View>
                       <View style={styles.accountActions}>
                         <TouchableOpacity
