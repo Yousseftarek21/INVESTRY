@@ -604,31 +604,31 @@ export function EGXMarket({
   }, []);
 
   const ListHeader = useMemo(() => (
-    <>
-    {topHeader}
-    <View style={em.listHeaderWrap}>
-      <MarketStatusBanner />
-      <IndexPills active={activeIndex} onChange={handleIndex} counts={indexCounts} />
-      <SearchBar value={query} onChange={handleQuery} />
-      <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
-      <View style={em.resultRow}>
-        <Text style={[em.resultTxt, { color: colors.mutedForeground }]}>
-          {displayed.length} {displayed.length === 1 ? t.companyLabel : t.companiesLabel}
-          {resultSuffix}
-        </Text>
-        {hasLive ? (
-          <View style={[em.livePill, { backgroundColor: colors.green + '18' }]}>
-            <View style={[em.liveDot, { backgroundColor: colors.green }]} />
-            <Text style={[em.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
-          </View>
-        ) : (
-          <View style={[em.livePill, { backgroundColor: colors.muted }]}>
-            <Text style={[em.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
-          </View>
-        )}
+    <View>
+      {topHeader}
+      <View style={em.listHeaderWrap}>
+        <MarketStatusBanner />
+        <IndexPills active={activeIndex} onChange={handleIndex} counts={indexCounts} />
+        <SearchBar value={query} onChange={handleQuery} />
+        <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
+        <View style={em.resultRow}>
+          <Text style={[em.resultTxt, { color: colors.mutedForeground }]}>
+            {displayed.length} {displayed.length === 1 ? t.companyLabel : t.companiesLabel}
+            {resultSuffix}
+          </Text>
+          {hasLive ? (
+            <View style={[em.livePill, { backgroundColor: colors.green + '18' }]}>
+              <View style={[em.liveDot, { backgroundColor: colors.green }]} />
+              <Text style={[em.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
+            </View>
+          ) : (
+            <View style={[em.livePill, { backgroundColor: colors.muted }]}>
+              <Text style={[em.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
+            </View>
+          )}
+        </View>
       </View>
     </View>
-    </>
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [topHeader, activeIndex, query, sector, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
 
