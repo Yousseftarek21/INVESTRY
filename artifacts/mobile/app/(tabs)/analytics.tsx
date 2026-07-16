@@ -188,8 +188,6 @@ function HealthArc({ score, size = 160 }: { score: number; size: number }) {
       <View style={{ alignItems: 'center', gap: 2, marginTop: -12 }}>
         <Text
           style={[ha.score, { color: scoreColor, fontSize: scoreFontSize }]}
-          adjustsFontSizeToFit
-          numberOfLines={1}
         >
           {score}
         </Text>

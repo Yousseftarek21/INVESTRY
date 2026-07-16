@@ -527,7 +527,7 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </View>
-                <Text style={[styles.plValue, { color: todayColor }]} numberOfLines={1} adjustsFontSizeToFit>
+                <Text style={[styles.plValue, { color: todayColor }]}>
                   {hideValues ? '••••' : `${isTodayGain ? '+' : '−'}${Math.abs(summary.todayGain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`}
                 </Text>
               </View>
@@ -542,7 +542,7 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </View>
-                <Text style={[styles.plValue, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit>
+                <Text style={[styles.plValue, { color: gainColor }]}>
                   {hideValues ? '••••' : `${isGain ? '+' : '−'}${Math.abs(summary.gain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`}
                 </Text>
               </View>
@@ -652,7 +652,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.cashInfo}>
             <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
-            <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1}>
               {hideValues ? '••••••' : `${hasForeignCash ? '≈ ' : ''}${cashTotalEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })}`} EGP
             </Text>
           </View>
