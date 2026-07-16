@@ -294,30 +294,30 @@ export default function RootLayout() {
   const showNetworkError = !showCustomSplash && networkError && !clerkReady;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#121212" }}>
-      {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
+    <SafeAreaProvider>
+      <AppSettingsProvider>
+        <DirectionWrapper>
+        <View style={{ flex: 1, backgroundColor: "#121212" }}>
+          {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
 
-      {showNetworkError && <NoNetworkScreen />}
+          {showNetworkError && <NoNetworkScreen />}
 
-      {appReady && validClerkConfig && (
-        <ClerkProvider
-          publishableKey={validClerkConfig.publishableKey}
-          tokenCache={tokenCache}
-          proxyUrl={validClerkConfig.proxyUrl}
-        >
-          {/*
-           * ClerkReadySignal sits outside ClerkLoaded so it can fire and hide
-           * the splash the moment isLoaded becomes true, before the app tree
-           * is visible. The app tree (inside ClerkLoaded) only renders once
-           * Clerk is fully initialised, ensuring useSignIn()/useSignUp() are
-           * never undefined in auth screens. If Clerk never loads (no network),
-           * the 8s safety net sets networkError=true and NoNetworkScreen shows.
-           */}
-          <ClerkReadySignal />
-          <ClerkLoaded>
-          <SafeAreaProvider>
-            <AppSettingsProvider>
-              <DirectionWrapper>
+          {appReady && validClerkConfig && (
+            <ClerkProvider
+              publishableKey={validClerkConfig.publishableKey}
+              tokenCache={tokenCache}
+              proxyUrl={validClerkConfig.proxyUrl}
+            >
+              {/*
+               * ClerkReadySignal sits outside ClerkLoaded so it can fire and hide
+               * the splash the moment isLoaded becomes true, before the app tree
+               * is visible. The app tree (inside ClerkLoaded) only renders once
+               * Clerk is fully initialised, ensuring useSignIn()/useSignUp() are
+               * never undefined in auth screens. If Clerk never loads (no network),
+               * the 8s safety net sets networkError=true and NoNetworkScreen shows.
+               */}
+              <ClerkReadySignal />
+              <ClerkLoaded>
               <BiometricWrapper>
               <ErrorBoundary>
                 <QueryClientProvider client={queryClient}>
@@ -337,12 +337,12 @@ export default function RootLayout() {
                 </QueryClientProvider>
               </ErrorBoundary>
               </BiometricWrapper>
-              </DirectionWrapper>
-            </AppSettingsProvider>
-          </SafeAreaProvider>
-          </ClerkLoaded>
-        </ClerkProvider>
-      )}
-    </View>
+              </ClerkLoaded>
+            </ClerkProvider>
+          )}
+        </View>
+        </DirectionWrapper>
+      </AppSettingsProvider>
+    </SafeAreaProvider>
   );
 }
