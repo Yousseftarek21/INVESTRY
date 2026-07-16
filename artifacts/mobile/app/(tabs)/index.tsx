@@ -462,7 +462,7 @@ export default function HomeScreen() {
             accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
           >
             <View style={[styles.heroValueRow, { justifyContent: 'center' }]}>
-              <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+              <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
                 {hideValues ? '••••••' : displayValue}
               </Text>
               <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>EGP</Text>
