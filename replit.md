@@ -75,6 +75,8 @@ Egypt's first investment tracking mobile app (Expo / React Native). Slogan: "Kno
 - EGX stock tickers on Yahoo Finance use `.CA` suffix (e.g. `COMI.CA` for Egyptian Exchange).
 - `useColors()` depends on `AppSettingsContext` — must be used inside `AppSettingsProvider`.
 - UUID: use `Date.now().toString() + Math.random().toString(36).substr(2, 9)` — never `uuid` package.
+- **Never use `adjustsFontSizeToFit` on any Text inside a NativeTabs screen, modal, or sheet.** These containers complete layout asynchronously; the Text gets a zero width on the first render pass, `adjustsFontSizeToFit` collapses the font to invisible, and it never recovers. Use `flexShrink: 1` + `textAlign: 'center'` on the Text and `alignSelf: 'stretch'` on its parent row instead.
+- **`isLiquidGlassAvailable()` is a compiled native property, not a runtime iOS version check.** OTA updates only ship JS, so it may return `false` on iOS 26 devices if the binary was built before Liquid Glass support landed. Always pair it with a `Platform.Version >= 26` fallback: `isLiquidGlassAvailable() || (Platform.OS === 'ios' && parseFloat(String(Platform.Version)) >= 26)`.
 
 ## Pointers
 

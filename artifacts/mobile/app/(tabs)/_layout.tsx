@@ -181,6 +181,20 @@ const tabStyles = StyleSheet.create({
   },
 });
 
+// isLiquidGlassAvailable() reads a native module property baked into the binary.
+// OTA updates only ship JS, so on some dev builds the native property may not
+// reflect the device's real iOS version. We add a Platform.Version >= 26 fallback
+// so every iOS 26+ device (iPhone 16 Pro Max included) gets NativeTabs regardless
+// of what the compiled binary reports.
+function shouldUseNativeTabs(): boolean {
+  if (Platform.OS !== 'ios') return false;
+  if (isLiquidGlassAvailable()) return true;
+  const v = typeof Platform.Version === 'string'
+    ? parseFloat(Platform.Version)
+    : (Platform.Version as number);
+  return v >= 26;
+}
+
 export default function TabLayout() {
   const { isSignedIn, isLoaded } = useAuth();
 
@@ -188,7 +202,7 @@ export default function TabLayout() {
   // On web preview, skip auth gate — show tabs directly
   if (!isSignedIn && !IS_WEB) return <Redirect href={"/(auth)/welcome" as any} />;
 
-  if (isLiquidGlassAvailable()) {
+  if (shouldUseNativeTabs()) {
     return <NativeTabLayout />;
   }
   return <ClassicTabLayout />;
