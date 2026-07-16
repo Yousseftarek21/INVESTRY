@@ -11,7 +11,7 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { HoldingCard } from '@/components/HoldingCard';
-import { AddChooserSheet } from '@/components/AddChooserSheet';
+
 import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { Holding } from '@/types';
 
@@ -132,8 +132,7 @@ export default function HoldingsScreen() {
     router.push(`/add-investment?holdingId=${id}` as any);
   };
 
-  const [showChooser, setShowChooser] = useState(false);
-  const openAdd = () => { impact(); setShowChooser(true); };
+  const openAdd = () => { impact(); router.push('/add-investment' as any); };
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -271,7 +270,6 @@ export default function HoldingsScreen() {
           </View>
         </View>
       </Modal>
-      <AddChooserSheet visible={showChooser} onClose={() => setShowChooser(false)} />
     </View>
   );
 }
