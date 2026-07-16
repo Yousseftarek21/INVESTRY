@@ -382,10 +382,9 @@ export default function HomeScreen() {
         style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
         pointerEvents="none"
       />
-    <View style={{ flex: 1, paddingTop: topPad }}>
     <ScrollView
-      style={styles.scrollTransparent}
-      contentContainerStyle={[styles.content, { paddingBottom: botPad + 100 }]}
+      style={[styles.scrollTransparent, { flex: 1 }]}
+      contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.text} />}
     >
@@ -740,7 +739,6 @@ export default function HomeScreen() {
         )}
       </View>
     </ScrollView>
-    </View>
     </View>
   );
 }

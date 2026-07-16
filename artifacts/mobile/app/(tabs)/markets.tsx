@@ -702,12 +702,13 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
   );
 }
 
-function EGXTab({ style, refreshing, onRefresh }: {
+function EGXTab({ style, refreshing, onRefresh, topHeader }: {
   style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
   refreshing?: boolean;
   onRefresh?: () => void;
+  topHeader?: React.ReactNode;
 }) {
-  return <EGXMarket style={style} refreshing={refreshing} onRefresh={onRefresh} />;
+  return <EGXMarket style={style} refreshing={refreshing} onRefresh={onRefresh} topHeader={topHeader} />;
 }
 
 const tab = StyleSheet.create({
@@ -775,26 +776,37 @@ export default function MarketsScreen() {
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      {/* Fixed header — title + TabBar always at top, never scroll away */}
-      <View style={[s.fixedHeader, { paddingTop: topPad + 16, backgroundColor: colors.background }]}>
-        <View style={s.header}>
-          <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
-          <LiveDot />
-        </View>
-        <TabBar active={activeTab} onChange={handleTabChange} />
-      </View>
-
-      {/* EGX: own FlatList that fills remaining space — true virtualization, 0 delay */}
+      {/* EGX: own FlatList — header scrolls as ListHeaderComponent */}
       {activeTab === 'egx' ? (
-        <EGXTab style={{ flex: 1 }} refreshing={isLoading} onRefresh={refetch} />
+        <EGXTab
+          style={{ flex: 1 }}
+          refreshing={isLoading}
+          onRefresh={refetch}
+          topHeader={
+            <View style={[s.fixedHeader, { paddingTop: topPad + 16 }]}>
+              <View style={s.header}>
+                <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
+                <LiveDot />
+              </View>
+              <TabBar active={activeTab} onChange={handleTabChange} />
+            </View>
+          }
+        />
       ) : (
-        /* All other tabs: ScrollView content area */
+        /* All other tabs: header + content scroll together */
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[s.content, { paddingTop: 16, paddingBottom: botPad + 100 }]}
+          contentContainerStyle={[s.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
         >
+          <View style={{ gap: 16 }}>
+            <View style={s.header}>
+              <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
+              <LiveDot />
+            </View>
+            <TabBar active={activeTab} onChange={handleTabChange} />
+          </View>
           {activeTab === 'metals'      && <MetalsTab prices={prices} />}
           {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
           {activeTab === 'real_estate' && <RealEstateTab />}

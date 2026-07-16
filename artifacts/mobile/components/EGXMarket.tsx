@@ -490,10 +490,12 @@ export function EGXMarket({
   style,
   refreshing,
   onRefresh,
+  topHeader,
 }: {
   style?: StyleProp<ViewStyle>;
   refreshing?: boolean;
   onRefresh?: () => void;
+  topHeader?: React.ReactNode;
 } = {}) {
   const colors = useColors();
   const t = useT();
@@ -602,6 +604,8 @@ export function EGXMarket({
   }, []);
 
   const ListHeader = useMemo(() => (
+    <>
+    {topHeader}
     <View style={em.listHeaderWrap}>
       <MarketStatusBanner />
       <IndexPills active={activeIndex} onChange={handleIndex} counts={indexCounts} />
@@ -624,8 +628,9 @@ export function EGXMarket({
         )}
       </View>
     </View>
+    </>
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [activeIndex, query, sector, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
+  ), [topHeader, activeIndex, query, sector, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
 
   const ListEmpty = useMemo(() => (
     !isLoading && displayed.length === 0 ? (
@@ -652,7 +657,7 @@ export function EGXMarket({
   return (
     <FlatList
       style={[{ flex: 1 }, style]}
-      contentContainerStyle={[em.listContent, { paddingTop: 16, paddingBottom: botPad + 120 }]}
+      contentContainerStyle={[em.listContent, { paddingTop: topHeader ? 0 : 16, paddingBottom: botPad + 120 }]}
       data={listData}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
