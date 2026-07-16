@@ -791,13 +791,13 @@ export default function AddInvestmentScreen() {
             hitSlop={12}
           >
             <Feather
-              name={(screenMode === 'investment' && !isEditing && !mode) ? 'chevron-left' : 'x'}
+              name={isEditing ? 'x' : 'chevron-left'}
               size={22}
               color={colors.mutedForeground}
             />
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text }]}>
-            {screenMode === 'choose' ? t.whatToAdd : (isEditing ? 'Edit Investment' : t.addInvestment)}
+            {screenMode === 'choose' ? t.whatToAdd : (isEditing ? t.editInvestment : t.addInvestment)}
           </Text>
           {screenMode === 'investment' ? (
             <TouchableOpacity onPress={handleSave}>
