@@ -93,15 +93,15 @@ export default function RecurringIncomeScreen() {
     const creditDay = Math.min(31, Math.max(1, parseInt(creditDayRaw, 10) || 1));
 
     if (!trimmed) {
-      Alert.alert(t.incomeName, 'Please enter an income name.');
+      Alert.alert(t.incomeName, t.incomeNameError);
       return;
     }
     if (amount <= 0) {
-      Alert.alert(t.amount, 'Please enter a valid amount.');
+      Alert.alert(t.amount, t.incomeAmountError);
       return;
     }
     if (!cashAccountId) {
-      Alert.alert(t.depositInto, 'Please select a cash account.');
+      Alert.alert(t.depositInto, t.incomeAccountError);
       return;
     }
 
@@ -355,12 +355,18 @@ export default function RecurringIncomeScreen() {
 
                 {/* Start Date */}
                 <View style={s.field}>
-                  <DatePickerField label={t.startDate} value={startDate} onChange={setStartDate} />
+                  <DatePickerField label={t.startDate} value={startDate} onChange={setStartDate} maxDate={new Date()} />
                 </View>
 
                 {/* End Date */}
                 <View style={s.field}>
-                  <DatePickerField label={t.endDateOptional} value={endDate} onChange={setEndDate} />
+                  <DatePickerField
+                    label={t.endDateOptional}
+                    value={endDate}
+                    onChange={setEndDate}
+                    onClear={() => setEndDate('')}
+                    placeholder={t.noEndDate}
+                  />
                 </View>
 
                 {/* Active toggle */}

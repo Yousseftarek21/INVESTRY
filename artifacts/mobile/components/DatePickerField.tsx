@@ -5,11 +5,14 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 
 interface Props {
   label: string;
   value: string;
   onChange: (iso: string) => void;
+  onClear?: () => void;
+  placeholder?: string;
   maxDate?: Date;
   minDate?: Date;
 }
@@ -24,10 +27,13 @@ function formatDisplay(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-export function DatePickerField({ label, value, onChange, maxDate, minDate }: Props) {
+export function DatePickerField({ label, value, onChange, onClear, placeholder, maxDate, minDate }: Props) {
   const colors = useColors();
+  const t = useT();
   const [showPicker, setShowPicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date>(isoToDate(value));
+
+  const isEmpty = !value;
 
   const handleChange = (_: unknown, selected?: Date) => {
     if (Platform.OS === 'android') {
@@ -48,7 +54,7 @@ export function DatePickerField({ label, value, onChange, maxDate, minDate }: Pr
     setShowPicker(true);
   };
 
-  const maxIso = (maxDate ?? new Date()).toISOString().split('T')[0];
+  const maxIso = maxDate?.toISOString().split('T')[0];
   const minIso = minDate?.toISOString().split('T')[0];
 
   /* ── Web: transparent native <input type="date"> overlaid on the button ── */
@@ -57,13 +63,21 @@ export function DatePickerField({ label, value, onChange, maxDate, minDate }: Pr
       <View>
         <Text style={[st.label, { color: colors.mutedForeground }]}>{label}</Text>
         <View style={[st.field, { borderColor: colors.border, backgroundColor: colors.card, position: 'relative', overflow: 'hidden' }]}>
-          <Feather name="calendar" size={16} color={colors.primary} />
-          <Text style={[st.value, { color: colors.text }]}>{formatDisplay(value)}</Text>
-          <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+          <Feather name="calendar" size={16} color={isEmpty ? colors.mutedForeground : colors.primary} />
+          <Text style={[st.value, { color: isEmpty ? colors.mutedForeground : colors.text }]}>
+            {isEmpty ? (placeholder ?? '') : formatDisplay(value)}
+          </Text>
+          {onClear && !isEmpty ? (
+            <TouchableOpacity onPress={onClear} hitSlop={8}>
+              <Feather name="x" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          ) : (
+            <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+          )}
           {createElement('input', {
             type: 'date',
             value,
-            max: maxIso,
+            ...(maxIso ? { max: maxIso } : {}),
             ...(minIso ? { min: minIso } : {}),
             onChange: (e: any) => onChange(e.target.value),
             style: {
@@ -89,9 +103,17 @@ export function DatePickerField({ label, value, onChange, maxDate, minDate }: Pr
         activeOpacity={0.75}
         style={[st.field, { borderColor: colors.border, backgroundColor: colors.card }]}
       >
-        <Feather name="calendar" size={16} color={colors.primary} />
-        <Text style={[st.value, { color: colors.text }]}>{formatDisplay(value)}</Text>
-        <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+        <Feather name="calendar" size={16} color={isEmpty ? colors.mutedForeground : colors.primary} />
+        <Text style={[st.value, { color: isEmpty ? colors.mutedForeground : colors.text }]}>
+          {isEmpty ? (placeholder ?? '') : formatDisplay(value)}
+        </Text>
+        {onClear && !isEmpty ? (
+          <TouchableOpacity onPress={onClear} hitSlop={8}>
+            <Feather name="x" size={14} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        ) : (
+          <Feather name="chevron-down" size={15} color={colors.mutedForeground} />
+        )}
       </TouchableOpacity>
 
       {/* Android — opens inline dialog, no modal needed */}
@@ -101,7 +123,7 @@ export function DatePickerField({ label, value, onChange, maxDate, minDate }: Pr
           mode="date"
           display="default"
           onChange={handleChange}
-          maximumDate={maxDate ?? new Date()}
+          maximumDate={maxDate}
           minimumDate={minDate}
         />
       )}
@@ -118,10 +140,10 @@ export function DatePickerField({ label, value, onChange, maxDate, minDate }: Pr
           <View style={[st.sheet, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
             <View style={[st.sheetHeader, { borderBottomColor: colors.border }]}>
               <TouchableOpacity onPress={() => setShowPicker(false)}>
-                <Text style={[st.cancel, { color: colors.mutedForeground }]}>Cancel</Text>
+                <Text style={[st.cancel, { color: colors.mutedForeground }]}>{t.cancelBtn}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={confirmIOS}>
-                <Text style={[st.done, { color: colors.primary }]}>Done</Text>
+                <Text style={[st.done, { color: colors.primary }]}>{t.datePickerDone}</Text>
               </TouchableOpacity>
             </View>
             <DateTimePicker
@@ -129,7 +151,7 @@ export function DatePickerField({ label, value, onChange, maxDate, minDate }: Pr
               mode="date"
               display="spinner"
               onChange={handleChange}
-              maximumDate={maxDate ?? new Date()}
+              maximumDate={maxDate}
               minimumDate={minDate}
               style={{ height: 200 }}
             />
