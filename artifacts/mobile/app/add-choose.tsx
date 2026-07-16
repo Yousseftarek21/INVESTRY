@@ -44,6 +44,7 @@ export default function AddChooseScreen() {
 
   const goInvestment = () => router.push('/add-investment?mode=investment' as any);
   const goCash = () => router.push('/cash-accounts?openAdd=1' as any);
+  const goRecurringIncome = () => router.push('/cash-accounts?openAdd=1&type=recurring_income' as any);
 
   const bottomPad = insets.bottom + (Platform.OS === 'android' ? 16 : 8);
 
@@ -92,6 +93,21 @@ export default function AddChooseScreen() {
           <View style={s.cardText}>
             <Text style={[s.cardTitle, { color: colors.text }]}>{t.addCashOption}</Text>
             <Text style={[s.cardDesc, { color: colors.mutedForeground }]}>{t.addCashOptionDesc}</Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.card, { backgroundColor: colors.background, borderColor: colors.border }]}
+          onPress={goRecurringIncome}
+          activeOpacity={0.72}
+        >
+          <View style={[s.iconWrap, { backgroundColor: '#8B5CF61A' }]}>
+            <Feather name="repeat" size={26} color="#8B5CF6" />
+          </View>
+          <View style={s.cardText}>
+            <Text style={[s.cardTitle, { color: colors.text }]}>{t.addRecurringIncomeOption}</Text>
+            <Text style={[s.cardDesc, { color: colors.mutedForeground }]}>{t.addRecurringIncomeOptionDesc}</Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </TouchableOpacity>

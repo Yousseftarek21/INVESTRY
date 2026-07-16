@@ -43,14 +43,15 @@ export default function CashAccountsScreen() {
   const { recurringIncomes, addRecurringIncome, updateRecurringIncome, removeRecurringIncome } = useRecurringIncome();
   const { impact, notify } = useHaptic();
 
-  const { openAdd: openAddParam } = useLocalSearchParams<{ openAdd?: string }>();
+  const { openAdd: openAddParam, type: typeParam } = useLocalSearchParams<{ openAdd?: string; type?: string }>();
 
+  const initialType: EntryType = typeParam === 'recurring_income' ? 'recurring_income' : 'bank';
   const [showForm, setShowForm] = useState(openAddParam === '1');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isEditingIncome, setIsEditingIncome] = useState(false);
 
   // ── Cash account form state ───────────────────────────────────────────────
-  const [entryType, setEntryType] = useState<EntryType>('bank');
+  const [entryType, setEntryType] = useState<EntryType>(initialType);
   const [accountName, setAccountName] = useState('');
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('EGP');

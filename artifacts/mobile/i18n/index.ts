@@ -167,6 +167,8 @@ const en = {
   addInvestmentOptionDesc: 'Gold, silver, stocks, real estate & more',
   addCashOption: 'Cash Account',
   addCashOptionDesc: 'Bank accounts, physical cash & foreign currency',
+  addRecurringIncomeOption: 'Recurring Income',
+  addRecurringIncomeOptionDesc: 'Salary, freelance & automatic monthly deposits',
   back: 'Back',
 
   // Cash accounts
@@ -851,6 +853,8 @@ const ar: typeof en = {
   addInvestmentOptionDesc: 'ذهب، فضة، أسهم، عقارات والمزيد',
   addCashOption: 'حساب نقدي',
   addCashOptionDesc: 'حسابات بنكية، نقد وعملات أجنبية',
+  addRecurringIncomeOption: 'الدخل المتكرر',
+  addRecurringIncomeOptionDesc: 'راتب، عمل حر وإيداعات شهرية تلقائية',
   back: 'رجوع',
 
   // Cash accounts
