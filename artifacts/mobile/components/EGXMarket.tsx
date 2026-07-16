@@ -604,7 +604,7 @@ export function EGXMarket({
   }, []);
 
   const ListHeader = useMemo(() => (
-    <View>
+    <View style={{ gap: 20 }}>
       {topHeader}
       <View style={em.listHeaderWrap}>
         <MarketStatusBanner />

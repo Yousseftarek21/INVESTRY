@@ -783,7 +783,7 @@ export default function MarketsScreen() {
           refreshing={isLoading}
           onRefresh={refetch}
           topHeader={
-            <View style={[s.fixedHeader, { paddingTop: topPad + 16 }]}>
+            <View style={{ gap: 16, paddingTop: topPad + 16 }}>
               <View style={s.header}>
                 <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
                 <LiveDot />
