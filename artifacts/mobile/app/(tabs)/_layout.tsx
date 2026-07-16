@@ -26,6 +26,33 @@ function LoadingScreen() {
 }
 
 
+function NativeTabLayout() {
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="index">
+        <Icon sf={{ default: "house", selected: "house.fill" }} />
+        <Label>{''}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="markets">
+        <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
+        <Label>{''}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="holdings">
+        <Icon sf={{ default: "plus.circle.fill", selected: "plus.circle.fill" }} />
+        <Label>{''}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="analytics">
+        <Icon sf={{ default: "chart.xyaxis.line", selected: "chart.xyaxis.line" }} />
+        <Label>{''}</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="settings">
+        <Icon sf={{ default: "person", selected: "person.fill" }} />
+        <Label>{''}</Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}
+
 function ClassicTabLayout() {
   const colors = useColors();
   const t = useT();
@@ -161,5 +188,8 @@ export default function TabLayout() {
   // On web preview, skip auth gate — show tabs directly
   if (!isSignedIn && !IS_WEB) return <Redirect href={"/(auth)/welcome" as any} />;
 
+  if (isLiquidGlassAvailable()) {
+    return <NativeTabLayout />;
+  }
   return <ClassicTabLayout />;
 }
