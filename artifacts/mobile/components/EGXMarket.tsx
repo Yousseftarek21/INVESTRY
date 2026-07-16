@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies, EGXIndex, EGX_INDICES, EGX_30_TICKERS, EGX_70_TICKERS, getIndexCounts } from '@/data/egx-companies';
+import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data/egx-companies';
 import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 
@@ -185,52 +185,6 @@ const sp = StyleSheet.create({
   badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 });
 
-// ─── Index Pills (EGX 30 / EGX 70 / All) ─────────────────────────────────────
-
-function IndexPills({
-  active, onChange, counts,
-}: {
-  active: EGXIndex; onChange: (i: EGXIndex) => void; counts: Record<string, number>;
-}) {
-  const colors = useColors();
-  return (
-    <View style={ix.row}>
-      {EGX_INDICES.map(idx => {
-        const isActive = idx === active;
-        return (
-          <Pressable
-            key={idx}
-            onPress={() => onChange(idx)}
-            style={[
-              ix.pill,
-              { backgroundColor: isActive ? colors.primary : colors.muted, borderColor: isActive ? colors.primary : 'transparent' },
-            ]}
-          >
-            <Text style={[ix.label, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
-              {idx}
-            </Text>
-            <View style={[ix.badge, { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.border }]}>
-              <Text style={[ix.badgeTxt, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
-                {counts[idx] ?? 0}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-const ix = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 8 },
-  pill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingLeft: 13, paddingRight: 8, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1,
-  },
-  label: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  badge: { borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
-});
 
 // ─── 52-Week Range Bar ────────────────────────────────────────────────────────
 
@@ -504,9 +458,7 @@ export function EGXMarket({
   const { data: allStocks = [], isLoading } = useEGXMarket();
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');
-  const [activeIndex, setActiveIndex] = useState<EGXIndex>('All');
   const sectorCounts = useMemo(() => getSectorCounts(), []);
-  const indexCounts = useMemo(() => getIndexCounts(), []);
 
   const handleQuery = useCallback((q: string) => {
     setQuery(q);
@@ -518,23 +470,15 @@ export function EGXMarket({
     setQuery('');
   }, []);
 
-  const handleIndex = useCallback((i: EGXIndex) => {
-    setActiveIndex(i);
-    setSector('All');
-    setQuery('');
-  }, []);
-
   const displayed = useMemo(() => {
     let stocks = allStocks;
-    if (activeIndex === 'EGX 30') stocks = stocks.filter(s => EGX_30_TICKERS.has(s.ticker));
-    else if (activeIndex === 'EGX 70') stocks = stocks.filter(s => EGX_70_TICKERS.has(s.ticker));
     if (query.trim()) {
       const matchedSet = new Set(searchCompanies(query).map(c => c.ticker));
       return stocks.filter(s => matchedSet.has(s.ticker));
     }
     if (sector !== 'All') return stocks.filter(s => s.sector === sector);
     return stocks;
-  }, [allStocks, query, sector, activeIndex]);
+  }, [allStocks, query, sector]);
 
   const grouped = useMemo(() => {
     if (query.trim() || sector !== 'All') return null;
@@ -552,8 +496,6 @@ export function EGXMarket({
     ? ` ${t.matchingLabel} "${query}"`
     : sector !== 'All'
     ? ` ${t.inLabel} ${sector}`
-    : activeIndex !== 'All'
-    ? ` ${t.inLabel} ${activeIndex}`
     : ` ${t.listedLabel}`;
 
   // ── Flatten all items into a single array for FlatList virtualization ──────
@@ -608,7 +550,6 @@ export function EGXMarket({
       {topHeader}
       <View style={em.listHeaderWrap}>
         <MarketStatusBanner />
-        <IndexPills active={activeIndex} onChange={handleIndex} counts={indexCounts} />
         <SearchBar value={query} onChange={handleQuery} />
         <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
         <View style={em.resultRow}>
@@ -630,7 +571,7 @@ export function EGXMarket({
       </View>
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [topHeader, activeIndex, query, sector, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
+  ), [topHeader, query, sector, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
 
   const ListEmpty = useMemo(() => (
     !isLoading && displayed.length === 0 ? (
