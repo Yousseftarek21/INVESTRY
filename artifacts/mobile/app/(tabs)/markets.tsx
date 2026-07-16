@@ -531,14 +531,14 @@ function RealEstateTab() {
                 <Feather name="home" size={15} color={colors.primary} />
               </View>
               <Text style={[reh.label, { color: colors.mutedForeground }]} numberOfLines={1}>
-                EGYPT PROPERTY MARKET
+                {t.rePropertyMarketTitle}
               </Text>
             </View>
             <View style={[reh.pill, { backgroundColor: colors.muted }]}>
               <Text style={[reh.pillTxt, { color: colors.mutedForeground }]}>Q2 2026</Text>
             </View>
           </View>
-          <Text style={[reh.title, { color: colors.text }]}>{RE_PRICES.length} areas · avg price/m²</Text>
+          <Text style={[reh.title, { color: colors.text }]}>{RE_PRICES.length} {t.reAreasAvgLabel}</Text>
           <Text style={[reh.sub, { color: colors.mutedForeground }]}>EGP/m² · {t.reMarketDisclaimer.split('(')[0].trim()}</Text>
         </View>
       </View>

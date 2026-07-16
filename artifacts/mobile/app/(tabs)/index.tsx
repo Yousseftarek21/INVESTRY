@@ -694,7 +694,7 @@ export default function HomeScreen() {
         {holdingsLoading && holdings.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'center' }]}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.emptySub, { color: colors.mutedForeground, marginTop: 12 }]}>Loading your investments…</Text>
+            <Text style={[styles.emptySub, { color: colors.mutedForeground, marginTop: 12 }]}>{t.loadingInvestments}</Text>
           </View>
         ) : topHoldings.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>

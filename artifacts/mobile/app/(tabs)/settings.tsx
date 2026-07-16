@@ -361,7 +361,7 @@ function EditProfileModal({
   const pickPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Please allow photo library access to set a profile picture.');
+      Alert.alert(t.photoPermissionTitle, t.photoPermissionBody);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -415,7 +415,7 @@ function EditProfileModal({
                   : <Feather name="camera" size={11} color="#000" />}
               </View>
             </TouchableOpacity>
-            <Text style={[epm.photoHint, { color: colors.mutedForeground }]}>Tap to change photo</Text>
+            <Text style={[epm.photoHint, { color: colors.mutedForeground }]}>{t.tapToChangePhoto}</Text>
           </View>
 
           {/* Display Name field */}
@@ -821,7 +821,7 @@ export default function SettingsScreen() {
       const file = { uri, name: 'avatar.jpg', type: 'image/jpeg' } as unknown as File;
       await user.setProfileImage({ file });
     } catch {
-      Alert.alert('Upload failed', 'Could not update your profile photo. Please try again.');
+      Alert.alert(t.photoUploadFailed, t.photoUploadFailedBody);
     }
   };
 
@@ -1085,7 +1085,7 @@ export default function SettingsScreen() {
           <ToggleRow icon="zap"          iconBg="#FBBF24" label={t.hapticFeedbackLabel}   sublabel={t.hapticFeedbackDesc}   value={hapticsEnabled}   onChange={v => setHapticsEnabled(v)} />
           <NavRow icon="shield"   iconBg="#047857" label={t.privacySettingsLabel}  sublabel={t.privacySettingsDesc} onPress={() => Linking.openSettings()} />
           <NavRow icon="download" iconBg="#0EA5E9" label={t.exportMyData}
-            sublabel={`${holdings.length} investment${holdings.length !== 1 ? 's' : ''} · CSV`}
+            sublabel={`${holdings.length} ${t.investmentsLabel} · CSV`}
             onPress={handleExport} />
           <NavRow icon="trash-2"  iconBg={colors.red} label={t.deleteAllData} sublabel={t.deleteAllDataDesc} onPress={handleDeleteAll} destructive last />
         </Sect>

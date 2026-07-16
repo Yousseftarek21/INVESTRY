@@ -44,7 +44,7 @@ export default function AddChooseScreen() {
 
   const goInvestment = () => router.push('/add-investment?mode=investment' as any);
   const goCash = () => router.push('/cash-accounts?openAdd=1' as any);
-  const goRecurringIncome = () => router.push('/cash-accounts?openAdd=1&type=recurring_income' as any);
+  const goRecurringIncome = () => router.push('/recurring-income' as any);
 
   const bottomPad = insets.bottom + (Platform.OS === 'android' ? 16 : 8);
 

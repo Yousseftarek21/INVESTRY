@@ -10,7 +10,7 @@ import { AssetIcon } from '@/components/AssetIcon';
 
 type HoldingLabels = {
   gold: string; silver: string; realEstate: string; personalAsset: string;
-  sharesLabel: string; fiMatured: string; manualValue: string;
+  sharesLabel: string; fiMatured: string; daysLeft: string; manualValue: string;
 };
 
 interface HoldingCardProps {
@@ -97,7 +97,7 @@ function getSubtitle(holding: Holding, labels: HoldingLabels): string {
     const suffix = isNaN(maturityMs)
       ? ''
       : maturityMs > today.getTime()
-        ? `${Math.ceil((maturityMs - today.getTime()) / 86400000)}d left`
+        ? `${Math.ceil((maturityMs - today.getTime()) / 86400000)} ${labels.daysLeft}`
         : labels.fiMatured;
     return `${holding.annualRate}% · ${holding.institution}${suffix ? ' · ' + suffix : ''}`;
   }
@@ -121,7 +121,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
   const labels: HoldingLabels = {
     gold: t.gold, silver: t.silver, realEstate: t.realEstate,
     personalAsset: t.personalAsset, sharesLabel: t.sharesLabel,
-    fiMatured: t.fiMatured, manualValue: t.manualValue,
+    fiMatured: t.fiMatured, daysLeft: t.daysLeft, manualValue: t.manualValue,
   };
   const currentValue = computeCurrentValue(holding, prices);
   const cost = computeCost(holding, prices);

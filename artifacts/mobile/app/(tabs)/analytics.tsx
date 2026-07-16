@@ -191,7 +191,7 @@ function HealthArc({ score, size = 160 }: { score: number; size: number }) {
         >
           {score}
         </Text>
-        <Text style={[ha.outOf, { color: colors.mutedForeground }]}>out of 100</Text>
+        <Text style={[ha.outOf, { color: colors.mutedForeground }]}>{t.outOf100}</Text>
         <View style={[ha.gradePill, { backgroundColor: scoreColor + '22', borderColor: scoreColor + '44' }]}>
           <Text style={[ha.gradeText, { color: scoreColor }]} numberOfLines={1}>{grade}</Text>
         </View>

@@ -18,6 +18,7 @@ const en = {
   allocation: 'Allocation',
   topHoldings: 'ALL INVESTMENTS',
   noInvestmentsYet: 'No investments yet',
+  loadingInvestments: 'Loading your investments…',
   addFromHoldingsTab: 'Tap the + button below to add your first investment',
   liveRates: 'LIVE RATES',
 
@@ -278,6 +279,7 @@ const en = {
   fiAccruedInterest: 'Accrued Interest',
   fiDaysRemaining: 'days remaining',
   fiMatured: 'Matured',
+  daysLeft: 'days left',
   enterFixedIncomeDetails: 'Please enter a label, institution, principal amount, annual rate, purchase date, and maturity date.',
 
   // Settings
@@ -344,6 +346,11 @@ const en = {
   displayName: 'Display Name',
   displayNamePlaceholder: 'Enter your name',
   displayNameHint: 'Used to personalize your experience.',
+  tapToChangePhoto: 'Tap to change photo',
+  photoPermissionTitle: 'Permission Needed',
+  photoPermissionBody: 'Please allow photo library access to set a profile picture.',
+  photoUploadFailed: 'Upload Failed',
+  photoUploadFailedBody: 'Could not update your profile photo. Please try again.',
 
   // Greetings
   greetingMorning: 'Good Morning',
@@ -468,6 +475,8 @@ const en = {
   reMarketCommercial: 'Commercial',
   reMarketLand: 'Land',
   reMarketNoResults: 'No areas found',
+  rePropertyMarketTitle: 'EGYPT PROPERTY MARKET',
+  reAreasAvgLabel: 'areas · avg price/m²',
   reMarketDisclaimer: 'Price estimates based on Q2 2026 market research (Aqarmap, Property Finder). Update via OTA as market shifts.',
   reMarketLastUpdated: 'Last updated',
   // EGX
@@ -704,6 +713,7 @@ const ar: typeof en = {
   allocation: 'توزيع الأصول',
   topHoldings: 'جميع الاستثمارات',
   noInvestmentsYet: 'لا توجد استثمارات بعد',
+  loadingInvestments: 'جارٍ تحميل استثماراتك…',
   addFromHoldingsTab: 'اضغط على زر + أدناه لإضافة أول استثمار',
   liveRates: 'الأسعار المباشرة',
 
@@ -964,6 +974,7 @@ const ar: typeof en = {
   fiAccruedInterest: 'الفائدة المتراكمة',
   fiDaysRemaining: 'يوم متبقٍ',
   fiMatured: 'استحق',
+  daysLeft: 'أيام متبقية',
   enterFixedIncomeDetails: 'الرجاء إدخال الاسم والمؤسسة والمبلغ والعائد وتاريخ الشراء وتاريخ الاستحقاق.',
 
   // Settings
@@ -1030,6 +1041,11 @@ const ar: typeof en = {
   displayName: 'الاسم المعروض',
   displayNamePlaceholder: 'أدخل اسمك',
   displayNameHint: 'يُستخدم لتخصيص تجربتك.',
+  tapToChangePhoto: 'اضغط لتغيير الصورة',
+  photoPermissionTitle: 'إذن مطلوب',
+  photoPermissionBody: 'يرجى السماح بالوصول إلى مكتبة الصور لتعيين صورة شخصية.',
+  photoUploadFailed: 'فشل التحميل',
+  photoUploadFailedBody: 'تعذّر تحديث صورتك الشخصية. حاول مرة أخرى.',
 
   // Greetings
   greetingMorning: 'صباح الخير',
@@ -1154,6 +1170,8 @@ const ar: typeof en = {
   reMarketCommercial: 'تجاري',
   reMarketLand: 'أرض',
   reMarketNoResults: 'لا توجد مناطق',
+  rePropertyMarketTitle: 'سوق العقارات المصري',
+  reAreasAvgLabel: 'منطقة · متوسط سعر/م²',
   reMarketDisclaimer: 'تقديرات أسعار بناءً على أبحاث السوق لعام 2026 (عقارماب، بروبرتي فايندر). يُحدَّث عبر OTA.',
   reMarketLastUpdated: 'آخر تحديث',
   // EGX

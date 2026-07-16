@@ -189,7 +189,7 @@ export default function HoldingsScreen() {
           /* ── Loading state — fetching from API after sign-in ── */
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'center', gap: 12 }]}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>Loading your investments…</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.loadingInvestments}</Text>
           </View>
         ) : holdings.length === 0 ? (
           /* ── True empty state ── */
@@ -205,7 +205,7 @@ export default function HoldingsScreen() {
               activeOpacity={0.85}
             >
               <Feather name="plus" size={17} color={colors.primaryForeground} />
-              <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>Add Investment</Text>
+              <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>{t.addInvestment}</Text>
             </TouchableOpacity>
           </View>
         ) : (
