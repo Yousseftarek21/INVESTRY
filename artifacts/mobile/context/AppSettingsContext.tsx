@@ -5,6 +5,7 @@ import { Language } from '@/i18n';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type WeightUnit = 'g' | 'oz';
+export type DisplayCurrency = 'EGP' | 'USD' | 'EUR' | 'AED';
 
 interface NotificationPrefs {
   priceAlerts: boolean;
@@ -22,6 +23,7 @@ interface AppSettingsValue {
   analyticsEnabled: boolean;
   crashReportsEnabled: boolean;
   hideValues: boolean;
+  displayCurrency: DisplayCurrency;
   notifications: NotificationPrefs;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setLanguage: (lang: Language) => Promise<void>;
@@ -30,6 +32,7 @@ interface AppSettingsValue {
   setAnalyticsEnabled: (val: boolean) => Promise<void>;
   setCrashReportsEnabled: (val: boolean) => Promise<void>;
   setHideValues: (val: boolean) => Promise<void>;
+  setDisplayCurrency: (c: DisplayCurrency) => Promise<void>;
   setNotification: (key: keyof NotificationPrefs, val: boolean) => Promise<void>;
   biometricLock: boolean;
   setBiometricLock: (val: boolean) => Promise<void>;
@@ -44,6 +47,7 @@ const K = {
   analytics: '@invstry_analytics',
   crashReports: '@invstry_crash_reports',
   hideValues: '@invstry_hide_values',
+  dispCurrency: '@invstry_disp_currency',
   notif: '@invstry_notif',
   biometric: '@invstry_biometric',
 };
@@ -66,6 +70,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [analyticsEnabled, setAnalyticsState] = useState(true);
   const [crashReportsEnabled, setCrashReportsState] = useState(true);
   const [hideValues, setHideValuesState] = useState(false);
+  const [displayCurrency, setDisplayCurrencyState] = useState<DisplayCurrency>('EGP');
   const [notifications, setNotificationsState] = useState<NotificationPrefs>(DEFAULT_NOTIF);
   const [biometricLock, setBiometricLockState] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -73,7 +78,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     (async () => {
       try {
-        const [t, l, w, h, a, c, hv, n, bio] = await Promise.all([
+        const [t, l, w, h, a, c, hv, dc, n, bio] = await Promise.all([
           AsyncStorage.getItem(K.theme),
           AsyncStorage.getItem(K.lang),
           AsyncStorage.getItem(K.weight),
@@ -81,6 +86,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
           AsyncStorage.getItem(K.analytics),
           AsyncStorage.getItem(K.crashReports),
           AsyncStorage.getItem(K.hideValues),
+          AsyncStorage.getItem(K.dispCurrency),
           AsyncStorage.getItem(K.notif),
           AsyncStorage.getItem(K.biometric),
         ]);
@@ -95,6 +101,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         if (a !== null) setAnalyticsState(a === 'true');
         if (c !== null) setCrashReportsState(c === 'true');
         if (hv !== null) setHideValuesState(hv === 'true');
+        if (dc === 'EGP' || dc === 'USD' || dc === 'EUR' || dc === 'AED') setDisplayCurrencyState(dc);
         if (bio !== null) setBiometricLockState(bio === 'true');
         if (n) {
           try { setNotificationsState({ ...DEFAULT_NOTIF, ...JSON.parse(n) }); } catch { /* use defaults */ }
@@ -147,6 +154,11 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     await AsyncStorage.setItem(K.hideValues, String(val));
   }, []);
 
+  const setDisplayCurrency = useCallback(async (c: DisplayCurrency) => {
+    setDisplayCurrencyState(c);
+    await AsyncStorage.setItem(K.dispCurrency, c);
+  }, []);
+
   const setNotification = useCallback(async (key: keyof NotificationPrefs, val: boolean) => {
     setNotificationsState(prev => {
       const next = { ...prev, [key]: val };
@@ -163,9 +175,9 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   return (
     <AppSettingsContext.Provider value={{
       themeMode, language, resolvedTheme,
-      weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, hideValues, notifications,
+      weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, hideValues, displayCurrency, notifications,
       setThemeMode, setLanguage, setWeightUnit,
-      setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setHideValues, setNotification,
+      setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setHideValues, setDisplayCurrency, setNotification,
       biometricLock, setBiometricLock,
       isLoaded,
     }}>

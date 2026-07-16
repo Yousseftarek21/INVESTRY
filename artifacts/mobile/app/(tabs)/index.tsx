@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator, Animated, AppState, Image, LayoutChangeEvent, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
@@ -21,7 +21,7 @@ import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/u
 import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { useAppSettings } from '@/context/AppSettingsContext';
+import { useAppSettings, DisplayCurrency } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
 import { PremiumBadge } from '@/components/PremiumBadge';
@@ -258,8 +258,22 @@ export default function HomeScreen() {
   }, [rawPrices, egxStocks]);
   const { plan, isPro } = useSubscription();
   const { impact } = useHaptic();
-  const { hideValues, setHideValues } = useAppSettings();
+  const { hideValues, setHideValues, displayCurrency, setDisplayCurrency } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
+
+  // ── Display-currency conversion ────────────────────────────────────────────
+  const DISP_CURRENCIES: DisplayCurrency[] = ['EGP', 'USD', 'EUR', 'AED'];
+  const fxRate = useMemo(() => ({
+    EGP: 1,
+    USD: prices?.usdToEgp ?? 51,
+    EUR: prices?.fxRates?.EUR ?? 55.5,
+    AED: prices?.fxRates?.AED ?? 13.9,
+  }), [prices]);
+  const toDisp = useCallback((egp: number) => egp / fxRate[displayCurrency], [fxRate, displayCurrency]);
+  const cycleCurrency = useCallback(() => {
+    const idx = DISP_CURRENCIES.indexOf(displayCurrency);
+    setDisplayCurrency(DISP_CURRENCIES[(idx + 1) % DISP_CURRENCIES.length]);
+  }, [displayCurrency, setDisplayCurrency]);
 
   // Auto-dismissing sync error toast for failed holdings CRUD
   const [showSyncError, setShowSyncError] = useState(false);
@@ -342,7 +356,7 @@ export default function HomeScreen() {
   const chartSeed = useMemo(() => Math.floor(summary.totalCost) % 99991 || 7, [summary.totalCost]);
   const { snapshots } = usePortfolioSnapshots(summary.totalValue);
 
-  const displayValue = useCounterDisplay(summary.totalValue);
+  const displayValue = useCounterDisplay(toDisp(summary.totalValue));
 
   const isGain = summary.gain >= 0;
   const isTodayGain = summary.todayGain >= 0;
@@ -382,14 +396,8 @@ export default function HomeScreen() {
         style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
         pointerEvents="none"
       />
-    <ScrollView
-      style={[styles.scrollTransparent, { flex: 1 }]}
-      contentContainerStyle={[styles.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.text} />}
-    >
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <View style={styles.header}>
+      {/* ── Sticky Header — always visible while scrolling ─────── */}
+      <View style={[styles.stickyHeader, { paddingTop: topPad + 16 }]}>
         {/* Profile avatar — taps into Settings */}
         <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/settings')}>
           {user?.imageUrl ? (
@@ -430,6 +438,12 @@ export default function HomeScreen() {
         </View>
       </View>
 
+    <ScrollView
+      style={[styles.scrollTransparent, { flex: 1 }]}
+      contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: botPad + 100 }]}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.text} />}
+    >
       {/* ── Portfolio label ─────────────────────────────────────── */}
       <View style={styles.titleRow}>
         <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
@@ -456,20 +470,33 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {/* Big value */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => { impact(); setHideValues(!hideValues); }}
-            accessibilityRole="button"
-            accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
-          >
-            <View style={styles.heroValueRow}>
+          {/* Big value + currency pill */}
+          <View style={styles.heroValueRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => { impact(); setHideValues(!hideValues); }}
+              accessibilityRole="button"
+              accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
+              style={{ flexShrink: 1 }}
+            >
               <Text style={[styles.heroValue, { color: colors.text }]}>
                 {hideValues ? '••••••' : displayValue}
               </Text>
-              <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>EGP</Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+            <Pressable
+              onPress={cycleCurrency}
+              style={({ pressed }) => [
+                styles.currencyPill,
+                { backgroundColor: colors.muted + '90', borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Display currency: ${displayCurrency}. Tap to switch`}
+            >
+              <Text style={[styles.currencyPillText, { color: colors.mutedForeground }]}>
+                {displayCurrency} ▾
+              </Text>
+            </Pressable>
+          </View>
 
           {/* Net worth (investments + cash) — additive row, only when user has cash accounts */}
           {cashTotalEGP > 0 && (
@@ -478,7 +505,7 @@ export default function HomeScreen() {
               <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]}>
                 {hideValues
                   ? `${t.netWorthLabel}: ••••••`
-                  : `${t.netWorthLabel}: ${fmtCompact(summary.totalValue + cashTotalEGP)} EGP`}
+                  : `${t.netWorthLabel}: ${fmtCompact(toDisp(summary.totalValue + cashTotalEGP))} ${displayCurrency}`}
               </Text>
             </View>
           )}
@@ -489,16 +516,16 @@ export default function HomeScreen() {
               <View style={styles.iCell}>
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.invested}</Text>
                 <View style={styles.iCellValueRow}>
-                  <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(summary.totalCost)}</Text>
-                  {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>}
+                  <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(toDisp(summary.totalCost))}</Text>
+                  {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>{displayCurrency}</Text>}
                 </View>
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
               <View style={styles.iCell}>
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.currentLabel}</Text>
                 <View style={styles.iCellValueRow}>
-                  <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(summary.totalValue)}</Text>
-                  {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>EGP</Text>}
+                  <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(toDisp(summary.totalValue))}</Text>
+                  {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>{displayCurrency}</Text>}
                 </View>
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
@@ -530,7 +557,7 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <Text style={[styles.plValue, { color: todayColor }]}>
-                  {hideValues ? '••••' : `${isTodayGain ? '+' : '−'}${Math.abs(summary.todayGain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`}
+                  {hideValues ? '••••' : `${isTodayGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.todayGain)))} ${displayCurrency}`}
                 </Text>
               </View>
 
@@ -545,7 +572,7 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <Text style={[styles.plValue, { color: gainColor }]}>
-                  {hideValues ? '••••' : `${isGain ? '+' : '−'}${Math.abs(summary.gain).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`}
+                  {hideValues ? '••••' : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.gain)))} ${displayCurrency}`}
                 </Text>
               </View>
             </View>
@@ -750,7 +777,7 @@ const styles = StyleSheet.create({
   scrollTransparent: { flex: 1, backgroundColor: 'transparent' },
   content:          { paddingHorizontal: 20, gap: 20 },
 
-  header:          { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stickyHeader:    { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingBottom: 10 },
   avatar:          { width: 36, height: 36, borderRadius: 18 },
   avatarFallback:  { alignItems: 'center', justifyContent: 'center' },
   avatarInitial:   { fontSize: 14, fontFamily: 'Inter_700Bold' },
@@ -779,9 +806,10 @@ const styles = StyleSheet.create({
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
-  heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 6, justifyContent: 'center', alignSelf: 'stretch' },
+  heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 8, justifyContent: 'center', alignSelf: 'stretch' },
   heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52, flexShrink: 1, textAlign: 'center' },
-  heroCurrency:   { fontSize: 16, fontFamily: 'Inter_400Regular', letterSpacing: 0, paddingBottom: 6 },
+  currencyPill:   { borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 5, marginBottom: 5 },
+  currencyPillText: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
   netWorthTxt:    { fontSize: 11, fontFamily: 'Inter_400Regular' },
 
