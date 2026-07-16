@@ -1,0 +1,28 @@
+7.3.7_react-native@0.81.5_@b_7082df21238f4b5ef618ebeeb2f14918/node_modules/@react-navigation/elements/lib/module/assets/back-icon.png (4 variations | 566 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.29_@react-navigation+native@7.3.7_react-native@0.81.5_@b_7082df21238f4b5ef618ebeeb2f14918/node_modules/@react-navigation/elements/lib/module/assets/clear-icon.png (4 variations | 425 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.29_@react-navigation+native@7.3.7_react-native@0.81.5_@b_7082df21238f4b5ef618ebeeb2f14918/node_modules/@react-navigation/elements/lib/module/assets/close-icon.png (4 variations | 235 B)
+../../node_modules/.pnpm/@react-navigation+elements@2.9.29_@react-navigation+native@7.3.7_react-native@0.81.5_@b_7082df21238f4b5ef618ebeeb2f14918/node_modules/@react-navigation/elements/lib/module/assets/search-icon.png (3 variations | 582 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/arrow_down.png (9.46 kB)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/error.png (469 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/file.png (138 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/forward.png (188 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/pkg.png (364 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/sitemap.png (465 B)
+../../node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__c289c0218f446f5969794daa94e36b65/node_modules/expo-router/assets/unmatched.png (4.75 kB)
+assets/images/logo-mark.png (262 kB)
+
+› ios bundles (2):
+_expo/static/js/ios/entry-c3c3f20bf157e30b0ea8b0e018252f4d.hbc (4.53 MB)
+_expo/static/js/ios/entry-c3c3f20bf157e30b0ea8b0e018252f4d.hbc.map (13.4 MB)
+
+› Files (2):
+assetmap.json (45.8 kB)
+metadata.json (4.17 kB)
+
+Exported: dist
+
+[ 2/3 ] Uploading iOS update to EAS...
+eas.json is not valid.
+- "update" is not allowed
+    Error: update command failed.
+~/workspace$ 
