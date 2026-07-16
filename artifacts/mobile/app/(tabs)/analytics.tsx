@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import {
   Animated, LayoutChangeEvent, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, useWindowDimensions, View,
@@ -560,11 +560,39 @@ const em = StyleSheet.create({
   sub: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
 });
 
+// ─── Planning Card ────────────────────────────────────────────────────────────
+
+type AnyColors = ReturnType<typeof useColors>;
+function PlanningCard({
+  icon, iconBg, label, sub, onPress, colors,
+}: {
+  icon: React.ComponentProps<typeof Feather>['name'];
+  iconBg: string;
+  label: string;
+  sub: string;
+  onPress: () => void;
+  colors: AnyColors;
+}) {
+  return (
+    <Pressable style={s.planningCard} onPress={onPress}>
+      <View style={[s.planningIcon, { backgroundColor: iconBg + '22' }]}>
+        <Feather name={icon} size={20} color={iconBg} />
+      </View>
+      <Text style={[s.planningLabel, { color: colors.text }]} numberOfLines={1}>{label}</Text>
+      <Text style={[s.planningSub, { color: colors.mutedForeground }]} numberOfLines={2}>{sub}</Text>
+      <View style={[s.planningArrow, { backgroundColor: iconBg + '18' }]}>
+        <Feather name="chevron-right" size={13} color={iconBg} />
+      </View>
+    </Pressable>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
   const t = useT();
   const colors = useColors();
+  const router = useRouter();
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
   const { holdings, isLoading: holdingsLoading } = useHoldings();
@@ -736,7 +764,36 @@ export default function AnalyticsScreen() {
         </View>
       </View>
 
-      {/* ══ SECTION 1: Financial Tools (always first & visible) ══════ */}
+      {/* ══ SECTION 1: Planning ═══════════════════════════════════════ */}
+      <View style={s.sectionHeader}>
+        <View style={[s.sectionIconWrap, { backgroundColor: '#22C55E18' }]}>
+          <Feather name="compass" size={15} color="#22C55E" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>{t.goals}</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.tbillsCalculator}</Text>
+        </View>
+      </View>
+      <View style={[s.planningRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <PlanningCard
+          icon="target" iconBg="#22C55E"
+          label={t.goals}
+          sub={t.noGoalsHint}
+          onPress={() => router.push('/goals' as any)}
+          colors={colors}
+        />
+        <View style={[s.planningDivider, { backgroundColor: colors.border }]} />
+        <PlanningCard
+          icon="percent" iconBg="#4A9EFF"
+          label={t.tbillsCalculator}
+          sub="Egypt T-Bills estimator"
+          onPress={() => router.push('/tbills-calculator' as any)}
+          colors={colors}
+        />
+      </View>
+
+      {/* ══ SECTION 2: Financial Tools ════════════════════════════════ */}
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
       <View style={s.sectionHeader}>
         <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
           <Feather name="tool" size={15} color={colors.primary} />
@@ -1074,4 +1131,13 @@ const s = StyleSheet.create({
   toolsSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   toolsBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   toolsBadgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
+
+  // Planning cards
+  planningRow: { flexDirection: 'row', borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+  planningDivider: { width: StyleSheet.hairlineWidth },
+  planningCard: { flex: 1, padding: 16, gap: 6, alignItems: 'flex-start' },
+  planningIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  planningLabel: { fontSize: 14, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.2 },
+  planningSub: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 15 },
+  planningArrow: { marginTop: 4, width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
 });
