@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAppSettings } from '@/context/AppSettingsContext';
@@ -136,13 +136,9 @@ export function usePortfolioAlerts(currentTotal: number) {
       appState = next;
     };
 
-    const getAppState = async () => {
-      const { AppState } = await import('react-native');
-      const listener = AppState.addEventListener('change', handler);
-      sub.remove = listener.remove;
-      appState = AppState.currentState;
-    };
-    getAppState();
+    const listener = AppState.addEventListener('change', handler);
+    sub.remove = listener.remove;
+    appState = AppState.currentState;
 
     return () => sub.remove();
   }, []);
