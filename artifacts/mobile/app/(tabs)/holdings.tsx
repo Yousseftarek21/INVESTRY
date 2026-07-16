@@ -91,6 +91,8 @@ function SwipeToDelete({ onDelete, children }: { onDelete: () => void; children:
           snapClose();
         }
       },
+      // Don't let ScrollView steal the gesture once we've claimed it
+      onPanResponderTerminationRequest: () => false,
       onPanResponderTerminate: () => snapClose(),
     }),
   ).current;
