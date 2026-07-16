@@ -461,8 +461,8 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
           >
-            <View style={[styles.heroValueRow, { justifyContent: 'center' }]}>
-              <Text style={[styles.heroValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}>
+            <View style={styles.heroValueRow}>
+              <Text style={[styles.heroValue, { color: colors.text }]}>
                 {hideValues ? '••••••' : displayValue}
               </Text>
               <Text style={[styles.heroCurrency, { color: colors.mutedForeground }]}>EGP</Text>
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   heroAccent: { height: 1.25 },
-  heroBody:   { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 16 },
+  heroBody:   { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 16, alignItems: 'stretch' },
 
   cashCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
@@ -768,8 +768,8 @@ const styles = StyleSheet.create({
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
-  heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
-  heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52 },
+  heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 6, justifyContent: 'center', alignSelf: 'stretch' },
+  heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52, flexShrink: 1, textAlign: 'center' },
   heroCurrency:   { fontSize: 16, fontFamily: 'Inter_400Regular', letterSpacing: 0, paddingBottom: 6 },
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
   netWorthTxt:    { fontSize: 11, fontFamily: 'Inter_400Regular' },
