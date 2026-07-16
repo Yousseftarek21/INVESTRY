@@ -787,11 +787,11 @@ export default function AddInvestmentScreen() {
           backgroundColor: colors.background,
         }]}>
           <TouchableOpacity
-            onPress={() => (screenMode === 'investment' && !isEditing) ? setScreenMode('choose') : router.back()}
+            onPress={() => (screenMode === 'investment' && !isEditing && !mode) ? setScreenMode('choose') : router.back()}
             hitSlop={12}
           >
             <Feather
-              name={(screenMode === 'investment' && !isEditing) ? 'chevron-left' : 'x'}
+              name={(screenMode === 'investment' && !isEditing && !mode) ? 'chevron-left' : 'x'}
               size={22}
               color={colors.mutedForeground}
             />

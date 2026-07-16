@@ -132,7 +132,7 @@ export default function HoldingsScreen() {
     router.push(`/add-investment?holdingId=${id}` as any);
   };
 
-  const openAdd = () => { impact(); router.push('/add-investment' as any); };
+  const openAdd = () => { impact(); router.push('/add-choose' as any); };
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;

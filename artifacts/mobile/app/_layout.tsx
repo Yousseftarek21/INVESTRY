@@ -70,6 +70,10 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
+        name="add-choose"
+        options={{ presentation: "transparentModal", headerShown: false, animation: "none" }}
+      />
+      <Stack.Screen
         name="add-investment"
         options={{ presentation: "modal", headerShown: false }}
       />
