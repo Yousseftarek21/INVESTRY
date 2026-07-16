@@ -305,7 +305,7 @@ export default function CashAccountsScreen() {
           }}
           hitSlop={12}
         >
-          <Feather name={showForm ? 'chevron-left' : 'x'} size={22} color={colors.mutedForeground} />
+          <Feather name="chevron-left" size={22} color={colors.mutedForeground} />
         </TouchableOpacity>
         <Text style={[styles.modalTitle, { color: colors.text }]}>
           {showForm

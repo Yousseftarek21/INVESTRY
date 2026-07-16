@@ -82,7 +82,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="cash-accounts"
-        options={{ presentation: "card", headerShown: false }}
+        options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
         name="recurring-income"
