@@ -43,12 +43,7 @@ export default function AddChooseScreen() {
   };
 
   const goInvestment = () => router.push('/add-investment?mode=investment' as any);
-  const goCash = () => {
-    Animated.parallel([
-      Animated.timing(slideY, { toValue: 500, duration: 220, useNativeDriver: true }),
-      Animated.timing(dimOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
-    ]).start(() => router.push('/cash-accounts?openAdd=1' as any));
-  };
+  const goCash = () => router.push('/cash-accounts?openAdd=1' as any);
   const goRecurringIncome = () => router.push('/recurring-income' as any);
 
   const bottomPad = insets.bottom + (Platform.OS === 'android' ? 16 : 8);
@@ -110,7 +105,10 @@ export default function AddChooseScreen() {
           <View style={[s.iconWrapSm, { backgroundColor: '#8B5CF61A' }]}>
             <Feather name="repeat" size={18} color="#8B5CF6" />
           </View>
-          <Text style={[s.cardTitleSm, { color: colors.text, flex: 1 }]}>{t.addRecurringIncomeOption}</Text>
+          <View style={s.cardSmText}>
+            <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addRecurringIncomeOption}</Text>
+            <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.addRecurringIncomeOptionDesc}</Text>
+          </View>
           <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
       </Animated.View>
@@ -198,8 +196,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardSmText: {
+    flex: 1,
+    gap: 2,
+  },
   cardTitleSm: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
+  },
+  cardDescSm: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 15,
   },
 });
