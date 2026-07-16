@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAppSettings } from '@/context/AppSettingsContext';
 
@@ -103,4 +104,52 @@ export function useNotifications() {
       scheduleWeeklyReport(notifications.weeklySummary);
     }
   }, [isLoaded, notifications.dailySummary, notifications.weeklySummary]);
+}
+
+const PORTFOLIO_ALERT_KEY = '@investry_portfolio_alert_baseline';
+
+export function usePortfolioAlerts(currentTotal: number) {
+  const alertedThisSession = useRef(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (currentTotal <= 0) return;
+    if (alertedThisSession.current) return;
+
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(PORTFOLIO_ALERT_KEY);
+        const baseline = stored ? parseFloat(stored) : null;
+
+        if (baseline === null || baseline <= 0) {
+          await AsyncStorage.setItem(PORTFOLIO_ALERT_KEY, String(currentTotal));
+          return;
+        }
+
+        const change = (currentTotal - baseline) / baseline;
+        if (Math.abs(change) < 0.01) return;
+
+        alertedThisSession.current = true;
+
+        const granted = await requestNotificationPermission();
+        if (!granted) return;
+
+        const up = change > 0;
+        const pct = (Math.abs(change) * 100).toFixed(1);
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: up ? `Portfolio up ${pct}% ↑` : `Portfolio down ${pct}% ↓`,
+            body: up
+              ? `Your portfolio gained ${pct}% since your last session. Tap to review.`
+              : `Your portfolio dropped ${pct}% since your last session. Tap to review.`,
+            sound: true,
+          },
+          trigger: null,
+        });
+
+        await AsyncStorage.setItem(PORTFOLIO_ALERT_KEY, String(currentTotal));
+      } catch { /* ignore */ }
+    })();
+  }, [currentTotal]);
 }

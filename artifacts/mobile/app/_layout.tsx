@@ -11,7 +11,7 @@ import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -28,7 +28,10 @@ import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContex
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications, usePortfolioAlerts } from "@/hooks/useNotifications";
+import { useHoldings } from "@/context/HoldingsContext";
+import { useMarketPrices, goldPricePerGram, silverPricePerGram } from "@/hooks/usePrices";
+import { getRECurrentValue } from "@/utils/rePrice";
 import { getApiBaseUrl } from "@/utils/api";
 import * as Updates from "expo-updates";
 
@@ -98,6 +101,27 @@ function NotificationsInitializer() {
   return null;
 }
 
+function PortfolioAlertInitializer() {
+  const { holdings } = useHoldings();
+  const { data: prices } = useMarketPrices();
+
+  const total = useMemo(() => {
+    if (!prices) return 0;
+    return holdings.reduce((sum, h) => {
+      if (h.type === 'gold') return sum + goldPricePerGram(prices, h.karat) * h.grams;
+      if (h.type === 'silver') return sum + silverPricePerGram(prices) * h.grams;
+      if (h.type === 'stock') return sum + h.purchasePricePerShare * h.shares;
+      if (h.type === 'real_estate') return sum + getRECurrentValue(h);
+      if (h.type === 'personal_asset') return sum + h.currentValue;
+      if (h.type === 'fixed_income') return sum + h.principal;
+      return sum;
+    }, 0);
+  }, [holdings, prices]);
+
+  usePortfolioAlerts(total);
+  return null;
+}
+
 function DirectionWrapper({ children }: { children: React.ReactNode }) {
   const { language } = useAppSettings();
   return (
@@ -159,6 +183,7 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
     <>
       <StatusBarManager />
       <NotificationsInitializer />
+      <PortfolioAlertInitializer />
       {children}
       <SubscriptionScreen
         visible={paywallVisible}

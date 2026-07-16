@@ -179,7 +179,7 @@ export default function RecurringIncomeScreen() {
             onPress={() => { if (showForm) resetForm(); else router.back(); }}
             hitSlop={8}
           >
-            <Feather name={showForm ? 'arrow-left' : 'x'} size={22} color={colors.text} />
+            <Feather name="chevron-left" size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: colors.text }]}>
             {showForm
