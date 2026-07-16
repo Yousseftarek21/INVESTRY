@@ -333,41 +333,43 @@ export default function CashAccountsScreen() {
         {showForm ? (
           <>
             {/* ── Account Type (2 × 2 grid) ──────────────────────── */}
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.cashAccountType}</Text>
-              <View style={styles.typeGrid}>
-                {CASH_TYPES.map(ct => {
-                  const active = entryType === ct.key;
-                  return (
-                    <Animated.View
-                      key={ct.key}
-                      style={[styles.typeCardWrap, { transform: [{ scale: cardAnims[ct.key] }] }]}
-                    >
-                      <TouchableOpacity
-                        style={[styles.typeCard, {
-                          borderColor: active ? colors.primary : colors.border,
-                          backgroundColor: active ? colors.primary + '18' : colors.card,
-                        }]}
-                        onPress={() => selectType(ct.key)}
-                        activeOpacity={0.85}
+            {!isEditingIncome && (
+              <View style={styles.section}>
+                <Text style={labelStyle}>{t.cashAccountType}</Text>
+                <View style={styles.typeGrid}>
+                  {CASH_TYPES.map(ct => {
+                    const active = entryType === ct.key;
+                    return (
+                      <Animated.View
+                        key={ct.key}
+                        style={[styles.typeCardWrap, { transform: [{ scale: cardAnims[ct.key] }] }]}
                       >
-                        {active && (
-                          <View style={[styles.checkmark, { backgroundColor: colors.primary }]}>
-                            <Feather name="check" size={9} color={colors.primaryForeground} />
-                          </View>
-                        )}
-                        {ct.key === 'cash_home' ? (
-                          <BanknoteIcon size={20} color={active ? colors.primary : colors.mutedForeground} />
-                        ) : (
-                          <Feather name={TYPE_ICONS[ct.key]} size={20} color={active ? colors.primary : colors.mutedForeground} />
-                        )}
-                        <Text style={[styles.typeLabel, { color: active ? colors.primary : colors.text }]}>{ct.label}</Text>
-                      </TouchableOpacity>
-                    </Animated.View>
-                  );
-                })}
+                        <TouchableOpacity
+                          style={[styles.typeCard, {
+                            borderColor: active ? colors.primary : colors.border,
+                            backgroundColor: active ? colors.primary + '18' : colors.card,
+                          }]}
+                          onPress={() => selectType(ct.key)}
+                          activeOpacity={0.85}
+                        >
+                          {active && (
+                            <View style={[styles.checkmark, { backgroundColor: colors.primary }]}>
+                              <Feather name="check" size={9} color={colors.primaryForeground} />
+                            </View>
+                          )}
+                          {ct.key === 'cash_home' ? (
+                            <BanknoteIcon size={20} color={active ? colors.primary : colors.mutedForeground} />
+                          ) : (
+                            <Feather name={TYPE_ICONS[ct.key]} size={20} color={active ? colors.primary : colors.mutedForeground} />
+                          )}
+                          <Text style={[styles.typeLabel, { color: active ? colors.primary : colors.text }]}>{ct.label}</Text>
+                        </TouchableOpacity>
+                      </Animated.View>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
+            )}
 
             {/* ── Name / Income Name ──────────────────────────────── */}
             <View style={styles.section}>
