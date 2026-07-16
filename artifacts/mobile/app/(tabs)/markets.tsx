@@ -197,8 +197,8 @@ function MetalHeroCard({
   );
 }
 const mh = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
-  accent: { width: 3, alignSelf: 'stretch' },
+  card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row' },
+  accent: { width: 4, alignSelf: 'stretch', borderTopLeftRadius: 15, borderBottomLeftRadius: 15 },
   body: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, gap: 4 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
