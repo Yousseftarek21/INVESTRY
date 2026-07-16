@@ -1,0 +1,401 @@
+I want you to perform a COMPLETE production-quality audit of my application.
+
+Your goal is to make this app work perfectly on every supported iPhone and Android device with ZERO UI, UX, functionality, responsiveness, accessibility, performance, or logic issues.
+
+DO NOT make assumptions. Inspect every file, every component, every screen, every navigation flow, every API call, every state, and every interaction.
+
+## 1. Full Code Audit
+
+Review the entire codebase including:
+- Components
+- Screens
+- Navigation
+- Hooks
+- Utilities
+- Services
+- Assets
+- Theme
+- Styles
+- Context
+- State management
+- API requests
+- Database interactions
+- Storage
+- Authentication
+- Error handling
+
+Find:
+- Bugs
+- Dead code
+- Memory leaks
+- Race conditions
+- Duplicate logic
+- Infinite renders
+- Unused imports
+- Missing dependencies
+- Console errors
+- TypeScript errors
+- Warning messages
+- Performance bottlenecks
+
+Fix every issue.
+
+--------------------------------------------------
+
+## 2. UI Audit
+
+Check every screen pixel by pixel.
+
+Verify:
+- Alignment
+- Padding
+- Margins
+- Typography
+- Font scaling
+- Icon sizing
+- Shadows
+- Border radius
+- Colors
+- Contrast
+- Spacing consistency
+- Safe Area usage
+- Status bar
+- Navigation bar
+- Bottom tabs
+- Headers
+- Cards
+- Buttons
+- Lists
+- Charts
+- Inputs
+- Modals
+- Bottom sheets
+- Dropdowns
+- Toasts
+- Empty states
+- Loading states
+- Error states
+
+Nothing should overflow.
+
+Nothing should be clipped.
+
+Nothing should overlap.
+
+Nothing should look inconsistent.
+
+--------------------------------------------------
+
+## 3. Responsive Design
+
+Test every screen on:
+
+Small phones
+- iPhone SE
+- iPhone 8
+
+Standard phones
+- iPhone 13
+- iPhone 14
+- iPhone 15
+- Pixel devices
+- Samsung Galaxy devices
+
+Large phones
+- iPhone Pro Max models
+- Samsung Ultra models
+
+Tablets
+- iPad
+- Android tablets
+
+Landscape mode
+
+Portrait mode
+
+Different screen densities
+
+Different aspect ratios
+
+Ensure:
+- No cropped content
+- No stretched layouts
+- No overlapping text
+- No hidden buttons
+- No broken flex layouts
+- No incorrect scrolling
+- No keyboard overlap
+
+--------------------------------------------------
+
+## 4. Functional Testing
+
+Test every feature.
+
+Every button.
+
+Every modal.
+
+Every navigation.
+
+Every gesture.
+
+Every input.
+
+Every dropdown.
+
+Every picker.
+
+Every chart.
+
+Every animation.
+
+Every API request.
+
+Every local storage action.
+
+Every database operation.
+
+Every calculation.
+
+Every portfolio update.
+
+Every asset addition.
+
+Every edit.
+
+Every delete.
+
+Every search.
+
+Every filter.
+
+Every sort.
+
+Every settings option.
+
+Nothing should fail.
+
+--------------------------------------------------
+
+## 5. Navigation Testing
+
+Verify:
+
+Back navigation
+
+Deep links
+
+Tab navigation
+
+Stack navigation
+
+Modal navigation
+
+Screen transitions
+
+No duplicate screens.
+
+No navigation loops.
+
+No crashes.
+
+--------------------------------------------------
+
+## 6. Performance
+
+Check:
+
+Large re-renders
+
+Expensive calculations
+
+Image optimization
+
+Memory usage
+
+Startup time
+
+Animation smoothness
+
+List virtualization
+
+FlatList optimization
+
+Bundle size
+
+Lazy loading
+
+Caching
+
+Remove unnecessary renders.
+
+--------------------------------------------------
+
+## 7. Accessibility
+
+Ensure:
+
+Dynamic font scaling
+
+Screen reader labels
+
+Accessible buttons
+
+Minimum touch target sizes
+
+Color contrast
+
+Keyboard navigation where applicable
+
+VoiceOver compatibility
+
+TalkBack compatibility
+
+--------------------------------------------------
+
+## 8. Visual Consistency
+
+Ensure the design system is followed everywhere.
+
+Same spacing.
+
+Same typography.
+
+Same colors.
+
+Same icon sizes.
+
+Same button styles.
+
+Same animation timing.
+
+Same card styling.
+
+Same shadows.
+
+Same radius.
+
+Nothing should look inconsistent.
+
+--------------------------------------------------
+
+## 9. Error Handling
+
+Simulate:
+
+No internet
+
+Slow internet
+
+API failure
+
+Server timeout
+
+Empty responses
+
+Corrupted data
+
+Invalid user input
+
+Missing permissions
+
+App resume
+
+App background
+
+Low memory
+
+The app should never crash.
+
+--------------------------------------------------
+
+## 10. Edge Cases
+
+Test:
+
+Very long names
+
+Very small numbers
+
+Very large numbers
+
+Zero values
+
+Negative values
+
+Empty portfolios
+
+Thousands of investments
+
+Large cash balances
+
+Many transactions
+
+Rapid button tapping
+
+Multiple screen changes
+
+--------------------------------------------------
+
+## 11. Platform Differences
+
+Verify separately on:
+
+iOS
+
+Android
+
+Ensure:
+
+Fonts
+
+Safe areas
+
+Navigation
+
+Status bar
+
+Keyboard
+
+Gestures
+
+Permissions
+
+Haptics
+
+Animations
+
+Platform-specific UI
+
+Everything should feel native.
+
+--------------------------------------------------
+
+## 12. Final Production Review
+
+When finished:
+
+1. Fix every issue automatically.
+2. Refactor code where necessary.
+3. Remove unused code.
+4. Improve maintainability.
+5. Improve readability.
+6. Improve performance.
+7. Improve reliability.
+
+Do NOT stop after listing problems.
+
+Implement the fixes.
+
+Repeat the audit until no issues remain.
+
+Finally provide a report containing:
+
+- Issues found
+- Files changed
+- Fixes applied
+- Performance improvements
+- Remaining concerns (if any)
+
+The application should be production-ready and polished, with no known UI, UX, functional, responsiveness, accessibility, performance, or visual issues.

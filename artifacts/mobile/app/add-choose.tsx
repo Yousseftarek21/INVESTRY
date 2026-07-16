@@ -98,18 +98,15 @@ export default function AddChooseScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[s.card, { backgroundColor: colors.background, borderColor: colors.border }]}
+          style={[s.cardSm, { backgroundColor: colors.background, borderColor: colors.border }]}
           onPress={goRecurringIncome}
           activeOpacity={0.72}
         >
-          <View style={[s.iconWrap, { backgroundColor: '#8B5CF61A' }]}>
-            <Feather name="repeat" size={26} color="#8B5CF6" />
+          <View style={[s.iconWrapSm, { backgroundColor: '#8B5CF61A' }]}>
+            <Feather name="repeat" size={18} color="#8B5CF6" />
           </View>
-          <View style={s.cardText}>
-            <Text style={[s.cardTitle, { color: colors.text }]}>{t.addRecurringIncomeOption}</Text>
-            <Text style={[s.cardDesc, { color: colors.mutedForeground }]}>{t.addRecurringIncomeOptionDesc}</Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          <Text style={[s.cardTitleSm, { color: colors.text, flex: 1 }]}>{t.addRecurringIncomeOption}</Text>
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -179,5 +176,25 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
     lineHeight: 17,
+  },
+  cardSm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  iconWrapSm: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitleSm: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
   },
 });

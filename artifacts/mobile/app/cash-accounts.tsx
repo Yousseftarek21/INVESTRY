@@ -82,7 +82,6 @@ export default function CashAccountsScreen() {
     { key: 'bank',             label: t.bankAccount },
     { key: 'cash_home',        label: t.cashAtHome },
     { key: 'foreign_currency', label: t.foreignCurrency },
-    { key: 'recurring_income', label: t.recurringIncome },
   ];
 
   const TYPE_ICONS: Record<EntryType, keyof typeof Feather.glyphMap> = {
