@@ -539,7 +539,7 @@ function RealEstateTab() {
             </View>
           </View>
           <Text style={[reh.title, { color: colors.text }]}>{RE_PRICES.length} {t.reAreasAvgLabel}</Text>
-          <Text style={[reh.sub, { color: colors.mutedForeground }]}>EGP/m² · {t.reMarketDisclaimer.split('(')[0].trim()}</Text>
+          <Text style={[reh.sub, { color: colors.mutedForeground }]}>{t.reMarketSubHeader}</Text>
         </View>
       </View>
 

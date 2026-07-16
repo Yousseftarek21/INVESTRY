@@ -181,11 +181,11 @@ export default function CashAccountsScreen() {
     if (entryType === 'recurring_income') {
       const parsedAmount = parseAmount(incomeAmount);
       if (!accountName.trim()) {
-        Alert.alert(t.incomeName, 'Please enter an income name.');
+        Alert.alert(t.incomeName, t.enterIncomeName);
         return;
       }
       if (!incomeAmount.trim() || isNaN(parsedAmount) || parsedAmount <= 0) {
-        Alert.alert(t.amount, 'Please enter a valid monthly amount.');
+        Alert.alert(t.amount, t.enterValidMonthlyAmount);
         return;
       }
       if (cashAccounts.length > 0 && !depositAccountId) {

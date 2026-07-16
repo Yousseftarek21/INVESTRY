@@ -712,6 +712,15 @@ const en = {
   couldNotSave: 'Could not save',
   exportFailed: 'Export Failed',
   exportFailedDesc: 'Could not generate export. Please try again.',
+
+  // Alert messages (cash accounts & recurring income)
+  enterIncomeName: 'Please enter an income name.',
+  enterValidMonthlyAmount: 'Please enter a valid monthly amount.',
+  enterValidAmount: 'Please enter a valid amount.',
+  selectCashAccount: 'Please select a cash account.',
+
+  // Real estate market sub-header
+  reMarketSubHeader: 'EGP/m² · Price estimates based on Q2 2026 market research',
 };
 
 const ar: typeof en = {
@@ -1426,6 +1435,15 @@ const ar: typeof en = {
   couldNotSave: 'تعذّر الحفظ',
   exportFailed: 'فشل التصدير',
   exportFailedDesc: 'تعذّر إنشاء الملف. حاول مرة أخرى.',
+
+  // Alert messages (cash accounts & recurring income)
+  enterIncomeName: 'الرجاء إدخال اسم الدخل.',
+  enterValidMonthlyAmount: 'الرجاء إدخال مبلغ شهري صحيح.',
+  enterValidAmount: 'الرجاء إدخال مبلغ صحيح.',
+  selectCashAccount: 'الرجاء اختيار حساب نقدي.',
+
+  // Real estate market sub-header
+  reMarketSubHeader: 'جنيه/م² · تقديرات أسعار بناءً على أبحاث السوق 2026',
 };
 
 export const translations = { en, ar };
