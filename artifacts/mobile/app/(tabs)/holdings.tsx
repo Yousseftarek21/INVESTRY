@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ActivityIndicator, Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Modal, PanResponder, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -29,6 +29,62 @@ function FadeInCard({ index, children }: { index: number; children: React.ReactN
     </Animated.View>
   );
 }
+
+const SWIPE_THRESHOLD = -90;
+
+function SwipeToDelete({ onDelete, children }: { onDelete: () => void; children: React.ReactNode }) {
+  const colors = useColors();
+  const translateX = useRef(new Animated.Value(0)).current;
+  const onDeleteRef = useRef(onDelete);
+  onDeleteRef.current = onDelete;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) && dx < 0,
+      onPanResponderMove: (_, { dx }) => {
+        translateX.setValue(Math.max(dx, SWIPE_THRESHOLD - 24));
+      },
+      onPanResponderRelease: (_, { dx, vx }) => {
+        if (dx < SWIPE_THRESHOLD || vx < -0.8) {
+          Animated.timing(translateX, { toValue: -500, duration: 220, useNativeDriver: true }).start(() => {
+            onDeleteRef.current();
+          });
+        } else {
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 50, friction: 8 }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 50, friction: 8 }).start();
+      },
+    }),
+  ).current;
+
+  const backOpacity = translateX.interpolate({
+    inputRange: [SWIPE_THRESHOLD, 0],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  if (Platform.OS === 'web') return <>{children}</>;
+
+  return (
+    <View style={swSt.wrap}>
+      <Animated.View style={[swSt.deleteBack, { backgroundColor: colors.red, opacity: backOpacity }]}>
+        <Feather name="trash-2" size={20} color="#fff" />
+        <Text style={swSt.deleteLabel}>Delete</Text>
+      </Animated.View>
+      <Animated.View {...panResponder.panHandlers} style={{ transform: [{ translateX }] }}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+const swSt = StyleSheet.create({
+  wrap:       { overflow: 'hidden', borderRadius: 16 },
+  deleteBack: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 88, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  deleteLabel:{ color: '#fff', fontSize: 10, fontFamily: 'Inter_600SemiBold' },
+});
 
 const TYPE_ORDER: Holding['type'][] = ['gold', 'silver', 'stock', 'real_estate', 'personal_asset', 'fixed_income'];
 
@@ -228,13 +284,15 @@ export default function HoldingsScreen() {
               <View style={styles.groupItems}>
                 {grouped[type].map((h, idx) => (
                   <FadeInCard key={h.id} index={idx}>
-                    <HoldingCard
-                      holding={h}
-                      prices={prices}
-                      hideSubtitle
-                      onEdit={() => handleEdit(h.id)}
-                      onDelete={() => handleDelete(h.id)}
-                    />
+                    <SwipeToDelete onDelete={() => { impact(Haptics.ImpactFeedbackStyle.Medium); removeHolding(h.id); }}>
+                      <HoldingCard
+                        holding={h}
+                        prices={prices}
+                        hideSubtitle
+                        onEdit={() => handleEdit(h.id)}
+                        onDelete={() => handleDelete(h.id)}
+                      />
+                    </SwipeToDelete>
                   </FadeInCard>
                 ))}
               </View>

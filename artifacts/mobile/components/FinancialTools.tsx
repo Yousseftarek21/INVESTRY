@@ -59,10 +59,16 @@ function ModalShell({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={[sh.overlay, { backgroundColor: colors.overlay }]}>
+      <View style={sh.overlay}>
+        {/* Tappable backdrop — closes when user taps outside the sheet */}
+        <Pressable
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.overlay }]}
+          onPress={onClose}
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={sh.kav}
+          pointerEvents="box-none"
         >
           <Animated.View
             style={[sh.sheet, {
