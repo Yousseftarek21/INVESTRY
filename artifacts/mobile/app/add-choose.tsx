@@ -43,7 +43,12 @@ export default function AddChooseScreen() {
   };
 
   const goInvestment = () => router.push('/add-investment?mode=investment' as any);
-  const goCash = () => router.push('/cash-accounts?openAdd=1' as any);
+  const goCash = () => {
+    Animated.parallel([
+      Animated.timing(slideY, { toValue: 500, duration: 220, useNativeDriver: true }),
+      Animated.timing(dimOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+    ]).start(() => router.push('/cash-accounts?openAdd=1' as any));
+  };
   const goRecurringIncome = () => router.push('/recurring-income' as any);
 
   const bottomPad = insets.bottom + (Platform.OS === 'android' ? 16 : 8);
