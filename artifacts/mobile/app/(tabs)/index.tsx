@@ -647,25 +647,31 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* ── Cash Card ───────────────────────────────────────────── */}
-      {cashAccounts.length > 0 && (
-        <TouchableOpacity
-          style={[styles.cashCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => router.push('/cash-accounts' as any)}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
-            <BanknoteIcon size={20} color={colors.green} />
-          </View>
-          <View style={styles.cashInfo}>
-            <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
+      {/* ── Cash Card ─────────────────────────────────────────────
+           Always visible. When no accounts exist, shows a quiet empty
+           state that taps into the Cash Accounts screen to add one. */}
+      <TouchableOpacity
+        style={[styles.cashCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push('/cash-accounts' as any)}
+        activeOpacity={0.85}
+      >
+        <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
+          <BanknoteIcon size={20} color={colors.green} />
+        </View>
+        <View style={styles.cashInfo}>
+          <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
+          {cashAccounts.length > 0 ? (
             <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1}>
               {hideValues ? '••••••' : `${hasForeignCash ? '≈ ' : ''}${cashTotalEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })}`} EGP
             </Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      )}
+          ) : (
+            <Text style={[styles.cashValue, { color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
+              {t.noCashAccountsYet}
+            </Text>
+          )}
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+      </TouchableOpacity>
 
       {/* ── Top Investments ─────────────────────────────────────── */}
       <View style={styles.holdingsSection}>

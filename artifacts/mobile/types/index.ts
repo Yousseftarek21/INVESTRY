@@ -129,6 +129,12 @@ export interface CashAccount {
   notes?: string;
 }
 
+export interface IncomeTransaction {
+  month: string;       // "2026-07"
+  amount: number;
+  creditedAt: string;  // ISO timestamp
+}
+
 export interface RecurringIncome {
   id: string;
   name: string;
@@ -141,6 +147,7 @@ export interface RecurringIncome {
   active: boolean;
   lastProcessedMonth: string | null;
   createdAt: string;
+  transactions?: IncomeTransaction[];
 }
 
 export interface MarketPrices {

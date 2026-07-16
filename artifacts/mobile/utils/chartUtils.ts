@@ -11,7 +11,7 @@ const PERIOD_DAYS: Record<ChartPeriod, number> = {
 };
 
 /** Minimum real snapshots needed before we show real data (not the seeded curve). */
-const MIN_REAL_PTS = 3;
+const MIN_REAL_PTS = 2;
 
 /**
  * Converts stored portfolio snapshots into chart values for the given period.

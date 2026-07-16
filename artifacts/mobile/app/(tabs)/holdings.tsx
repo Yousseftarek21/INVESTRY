@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ActivityIndicator, Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -8,12 +8,13 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
-import { useMarketPrices } from '@/hooks/usePrices';
+import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { getRECurrentValue } from '@/utils/rePrice';
 import { HoldingCard } from '@/components/HoldingCard';
 
 import { SwipeToDelete } from '@/components/SwipeToDelete';
-import { Holding } from '@/types';
+import { Holding, MarketPrices } from '@/types';
 
 function FadeInCard({ index, children }: { index: number; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -53,6 +54,46 @@ const TYPE_COLORS: Record<Holding['type'], string> = {
   fixed_income: '#22C55E',
 };
 
+type SortMode = 'default' | 'value' | 'gain' | 'date';
+type PricesArg = (MarketPrices & { egxPrices?: Record<string, number> }) | null | undefined;
+
+function getHoldingValue(h: Holding, p: PricesArg): number {
+  if (!p) {
+    if (h.type === 'gold' || h.type === 'silver') return h.grams * h.purchasePricePerGram;
+    if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
+    if (h.type === 'real_estate') return h.purchasePrice;
+    if (h.type === 'personal_asset') return (h.currentValue ?? h.purchasePrice);
+    if (h.type === 'fixed_income') return h.principal;
+    return 0;
+  }
+  if (h.type === 'gold') return goldPricePerGram(p, h.karat) * h.grams;
+  if (h.type === 'silver') return silverPricePerGram(p) * h.grams;
+  if (h.type === 'stock') return (p.egxPrices?.[h.symbol] ?? h.purchasePricePerShare) * h.shares;
+  if (h.type === 'real_estate') return getRECurrentValue(h);
+  if (h.type === 'personal_asset') return (h.currentValue ?? h.purchasePrice) * (h.currency === 'USD' ? p.usdToEgp : 1);
+  if (h.type === 'fixed_income') return h.principal;
+  return 0;
+}
+
+function getHoldingCost(h: Holding): number {
+  if (h.type === 'gold' || h.type === 'silver') return h.grams * h.purchasePricePerGram;
+  if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
+  if (h.type === 'real_estate') return h.purchasePrice;
+  if (h.type === 'personal_asset') return h.purchasePrice;
+  if (h.type === 'fixed_income') return h.principal;
+  return 0;
+}
+
+function getHoldingSearchText(h: Holding): string {
+  if (h.type === 'gold') return `gold ${h.karat} ${h.form}`.toLowerCase();
+  if (h.type === 'silver') return `silver ${h.form}`.toLowerCase();
+  if (h.type === 'stock') return `stock ${h.symbol}`.toLowerCase();
+  if (h.type === 'real_estate') return `real estate property ${h.propertyName ?? ''} ${h.propertyType}`.toLowerCase();
+  if (h.type === 'personal_asset') return `${h.name} ${h.category}`.toLowerCase();
+  if (h.type === 'fixed_income') return `${h.subtype} ${h.label} ${h.institution ?? ''}`.toLowerCase();
+  return '';
+}
+
 export default function HoldingsScreen() {
   const colors = useColors();
   const t = useT();
@@ -82,6 +123,8 @@ export default function HoldingsScreen() {
   }, [rawPrices, egxStocks]);
   const { impact } = useHaptic();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>('default');
 
   const TYPE_LABELS: Record<Holding['type'], string> = {
     gold: t.goldGroup,
@@ -92,11 +135,37 @@ export default function HoldingsScreen() {
     fixed_income: t.fixedIncomeGroup,
   };
 
-  const grouped = holdings.reduce<Record<string, Holding[]>>((acc, h) => {
-    if (!acc[h.type]) acc[h.type] = [];
-    acc[h.type].push(h);
-    return acc;
-  }, {});
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return holdings;
+    const q = searchQuery.toLowerCase();
+    return holdings.filter(h => getHoldingSearchText(h).includes(q));
+  }, [holdings, searchQuery]);
+
+  const grouped = useMemo(() => {
+    const groups = filtered.reduce<Record<string, Holding[]>>((acc, h) => {
+      if (!acc[h.type]) acc[h.type] = [];
+      acc[h.type].push(h);
+      return acc;
+    }, {});
+    if (sortMode === 'value') {
+      for (const type of Object.keys(groups)) {
+        groups[type].sort((a, b) => getHoldingValue(b, prices) - getHoldingValue(a, prices));
+      }
+    } else if (sortMode === 'gain') {
+      for (const type of Object.keys(groups)) {
+        groups[type].sort((a, b) => {
+          const gA = getHoldingValue(a, prices) - getHoldingCost(a);
+          const gB = getHoldingValue(b, prices) - getHoldingCost(b);
+          return gB - gA;
+        });
+      }
+    } else if (sortMode === 'date') {
+      for (const type of Object.keys(groups)) {
+        groups[type].sort((a, b) => (b.purchaseDate ?? '').localeCompare(a.purchaseDate ?? ''));
+      }
+    }
+    return groups;
+  }, [filtered, sortMode, prices]);
 
   const handleDelete = (id: string) => {
     if (Platform.OS === 'web') {
@@ -185,6 +254,54 @@ export default function HoldingsScreen() {
           )}
         </View>
 
+        {/* ── Search bar ── */}
+        {holdings.length > 0 && (
+          <View style={[styles.searchWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="search" size={15} color={colors.mutedForeground} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={t.searchHoldings}
+              placeholderTextColor={colors.mutedForeground}
+              clearButtonMode="while-editing"
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
+                <Feather name="x" size={15} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* ── Sort chips ── */}
+        {holdings.length > 0 && (
+          <View style={styles.sortRow}>
+            {(['default', 'value', 'gain', 'date'] as SortMode[]).map(mode => {
+              const labels: Record<SortMode, string> = {
+                default: t.sortDefault,
+                value:   t.sortByValue,
+                gain:    t.sortByReturn,
+                date:    t.sortByDate,
+              };
+              const active = sortMode === mode;
+              return (
+                <TouchableOpacity
+                  key={mode}
+                  style={[styles.sortChip, { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border }]}
+                  onPress={() => setSortMode(mode)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.sortChipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
+                    {labels[mode]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
         {isLoading && holdings.length === 0 ? (
           /* ── Loading state — fetching from API after sign-in ── */
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'center', gap: 12 }]}>
@@ -207,6 +324,15 @@ export default function HoldingsScreen() {
               <Feather name="plus" size={17} color={colors.primaryForeground} />
               <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>{t.addInvestment}</Text>
             </TouchableOpacity>
+          </View>
+        ) : searchQuery.trim() && filtered.length === 0 ? (
+          /* ── No search results ── */
+          <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.emptyIconWrap, { backgroundColor: colors.muted }]}>
+              <Feather name="search" size={28} color={colors.mutedForeground} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noSearchResults}</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>"{searchQuery}"</Text>
           </View>
         ) : (
           TYPE_ORDER.filter(type => grouped[type]?.length).map(type => (
@@ -322,6 +448,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14,
   },
   syncToastText: { color: '#fff', fontSize: 13, fontFamily: 'Inter_500Medium', flex: 1 },
+
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 14, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 10,
+    marginBottom: -8,
+  },
+  searchInput: {
+    flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular',
+    paddingVertical: 0,
+  },
+  sortRow: {
+    flexDirection: 'row', gap: 6, marginBottom: -8, flexWrap: 'wrap',
+  },
+  sortChip: {
+    borderRadius: 20, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 6,
+  },
+  sortChipText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
 });
 
 const confirmStyles = StyleSheet.create({

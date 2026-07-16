@@ -1,24 +1,56 @@
 import React from 'react';
-import { View } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop, Circle } from 'react-native-svg';
+import { Text, View } from 'react-native';
+import Svg, { Path, Defs, LinearGradient, Stop, Circle, Line } from 'react-native-svg';
 import { useColors } from '@/hooks/useColors';
-import { genCurve, buildSmoothPath, snapshotsToValues, ChartPt, ChartPeriod, PortfolioSnapshotItem } from '@/utils/chartUtils';
+import { useT } from '@/hooks/useTranslation';
+import { buildSmoothPath, snapshotsToValues, ChartPt, ChartPeriod, PortfolioSnapshotItem } from '@/utils/chartUtils';
 
 interface PerfChartProps {
   gainPct: number;
   period: ChartPeriod;
-  seed: number;
+  seed?: number;
   width: number;
   height?: number;
   snapshots?: PortfolioSnapshotItem[];
 }
 
-export function PerfChart({ gainPct, period, seed, width, height = 110, snapshots }: PerfChartProps) {
+export function PerfChart({ gainPct, period, width, height = 110, snapshots }: PerfChartProps) {
   const colors = useColors();
+  const t = useT();
   if (width < 10) return <View style={{ height }} />;
 
   const realValues = snapshots ? snapshotsToValues(snapshots, period) : null;
-  const data = realValues ?? genCurve(gainPct, period, seed);
+
+  // No real data yet — show a flat dashed line + a hint so the user knows
+  // the chart builds as they open the app on different days.
+  if (realValues === null) {
+    const midY = height / 2;
+    return (
+      <View>
+        <Svg width={width} height={height}>
+          <Line
+            x1={8} y1={midY} x2={width - 8} y2={midY}
+            stroke={colors.mutedForeground}
+            strokeWidth="1.5"
+            strokeDasharray="6,5"
+            strokeOpacity="0.35"
+          />
+        </Svg>
+        <Text style={{
+          textAlign: 'center',
+          color: colors.mutedForeground,
+          fontSize: 11,
+          fontFamily: 'Inter_400Regular',
+          marginTop: 6,
+          opacity: 0.75,
+        }}>
+          {t.chartBuildingHint}
+        </Text>
+      </View>
+    );
+  }
+
+  const data = realValues;
   const color = gainPct >= 0 ? colors.green : colors.red;
   const minV = Math.min(...data);
   const maxV = Math.max(...data);
@@ -48,9 +80,7 @@ export function PerfChart({ gainPct, period, seed, width, height = 110, snapshot
       <Path d={fillPath} fill="url(#pfc)" />
       <Path d={linePath} fill="none" stroke={color}
         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Start anchor dot */}
       <Circle cx={firstPt.x} cy={firstPt.y} r="3" fill={color} fillOpacity="0.4" />
-      {/* End dot with halo */}
       <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
       <Circle cx={lastPt.x} cy={lastPt.y} r="9" fill={color} fillOpacity="0.15" />
     </Svg>

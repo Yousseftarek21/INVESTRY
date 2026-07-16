@@ -19,8 +19,19 @@ import { RecurringIncome } from '@/types';
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
+const MONTH_NAMES = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+];
+
 function todayISO() {
   return new Date().toISOString().split('T')[0];
+}
+
+/** '2026-07' → 'July 2026' */
+function formatMonth(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  return `${MONTH_NAMES[m - 1]} ${y}`;
 }
 
 function generateId() {
@@ -242,6 +253,15 @@ export default function RecurringIncomeScreen() {
                           <Text style={[s.cardAccount, { color: colors.mutedForeground }]} numberOfLines={1}>
                             → {cashAccounts.find(a => a.id === inc.cashAccountId)?.accountName ?? '—'}
                           </Text>
+                          {(inc.transactions?.length ?? 0) > 0 ? (
+                            <Text style={[s.cardLastCredited, { color: colors.mutedForeground }]} numberOfLines={1}>
+                              {t.lastCredited}: {formatMonth(inc.transactions![inc.transactions!.length - 1].month)}
+                            </Text>
+                          ) : (
+                            <Text style={[s.cardLastCredited, { color: colors.mutedForeground, opacity: 0.6 }]} numberOfLines={1}>
+                              {t.notYetCredited}
+                            </Text>
+                          )}
                         </View>
                         <View style={[s.badge, {
                           backgroundColor: inc.active ? colors.primary + '18' : colors.muted,
@@ -380,6 +400,32 @@ export default function RecurringIncomeScreen() {
                   />
                 </View>
 
+                {/* Credit History (edit mode only) */}
+                {editingId && (() => {
+                  const editing = recurringIncomes.find(r => r.id === editingId);
+                  const txs = editing?.transactions ?? [];
+                  return (
+                    <View style={[s.historySection, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                      <View style={s.historyHeader}>
+                        <Feather name="clock" size={14} color={colors.mutedForeground} />
+                        <Text style={[s.historyTitle, { color: colors.mutedForeground }]}>{t.creditHistory}</Text>
+                      </View>
+                      {txs.length === 0 ? (
+                        <Text style={[s.historyEmpty, { color: colors.mutedForeground }]}>{t.noCreditHistory}</Text>
+                      ) : (
+                        [...txs].reverse().map((tx, i) => (
+                          <View key={`${tx.month}-${i}`} style={[s.historyRow, i < txs.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+                            <Text style={[s.historyMonth, { color: colors.text }]}>{formatMonth(tx.month)}</Text>
+                            <Text style={[s.historyAmount, { color: colors.green }]}>
+                              +{tx.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {editing!.currency}
+                            </Text>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  );
+                })()}
+
                 {/* Action buttons */}
                 <View style={s.btns}>
                   <TouchableOpacity
@@ -499,8 +545,9 @@ const s = StyleSheet.create({
   cardBody:    { flex: 1, gap: 2 },
   cardName:    { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   cardSub:     { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  cardAccount: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  badge:       { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  cardAccount:     { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  cardLastCredited:{ fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  badge:           { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   badgeText:   { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
 
   form:    { gap: 16, paddingTop: 8 },
@@ -533,6 +580,14 @@ const s = StyleSheet.create({
   pickerOption:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
   pickerOptionText:  { fontSize: 15, fontFamily: 'Inter_500Medium' },
   pickerOptionSub:   { fontSize: 13, fontFamily: 'Inter_400Regular' },
+
+  historySection:  { borderRadius: 14, borderWidth: 1, padding: 14, gap: 0 },
+  historyHeader:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  historyTitle:    { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.3, textTransform: 'uppercase' },
+  historyEmpty:    { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', paddingVertical: 8 },
+  historyRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9 },
+  historyMonth:    { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  historyAmount:   { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 
   confirmOverlay:  { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 24 },
   confirmCard:     { width: '100%', borderRadius: 18, borderWidth: 1, padding: 24, gap: 10 },

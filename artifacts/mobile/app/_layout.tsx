@@ -24,6 +24,7 @@ import { NoNetworkScreen } from "@/components/NoNetworkScreen";
 import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
 import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
+import { GoalsProvider } from "@/context/GoalsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
@@ -31,7 +32,9 @@ import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 import { useNotifications, usePortfolioAlerts } from "@/hooks/useNotifications";
 import { useHoldings } from "@/context/HoldingsContext";
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from "@/hooks/usePrices";
+import { useEGXMarket } from "@/hooks/useEGXMarket";
 import { getRECurrentValue } from "@/utils/rePrice";
+import { usePriceAlertChecker } from "@/hooks/usePriceAlerts";
 import { getApiBaseUrl } from "@/utils/api";
 import * as Updates from "expo-updates";
 
@@ -92,12 +95,40 @@ function RootLayoutNav() {
         name="notifications"
         options={{ presentation: "modal", headerShown: false }}
       />
+      <Stack.Screen
+        name="tbills-calculator"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="goals"
+        options={{ presentation: "modal", headerShown: false }}
+      />
     </Stack>
   );
 }
 
 function NotificationsInitializer() {
   useNotifications();
+  return null;
+}
+
+function PriceAlertsInitializer() {
+  const { data: prices } = useMarketPrices();
+  const { data: egxStocks } = useEGXMarket();
+  const pricesDict = useMemo<Record<string, number>>(() => {
+    if (!prices) return {};
+    const dict: Record<string, number> = {
+      usd_egp:    prices.usdToEgp,
+      gold_24k:   goldPricePerGram(prices, '24k'),
+      gold_22k:   goldPricePerGram(prices, '22k'),
+      gold_21k:   goldPricePerGram(prices, '21k'),
+      gold_18k:   goldPricePerGram(prices, '18k'),
+      silver_gram: silverPricePerGram(prices),
+    };
+    egxStocks?.forEach(s => { dict[`stock_${s.ticker}`] = s.price; });
+    return dict;
+  }, [prices, egxStocks]);
+  usePriceAlertChecker(pricesDict);
   return null;
 }
 
@@ -184,6 +215,7 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
       <StatusBarManager />
       <NotificationsInitializer />
       <PortfolioAlertInitializer />
+      <PriceAlertsInitializer />
       {children}
       <SubscriptionScreen
         visible={paywallVisible}
@@ -364,11 +396,13 @@ export default function RootLayout() {
                       <KeyboardProvider>
                         <HoldingsProvider>
                           <CashProvider>
+                            <GoalsProvider>
                             <RecurringIncomeProvider>
                               <AppWithPaywall>
                                 <RootLayoutNav />
                               </AppWithPaywall>
                             </RecurringIncomeProvider>
+                          </GoalsProvider>
                           </CashProvider>
                         </HoldingsProvider>
                       </KeyboardProvider>

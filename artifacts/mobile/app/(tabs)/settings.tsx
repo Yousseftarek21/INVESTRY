@@ -1065,6 +1065,12 @@ export default function SettingsScreen() {
             onPress={() => showModal(t.performanceCalc, 'Gain/loss is calculated using First-In, First-Out (FIFO): each investment\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
         </Sect>
 
+        {/* ── TOOLS & PLANNING ─────────────────────────── */}
+        <Sect label={t.settingsSectTools}>
+          <NavRow icon="target"     iconBg="#22C55E" label={t.goals}            sublabel={t.noGoalsHint}                onPress={() => router.push('/goals' as any)} />
+          <NavRow icon="percent"    iconBg="#4A9EFF" label={t.tbillsCalculator} sublabel="Egypt T-Bills return estimator" onPress={() => router.push('/tbills-calculator' as any)} last />
+        </Sect>
+
         {/* ── NOTIFICATIONS ────────────────────────────────── */}
         <Sect label={t.settingsSectNotifications}>
           <ToggleRow icon="bell"      iconBg="#F59E0B" label={t.priceAlertsLabel}    sublabel={t.priceAlertsDesc}    value={notifications.priceAlerts}    onChange={v => setNotification('priceAlerts', v)} />
