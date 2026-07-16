@@ -230,13 +230,7 @@ export default function HoldingsScreen() {
               <View style={styles.groupItems}>
                 {grouped[type].map((h, idx) => (
                   <FadeInCard key={h.id} index={idx}>
-                    <SwipeToDelete
-                      onDelete={() => { impact(Haptics.ImpactFeedbackStyle.Medium); removeHolding(h.id); }}
-                      confirmTitle={t.deleteHolding}
-                      confirmMessage={t.deleteHoldingConfirm}
-                      confirmLabel={t.delete}
-                      cancelLabel={t.cancel}
-                    >
+                    <SwipeToDelete onDelete={() => handleDelete(h.id)}>
                       <HoldingCard
                         holding={h}
                         prices={prices}

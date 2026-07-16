@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  Alert, Animated, PanResponder, Platform,
+  Animated, PanResponder, Platform,
   Pressable, StyleSheet, Text, View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -11,30 +11,18 @@ const COMMIT_W = 210;
 
 interface SwipeToDeleteProps {
   onDelete: () => void;
-  confirmTitle: string;
-  confirmMessage: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
   children: React.ReactNode;
 }
 
-export function SwipeToDelete({
-  onDelete,
-  confirmTitle,
-  confirmMessage,
-  confirmLabel = 'Delete',
-  cancelLabel = 'Cancel',
-  children,
-}: SwipeToDeleteProps) {
+export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
   const colors = useColors();
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpenRef = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Keep all confirmation props in a ref so the stable PanResponder
-  // callbacks always read the latest values without needing to recreate.
-  const propsRef = useRef({ onDelete, confirmTitle, confirmMessage, confirmLabel, cancelLabel });
-  propsRef.current = { onDelete, confirmTitle, confirmMessage, confirmLabel, cancelLabel };
+  // Keep onDelete in a ref so the stable PanResponder always calls the latest.
+  const onDeleteRef = useRef(onDelete);
+  onDeleteRef.current = onDelete;
 
   const snapClose = useCallback(() => {
     Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 60, friction: 9 }).start();
@@ -48,26 +36,11 @@ export function SwipeToDelete({
     setIsOpen(true);
   }, []);
 
-  // Shows confirmation Alert; only animates slide-out after user confirms.
+  // Delegate entirely to the parent's onDelete — which already shows the
+  // confirmation dialog (Alert on native, modal on web) + handles haptics.
   const commitDelete = useCallback(() => {
-    const { confirmTitle, confirmMessage, confirmLabel, cancelLabel, onDelete } = propsRef.current;
-    Alert.alert(confirmTitle, confirmMessage, [
-      {
-        text: cancelLabel,
-        style: 'cancel',
-        onPress: snapClose,
-      },
-      {
-        text: confirmLabel,
-        style: 'destructive',
-        onPress: () => {
-          Animated.timing(translateX, { toValue: -600, duration: 200, useNativeDriver: true }).start(() => {
-            onDelete();
-          });
-        },
-      },
-    ]);
-  }, [snapClose]);
+    onDeleteRef.current();
+  }, []);
 
   const panResponder = useRef(
     PanResponder.create({

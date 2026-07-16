@@ -372,14 +372,7 @@ export default function CashAccountsScreen() {
             ) : (
               <View style={styles.list}>
                 {cashAccounts.map(a => (
-                  <SwipeToDelete
-                    key={a.id}
-                    onDelete={() => { impact(Haptics.ImpactFeedbackStyle.Medium); removeCashAccount(a.id); }}
-                    confirmTitle={t.deleteCashAccount}
-                    confirmMessage={t.deleteCashAccountConfirm}
-                    confirmLabel={t.delete}
-                    cancelLabel={t.cancel}
-                  >
+                  <SwipeToDelete key={a.id} onDelete={() => handleDelete(a.id)}>
                   <View
                     style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   >
