@@ -372,6 +372,7 @@ export default function CashAccountsScreen() {
             ) : (
               <View style={styles.list}>
                 {cashAccounts.map(a => (
+
                   <SwipeToDelete key={a.id} onDelete={() => handleDelete(a.id)}>
                   <View
                     style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -413,6 +414,22 @@ export default function CashAccountsScreen() {
                 ))}
               </View>
             )}
+
+            {/* Recurring Income entry */}
+            <TouchableOpacity
+              style={[styles.recurringRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => router.push('/recurring-income')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.recurringIcon, { backgroundColor: colors.primary + '14' }]}>
+                <Feather name="repeat" size={16} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.recurringLabel, { color: colors.text }]}>{t.recurringIncome}</Text>
+                <Text style={[styles.recurringHint, { color: colors.mutedForeground }]}>{t.autoMonthlyIncome}</Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
@@ -481,6 +498,10 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
   totalValue: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   list: { gap: 10 },
+  recurringRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1, padding: 14, marginTop: 8 },
+  recurringIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  recurringLabel: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  recurringHint:  { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 1 },
   accountCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderRadius: 16, borderWidth: 1, padding: 14,

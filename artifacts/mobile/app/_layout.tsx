@@ -23,6 +23,7 @@ import { CustomSplash } from "@/components/CustomSplash";
 import { NoNetworkScreen } from "@/components/NoNetworkScreen";
 import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
+import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
@@ -326,9 +327,11 @@ export default function RootLayout() {
                       <KeyboardProvider>
                         <HoldingsProvider>
                           <CashProvider>
-                            <AppWithPaywall>
-                              <RootLayoutNav />
-                            </AppWithPaywall>
+                            <RecurringIncomeProvider>
+                              <AppWithPaywall>
+                                <RootLayoutNav />
+                              </AppWithPaywall>
+                            </RecurringIncomeProvider>
                           </CashProvider>
                         </HoldingsProvider>
                       </KeyboardProvider>

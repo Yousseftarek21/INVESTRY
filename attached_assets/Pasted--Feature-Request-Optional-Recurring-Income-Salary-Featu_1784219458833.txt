@@ -1,0 +1,141 @@
+# Feature Request: Optional Recurring Income (Salary) Feature
+
+## Objective
+
+Implement an **optional Recurring Income** feature that allows users to automatically credit recurring income (such as salary) into one of their Cash Accounts on a selected day every month.
+
+This is an **additional convenience feature**, not a required part of the onboarding or normal workflow.
+
+Users who do not want to use it should never be prompted or forced to set it up.
+
+---
+
+## Product Philosophy
+
+INVESTRY is primarily an investment and net worth tracker.
+
+Recurring Income is simply an optional automation feature that helps users avoid manually recording the same income every month.
+
+The feature should feel like a helpful add-on rather than a core requirement.
+
+---
+
+## User Experience
+
+Users can continue using the app exactly as they do today.
+
+Nothing changes unless they decide to enable this feature.
+
+There should be no onboarding screens, mandatory setup, or repeated reminders asking users to configure recurring income.
+
+---
+
+## Feature Location
+
+Add a section called:
+
+**Recurring Income**
+
+(or "Monthly Income")
+
+This can be accessed from the Cash section or Settings.
+
+Users who never open this section will never notice any change to their experience.
+
+---
+
+## Create Recurring Income
+
+When a user taps **Add Recurring Income**, allow them to configure:
+
+* Income Name (default: Salary)
+* Amount
+* Currency
+* Deposit Into (select one Cash Account)
+* Credit Day (1–31)
+* Start Date
+* Optional End Date
+* Active / Inactive toggle
+
+Example:
+
+* Salary
+* 8,000 EGP
+* Deposit into: Bank Account
+* Every month on the 25th
+
+---
+
+## Automatic Credit
+
+If the recurring income is active, INVESTRY should automatically create an Income transaction on the scheduled date.
+
+The selected Cash Account balance should increase automatically.
+
+Example transaction:
+
+Salary
+
++8,000 EGP
+
+Automatically Added
+
+25 Aug 2026
+
+The transaction should appear in the Cash Account history exactly like a manually added income transaction.
+
+---
+
+## Management
+
+Users can:
+
+* Add multiple recurring incomes
+* Edit recurring incomes
+* Change amount
+* Change payment date
+* Change destination Cash Account
+* Pause recurring income
+* Resume recurring income
+* Delete recurring income
+
+Deleting a recurring income must never delete historical transactions.
+
+---
+
+## Business Rules
+
+* This feature is completely optional.
+* Users can ignore it forever and continue using INVESTRY normally.
+* No notifications or setup prompts should appear unless the user has created at least one recurring income.
+* Prevent duplicate credits for the same month.
+* If the scheduled date is missed because the app was closed, process the income the next time the app opens.
+* Historical records must remain unchanged if the recurring income is edited later.
+
+---
+
+## Future Compatibility
+
+Design the feature using a reusable recurring transaction engine so additional recurring income types can easily be supported in the future, including:
+
+* Salary
+* Bonus
+* Rental Income
+* Dividends
+* Pension
+* Interest
+* Freelance Income
+
+without requiring changes to the underlying architecture.
+
+---
+
+## Success Criteria
+
+* The feature is completely optional.
+* Existing users experience no workflow changes unless they enable it.
+* Recurring income is easy to set up, edit, pause, resume, or remove.
+* Cash balances update correctly.
+* Transaction history remains accurate.
+* No duplicate transactions are created.
+* The implementation is production-ready, intuitive, and fully integrated with the existing Cash Accounts system.

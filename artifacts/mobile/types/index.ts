@@ -129,6 +129,20 @@ export interface CashAccount {
   notes?: string;
 }
 
+export interface RecurringIncome {
+  id: string;
+  name: string;
+  amount: number;
+  currency: string;
+  cashAccountId: string;
+  creditDay: number;
+  startDate: string;
+  endDate?: string;
+  active: boolean;
+  lastProcessedMonth: string | null;
+  createdAt: string;
+}
+
 export interface MarketPrices {
   goldUsd: number;
   silverUsd: number;
