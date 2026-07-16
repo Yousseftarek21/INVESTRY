@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
+import { usePortfolioNotifications } from '@/hooks/usePortfolioNotifications';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
@@ -258,7 +259,7 @@ export default function HomeScreen() {
   }, [rawPrices, egxStocks]);
   const { plan, isPro } = useSubscription();
   const { impact } = useHaptic();
-  const { hideValues, setHideValues, displayCurrency, setDisplayCurrency } = useAppSettings();
+  const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, notifications } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
 
   // ── Display-currency conversion ────────────────────────────────────────────
@@ -270,10 +271,9 @@ export default function HomeScreen() {
     AED: prices?.fxRates?.AED ?? 13.9,
   }), [prices]);
   const toDisp = useCallback((egp: number) => egp / fxRate[displayCurrency], [fxRate, displayCurrency]);
-  const cycleCurrency = useCallback(() => {
-    const idx = DISP_CURRENCIES.indexOf(displayCurrency);
-    setDisplayCurrency(DISP_CURRENCIES[(idx + 1) % DISP_CURRENCIES.length]);
-  }, [displayCurrency, setDisplayCurrency]);
+
+  // ── Currency picker visibility ─────────────────────────────────────────────
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   // Auto-dismissing sync error toast for failed holdings CRUD
   const [showSyncError, setShowSyncError] = useState(false);
@@ -484,19 +484,48 @@ export default function HomeScreen() {
               </Text>
             </TouchableOpacity>
             <Pressable
-              onPress={cycleCurrency}
+              onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
               style={({ pressed }) => [
                 styles.currencyPill,
                 { backgroundColor: colors.muted + '90', borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Display currency: ${displayCurrency}. Tap to switch`}
+              accessibilityLabel={`Display currency: ${displayCurrency}. Tap to change`}
             >
               <Text style={[styles.currencyPillText, { color: colors.mutedForeground }]}>
-                {displayCurrency} ▾
+                {displayCurrency} {showCurrencyPicker ? '▴' : '▾'}
               </Text>
             </Pressable>
           </View>
+
+          {/* Inline currency tab strip — expands on pill tap */}
+          {showCurrencyPicker && (
+            <View style={styles.currencyTabStrip}>
+              {DISP_CURRENCIES.map(c => {
+                const active = c === displayCurrency;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => { impact(); setDisplayCurrency(c); setShowCurrencyPicker(false); }}
+                    style={[
+                      styles.currencyTab,
+                      {
+                        backgroundColor: active ? colors.primary : colors.muted + '60',
+                        borderColor: active ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[
+                      styles.currencyTabText,
+                      { color: active ? colors.primaryForeground : colors.mutedForeground },
+                    ]}>
+                      {c}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
 
           {/* Net worth (investments + cash) — additive row, only when user has cash accounts */}
           {cashTotalEGP > 0 && (
@@ -808,8 +837,11 @@ const styles = StyleSheet.create({
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
   heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 8, justifyContent: 'center', alignSelf: 'stretch' },
   heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52, flexShrink: 1, textAlign: 'center' },
-  currencyPill:   { borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 5, marginBottom: 5 },
-  currencyPillText: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
+  currencyPill:       { borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 5, marginBottom: 5 },
+  currencyPillText:   { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
+  currencyTabStrip:   { flexDirection: 'row', gap: 6, justifyContent: 'center', marginTop: 2, marginBottom: 2 },
+  currencyTab:        { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 7 },
+  currencyTabText:    { fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
   netWorthTxt:    { fontSize: 11, fontFamily: 'Inter_400Regular' },
 

@@ -560,30 +560,38 @@ const em = StyleSheet.create({
   sub: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
 });
 
-// ─── Planning Card ────────────────────────────────────────────────────────────
+// ─── Planning Tool Card (matches FinancialTools ToolCard style) ────────────────
 
-type AnyColors = ReturnType<typeof useColors>;
-function PlanningCard({
-  icon, iconBg, label, sub, onPress, colors,
+function PlanningToolCard({
+  icon, color, label, sub, onPress,
 }: {
   icon: React.ComponentProps<typeof Feather>['name'];
-  iconBg: string;
+  color: string;
   label: string;
   sub: string;
   onPress: () => void;
-  colors: AnyColors;
 }) {
+  const colors = useColors();
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn  = () => Animated.spring(scale, { toValue: 0.93, useNativeDriver: Platform.OS !== 'web' }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1,    useNativeDriver: Platform.OS !== 'web' }).start();
+
   return (
-    <Pressable style={s.planningCard} onPress={onPress}>
-      <View style={[s.planningIcon, { backgroundColor: iconBg + '22' }]}>
-        <Feather name={icon} size={20} color={iconBg} />
-      </View>
-      <Text style={[s.planningLabel, { color: colors.text }]} numberOfLines={1}>{label}</Text>
-      <Text style={[s.planningSub, { color: colors.mutedForeground }]} numberOfLines={2}>{sub}</Text>
-      <View style={[s.planningArrow, { backgroundColor: iconBg + '18' }]}>
-        <Feather name="chevron-right" size={13} color={iconBg} />
-      </View>
-    </Pressable>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        style={[s.planningToolCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[s.planningToolAccent, { backgroundColor: color }]} />
+        <View style={[s.planningToolIcon, { backgroundColor: color + '1A' }]}>
+          <Feather name={icon} size={22} color={color} />
+        </View>
+        <Text style={[s.planningToolLabel, { color: colors.text }]} numberOfLines={1}>{label}</Text>
+        <Text style={[s.planningToolSub, { color: colors.mutedForeground }]} numberOfLines={1}>{sub}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -771,26 +779,28 @@ export default function AnalyticsScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[s.sectionTitle, { color: colors.text }]}>{t.goals}</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.tbillsCalculator}</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Planning & growth tools</Text>
         </View>
       </View>
-      <View style={[s.planningRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <PlanningCard
-          icon="target" iconBg="#22C55E"
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.planningScroll}
+        contentContainerStyle={s.planningScrollContent}
+      >
+        <PlanningToolCard
+          icon="target" color="#22C55E"
           label={t.goals}
-          sub={t.noGoalsHint}
+          sub="Set a financial target"
           onPress={() => router.push('/goals' as any)}
-          colors={colors}
         />
-        <View style={[s.planningDivider, { backgroundColor: colors.border }]} />
-        <PlanningCard
-          icon="percent" iconBg="#4A9EFF"
+        <PlanningToolCard
+          icon="percent" color="#4A9EFF"
           label={t.tbillsCalculator}
           sub="Egypt T-Bills estimator"
           onPress={() => router.push('/tbills-calculator' as any)}
-          colors={colors}
         />
-      </View>
+      </ScrollView>
 
       {/* ══ SECTION 2: Financial Tools ════════════════════════════════ */}
       <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
@@ -1132,12 +1142,22 @@ const s = StyleSheet.create({
   toolsBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   toolsBadgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
 
-  // Planning cards
-  planningRow: { flexDirection: 'row', borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
-  planningDivider: { width: StyleSheet.hairlineWidth },
-  planningCard: { flex: 1, padding: 16, gap: 6, alignItems: 'flex-start' },
-  planningIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  planningLabel: { fontSize: 14, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.2 },
-  planningSub: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 15 },
-  planningArrow: { marginTop: 4, width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  // Planning tool cards (ToolCard-matched style)
+  planningScroll:         { marginHorizontal: -20 },
+  planningScrollContent:  { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
+  planningToolCard: {
+    width: 110,
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
+    paddingTop: 18,
+    paddingBottom: 14,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    gap: 8,
+  },
+  planningToolAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
+  planningToolIcon:   { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  planningToolLabel:  { fontSize: 12, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  planningToolSub:    { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' },
 });
