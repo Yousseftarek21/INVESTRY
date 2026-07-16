@@ -144,7 +144,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
       </View>
 
       <View style={styles.info}>
-        <Text style={[styles.title, { color: colors.text }]}>{getTitle(holding, labels)}</Text>
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{getTitle(holding, labels)}</Text>
         {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>}
       </View>
 

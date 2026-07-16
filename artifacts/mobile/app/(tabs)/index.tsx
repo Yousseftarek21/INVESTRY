@@ -301,7 +301,7 @@ export default function HomeScreen() {
 
   // ── Portfolio maths ────────────────────────────────────────────────────────
   const summary = useMemo(() => {
-    let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, totalCost = 0;
+    let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;
     let todayGold = 0, todaySilver = 0;
     let goldGrams = 0, silverGrams = 0, stockCount = 0, reCount = 0, paCount = 0;
 
@@ -319,12 +319,14 @@ export default function HomeScreen() {
         stockV += v; stockCount++;
       } else if (h.type === 'personal_asset') {
         paV += v; paCount++;
+      } else if (h.type === 'fixed_income') {
+        fiV += v;
       } else {
         reV += v; reCount++;
       }
     }
 
-    const totalValue = goldV + silverV + stockV + reV + paV;
+    const totalValue = goldV + silverV + stockV + reV + paV + fiV;
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
     const todayGain = todayGold + todaySilver;
@@ -332,7 +334,7 @@ export default function HomeScreen() {
 
     return {
       totalValue, totalCost, gain, gainPct, todayGain, todayPct,
-      goldV, silverV, stockV, reV, paV,
+      goldV, silverV, stockV, reV, paV, fiV,
       goldGrams, silverGrams, stockCount, reCount, paCount,
     };
   }, [holdings, prices]);
@@ -633,6 +635,10 @@ export default function HomeScreen() {
                   label: t.personalAsset, value: summary.paV, color: '#E08E45',
                   icon: { lib: 'mci' as const, name: 'tag-multiple' }, quantity: summary.paCount > 0 ? `${summary.paCount} asset${summary.paCount !== 1 ? 's' : ''}` : undefined,
                 },
+                {
+                  label: t.fixedIncome, value: summary.fiV, color: '#22C55E',
+                  icon: { lib: 'mci' as const, name: 'bank-transfer' },
+                },
               ]}
               hideValues={hideValues}
             />
@@ -786,7 +792,7 @@ const styles = StyleSheet.create({
   plChip:         { flex: 1, gap: 5, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 10 },
   plTop:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
   plLabel:        { flex: 1, fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  plValue:        { fontSize: 13, fontFamily: 'Inter_700Bold', minWidth: 0 },
+  plValue:        { fontSize: 13, fontFamily: 'Inter_700Bold', flexShrink: 1 },
   plBadge:        { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
   plBadgeText:    { fontSize: 9, fontFamily: 'Inter_700Bold' },
 
