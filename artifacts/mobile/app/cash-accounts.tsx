@@ -3,6 +3,7 @@ import {
   Alert, Animated, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
@@ -371,8 +372,15 @@ export default function CashAccountsScreen() {
             ) : (
               <View style={styles.list}>
                 {cashAccounts.map(a => (
-                  <View
+                  <SwipeToDelete
                     key={a.id}
+                    onDelete={() => { impact(Haptics.ImpactFeedbackStyle.Medium); removeCashAccount(a.id); }}
+                    confirmTitle={t.deleteCashAccount}
+                    confirmMessage={t.deleteCashAccountConfirm}
+                    confirmLabel={t.delete}
+                    cancelLabel={t.cancel}
+                  >
+                  <View
                     style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                   >
                     <View style={[styles.accountIconWrap, { backgroundColor: colors.primary + '16' }]}>
@@ -408,6 +416,7 @@ export default function CashAccountsScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
+                  </SwipeToDelete>
                 ))}
               </View>
             )}

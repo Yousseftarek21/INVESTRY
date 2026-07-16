@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { ActivityIndicator, Alert, Animated, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { ActivityIndicator, Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -12,6 +12,7 @@ import { useMarketPrices } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { HoldingCard } from '@/components/HoldingCard';
 import { AddChooserSheet } from '@/components/AddChooserSheet';
+import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { Holding } from '@/types';
 
 function FadeInCard({ index, children }: { index: number; children: React.ReactNode }) {
@@ -30,108 +31,6 @@ function FadeInCard({ index, children }: { index: number; children: React.ReactN
   );
 }
 
-const REVEAL_W = 84;    // width of the revealed delete zone
-const COMMIT_W = 210;   // drag this far → auto-commit delete
-
-function SwipeToDelete({ onDelete, children }: { onDelete: () => void; children: React.ReactNode }) {
-  const colors = useColors();
-  const translateX = useRef(new Animated.Value(0)).current;
-  const onDeleteRef = useRef(onDelete);
-  onDeleteRef.current = onDelete;
-  const isOpenRef = useRef(false);
-  const [isOpen, setIsOpen] = useState(false);
-
-  const snapClose = useCallback(() => {
-    Animated.spring(translateX, { toValue: 0, useNativeDriver: true, tension: 60, friction: 9 }).start();
-    isOpenRef.current = false;
-    setIsOpen(false);
-  }, []);
-
-  const snapOpen = useCallback(() => {
-    Animated.spring(translateX, { toValue: -REVEAL_W, useNativeDriver: true, tension: 60, friction: 9 }).start();
-    isOpenRef.current = true;
-    setIsOpen(true);
-  }, []);
-
-  const commitDelete = useCallback(() => {
-    Animated.timing(translateX, { toValue: -600, duration: 220, useNativeDriver: true }).start(() => {
-      onDeleteRef.current();
-    });
-  }, []);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      // Only claim horizontal swipes — prevent stealing from ScrollView
-      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5,
-      onPanResponderMove: (_, { dx }) => {
-        const base = isOpenRef.current ? -REVEAL_W : 0;
-        // Clamp: can't go right past closed, or left past COMMIT_W
-        const next = Math.min(0, Math.max(base + dx, -(COMMIT_W + 20)));
-        translateX.setValue(next);
-      },
-      onPanResponderRelease: (_, { dx }) => {
-        const base = isOpenRef.current ? -REVEAL_W : 0;
-        const total = base + dx;
-
-        if (total <= -COMMIT_W) {
-          // Dragged far enough → delete
-          commitDelete();
-        } else if (!isOpenRef.current && total < -(REVEAL_W / 2)) {
-          // Dragged past half the reveal zone from closed → snap open
-          snapOpen();
-        } else if (isOpenRef.current && dx > REVEAL_W / 2) {
-          // Swiped right past half from open → close
-          snapClose();
-        } else if (isOpenRef.current) {
-          // Short swipe from open → stay open
-          snapOpen();
-        } else {
-          // Short swipe from closed → close
-          snapClose();
-        }
-      },
-      // Don't let ScrollView steal the gesture once we've claimed it
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderTerminate: () => snapClose(),
-    }),
-  ).current;
-
-  const deleteOpacity = translateX.interpolate({
-    inputRange: [-(REVEAL_W), -(REVEAL_W / 2), 0],
-    outputRange: [1, 0.4, 0],
-    extrapolate: 'clamp',
-  });
-
-  if (Platform.OS === 'web') return <>{children}</>;
-
-  return (
-    <View style={swSt.wrap}>
-      {/* Delete zone — revealed as card slides left */}
-      <Pressable onPress={commitDelete} style={[swSt.deleteBack, { backgroundColor: colors.red }]}>
-        <Animated.View style={[swSt.deleteInner, { opacity: deleteOpacity }]}>
-          <Feather name="trash-2" size={22} color="#fff" />
-          <Text style={swSt.deleteLabel}>Delete</Text>
-        </Animated.View>
-      </Pressable>
-
-      {/* Card — slides left to reveal delete zone */}
-      <Animated.View {...panResponder.panHandlers} style={{ transform: [{ translateX }] }}>
-        {/* When tray is open, tapping the card itself snaps it closed */}
-        {isOpen && (
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={snapClose} />
-        )}
-        {children}
-      </Animated.View>
-    </View>
-  );
-}
-const swSt = StyleSheet.create({
-  wrap:        { overflow: 'hidden', borderRadius: 16 },
-  deleteBack:  { position: 'absolute', right: 0, top: 0, bottom: 0, width: REVEAL_W, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  deleteInner: { alignItems: 'center', gap: 4 },
-  deleteLabel: { color: '#fff', fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
-});
 
 const TYPE_ORDER: Holding['type'][] = ['gold', 'silver', 'stock', 'real_estate', 'personal_asset', 'fixed_income'];
 
@@ -331,7 +230,13 @@ export default function HoldingsScreen() {
               <View style={styles.groupItems}>
                 {grouped[type].map((h, idx) => (
                   <FadeInCard key={h.id} index={idx}>
-                    <SwipeToDelete onDelete={() => { impact(Haptics.ImpactFeedbackStyle.Medium); removeHolding(h.id); }}>
+                    <SwipeToDelete
+                      onDelete={() => { impact(Haptics.ImpactFeedbackStyle.Medium); removeHolding(h.id); }}
+                      confirmTitle={t.deleteHolding}
+                      confirmMessage={t.deleteHoldingConfirm}
+                      confirmLabel={t.delete}
+                      cancelLabel={t.cancel}
+                    >
                       <HoldingCard
                         holding={h}
                         prices={prices}
