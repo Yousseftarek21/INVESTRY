@@ -424,6 +424,7 @@ export default function HomeScreen() {
             style={[styles.bellBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             activeOpacity={0.7}
             accessibilityLabel="Notifications"
+            onPress={() => router.push('/notifications' as any)}
           >
             <Feather name="bell" size={16} color={colors.text} />
           </TouchableOpacity>
