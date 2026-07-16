@@ -204,12 +204,12 @@ export default function CashAccountsScreen() {
       }]}>
         <TouchableOpacity
           onPress={() => {
-            if (showForm) { setShowForm(false); resetForm(); }
+            if (showForm && !openAddParam) { setShowForm(false); resetForm(); }
             else { router.back(); }
           }}
           hitSlop={12}
         >
-          <Feather name={showForm ? 'chevron-left' : 'x'} size={22} color={colors.mutedForeground} />
+          <Feather name={(showForm && !openAddParam) ? 'chevron-left' : 'x'} size={22} color={colors.mutedForeground} />
         </TouchableOpacity>
         <Text style={[styles.modalTitle, { color: colors.text }]}>
           {showForm ? (editingId ? t.editCashAccount : t.addCashAccount) : t.cashAccounts}
