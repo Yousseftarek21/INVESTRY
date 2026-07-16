@@ -54,7 +54,6 @@ export default function RecurringIncomeScreen() {
   const [endDate, setEndDate] = useState('');
   const [active, setActive] = useState(true);
 
-  const matchingAccounts = cashAccounts.filter(a => a.currency === currency);
   const selectedAccount = cashAccounts.find(a => a.id === cashAccountId);
 
   const resetForm = useCallback(() => {
@@ -312,10 +311,10 @@ export default function RecurringIncomeScreen() {
                 {/* Deposit Into */}
                 <View style={s.field}>
                   <Text style={[s.label, { color: colors.mutedForeground }]}>{t.depositInto}</Text>
-                  {matchingAccounts.length === 0 ? (
+                  {cashAccounts.length === 0 ? (
                     <View style={[s.noAccounts, { backgroundColor: colors.input, borderColor: colors.border }]}>
                       <Feather name="alert-circle" size={14} color={colors.mutedForeground} />
-                      <Text style={[s.noAccountsText, { color: colors.mutedForeground }]}>{t.noMatchingAccounts}</Text>
+                      <Text style={[s.noAccountsText, { color: colors.mutedForeground }]}>{t.noCashAccounts}</Text>
                     </View>
                   ) : (
                     <TouchableOpacity
@@ -411,23 +410,33 @@ export default function RecurringIncomeScreen() {
           >
             <View style={[s.pickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[s.pickerSheetTitle, { color: colors.text }]}>{t.selectAccount}</Text>
-              {matchingAccounts.map(a => (
-                <TouchableOpacity
-                  key={a.id}
-                  style={[s.pickerOption, {
-                    borderColor: colors.border,
-                    backgroundColor: cashAccountId === a.id ? colors.primary + '14' : 'transparent',
-                  }]}
-                  onPress={() => { setCashAccountId(a.id); setShowAccountPicker(false); }}
-                >
-                  <Text style={[s.pickerOptionText, {
-                    color: cashAccountId === a.id ? colors.primary : colors.text,
-                  }]}>
-                    {a.accountName}
-                  </Text>
-                  <Text style={[s.pickerOptionSub, { color: colors.mutedForeground }]}>{a.currency}</Text>
-                </TouchableOpacity>
-              ))}
+              {cashAccounts.length === 0 ? (
+                <Text style={[s.pickerOptionSub, { color: colors.mutedForeground, textAlign: 'center', paddingVertical: 16 }]}>
+                  {t.noCashAccounts}
+                </Text>
+              ) : (
+                cashAccounts.map(a => (
+                  <TouchableOpacity
+                    key={a.id}
+                    style={[s.pickerOption, {
+                      borderColor: colors.border,
+                      backgroundColor: cashAccountId === a.id ? colors.primary + '14' : 'transparent',
+                    }]}
+                    onPress={() => {
+                      setCashAccountId(a.id);
+                      setCurrency(a.currency);
+                      setShowAccountPicker(false);
+                    }}
+                  >
+                    <Text style={[s.pickerOptionText, {
+                      color: cashAccountId === a.id ? colors.primary : colors.text,
+                    }]}>
+                      {a.accountName}
+                    </Text>
+                    <Text style={[s.pickerOptionSub, { color: colors.mutedForeground }]}>{a.currency}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           </TouchableOpacity>
         </Modal>

@@ -77,6 +77,10 @@ function RootLayoutNav() {
         name="cash-accounts"
         options={{ presentation: "modal", headerShown: false }}
       />
+      <Stack.Screen
+        name="recurring-income"
+        options={{ presentation: "modal", headerShown: false }}
+      />
     </Stack>
   );
 }
