@@ -718,8 +718,8 @@ export default function AnalyticsScreen() {
           <Feather name="compass" size={15} color="#22C55E" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>{t.goals}</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Planning & growth tools</Text>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>{t.planningGrowthTools}</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Set targets & calculate returns</Text>
         </View>
       </View>
       <ScrollView

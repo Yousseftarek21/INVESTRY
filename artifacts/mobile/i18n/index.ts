@@ -324,6 +324,7 @@ const en = {
 
   // Financial Goals
   goals: 'Financial Goals',
+  planningGrowthTools: 'Planning & Growth Tools',
   addGoal: 'Add Goal',
   editGoal: 'Edit Goal',
   deleteGoal: 'Delete Goal',
@@ -1105,6 +1106,7 @@ const ar: typeof en = {
 
   // Financial Goals
   goals: 'الأهداف المالية',
+  planningGrowthTools: 'أدوات التخطيط والنمو',
   addGoal: 'إضافة هدف',
   editGoal: 'تعديل الهدف',
   deleteGoal: 'حذف الهدف',

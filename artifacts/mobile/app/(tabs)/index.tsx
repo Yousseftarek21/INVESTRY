@@ -26,6 +26,7 @@ import { useAppSettings, DisplayCurrency } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
 import { PremiumBadge } from '@/components/PremiumBadge';
+import { GoalProgressCard } from '@/components/GoalProgressCard';
 import { Holding, MarketPrices } from '@/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -725,6 +726,9 @@ export default function HomeScreen() {
         </View>
         <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
+
+      {/* ── Goal progress (renders nothing if the user has no goals) ── */}
+      <GoalProgressCard />
 
       {/* ── Top Investments ─────────────────────────────────────── */}
       <View style={styles.holdingsSection}>
