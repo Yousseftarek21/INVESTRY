@@ -7,8 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, {
-  Defs, LinearGradient, Stop,
-  Circle, Path,
+  Defs, LinearGradient, Stop, Path,
 } from 'react-native-svg';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -17,9 +16,11 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
+import { PerfChart } from '@/components/PerfChart';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function personalAssetValueEGP(h: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -80,38 +81,6 @@ function fmtK(n: number): string {
 
 const PERIODS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
 type Period = typeof PERIODS[number];
-
-function genCurve(gainPct: number, period: Period, seed: number, n = 40): number[] {
-  const scale: Record<Period, number> = { '1D': 0.12, '1W': 0.35, '1M': 0.9, '3M': 1.8, '1Y': 3.5, 'ALL': 6 };
-  const s = scale[period];
-  let r = (seed || 7) % 99991;
-  const rand = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
-  let v = 100;
-  return Array.from({ length: n }, (_, i) => {
-    v += (gainPct / 100) * s * (i / n) + (rand() - 0.47) * 1.8;
-    return v;
-  });
-}
-
-type Pt = { x: number; y: number; value: number };
-
-function buildSmoothPath(pts: Pt[]): string {
-  if (pts.length < 2) return '';
-  let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    const t = 0.25;
-    const cp1x = p1.x + (p2.x - p0.x) * t;
-    const cp1y = p1.y + (p2.y - p0.y) * t;
-    const cp2x = p2.x - (p3.x - p1.x) * t;
-    const cp2y = p2.y - (p3.y - p1.y) * t;
-    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
-  }
-  return d;
-}
 
 // ─── Animated arc ring ────────────────────────────────────────────────────────
 
@@ -281,43 +250,6 @@ const ab = StyleSheet.create({
 });
 
 // ─── Full-width performance chart ─────────────────────────────────────────────
-
-function PerfChart({ gainPct, period, seed, width, height = 110 }: {
-  gainPct: number; period: Period; seed: number; width: number; height: number;
-}) {
-  const colors = useColors();
-  if (width < 10) return <View style={{ height }} />;
-  const data = genCurve(gainPct, period, seed);
-  const color = gainPct >= 0 ? colors.green : colors.red;
-  const minV = Math.min(...data), maxV = Math.max(...data);
-  const range = maxV - minV || 1;
-  const pad = 10;
-  const pts: Pt[] = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = pad + ((maxV - v) / range) * (height - pad * 2);
-    return { x, y, value: v };
-  });
-  const linePath = buildSmoothPath(pts);
-  const lastPt = pts[pts.length - 1];
-  const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
-
-  return (
-    <Svg width={width} height={height}>
-      <Defs>
-        <LinearGradient id="cf" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity="0.30" />
-          <Stop offset="0.55" stopColor={color} stopOpacity="0.08" />
-          <Stop offset="1" stopColor={color} stopOpacity="0" />
-        </LinearGradient>
-      </Defs>
-      <Path d={fillPath} fill="url(#cf)" />
-      <Path d={linePath} fill="none" stroke={color}
-        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
-      <Circle cx={lastPt.x} cy={lastPt.y} r="8" fill={color} fillOpacity="0.2" />
-    </Svg>
-  );
-}
 
 // ─── Podium performers ────────────────────────────────────────────────────────
 
@@ -622,12 +554,18 @@ export default function AnalyticsScreen() {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;
     let goldCost = 0, silverCost = 0;
     let totalGoldGrams = 0, totalSilverGrams = 0;
+    let todayGold = 0, todaySilver = 0;
     for (const h of holdings) {
       const v = computeValue(h, prices);
       const c = computeCost(h, prices);
       totalCost += c;
-      if (h.type === 'gold') { goldV += v; goldCost += c; totalGoldGrams += h.grams; }
-      else if (h.type === 'silver') { silverV += v; silverCost += c; totalSilverGrams += h.grams; }
+      if (h.type === 'gold') {
+        goldV += v; goldCost += c; totalGoldGrams += h.grams;
+        todayGold += v * ((prices?.goldChangePercent ?? 0) / 100);
+      } else if (h.type === 'silver') {
+        silverV += v; silverCost += c; totalSilverGrams += h.grams;
+        todaySilver += v * ((prices?.silverChangePercent ?? 0) / 100);
+      }
       else if (h.type === 'stock') { stockV += v; }
       else if (h.type === 'personal_asset') { paV += v; }
       else if (h.type === 'fixed_income') { fiV += v; }
@@ -641,14 +579,17 @@ export default function AnalyticsScreen() {
     const goldAvgBuy = totalGoldGrams > 0 ? goldCost / totalGoldGrams : 0;
     const silverAvgBuy = totalSilverGrams > 0 ? silverCost / totalSilverGrams : 0;
     const metalPct = totalValue > 0 ? (goldV + silverV) / totalValue : 0;
+    const todayGain = todayGold + todaySilver;
     return {
-      totalValue, totalCost, gain, gainPct,
+      totalValue, totalCost, gain, gainPct, todayGain,
       goldV, silverV, stockV, reV, paV, fiV,
       goldCost, silverCost, goldGainPct, silverGainPct,
       totalGoldGrams, totalSilverGrams, goldAvgBuy, silverAvgBuy,
       metalPct,
     };
   }, [holdings, prices]);
+
+  const { snapshots } = usePortfolioSnapshots(sm.totalValue);
 
   // ── Health ────────────────────────────────────────────────────────────────────
   const typeCount = useMemo(() => new Set(holdings.map(h => h.type)).size, [holdings]);
@@ -750,7 +691,6 @@ export default function AnalyticsScreen() {
     return items.slice(0, 4);
   }, [holdings, sm, prices, colors]);
 
-  const sparkSeed = holdings.reduce((s, h) => s + h.id.charCodeAt(0), 1);
   const hasHoldings = holdings.length > 0;
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -956,7 +896,14 @@ export default function AnalyticsScreen() {
                 }}
                 style={s.chartArea}
               >
-                <PerfChart gainPct={sm.gainPct} period={period} seed={sparkSeed} width={chartWidth} height={110} />
+                <PerfChart
+                  gainPct={sm.gainPct}
+                  period={period}
+                  width={chartWidth}
+                  height={110}
+                  snapshots={snapshots}
+                  todayValues={[sm.totalValue - sm.todayGain, sm.totalValue]}
+                />
               </View>
               <View style={s.periodRow}>
                 {PERIODS.map(p => {

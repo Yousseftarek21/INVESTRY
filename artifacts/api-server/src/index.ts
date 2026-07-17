@@ -1,7 +1,5 @@
-import { runMigrations } from "stripe-replit-sync";
 import app from "./app";
 import { logger } from "./lib/logger";
-import { getStripeSync } from "./lib/stripeClient";
 
 const rawPort = process.env["PORT"];
 
@@ -16,35 +14,6 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
-
-async function initStripe() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL environment variable is required for Stripe integration.");
-  }
-
-  try {
-    await runMigrations({ databaseUrl });
-
-    const stripeSync = await getStripeSync();
-
-    const publicAppUrl = process.env.PUBLIC_APP_URL;
-    if (!publicAppUrl) {
-      throw new Error("PUBLIC_APP_URL environment variable is required.");
-    }
-    await stripeSync.findOrCreateManagedWebhook(`${publicAppUrl}/api/stripe/webhook`);
-
-    stripeSync.syncBackfill().catch((err) => {
-      logger.error({ err }, "Stripe syncBackfill failed");
-    });
-
-    logger.info("Stripe schema ready and webhook configured");
-  } catch (err) {
-    logger.error({ err }, "Failed to initialize Stripe — subscription features will not work");
-  }
-}
-
-await initStripe();
 
 app.listen(port, (err) => {
   if (err) {

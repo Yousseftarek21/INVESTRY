@@ -9,7 +9,13 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "updates": {
-      "enabled": false
+      "url": "https://u.expo.dev/02968d16-c91f-4aa0-a178-c2f13c1e33b5",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     },
     "runtimeVersion": {
       "policy": "appVersion"
@@ -22,7 +28,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.investry.app",
-      "buildNumber": "46",
+      "buildNumber": "47",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

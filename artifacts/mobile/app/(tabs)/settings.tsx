@@ -13,6 +13,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 import { useClerk, useUser } from '@clerk/expo';
 import { Stack, useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
@@ -25,8 +27,17 @@ import { Language } from '@/i18n';
 import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
 import { PremiumBadge } from '@/components/PremiumBadge';
 
-const APP_VERSION = '1.0.0';
-const BUILD = '23';
+// Read live from the running binary/update instead of a hand-maintained
+// constant, so this can never silently drift out of sync with reality —
+// exactly the "what is actually running right now" question that caused
+// real confusion during the Replit migration.
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
+const NATIVE_BUILD = Constants.nativeBuildVersion ?? '?';
+const OTA_STATUS = Updates.isEmbeddedLaunch
+  ? 'embedded'
+  : Updates.updateId
+    ? `update ${Updates.updateId.slice(0, 8)} · ${Updates.createdAt?.toLocaleString() ?? 'unknown time'}`
+    : 'embedded';
 const COPYRIGHT_YEAR = new Date().getFullYear();
 
 // ─── Pulsing live dot ─────────────────────────────────────────────────────────
@@ -678,7 +689,9 @@ function SmartFooter({ lastUpdate }: { lastUpdate: string }) {
       <View style={sf.meta}>
         <View style={sf.metaRow}>
           <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>{t.versionLabel}</Text>
-          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>{APP_VERSION}</Text>
+          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>
+            {APP_VERSION} ({NATIVE_BUILD}) · {OTA_STATUS}
+          </Text>
         </View>
       </View>
       <Text style={[sf.copy, { color: colors.mutedForeground }]}>
