@@ -283,13 +283,14 @@ export default function RootLayout() {
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     // Publishable keys are designed to be in client bundles — not a secret.
+    // No proxyUrl here: Clerk's SDK reaches the Frontend API domain encoded
+    // in the publishable key directly (clerk.investry.app), which has its
+    // own verified custom domain — no proxy workaround needed.
     const HARDCODED_LIVE_KEY = 'pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA';
-    const HARDCODED_LIVE_PROXY = 'https://api.investry.app/api/__clerk';
     const envKey = (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim();
 
     const fallbackConfig: ClerkConfig = {
       publishableKey: envKey || HARDCODED_LIVE_KEY,
-      proxyUrl: process.env.EXPO_PUBLIC_CLERK_PROXY_URL || HARDCODED_LIVE_PROXY,
     };
 
     fetch(`${apiBase}/api/config`, { signal: controller.signal })
@@ -348,7 +349,6 @@ export default function RootLayout() {
       setClerkConfig((prev) =>
         prev ?? {
           publishableKey: 'pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA',
-          proxyUrl: 'https://api.investry.app/api/__clerk',
         },
       );
       // clerkReadyRef is safe to read here (not stale like state would be).
