@@ -136,14 +136,14 @@ export default function SignUpScreen() {
     setGlobalError('');
     setGoogleLoading(true);
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({
+      const { createdSessionId, setActive, authSessionResult } = await startSSOFlow({
         strategy: 'oauth_google',
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       } else {
-        setGlobalError('Google sign-up did not complete. Please try again.');
+        setGlobalError(`Google sign-up did not complete. debug: ${JSON.stringify(authSessionResult)}`);
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Google sign-up failed');
@@ -156,14 +156,14 @@ export default function SignUpScreen() {
     setGlobalError('');
     setAppleLoading(true);
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({
+      const { createdSessionId, setActive, authSessionResult } = await startSSOFlow({
         strategy: 'oauth_apple',
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       } else {
-        setGlobalError('Apple sign-up did not complete. Please try again.');
+        setGlobalError(`Apple sign-up did not complete. debug: ${JSON.stringify(authSessionResult)}`);
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Apple sign-up failed');
