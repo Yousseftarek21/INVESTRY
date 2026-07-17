@@ -15,7 +15,7 @@ pnpm expo export --output-dir dist --dump-sourcemap --dump-assetmap --platform i
 
 echo ""
 echo "[ 2/3 ] Uploading iOS update to EAS..."
-eas update --channel production --platform ios --input-dir dist --message "$MSG" || exit 1
+pnpm exec eas update --channel production --platform ios --input-dir dist --message "$MSG" || exit 1
 
 echo ""
 echo "[ 3/3 ] Cleaning up..."
