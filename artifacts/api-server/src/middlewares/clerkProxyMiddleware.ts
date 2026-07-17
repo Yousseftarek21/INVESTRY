@@ -24,7 +24,10 @@ import type { RequestHandler } from "express";
 import type { IncomingHttpHeaders } from "http";
 import { logger } from "../lib/logger";
 
-const CLERK_FAPI = "https://frontend-api.clerk.dev";
+// Production Clerk instances with a custom domain must be reached via that
+// exact domain (Cloudflare-for-SaaS routes by hostname) — the generic shared
+// frontend-api.clerk.dev endpoint returns 501 for these instances.
+const CLERK_FAPI = process.env.CLERK_FRONTEND_API_URL || "https://frontend-api.clerk.dev";
 export const CLERK_PROXY_PATH = "/api/__clerk";
 
 /**
