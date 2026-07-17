@@ -22,6 +22,7 @@
 import { createProxyMiddleware } from "http-proxy-middleware";
 import type { RequestHandler } from "express";
 import type { IncomingHttpHeaders } from "http";
+import { logger } from "../lib/logger";
 
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
 export const CLERK_PROXY_PATH = "/api/__clerk";
@@ -58,7 +59,7 @@ export function clerkProxyMiddleware(): RequestHandler {
     return (_req, _res, next) => next();
   }
 
-  const secretKey = process.env.CLERK_SECRET_KEY;
+  const secretKey = process.env.CLERK_SECRET_KEY?.trim();
   if (!secretKey) {
     return (_req, _res, next) => next();
   }
@@ -73,20 +74,29 @@ export function clerkProxyMiddleware(): RequestHandler {
       path.replace(new RegExp(`^${CLERK_PROXY_PATH}`), ""),
     on: {
       proxyReq: (proxyReq, req) => {
-        const protocol = req.headers["x-forwarded-proto"] || "https";
-        const host = getClerkProxyHost(req) || "";
-        const proxyUrl = `${protocol}://${host}${CLERK_PROXY_PATH}`;
+        // Header values set here run outside Express's error handling (this fires
+        // during the raw Node http request lifecycle), so an invalid header value
+        // (e.g. stray whitespace in an env var) would otherwise crash the whole
+        // process instead of just failing this one request.
+        try {
+          const protocol = req.headers["x-forwarded-proto"] || "https";
+          const host = getClerkProxyHost(req) || "";
+          const proxyUrl = `${protocol}://${host}${CLERK_PROXY_PATH}`;
 
-        proxyReq.setHeader("Clerk-Proxy-Url", proxyUrl);
-        proxyReq.setHeader("Clerk-Secret-Key", secretKey);
+          proxyReq.setHeader("Clerk-Proxy-Url", proxyUrl);
+          proxyReq.setHeader("Clerk-Secret-Key", secretKey);
 
-        const xff = req.headers["x-forwarded-for"];
-        const clientIp =
-          (Array.isArray(xff) ? xff[0] : xff)?.split(",")[0]?.trim() ||
-          req.socket?.remoteAddress ||
-          "";
-        if (clientIp) {
-          proxyReq.setHeader("X-Forwarded-For", clientIp);
+          const xff = req.headers["x-forwarded-for"];
+          const clientIp =
+            (Array.isArray(xff) ? xff[0] : xff)?.split(",")[0]?.trim() ||
+            req.socket?.remoteAddress ||
+            "";
+          if (clientIp) {
+            proxyReq.setHeader("X-Forwarded-For", clientIp);
+          }
+        } catch (err) {
+          logger.error({ err }, "Clerk proxy: failed to set request headers");
+          proxyReq.destroy(err instanceof Error ? err : new Error(String(err)));
         }
       },
       // Clerk's dynamic Frontend API responses (/v1/environment, /v1/client,
