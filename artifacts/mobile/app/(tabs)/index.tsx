@@ -624,6 +624,7 @@ export default function HomeScreen() {
                   width={sparkWidth}
                   height={78}
                   snapshots={snapshots}
+                  todayValues={[summary.totalValue - summary.todayGain, summary.totalValue]}
                 />
               </View>
 

@@ -12,14 +12,22 @@ interface PerfChartProps {
   width: number;
   height?: number;
   snapshots?: PortfolioSnapshotItem[];
+  /**
+   * Real [value at start of today, value now] pair for the 1D period, derived
+   * from actual live price change (not fabricated). Only covers asset types
+   * whose daily change we track (currently gold/silver) — see caller.
+   */
+  todayValues?: [number, number];
 }
 
-export function PerfChart({ gainPct, period, width, height = 110, snapshots }: PerfChartProps) {
+export function PerfChart({ gainPct, period, width, height = 110, snapshots, todayValues }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
   if (width < 10) return <View style={{ height }} />;
 
-  const realValues = snapshots ? snapshotsToValues(snapshots, period) : null;
+  const realValues = period === '1D'
+    ? (todayValues ?? null)
+    : (snapshots ? snapshotsToValues(snapshots, period) : null);
 
   // No real data yet — show a flat dashed line + a hint so the user knows
   // the chart builds as they open the app on different days.
