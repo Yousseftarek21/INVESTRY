@@ -80,6 +80,10 @@ export default function SignUpScreen() {
   const [appleLoading, setAppleLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  // Clerk's signUp resource has no "cancel" API — its status stays at
+  // needs-verification even after navigating away, so the back button must
+  // track dismissal locally rather than relying on signUp.status alone.
+  const [verificationDismissed, setVerificationDismissed] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -98,6 +102,7 @@ export default function SignUpScreen() {
       const { error } = await signUp.password({ emailAddress: email, password });
       if (error) { setGlobalError(error.message ?? 'Sign up failed'); return; }
       await signUp.verifications.sendEmailCode();
+      setVerificationDismissed(false);
     } catch (err: any) {
       setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Sign up failed. Please try again.');
     }
@@ -169,11 +174,11 @@ export default function SignUpScreen() {
     signUp.unverifiedFields.includes('email_address') &&
     signUp.missingFields.length === 0;
 
-  if (needsVerification) {
+  if (needsVerification && !verificationDismissed) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.inner, { paddingTop: topPad + 24, paddingBottom: botPad + 24, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}>
-          <Pressable onPress={() => router.replace('/(auth)/sign-up' as any)} style={styles.backBtn}>
+          <Pressable onPress={() => setVerificationDismissed(true)} style={styles.backBtn}>
             <Feather name="arrow-left" size={20} color={colors.text} />
           </Pressable>
           <View style={styles.iconWrap}>
