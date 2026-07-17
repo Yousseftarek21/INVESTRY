@@ -28,7 +28,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.investry.app",
-      "buildNumber": "43",
+      "buildNumber": "45",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -49,7 +49,7 @@
       [
         "expo-router",
         {
-          "origin": "https://replit.com/"
+          "origin": "https://investry.app/"
         }
       ],
       "expo-font",
