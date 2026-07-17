@@ -56,16 +56,25 @@ export function getClerkProxyHost(req: {
   return firstHop || req.headers.host?.trim() || undefined;
 }
 
+// HTTP header values may not contain CR/LF or other control characters.
+// Env vars can pick these up from how they were pasted/stored on the host,
+// and .trim() only strips the ends — strip everywhere so a bad value can
+// never reach setHeader() and crash the process.
+function sanitizeHeaderValue(value: string): string {
+  return value.replace(/[^\x20-\x7E]/g, "");
+}
+
 export function clerkProxyMiddleware(): RequestHandler {
   // Only run proxy in production — Clerk proxying doesn't work for dev instances
   if (process.env.NODE_ENV !== "production") {
     return (_req, _res, next) => next();
   }
 
-  const secretKey = process.env.CLERK_SECRET_KEY?.trim();
-  if (!secretKey) {
+  const rawSecretKey = process.env.CLERK_SECRET_KEY;
+  if (!rawSecretKey) {
     return (_req, _res, next) => next();
   }
+  const secretKey = sanitizeHeaderValue(rawSecretKey);
 
   return createProxyMiddleware({
     target: CLERK_FAPI,
@@ -86,14 +95,15 @@ export function clerkProxyMiddleware(): RequestHandler {
           const host = getClerkProxyHost(req) || "";
           const proxyUrl = `${protocol}://${host}${CLERK_PROXY_PATH}`;
 
-          proxyReq.setHeader("Clerk-Proxy-Url", proxyUrl);
+          proxyReq.setHeader("Clerk-Proxy-Url", sanitizeHeaderValue(proxyUrl));
           proxyReq.setHeader("Clerk-Secret-Key", secretKey);
 
           const xff = req.headers["x-forwarded-for"];
-          const clientIp =
+          const clientIp = sanitizeHeaderValue(
             (Array.isArray(xff) ? xff[0] : xff)?.split(",")[0]?.trim() ||
             req.socket?.remoteAddress ||
-            "";
+            "",
+          );
           if (clientIp) {
             proxyReq.setHeader("X-Forwarded-For", clientIp);
           }
