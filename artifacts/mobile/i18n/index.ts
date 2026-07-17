@@ -22,6 +22,7 @@ const en = {
   addFromHoldingsTab: 'Tap the + button below to add your first investment',
   liveRates: 'LIVE RATES',
   chartBuildingHint: 'Open the app daily to build your portfolio chart',
+  chartTodayFallbackHint: "Showing today's data — full history builds as you use the app",
 
   // Markets
   currency: 'CURRENCY',
@@ -804,6 +805,7 @@ const ar: typeof en = {
   addFromHoldingsTab: 'اضغط على زر + أدناه لإضافة أول استثمار',
   liveRates: 'الأسعار المباشرة',
   chartBuildingHint: 'افتح التطبيق يومياً لبناء مخطط محفظتك',
+  chartTodayFallbackHint: 'عرض بيانات اليوم — السجل الكامل يُبنى مع استخدامك للتطبيق',
 
   // Markets
   currency: 'العملات',

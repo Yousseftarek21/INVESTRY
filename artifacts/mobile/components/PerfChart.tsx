@@ -24,12 +24,19 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues 
   const t = useT();
   if (width < 10) return <View style={{ height }} />;
 
-  const realValues = period === '1D'
+  const periodValues = period === '1D'
     ? (todayValues ?? null)
     : (snapshots ? snapshotsToValues(snapshots, period) : null);
 
-  // No real data yet — a clear, visible empty state (not a subtle dashed
-  // line) so this reads as "not enough history yet", not as a broken chart.
+  // Longer periods need multiple days of real history, which a brand-new
+  // account doesn't have yet. Rather than show nothing, fall back to
+  // today's real movement (same real data as 1D) with a small honest
+  // note — always something real on screen, never a fabricated curve.
+  const usingTodayFallback = period !== '1D' && periodValues === null;
+  const realValues = periodValues ?? (usingTodayFallback ? todayValues ?? null : null);
+
+  // No real data at all yet (e.g. prices still loading) — a clear, visible
+  // empty state, not a subtle dashed line easy to mistake for broken.
   if (realValues === null) {
     return (
       <View style={{ height, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -69,20 +76,34 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues 
   const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
 
   return (
-    <Svg width={width} height={height}>
-      <Defs>
-        <LinearGradient id="pfc" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity="0.28" />
-          <Stop offset="0.6" stopColor={color} stopOpacity="0.06" />
-          <Stop offset="1" stopColor={color} stopOpacity="0" />
-        </LinearGradient>
-      </Defs>
-      <Path d={fillPath} fill="url(#pfc)" />
-      <Path d={linePath} fill="none" stroke={color}
-        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx={firstPt.x} cy={firstPt.y} r="3" fill={color} fillOpacity="0.4" />
-      <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
-      <Circle cx={lastPt.x} cy={lastPt.y} r="9" fill={color} fillOpacity="0.15" />
-    </Svg>
+    <View>
+      <Svg width={width} height={height}>
+        <Defs>
+          <LinearGradient id="pfc" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={color} stopOpacity="0.28" />
+            <Stop offset="0.6" stopColor={color} stopOpacity="0.06" />
+            <Stop offset="1" stopColor={color} stopOpacity="0" />
+          </LinearGradient>
+        </Defs>
+        <Path d={fillPath} fill="url(#pfc)" />
+        <Path d={linePath} fill="none" stroke={color}
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <Circle cx={firstPt.x} cy={firstPt.y} r="3" fill={color} fillOpacity="0.4" />
+        <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
+        <Circle cx={lastPt.x} cy={lastPt.y} r="9" fill={color} fillOpacity="0.15" />
+      </Svg>
+      {usingTodayFallback && (
+        <Text style={{
+          textAlign: 'center',
+          color: colors.mutedForeground,
+          fontSize: 10,
+          fontFamily: 'Inter_400Regular',
+          marginTop: 4,
+          opacity: 0.7,
+        }}>
+          {t.chartTodayFallbackHint}
+        </Text>
+      )}
+    </View>
   );
 }
