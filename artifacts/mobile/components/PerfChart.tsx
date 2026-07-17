@@ -1,14 +1,13 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop, Circle, Line } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Circle } from 'react-native-svg';
+import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { buildSmoothPath, snapshotsToValues, ChartPt, ChartPeriod, PortfolioSnapshotItem } from '@/utils/chartUtils';
 
 interface PerfChartProps {
-  gainPct: number;
   period: ChartPeriod;
-  seed?: number;
   width: number;
   height?: number;
   snapshots?: PortfolioSnapshotItem[];
@@ -20,7 +19,7 @@ interface PerfChartProps {
   todayValues?: [number, number];
 }
 
-export function PerfChart({ gainPct, period, width, height = 110, snapshots, todayValues }: PerfChartProps) {
+export function PerfChart({ period, width, height = 110, snapshots, todayValues }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
   if (width < 10) return <View style={{ height }} />;
@@ -29,28 +28,17 @@ export function PerfChart({ gainPct, period, width, height = 110, snapshots, tod
     ? (todayValues ?? null)
     : (snapshots ? snapshotsToValues(snapshots, period) : null);
 
-  // No real data yet — show a flat dashed line + a hint so the user knows
-  // the chart builds as they open the app on different days.
+  // No real data yet — a clear, visible empty state (not a subtle dashed
+  // line) so this reads as "not enough history yet", not as a broken chart.
   if (realValues === null) {
-    const midY = height / 2;
     return (
-      <View>
-        <Svg width={width} height={height}>
-          <Line
-            x1={8} y1={midY} x2={width - 8} y2={midY}
-            stroke={colors.mutedForeground}
-            strokeWidth="1.5"
-            strokeDasharray="6,5"
-            strokeOpacity="0.35"
-          />
-        </Svg>
+      <View style={{ height, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <Feather name="trending-up" size={20} color={colors.mutedForeground} style={{ opacity: 0.5 }} />
         <Text style={{
           textAlign: 'center',
           color: colors.mutedForeground,
-          fontSize: 11,
-          fontFamily: 'Inter_400Regular',
-          marginTop: 6,
-          opacity: 0.75,
+          fontSize: 12,
+          fontFamily: 'Inter_500Medium',
         }}>
           {t.chartBuildingHint}
         </Text>
@@ -59,7 +47,11 @@ export function PerfChart({ gainPct, period, width, height = 110, snapshots, tod
   }
 
   const data = realValues;
-  const color = gainPct >= 0 ? colors.green : colors.red;
+  // Color reflects whether THIS period's line actually went up or down
+  // (first vs last real value) — not the portfolio's all-time gainPct,
+  // which caused a genuinely-up-today line to render red because the
+  // all-time return happened to be negative.
+  const color = data[data.length - 1] >= data[0] ? colors.green : colors.red;
   const minV = Math.min(...data);
   const maxV = Math.max(...data);
   const range = maxV - minV || 1;

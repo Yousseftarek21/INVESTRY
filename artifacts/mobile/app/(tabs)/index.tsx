@@ -353,7 +353,6 @@ export default function HomeScreen() {
     };
   }, [holdings, prices]);
 
-  const chartSeed = useMemo(() => Math.floor(summary.totalCost) % 99991 || 7, [summary.totalCost]);
   const { snapshots } = usePortfolioSnapshots(summary.totalValue);
 
   const displayValue = useCounterDisplay(toDisp(summary.totalValue));
@@ -618,9 +617,7 @@ export default function HomeScreen() {
                 }}
               >
                 <PerfChart
-                  gainPct={summary.gainPct}
                   period={timeFilter}
-                  seed={chartSeed}
                   width={sparkWidth}
                   height={78}
                   snapshots={snapshots}
@@ -863,7 +860,7 @@ const styles = StyleSheet.create({
   plBadgeText:    { fontSize: 9, fontFamily: 'Inter_700Bold' },
 
   chartWrap:  { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
-  timeRow:    { flexDirection: 'row', gap: 5 },
+  timeRow:    { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 10 },
   timePill:   { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   timePillText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
 

@@ -897,7 +897,6 @@ export default function AnalyticsScreen() {
                 style={s.chartArea}
               >
                 <PerfChart
-                  gainPct={sm.gainPct}
                   period={period}
                   width={chartWidth}
                   height={110}
@@ -1046,7 +1045,7 @@ const s = StyleSheet.create({
   chartSection: { gap: 14 },
   chartHeader: {},
   chartArea: { marginHorizontal: -20, paddingHorizontal: 20 },
-  periodRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  periodRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'center' },
   periodPill: { borderRadius: 9, paddingHorizontal: 11, paddingVertical: 5 },
   periodTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
   chartNote: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' },
