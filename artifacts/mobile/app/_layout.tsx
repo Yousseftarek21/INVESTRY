@@ -283,8 +283,8 @@ export default function RootLayout() {
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     // Publishable keys are designed to be in client bundles — not a secret.
-    const HARDCODED_LIVE_KEY = 'pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA';
-    const HARDCODED_LIVE_PROXY = 'https://invstry.replit.app/api/__clerk';
+    const HARDCODED_LIVE_KEY = 'pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA';
+    const HARDCODED_LIVE_PROXY = 'https://api.investry.app/api/__clerk';
     const envKey = (process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').trim();
 
     const fallbackConfig: ClerkConfig = {
@@ -347,8 +347,8 @@ export default function RootLayout() {
       setShowCustomSplash(false);
       setClerkConfig((prev) =>
         prev ?? {
-          publishableKey: 'pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA',
-          proxyUrl: 'https://invstry.replit.app/api/__clerk',
+          publishableKey: 'pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA',
+          proxyUrl: 'https://api.investry.app/api/__clerk',
         },
       );
       // clerkReadyRef is safe to read here (not stale like state would be).

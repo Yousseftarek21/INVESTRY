@@ -20,8 +20,8 @@
       "node": "22.13.0",
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "INVSTRY.replit.app",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuaW52c3RyeS5yZXBsaXQuYXBwJA"
+        "EXPO_PUBLIC_DOMAIN": "api.investry.app",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA"
       }
     }
   },

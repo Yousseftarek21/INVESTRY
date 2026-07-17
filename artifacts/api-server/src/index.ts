@@ -28,8 +28,11 @@ async function initStripe() {
 
     const stripeSync = await getStripeSync();
 
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
-    await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
+    const publicAppUrl = process.env.PUBLIC_APP_URL;
+    if (!publicAppUrl) {
+      throw new Error("PUBLIC_APP_URL environment variable is required.");
+    }
+    await stripeSync.findOrCreateManagedWebhook(`${publicAppUrl}/api/stripe/webhook`);
 
     stripeSync.syncBackfill().catch((err) => {
       logger.error({ err }, "Stripe syncBackfill failed");

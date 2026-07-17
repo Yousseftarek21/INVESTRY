@@ -1,13 +1,13 @@
 import { Platform } from 'react-native';
 
 /**
- * The stable, permanent production API domain (Replit Deployment). Used as
- * the fallback for any built app (TestFlight/App Store) where
- * EXPO_PUBLIC_DOMAIN wasn't set at build time. Never point this at an
- * ephemeral dev domain (REPLIT_DEV_DOMAIN) — those rotate and any build that
- * bakes one in will silently lose backend connectivity later.
+ * The stable, permanent production API domain (Render). Used as the fallback
+ * for any built app (TestFlight/App Store) where EXPO_PUBLIC_DOMAIN wasn't
+ * set at build time. Never point this at an ephemeral/dev-only domain — those
+ * rotate and any build that bakes one in will silently lose backend
+ * connectivity later.
  */
-const PRODUCTION_API_DOMAIN = 'INVSTRY.replit.app';
+const PRODUCTION_API_DOMAIN = 'api.investry.app';
 
 /**
  * Returns the base URL for API calls.
