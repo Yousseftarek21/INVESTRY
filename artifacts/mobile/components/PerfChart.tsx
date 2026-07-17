@@ -18,9 +18,17 @@ interface PerfChartProps {
    * income); real estate/personal assets/cash contribute $0 — see caller.
    */
   todayValues?: [number, number];
+  /**
+   * Real [total cost basis, current total value] pair — used as the fallback
+   * for periods longer than 1D when there isn't yet enough real snapshot
+   * history. Reflects genuine all-time direction (e.g. a portfolio down 21%
+   * overall renders a down/red line), unlike using today's tiny move, which
+   * could contradict the real all-time trend.
+   */
+  allTimeValues?: [number, number];
 }
 
-export function PerfChart({ period, width, height = 110, snapshots, todayValues }: PerfChartProps) {
+export function PerfChart({ period, width, height = 110, snapshots, todayValues, allTimeValues }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
   if (width < 10) return <View style={{ height }} />;
@@ -30,11 +38,12 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues 
     : (snapshots ? snapshotsToValues(snapshots, period) : null);
 
   // Longer periods need multiple days of real history, which a brand-new
-  // account doesn't have yet. Rather than show nothing, fall back to
-  // today's real movement (same real data as 1D) with a small honest
-  // note — always something real on screen, never a fabricated curve.
-  const usingTodayFallback = period !== '1D' && periodValues === null;
-  const realValues = periodValues ?? (usingTodayFallback ? todayValues ?? null : null);
+  // account (or one that just started tracking snapshots) doesn't have yet.
+  // Rather than show nothing — or worse, today's tiny move mislabeled as the
+  // whole period's trend — fall back to real cost-vs-current-value, which
+  // always points the right direction even without daily history.
+  const usingAllTimeFallback = period !== '1D' && periodValues === null;
+  const realValues = periodValues ?? (usingAllTimeFallback ? allTimeValues ?? null : null);
 
   // No real data at all yet (e.g. prices still loading) — a clear, visible
   // empty state, not a subtle dashed line easy to mistake for broken.
@@ -93,7 +102,7 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues 
         <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
         <Circle cx={lastPt.x} cy={lastPt.y} r="9" fill={color} fillOpacity="0.15" />
       </Svg>
-      {usingTodayFallback && (
+      {usingAllTimeFallback && (
         <Text style={{
           textAlign: 'center',
           color: colors.mutedForeground,
@@ -102,7 +111,7 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues 
           marginTop: 4,
           opacity: 0.7,
         }}>
-          {t.chartTodayFallbackHint}
+          {t.chartAllTimeFallbackHint}
         </Text>
       )}
     </View>

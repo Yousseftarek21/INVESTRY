@@ -917,6 +917,7 @@ export default function AnalyticsScreen() {
                   height={110}
                   snapshots={snapshots}
                   todayValues={[sm.totalValue - sm.todayGain, sm.totalValue]}
+                  allTimeValues={[sm.totalCost, sm.totalValue]}
                 />
               </View>
               <View style={s.periodRow}>

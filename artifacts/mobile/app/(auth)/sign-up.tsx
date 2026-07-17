@@ -142,6 +142,8 @@ export default function SignUpScreen() {
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
+      } else {
+        setGlobalError('Google sign-up did not complete. Please try again.');
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Google sign-up failed');
@@ -160,6 +162,8 @@ export default function SignUpScreen() {
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
+      } else {
+        setGlobalError('Apple sign-up did not complete. Please try again.');
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Apple sign-up failed');

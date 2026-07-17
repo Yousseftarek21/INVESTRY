@@ -120,6 +120,8 @@ export default function SignInScreen() {
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
+      } else {
+        setGlobalError('Google sign-in did not complete. Please try again.');
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Google sign-in failed');
@@ -138,6 +140,8 @@ export default function SignInScreen() {
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
+      } else {
+        setGlobalError('Apple sign-in did not complete. Please try again.');
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Apple sign-in failed');
