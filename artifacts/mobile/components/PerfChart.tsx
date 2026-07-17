@@ -13,8 +13,9 @@ interface PerfChartProps {
   snapshots?: PortfolioSnapshotItem[];
   /**
    * Real [value at start of today, value now] pair for the 1D period, derived
-   * from actual live price change (not fabricated). Only covers asset types
-   * whose daily change we track (currently gold/silver) — see caller.
+   * from actual live price/accrual change (not fabricated). Covers every
+   * holding type with a real daily change (gold, silver, stocks, fixed
+   * income); real estate/personal assets/cash contribute $0 — see caller.
    */
   todayValues?: [number, number];
 }

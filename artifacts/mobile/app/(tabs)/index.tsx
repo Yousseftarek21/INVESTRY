@@ -41,14 +41,15 @@ function personalAssetCostEGP(h: Extract<Holding, { type: 'personal_asset' }>, p
   return h.purchasePrice;
 }
 
-function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>): number {
-  const today = new Date();
+function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>, asOf: Date = new Date()): number {
   const purchase = new Date(h.purchaseDate);
   const maturity = new Date(h.maturityDate);
   const daysTotal = Math.max(1, (maturity.getTime() - purchase.getTime()) / 86400000);
-  const daysElapsed = Math.max(0, Math.min(daysTotal, (today.getTime() - purchase.getTime()) / 86400000));
+  const daysElapsed = Math.max(0, Math.min(daysTotal, (asOf.getTime() - purchase.getTime()) / 86400000));
   return h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
 }
+
+const ONE_DAY_MS = 86400000;
 
 function computeValue(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'fixed_income') return fixedIncomeAccruedValue(h);
@@ -314,9 +315,15 @@ export default function HomeScreen() {
   const [sparkWidth, setSparkWidth] = useState(0);
 
   // ── Portfolio maths ────────────────────────────────────────────────────────
+  const egxChangeByTicker = useMemo(() => {
+    const m: Record<string, number> = {};
+    egxStocks?.forEach(s => { m[s.ticker] = s.changePercent; });
+    return m;
+  }, [egxStocks]);
+
   const summary = useMemo(() => {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;
-    let todayGold = 0, todaySilver = 0;
+    let todayGold = 0, todaySilver = 0, todayStock = 0, todayFI = 0;
     let goldGrams = 0, silverGrams = 0, stockCount = 0, reCount = 0, paCount = 0;
 
     for (const h of holdings) {
@@ -331,10 +338,14 @@ export default function HomeScreen() {
         todaySilver += v * ((prices?.silverChangePercent ?? 0) / 100);
       } else if (h.type === 'stock') {
         stockV += v; stockCount++;
+        const changePercent = egxChangeByTicker[h.symbol] ?? 0;
+        todayStock += v * (changePercent / 100);
       } else if (h.type === 'personal_asset') {
         paV += v; paCount++;
       } else if (h.type === 'fixed_income') {
         fiV += v;
+        const yesterday = new Date(Date.now() - ONE_DAY_MS);
+        todayFI += v - fixedIncomeAccruedValue(h, yesterday);
       } else {
         reV += v; reCount++;
       }
@@ -343,7 +354,7 @@ export default function HomeScreen() {
     const totalValue = goldV + silverV + stockV + reV + paV + fiV;
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
-    const todayGain = todayGold + todaySilver;
+    const todayGain = todayGold + todaySilver + todayStock + todayFI;
     const todayPct = totalValue > 0 ? (todayGain / totalValue) * 100 : 0;
 
     return {
@@ -351,7 +362,7 @@ export default function HomeScreen() {
       goldV, silverV, stockV, reV, paV, fiV,
       goldGrams, silverGrams, stockCount, reCount, paCount,
     };
-  }, [holdings, prices]);
+  }, [holdings, prices, egxChangeByTicker]);
 
   const { snapshots } = usePortfolioSnapshots(summary.totalValue);
 
