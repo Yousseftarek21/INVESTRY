@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
+import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { usePortfolioNotifications } from '@/hooks/usePortfolioNotifications';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
@@ -365,6 +366,7 @@ export default function HomeScreen() {
   }, [holdings, prices, egxChangeByTicker]);
 
   const { snapshots } = usePortfolioSnapshots(summary.totalValue);
+  const todaySamples = useIntradaySamples(summary.totalValue, summary.totalValue - summary.todayGain);
 
   const displayValue = useCounterDisplay(toDisp(summary.totalValue));
 
@@ -632,7 +634,7 @@ export default function HomeScreen() {
                   width={sparkWidth}
                   height={78}
                   snapshots={snapshots}
-                  todayValues={[summary.totalValue - summary.todayGain, summary.totalValue]}
+                  todayValues={todaySamples ?? [summary.totalValue - summary.todayGain, summary.totalValue]}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
                 />
               </View>

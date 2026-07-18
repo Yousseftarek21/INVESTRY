@@ -14,7 +14,6 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import * as Updates from 'expo-updates';
 import { useClerk, useUser } from '@clerk/expo';
 import { Stack, useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
@@ -28,16 +27,8 @@ import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
 import { PremiumBadge } from '@/components/PremiumBadge';
 
 // Read live from the running binary/update instead of a hand-maintained
-// constant, so this can never silently drift out of sync with reality —
-// exactly the "what is actually running right now" question that caused
-// real confusion during the Replit migration.
+// constant, so this can never silently drift out of sync with reality.
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
-const NATIVE_BUILD = Constants.nativeBuildVersion ?? '?';
-const OTA_STATUS = Updates.isEmbeddedLaunch
-  ? 'embedded'
-  : Updates.updateId
-    ? `update ${Updates.updateId.slice(0, 8)} · ${Updates.createdAt?.toLocaleString() ?? 'unknown time'}`
-    : 'embedded';
 const COPYRIGHT_YEAR = new Date().getFullYear();
 
 // ─── Pulsing live dot ─────────────────────────────────────────────────────────
@@ -726,26 +717,17 @@ const msc = StyleSheet.create({
 
 // ─── Smart footer ──────────────────────────────────────────────────────────────
 
-function SmartFooter({ lastUpdate }: { lastUpdate: string }) {
+function SmartFooter() {
   const colors = useColors();
   const t = useT();
   return (
     <View style={[sf.wrap, { borderTopColor: colors.border }]}>
       <Text style={[sf.brand, { color: colors.primary }]}>INVESTRY</Text>
-      <Text style={[sf.tagline, { color: colors.mutedForeground }]}>{t.knowYourWealth}</Text>
-      <View style={sf.meta}>
-        <View style={sf.metaRow}>
-          <Text style={[sf.metaKey, { color: colors.mutedForeground }]}>{t.versionLabel}</Text>
-          <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>
-            {APP_VERSION} ({NATIVE_BUILD}) · {OTA_STATUS}
-          </Text>
-        </View>
-      </View>
+      <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>
+        {t.versionLabel} {APP_VERSION}
+      </Text>
       <Text style={[sf.copy, { color: colors.mutedForeground }]}>
         © {COPYRIGHT_YEAR} INVESTRY. {t.allRightsReserved}
-      </Text>
-      <Text style={[sf.disc, { color: colors.mutedForeground }]}>
-        {t.marketDataDisclaimer}
       </Text>
     </View>
   );
@@ -753,13 +735,8 @@ function SmartFooter({ lastUpdate }: { lastUpdate: string }) {
 const sf = StyleSheet.create({
   wrap: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 32, alignItems: 'center', gap: 12 },
   brand: { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: 4 },
-  tagline: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: -4 },
-  meta: { width: '100%', gap: 7 },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  metaKey: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   metaVal: { fontSize: 12, fontFamily: 'Inter_500Medium' },
   copy: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  disc: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 16, opacity: 0.65 },
 });
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
@@ -800,10 +777,6 @@ export default function SettingsScreen() {
   const initials  = ([firstName[0], lastName[0]].filter(Boolean).join('').toUpperCase()) || email[0]?.toUpperCase() || 'I';
   const displayName = (user?.unsafeMetadata?.displayName as string | undefined) ?? '';
   const profileName = displayName.trim() || fullName;
-
-  const lastUpdate = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : 'Never';
 
   const showModal = (title: string, content: string) => { haptic(); setModal({ title, content }); };
   const openURL   = (url: string) => { haptic(); Linking.openURL(url).catch(() => showModal(t.couldNotOpenLink, t.couldNotOpenLinkDesc)); };
@@ -1181,7 +1154,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         {/* ── SMART FOOTER ─────────────────────────────────── */}
-        <SmartFooter lastUpdate={lastUpdate} />
+        <SmartFooter />
       </ScrollView>
 
       {modal && (

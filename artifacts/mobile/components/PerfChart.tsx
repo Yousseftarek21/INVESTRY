@@ -12,12 +12,13 @@ interface PerfChartProps {
   height?: number;
   snapshots?: PortfolioSnapshotItem[];
   /**
-   * Real [value at start of today, value now] pair for the 1D period, derived
-   * from actual live price/accrual change (not fabricated). Covers every
-   * holding type with a real daily change (gold, silver, stocks, fixed
-   * income); real estate/personal assets/cash contribute $0 — see caller.
+   * Real observed total-portfolio-value samples for today (2+ points),
+   * derived from actual live price/accrual change — never fabricated.
+   * Starts as just [start-of-day, now] early in the day and gains real
+   * in-between points as the day goes on (see useIntradaySamples), so the
+   * 1D curve fills in with genuine shape instead of staying a flat line.
    */
-  todayValues?: [number, number];
+  todayValues?: number[];
   /**
    * Real [total cost basis, current total value] pair — used as the fallback
    * for periods longer than 1D when there isn't yet enough real snapshot
