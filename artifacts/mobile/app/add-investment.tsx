@@ -19,7 +19,7 @@ import { RE_PRICES, REAreaPrice } from '@/data/egypt-real-estate-prices';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 import { DatePickerField } from '@/components/DatePickerField';
 
-const FREE_LIMIT = 5;
+const FREE_LIMIT = 3;
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset' | 'fixed_income';
 
@@ -663,7 +663,7 @@ export default function AddInvestmentScreen() {
       return;
     }
 
-    // Free tier: max 5 investments. Skip the gate while subscription is still
+    // Free tier: max 3 investments. Skip the gate while subscription is still
     // loading (subLoading=true), or when Launch Access / Pro is active.
     if (!isEditing && !subLoading && !isPro && !launchAccess && holdings.length >= FREE_LIMIT) {
       showPaywall();
