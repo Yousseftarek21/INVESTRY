@@ -69,14 +69,28 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues,
   // which caused a genuinely-up-today line to render red because the
   // all-time return happened to be negative.
   const color = data[data.length - 1] >= data[0] ? colors.green : colors.red;
-  const minV = Math.min(...data);
-  const maxV = Math.max(...data);
+
+  // Optional, faint "simulated trend" reference: a straight line from your
+  // cost basis to current value, shown only alongside genuinely real data
+  // (never in place of it) so you always have the honest big-picture
+  // direction for context, even while looking at a shorter real window.
+  // Skipped for 1D (too short to need big-picture context) and ALL/fallback
+  // views (where the real line already IS this exact comparison).
+  const showTrendOverlay =
+    period !== '1D' && !usingAllTimeFallback &&
+    !!allTimeValues && allTimeValues[0] > 0 && allTimeValues[1] > 0;
+
+  const allValues = showTrendOverlay ? [...data, ...allTimeValues!] : data;
+  const minV = Math.min(...allValues);
+  const maxV = Math.max(...allValues);
   const range = maxV - minV || 1;
   const pad = 10;
 
+  const yFor = (v: number) => pad + ((maxV - v) / range) * (height - pad * 2);
+
   const pts: ChartPt[] = data.map((v, i) => ({
     x: (i / (data.length - 1)) * width,
-    y: pad + ((maxV - v) / range) * (height - pad * 2),
+    y: yFor(v),
     value: v,
   }));
 
@@ -84,6 +98,10 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues,
   const firstPt = pts[0];
   const lastPt = pts[pts.length - 1];
   const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
+
+  const trendPath = showTrendOverlay
+    ? `M 0,${yFor(allTimeValues![0]).toFixed(2)} L ${width.toFixed(2)},${yFor(allTimeValues![1]).toFixed(2)}`
+    : null;
 
   return (
     <View>
@@ -96,6 +114,10 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues,
           </LinearGradient>
         </Defs>
         <Path d={fillPath} fill="url(#pfc)" />
+        {trendPath && (
+          <Path d={trendPath} fill="none" stroke={colors.mutedForeground}
+            strokeWidth="1.5" strokeDasharray="5,5" opacity={0.5} />
+        )}
         <Path d={linePath} fill="none" stroke={color}
           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={firstPt.x} cy={firstPt.y} r="3" fill={color} fillOpacity="0.4" />
@@ -112,6 +134,18 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues,
           opacity: 0.7,
         }}>
           {t.chartAllTimeFallbackHint}
+        </Text>
+      )}
+      {trendPath && (
+        <Text style={{
+          textAlign: 'center',
+          color: colors.mutedForeground,
+          fontSize: 10,
+          fontFamily: 'Inter_400Regular',
+          marginTop: 4,
+          opacity: 0.6,
+        }}>
+          {t.chartSimulatedTrendHint}
         </Text>
       )}
     </View>
