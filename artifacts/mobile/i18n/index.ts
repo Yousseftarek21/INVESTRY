@@ -562,6 +562,7 @@ const en = {
   listedLabel: 'listed',
   inLabel: 'in',
   estimatedLabel: 'ESTIMATED',
+  estAbbrevLabel: 'Est.',
   weekRange52: '52W Range',
   peRatio: 'P/E Ratio',
   dividendYield: 'Dividend Yield',
@@ -695,6 +696,7 @@ const en = {
   settingsSectAppearance: 'APPEARANCE',
   settingsSectLanguage: 'LANGUAGE & REGION',
   settingsSectPortfolio: 'PORTFOLIO',
+  settingsSectCalculations: 'HOW CALCULATIONS WORK',
   notificationsTitle: 'Notifications',
   noNotifications: 'All caught up',
   noNotificationsHint: 'Price movements and upcoming income will appear here.',
@@ -907,6 +909,56 @@ const en = {
   reportBug: 'Report a Bug',
   requestFeature: 'Request a Feature',
   rateAppStore: 'Rate on App Store',
+
+  // Help Center screen
+  helpCatGettingStarted: 'Getting Started',
+  helpCatHoldings: 'Investments & Holdings',
+  helpCatCash: 'Cash & Recurring Income',
+  helpCatTools: 'Financial Tools & Calculators',
+  helpCatAnalytics: 'Analytics & Charts',
+  helpCatAlerts: 'Price Alerts',
+  helpCatSubscription: 'Subscription',
+  helpCatPrivacy: 'Data & Privacy',
+  helpStillNeedHelp: 'Still need help?',
+  helpContactDesc: "Email our team and we'll get back to you.",
+
+  helpAddHoldingQ: 'How do I add my first investment?',
+  helpAddHoldingA: "Tap the + button on the Investments tab, choose \"Add Investment\", pick a type — gold, silver, EGX stock, real estate, personal asset, or fixed income — and fill in the details.",
+  helpSwitchLanguageQ: 'How do I switch between English and Arabic?',
+  helpSwitchLanguageA: 'Go to Settings → Language & Region and tap your preferred language. The whole app updates immediately, including number and date formats.',
+
+  helpHoldingTypesQ: 'What investment types can I track?',
+  helpHoldingTypesA: 'Gold and silver by karat/purity and weight, EGX-listed stocks, real estate, personal assets like watches or jewelry, and fixed income — T-bills, savings certificates, bank deposits, and sukuk.',
+  helpEditDeleteQ: 'How do I edit or delete a holding?',
+  helpEditDeleteA: 'Tap any holding to edit it. Swipe it left to reveal the delete option.',
+  helpFixedIncomeFlatQ: "Why does my fixed income certificate's value stay flat for a while?",
+  helpFixedIncomeFlatA: 'If your certificate pays interest monthly or quarterly, the bank pays that interest out to a linked account instead of adding it to the certificate — so its shown value stays at your principal until maturity. Only "At Maturity" certificates grow in value over time. See Settings → Portfolio Preferences → Fixed Income Calculation for the full breakdown.',
+
+  helpCashTypesQ: 'What cash account types can I add?',
+  helpCashTypesA: 'Bank accounts, cash kept at home, and foreign currency accounts.',
+  helpRecurringIncomeQ: 'Does recurring income get added to my balance automatically?',
+  helpRecurringIncomeA: "No — recurring income is a reminder you set up (amount, day of month, linked account). INVESTRY doesn't move real money; you update your account balance yourself once the deposit actually lands.",
+
+  helpCalculatorsQ: 'What financial calculators are included?',
+  helpCalculatorsA: 'Eight tools: Zakat, ROI, compound interest, T-bill yield, and more — all under the Analytics tab\'s Financial Tools section.',
+  helpZakatQ: 'How is Zakat calculated?',
+  helpZakatA: 'Using the 2.5% Nisab method on your zakatable wealth (gold, silver, stocks, and cash), compared against the current gold or silver Nisab threshold you choose.',
+
+  helpAnalyticsQ: 'What does the Analytics tab show?',
+  helpAnalyticsA: 'A portfolio health score, diversification breakdown, performance chart, asset allocation, your top-performing holdings, and personalized insights.',
+  helpChartFlatQ: 'Why is my performance chart a straight line?',
+  helpChartFlatA: 'The chart only ever plots real data points — it never invents a curve. With very little price history (like a single day), a straight line is the honest picture; more real data points naturally shape more of a curve over time.',
+
+  helpPriceAlertsQ: 'How do price alerts work?',
+  helpPriceAlertsA: 'Set a target price above or below the current one for any asset, and INVESTRY sends you a local notification the next time prices refresh and cross that target.',
+
+  helpFreeVsProQ: "What's the difference between Free and Pro?",
+  helpFreeVsProA: 'Free accounts are capped at 3 holdings. Pro unlocks unlimited holdings plus Market Intelligence and Portfolio Analytics. During Launch Access, every signed-in user gets Pro features free.',
+
+  helpDataSyncQ: 'What data syncs to my account vs. stays on this device?',
+  helpDataSyncA: "Holdings and cash accounts sync to your account and are available on any device you sign into. Goals and recurring income currently stay local to this device only — they won't appear if you reinstall or switch devices.",
+  helpEncryptionQ: 'Is my data encrypted?',
+  helpEncryptionA: 'Everything is sent over encrypted HTTPS connections, and holdings/cash data is encrypted at rest on our servers. We never sell or share your data with third parties.',
 
   // Settings — legal rows
   regulatoryDisclaimer: 'Regulatory Disclaimer',
@@ -1501,6 +1553,7 @@ const ar: typeof en = {
   listedLabel: 'مدرجة',
   inLabel: 'في',
   estimatedLabel: 'تقديري',
+  estAbbrevLabel: 'تقديري',
   weekRange52: 'نطاق 52 أسبوع',
   peRatio: 'مضروب السعر/الربح',
   dividendYield: 'عائد الأرباح',
@@ -1634,6 +1687,7 @@ const ar: typeof en = {
   settingsSectAppearance: 'المظهر',
   settingsSectLanguage: 'اللغة والمنطقة',
   settingsSectPortfolio: 'المحفظة',
+  settingsSectCalculations: 'طريقة الحساب',
   notificationsTitle: 'الإشعارات',
   noNotifications: 'لا توجد إشعارات',
   noNotificationsHint: 'ستظهر هنا تحركات الأسعار والدخل القادم.',
@@ -1846,6 +1900,56 @@ const ar: typeof en = {
   reportBug: 'الإبلاغ عن خطأ',
   requestFeature: 'طلب ميزة',
   rateAppStore: 'تقييم على App Store',
+
+  // Help Center screen
+  helpCatGettingStarted: 'البدء',
+  helpCatHoldings: 'الاستثمارات والأصول',
+  helpCatCash: 'النقد والدخل المتكرر',
+  helpCatTools: 'الأدوات والآلات الحاسبة المالية',
+  helpCatAnalytics: 'التحليلات والمخططات',
+  helpCatAlerts: 'تنبيهات الأسعار',
+  helpCatSubscription: 'الاشتراك',
+  helpCatPrivacy: 'البيانات والخصوصية',
+  helpStillNeedHelp: 'هل ما زلت بحاجة إلى مساعدة؟',
+  helpContactDesc: 'راسلنا عبر البريد الإلكتروني وسنعاود التواصل معك.',
+
+  helpAddHoldingQ: 'كيف أضيف أول استثمار لي؟',
+  helpAddHoldingA: 'اضغط على زر + في تبويب الاستثمارات، اختر "إضافة استثمار"، ثم اختر النوع — ذهب، فضة، سهم بالبورصة المصرية، عقار، أصل شخصي، أو دخل ثابت — وأدخل التفاصيل.',
+  helpSwitchLanguageQ: 'كيف أبدل بين العربية والإنجليزية؟',
+  helpSwitchLanguageA: 'اذهب إلى الإعدادات ← اللغة والمنطقة واضغط على اللغة المفضلة لديك. يتحدث التطبيق بالكامل فوراً، بما في ذلك تنسيق الأرقام والتواريخ.',
+
+  helpHoldingTypesQ: 'ما أنواع الاستثمارات التي يمكنني تتبعها؟',
+  helpHoldingTypesA: 'الذهب والفضة حسب العيار والوزن، أسهم البورصة المصرية، العقارات، الأصول الشخصية مثل الساعات والمجوهرات، والدخل الثابت — أذون الخزانة، شهادات الادخار، الودائع البنكية، والصكوك.',
+  helpEditDeleteQ: 'كيف أعدل أو أحذف أصلاً؟',
+  helpEditDeleteA: 'اضغط على أي أصل لتعديله. اسحبه لليسار لإظهار خيار الحذف.',
+  helpFixedIncomeFlatQ: 'لماذا تبقى قيمة شهادة الدخل الثابت ثابتة لفترة؟',
+  helpFixedIncomeFlatA: 'إذا كانت شهادتك تدفع فائدة شهرية أو ربع سنوية، يقوم البنك بصرف هذه الفائدة إلى حساب مرتبط بدلاً من إضافتها للشهادة نفسها — لذلك تبقى القيمة المعروضة عند رأس المال حتى تاريخ الاستحقاق. فقط شهادات "عند الاستحقاق" تنمو قيمتها بمرور الوقت. راجع الإعدادات ← تفضيلات المحفظة ← حساب الدخل الثابت للتفاصيل الكاملة.',
+
+  helpCashTypesQ: 'ما أنواع الحسابات النقدية التي يمكنني إضافتها؟',
+  helpCashTypesA: 'حسابات بنكية، نقد في المنزل، وحسابات بعملات أجنبية.',
+  helpRecurringIncomeQ: 'هل يُضاف الدخل المتكرر إلى رصيدي تلقائياً؟',
+  helpRecurringIncomeA: 'لا — الدخل المتكرر هو تذكير تقوم بإعداده (المبلغ، يوم الشهر، الحساب المرتبط). لا يحرك INVESTRY أموالاً حقيقية؛ أنت من يحدّث رصيد حسابك بعد وصول الإيداع فعلياً.',
+
+  helpCalculatorsQ: 'ما الآلات الحاسبة المالية المتوفرة؟',
+  helpCalculatorsA: 'ثماني أدوات: الزكاة، العائد على الاستثمار، الفائدة المركبة، عائد أذون الخزانة، والمزيد — كلها ضمن قسم الأدوات المالية في تبويب التحليلات.',
+  helpZakatQ: 'كيف تُحسب الزكاة؟',
+  helpZakatA: 'باستخدام نسبة 2.5% على ثروتك الزكوية (الذهب، الفضة، الأسهم، والنقد)، مقارنةً بحد النصاب الحالي للذهب أو الفضة الذي تختاره.',
+
+  helpAnalyticsQ: 'ماذا يعرض تبويب التحليلات؟',
+  helpAnalyticsA: 'درجة صحة المحفظة، تفصيل التنويع، مخطط الأداء، توزيع الأصول، أفضل أصولك أداءً، ورؤى شخصية.',
+  helpChartFlatQ: 'لماذا مخطط الأداء لدي عبارة عن خط مستقيم؟',
+  helpChartFlatA: 'يعرض المخطط نقاط بيانات حقيقية فقط — لا يخترع منحنى أبداً. مع سجل أسعار قليل جداً (مثل يوم واحد)، يكون الخط المستقيم هو الصورة الصادقة؛ ومع تراكم نقاط بيانات حقيقية أكثر، يتشكل المنحنى تلقائياً بمرور الوقت.',
+
+  helpPriceAlertsQ: 'كيف تعمل تنبيهات الأسعار؟',
+  helpPriceAlertsA: 'حدد سعراً مستهدفاً أعلى أو أقل من السعر الحالي لأي أصل، ويرسل لك INVESTRY إشعاراً محلياً في أول تحديث أسعار يتجاوز فيه السعر هذا الهدف.',
+
+  helpFreeVsProQ: 'ما الفرق بين الخطة المجانية و Pro؟',
+  helpFreeVsProA: 'الحسابات المجانية محدودة بـ 3 أصول. تفتح Pro أصولاً غير محدودة بالإضافة إلى ذكاء السوق وتحليلات المحفظة. خلال فترة الإطلاق، يحصل كل مستخدم مسجل دخول على ميزات Pro مجاناً.',
+
+  helpDataSyncQ: 'ما البيانات التي تُزامَن مع حسابي مقابل ما يبقى على هذا الجهاز فقط؟',
+  helpDataSyncA: 'الأصول والحسابات النقدية تُزامَن مع حسابك وتتوفر على أي جهاز تسجل دخولك منه. الأهداف والدخل المتكرر تبقى حالياً محلية على هذا الجهاز فقط — لن تظهر إذا أعدت تثبيت التطبيق أو غيّرت الجهاز.',
+  helpEncryptionQ: 'هل بياناتي مشفرة؟',
+  helpEncryptionA: 'يتم إرسال كل شيء عبر اتصالات HTTPS مشفرة، وتُشفَّر بيانات الأصول والحسابات النقدية أثناء تخزينها على خوادمنا. لا نبيع أو نشارك بياناتك مع أي طرف ثالث أبداً.',
 
   // Settings — legal rows
   regulatoryDisclaimer: 'إخلاء المسؤولية التنظيمية',

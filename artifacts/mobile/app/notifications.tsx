@@ -136,7 +136,7 @@ export default function NotificationsScreen() {
                     {item.type === 'income' ? (
                       <Feather name="repeat" size={18} color={item.iconColor} />
                     ) : (
-                      <MaterialCommunityIcons name={item.type === 'silver' ? 'diamond-stone' : 'gold'} size={18} color={item.iconColor} />
+                      <MaterialCommunityIcons name={item.type === 'silver' ? 'medal' : 'gold'} size={18} color={item.iconColor} />
                     )}
                   </View>
                   <View style={s.cardBody}>

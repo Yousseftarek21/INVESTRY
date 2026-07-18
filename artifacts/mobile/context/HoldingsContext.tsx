@@ -138,11 +138,14 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   }, [isSignedIn, userId]);
 
   // ── Add (optimistic, with rollback) ──────────────────────────────────────
+  // Rollback only touches this holding's own row via a functional update,
+  // rather than restoring a captured full-array snapshot — a snapshot taken
+  // before this call went out can be stale by the time it fails, and
+  // restoring it would silently erase any other concurrent add/update/remove
+  // that succeeded in the meantime.
   const addHolding = useCallback(async (holding: Holding) => {
     if (!userId) return;
-    let snapshot: Holding[] = [];
     setHoldings(prev => {
-      snapshot = prev;
       const next = [...prev, holding];
       persist(next, userId);
       return next;
@@ -154,8 +157,11 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error(`${res.status}`);
       }
     } catch {
-      setHoldings(snapshot);
-      persist(snapshot, userId);
+      setHoldings(prev => {
+        const next = prev.filter(h => h.id !== holding.id);
+        persist(next, userId);
+        return next;
+      });
       setSyncError('Failed to save — please try again.');
     }
   }, [token, persist, userId]);
@@ -163,9 +169,9 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   // ── Remove (optimistic, with rollback) ───────────────────────────────────
   const removeHolding = useCallback(async (id: string) => {
     if (!userId) return;
-    let snapshot: Holding[] = [];
+    let removed: Holding | undefined;
     setHoldings(prev => {
-      snapshot = prev;
+      removed = prev.find(h => h.id === id);
       const next = prev.filter(h => h.id !== id);
       persist(next, userId);
       return next;
@@ -177,8 +183,12 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error(`${res.status}`);
       }
     } catch {
-      setHoldings(snapshot);
-      persist(snapshot, userId);
+      setHoldings(prev => {
+        if (!removed || prev.some(h => h.id === id)) return prev;
+        const next = [...prev, removed];
+        persist(next, userId);
+        return next;
+      });
       setSyncError('Could not remove — please try again.');
     }
   }, [token, persist, userId]);
@@ -186,9 +196,9 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   // ── Update (optimistic, with rollback) ───────────────────────────────────
   const updateHolding = useCallback(async (holding: Holding) => {
     if (!userId) return;
-    let snapshot: Holding[] = [];
+    let previous: Holding | undefined;
     setHoldings(prev => {
-      snapshot = prev;
+      previous = prev.find(h => h.id === holding.id);
       const next = prev.map(h => h.id === holding.id ? holding : h);
       persist(next, userId);
       return next;
@@ -200,8 +210,12 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error(`${res.status}`);
       }
     } catch {
-      setHoldings(snapshot);
-      persist(snapshot, userId);
+      setHoldings(prev => {
+        if (!previous) return prev;
+        const next = prev.map(h => h.id === holding.id ? previous! : h);
+        persist(next, userId);
+        return next;
+      });
       setSyncError('Could not update — please try again.');
     }
   }, [token, persist, userId]);

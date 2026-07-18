@@ -40,27 +40,34 @@ export interface PriceAlert {
   createdAt: string;
 }
 
-const ALERTS_KEY = '@investry_price_alerts';
+// Namespaced per-user, matching every other local data store (Cash, Holdings,
+// Goals, RecurringIncome) — without this, alerts created by one account would
+// stay readable, editable, and would keep notifying whoever signs in next on
+// the same device.
+function alertsKey(userId: string) {
+  return `@investry_price_alerts_${userId}`;
+}
 
-export async function loadAlerts(): Promise<PriceAlert[]> {
+export async function loadAlerts(userId: string | null | undefined): Promise<PriceAlert[]> {
+  if (!userId) return [];
   try {
-    const raw = await AsyncStorage.getItem(ALERTS_KEY);
+    const raw = await AsyncStorage.getItem(alertsKey(userId));
     return raw ? JSON.parse(raw) : [];
   } catch { return []; }
 }
 
-export async function saveAlerts(alerts: PriceAlert[]): Promise<void> {
-  try { await AsyncStorage.setItem(ALERTS_KEY, JSON.stringify(alerts)); } catch {}
+export async function saveAlerts(alerts: PriceAlert[], userId: string): Promise<void> {
+  try { await AsyncStorage.setItem(alertsKey(userId), JSON.stringify(alerts)); } catch {}
 }
 
-export async function addAlert(alert: PriceAlert): Promise<void> {
-  const alerts = await loadAlerts();
-  await saveAlerts([...alerts, alert]);
+export async function addAlert(alert: PriceAlert, userId: string): Promise<void> {
+  const alerts = await loadAlerts(userId);
+  await saveAlerts([...alerts, alert], userId);
 }
 
-export async function removeAlert(id: string): Promise<void> {
-  const alerts = await loadAlerts();
-  await saveAlerts(alerts.filter(a => a.id !== id));
+export async function removeAlert(id: string, userId: string): Promise<void> {
+  const alerts = await loadAlerts(userId);
+  await saveAlerts(alerts.filter(a => a.id !== id), userId);
 }
 
 /**
@@ -71,8 +78,9 @@ export async function removeAlert(id: string): Promise<void> {
 export async function checkAlerts(
   prices: Record<string, number>,
   sendNotification: (title: string, body: string) => void,
+  userId: string,
 ): Promise<void> {
-  const alerts = await loadAlerts();
+  const alerts = await loadAlerts(userId);
   let changed = false;
   const next = alerts.map(a => {
     if (a.triggered) return a;
@@ -89,13 +97,14 @@ export async function checkAlerts(
     changed = true;
     return { ...a, triggered: true, triggeredAt: new Date().toISOString() };
   });
-  if (changed) await saveAlerts(next);
+  if (changed) await saveAlerts(next, userId);
 }
 
 /** Hook that runs checkAlerts whenever `prices` changes. */
 export function usePriceAlertChecker(prices: Record<string, number> | null, enabled: boolean = true) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, userId } = useAuth();
   const lastCheckedRef = useRef<string>('');
+  const prevUserRef = useRef<string | null>(null);
 
   const sendNotification = useCallback((title: string, body: string) => {
     Notifications.scheduleNotificationAsync({
@@ -104,11 +113,22 @@ export function usePriceAlertChecker(prices: Record<string, number> | null, enab
     }).catch(() => null);
   }, []);
 
+  // Wipe the previous account's alerts from storage on sign-out or account
+  // switch, matching Cash/Holdings/Goals/RecurringIncome — otherwise the
+  // next person to sign in on this device would inherit them.
   useEffect(() => {
-    if (!prices || !isSignedIn || !enabled) return;
+    const prevUser = prevUserRef.current;
+    if (prevUser && prevUser !== userId) {
+      AsyncStorage.removeItem(alertsKey(prevUser)).catch(() => null);
+    }
+    prevUserRef.current = userId ?? null;
+  }, [userId]);
+
+  useEffect(() => {
+    if (!prices || !isSignedIn || !userId || !enabled) return;
     const key = JSON.stringify(prices);
     if (lastCheckedRef.current === key) return;
     lastCheckedRef.current = key;
-    checkAlerts(prices, sendNotification);
-  }, [prices, isSignedIn, enabled, sendNotification]);
+    checkAlerts(prices, sendNotification, userId);
+  }, [prices, isSignedIn, userId, enabled, sendNotification]);
 }

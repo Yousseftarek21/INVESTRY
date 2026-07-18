@@ -139,11 +139,14 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
   }, [isSignedIn, userId]);
 
   // ── Add (optimistic, with rollback) ──────────────────────────────────────
+  // Rollback only touches this account's own row via a functional update,
+  // rather than restoring a captured full-array snapshot — a snapshot taken
+  // before this call went out can be stale by the time it fails, and
+  // restoring it would silently erase any other concurrent add/update/remove
+  // that succeeded in the meantime.
   const addCashAccount = useCallback(async (account: CashAccount) => {
     if (!userId) return;
-    let snapshot: CashAccount[] = [];
     setCashAccounts(prev => {
-      snapshot = prev;
       const next = [...prev, account];
       persist(next, userId);
       return next;
@@ -155,8 +158,11 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error(`${res.status}`);
       }
     } catch {
-      setCashAccounts(snapshot);
-      persist(snapshot, userId);
+      setCashAccounts(prev => {
+        const next = prev.filter(a => a.id !== account.id);
+        persist(next, userId);
+        return next;
+      });
       setSyncError('Failed to save — please try again.');
     }
   }, [token, persist, userId]);
@@ -164,9 +170,9 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
   // ── Remove (optimistic, with rollback) ───────────────────────────────────
   const removeCashAccount = useCallback(async (id: string) => {
     if (!userId) return;
-    let snapshot: CashAccount[] = [];
+    let removed: CashAccount | undefined;
     setCashAccounts(prev => {
-      snapshot = prev;
+      removed = prev.find(a => a.id === id);
       const next = prev.filter(a => a.id !== id);
       persist(next, userId);
       return next;
@@ -178,8 +184,12 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error(`${res.status}`);
       }
     } catch {
-      setCashAccounts(snapshot);
-      persist(snapshot, userId);
+      setCashAccounts(prev => {
+        if (!removed || prev.some(a => a.id === id)) return prev;
+        const next = [...prev, removed];
+        persist(next, userId);
+        return next;
+      });
       setSyncError('Could not remove — please try again.');
     }
   }, [token, persist, userId]);
@@ -187,9 +197,9 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
   // ── Update (optimistic, with rollback) ───────────────────────────────────
   const updateCashAccount = useCallback(async (account: CashAccount) => {
     if (!userId) return;
-    let snapshot: CashAccount[] = [];
+    let previous: CashAccount | undefined;
     setCashAccounts(prev => {
-      snapshot = prev;
+      previous = prev.find(a => a.id === account.id);
       const next = prev.map(a => a.id === account.id ? account : a);
       persist(next, userId);
       return next;
@@ -201,8 +211,12 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error(`${res.status}`);
       }
     } catch {
-      setCashAccounts(snapshot);
-      persist(snapshot, userId);
+      setCashAccounts(prev => {
+        if (!previous) return prev;
+        const next = prev.map(a => a.id === account.id ? previous! : a);
+        persist(next, userId);
+        return next;
+      });
       setSyncError('Could not update — please try again.');
     }
   }, [token, persist, userId]);

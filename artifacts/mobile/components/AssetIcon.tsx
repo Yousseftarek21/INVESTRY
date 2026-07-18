@@ -11,9 +11,9 @@ export function AssetIcon({ type, size = 18, color }: {
     case 'gold':
       return <MaterialCommunityIcons name="gold" size={size} color={color} />;
     case 'silver':
-      return <MaterialCommunityIcons name="diamond-stone" size={size} color={color} />;
+      return <MaterialCommunityIcons name="medal" size={size} color={color} />;
     case 'stock':
-      return <Feather name="trending-up" size={size} color={color} />;
+      return <Feather name="bar-chart-2" size={size} color={color} />;
     case 'real_estate':
       return <MaterialCommunityIcons name="home-city" size={size} color={color} />;
     case 'personal_asset':

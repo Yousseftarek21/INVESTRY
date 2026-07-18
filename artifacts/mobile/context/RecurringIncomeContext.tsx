@@ -112,6 +112,12 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
       if (!inc.active) return inc;
       if (now < new Date(inc.startDate)) return inc;
 
+      // If the linked cash account was deleted, there's nowhere for this
+      // credit to land. Leave lastProcessedMonth untouched (don't fabricate
+      // a "credited" transaction for money that never moved) so it can
+      // catch up correctly if the account is ever recreated.
+      if (!cashAccounts.some(a => a.id === inc.cashAccountId)) return inc;
+
       const startYM = currentYearMonth(new Date(inc.startDate));
       const endYM = inc.endDate ? currentYearMonth(new Date(inc.endDate)) : null;
 

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useAuth } from '@clerk/expo';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -35,6 +36,7 @@ export default function PriceAlertsScreen() {
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
   const { language } = useAppSettings();
+  const { userId } = useAuth();
   const { data: prices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
 
@@ -49,8 +51,8 @@ export default function PriceAlertsScreen() {
   const [targetRaw, setTargetRaw] = useState('');
 
   const refreshAlerts = useCallback(async () => {
-    setAlerts(await loadAlerts());
-  }, []);
+    setAlerts(await loadAlerts(userId));
+  }, [userId]);
 
   useEffect(() => { refreshAlerts(); }, [refreshAlerts]);
 
@@ -94,6 +96,7 @@ export default function PriceAlertsScreen() {
   const openAdd = () => { resetForm(); setShowForm(true); };
 
   const handleSave = async () => {
+    if (!userId) return;
     if (!selectedAsset) { Alert.alert(t.selectAssetLabel, t.selectAssetError); return; }
     const target = parseAmount(targetRaw);
     if (target <= 0) { Alert.alert(t.targetPriceLabel, t.targetPriceError); return; }
@@ -106,19 +109,20 @@ export default function PriceAlertsScreen() {
       direction,
       triggered: false,
       createdAt: new Date().toISOString(),
-    });
+    }, userId);
     await refreshAlerts();
     resetForm();
   };
 
   const handleDelete = (id: string) => {
+    if (!userId) return;
     if (Platform.OS === 'web') { setPendingDeleteId(id); return; }
     Alert.alert(t.deletePriceAlert, t.deletePriceAlertConfirm, [
       { text: t.cancel, style: 'cancel' },
       {
         text: t.delete, style: 'destructive', onPress: async () => {
           impact(Haptics.ImpactFeedbackStyle.Medium);
-          await removeAlert(id);
+          await removeAlert(id, userId);
           await refreshAlerts();
         },
       },
@@ -126,10 +130,10 @@ export default function PriceAlertsScreen() {
   };
 
   const confirmWebDelete = async () => {
-    if (!pendingDeleteId) return;
+    if (!pendingDeleteId || !userId) return;
     const id = pendingDeleteId;
     setPendingDeleteId(null);
-    await removeAlert(id);
+    await removeAlert(id, userId);
     await refreshAlerts();
   };
 

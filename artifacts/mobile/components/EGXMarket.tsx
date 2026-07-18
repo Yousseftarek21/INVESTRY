@@ -221,7 +221,7 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
             <Text style={[sc.ticker, { color: colors.text }]}>{stock.ticker}</Text>
             {!stock.isLive && (
               <View style={[sc.staticBadge, { backgroundColor: colors.muted }]}>
-                <Text style={[sc.staticTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel.toLowerCase().slice(0, 4)}.</Text>
+                <Text style={[sc.staticTxt, { color: colors.mutedForeground }]}>{t.estAbbrevLabel}</Text>
               </View>
             )}
           </View>

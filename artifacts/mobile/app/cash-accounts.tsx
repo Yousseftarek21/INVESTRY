@@ -197,7 +197,10 @@ export default function CashAccountsScreen() {
         id: editingId ?? generateId(),
         name: accountName.trim(),
         amount: parsedAmount,
-        currency,
+        // Always the deposit account's own currency — recurring income has
+        // no currency conversion, so letting these diverge would silently
+        // corrupt the account's balance once credited.
+        currency: depositAccount?.currency ?? currency,
         cashAccountId: depositAccountId,
         creditDay: day,
         startDate,
@@ -401,30 +404,6 @@ export default function CashAccountsScreen() {
                   />
                 </View>
 
-                {/* ── Currency ────────────────────────────────────── */}
-                <View style={styles.section}>
-                  <Text style={labelStyle}>{t.accountCurrency}</Text>
-                  <View style={styles.chips}>
-                    {CURRENCIES_DEFAULT.map(c => {
-                      const active = currency === c;
-                      return (
-                        <TouchableOpacity
-                          key={c}
-                          style={[styles.chip, {
-                            borderColor: active ? colors.primary : colors.border,
-                            backgroundColor: active ? colors.primary + '10' : colors.card,
-                          }]}
-                          onPress={() => setCurrency(c)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.chipFlag}>{CURRENCY_FLAGS[c]}</Text>
-                          <Text style={[styles.chipText, { color: active ? colors.primary : colors.text }]}>{c}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-
                 {/* ── Credit Day ──────────────────────────────────── */}
                 <View style={styles.section}>
                   <Text style={labelStyle}>{t.creditDay}</Text>
@@ -461,7 +440,7 @@ export default function CashAccountsScreen() {
                       activeOpacity={0.8}
                     >
                       <Text style={{ color: depositAccount ? colors.text : colors.mutedForeground, flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
-                        {depositAccount ? depositAccount.accountName : t.selectAccount}
+                        {depositAccount ? `${depositAccount.accountName} (${depositAccount.currency})` : t.selectAccount}
                       </Text>
                       <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
                     </TouchableOpacity>
