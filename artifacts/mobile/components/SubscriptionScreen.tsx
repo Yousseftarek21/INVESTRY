@@ -5,12 +5,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { SymbolView } from 'expo-symbols';
 import { useSubscription, openWebPopup, BillingPeriod } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
+import { useColors } from '@/hooks/useColors';
 import { LaunchBanner } from '@/components/LaunchAccess';
-
-const ACCENT = '#C9A227';
 
 // ─── Confirm modal ─────────────────────────────────────────────────────────────
 
@@ -21,39 +19,34 @@ function ConfirmPurchase({
   onConfirm: () => void; onCancel: () => void; isPurchasing: boolean;
 }) {
   const t = useT();
+  const colors = useColors();
+  const accent = colors.primary;
   if (!visible) return null;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
       <View style={cm.overlay}>
-        <View style={[cm.card, { borderColor: ACCENT + '35' }]}>
-          <View style={[cm.iconWrap, { backgroundColor: ACCENT + '15', borderColor: ACCENT + '30' }]}>
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="rosette" tintColor={ACCENT} size={28} />
-            ) : (
-              <Feather name="award" size={28} color={ACCENT} />
-            )}
-          </View>
-          <Text style={cm.title}>{t.subConfirmTitle}</Text>
-          <Text style={cm.msg}>
+        <View style={[cm.card, { backgroundColor: colors.card, borderColor: accent + '35' }]}>
+          <Text style={[cm.title, { color: colors.text }]}>{t.subConfirmTitle}</Text>
+          <Text style={[cm.msg, { color: colors.mutedForeground }]}>
             {t.subSubscribingTo + '\n'}
-            <Text style={{ color: '#fff', fontFamily: 'Inter_700Bold' }}>{planLabel}</Text>
+            <Text style={{ color: colors.text, fontFamily: 'Inter_700Bold' }}>{planLabel}</Text>
             {'\n' + t.subAt + ' '}
-            <Text style={{ color: ACCENT, fontFamily: 'Inter_700Bold' }}>{priceString}</Text>
+            <Text style={{ color: accent, fontFamily: 'Inter_700Bold' }}>{priceString}</Text>
           </Text>
           <Pressable
             onPress={onConfirm}
             disabled={isPurchasing}
-            style={[cm.confirmBtn, { backgroundColor: ACCENT }]}
+            style={[cm.confirmBtn, { backgroundColor: accent }]}
           >
             {isPurchasing
-              ? <ActivityIndicator size="small" color="#000" />
-              : <Text style={cm.confirmTxt}>{t.subSubscribeNow}</Text>
+              ? <ActivityIndicator size="small" color={colors.primaryForeground} />
+              : <Text style={[cm.confirmTxt, { color: colors.primaryForeground }]}>{t.subSubscribeNow}</Text>
             }
           </Pressable>
           <Pressable onPress={onCancel} style={cm.cancelBtn}>
-            <Text style={cm.cancelTxt}>{t.subCancel}</Text>
+            <Text style={[cm.cancelTxt, { color: colors.mutedForeground }]}>{t.subCancel}</Text>
           </Pressable>
-          <Text style={cm.legalTxt}>{t.subAutoRenews}</Text>
+          <Text style={[cm.legalTxt, { color: colors.mutedForeground }]}>{t.subAutoRenews}</Text>
         </View>
       </View>
     </Modal>
@@ -61,20 +54,18 @@ function ConfirmPurchase({
 }
 
 const cm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   card: {
     borderRadius: 28, borderWidth: 1, padding: 28,
     width: '100%', alignItems: 'center', gap: 16,
-    backgroundColor: '#0B1525',
   },
-  iconWrap: { width: 64, height: 64, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 22, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: -0.5, textAlign: 'center' },
-  msg: { fontSize: 15, fontFamily: 'Inter_400Regular', color: '#7B8CA8', lineHeight: 24, textAlign: 'center' },
+  title: { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: -0.5, textAlign: 'center' },
+  msg: { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 24, textAlign: 'center' },
   confirmBtn: { width: '100%', borderRadius: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', minHeight: 54 },
-  confirmTxt: { fontSize: 16, fontFamily: 'Inter_700Bold', color: '#000' },
+  confirmTxt: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   cancelBtn: { paddingVertical: 8 },
-  cancelTxt: { fontSize: 14, fontFamily: 'Inter_500Medium', color: '#4A5568' },
-  legalTxt: { fontSize: 10, fontFamily: 'Inter_400Regular', color: '#2D3748', lineHeight: 15, textAlign: 'center' },
+  cancelTxt: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  legalTxt: { fontSize: 10, fontFamily: 'Inter_400Regular', lineHeight: 15, textAlign: 'center' },
 });
 
 // ─── Plan card ─────────────────────────────────────────────────────────────────
@@ -82,6 +73,8 @@ const cm = StyleSheet.create({
 function PlanCard({ period }: { period: BillingPeriod }) {
   const { offerings } = useSubscription();
   const t = useT();
+  const colors = useColors();
+  const accent = colors.primary;
   const product = offerings.pro;
   const price = period === 'monthly'
     ? `${product.priceString}/${t.subMonth}`
@@ -91,20 +84,19 @@ function PlanCard({ period }: { period: BillingPeriod }) {
     : null;
 
   return (
-    <View style={[pc.card, { borderColor: ACCENT, borderWidth: 2, backgroundColor: ACCENT + '08' }]}>
-      <View style={[pc.topBar, { backgroundColor: ACCENT }]} />
+    <View style={[pc.card, { borderColor: accent, borderWidth: 2, backgroundColor: accent + '08' }]}>
+      <View style={[pc.topBar, { backgroundColor: accent }]} />
 
       <View style={pc.row}>
         <View style={pc.info}>
-          <View style={[pc.badge, { backgroundColor: ACCENT + '1A', borderColor: ACCENT + '35' }]}>
-            <Feather name="zap" size={10} color={ACCENT} style={{ marginRight: 4 }} />
-            <Text style={[pc.badgeTxt, { color: ACCENT }]}>PRO</Text>
+          <View style={[pc.badge, { backgroundColor: accent + '1A', borderColor: accent + '35' }]}>
+            <Text style={[pc.badgeTxt, { color: accent }]}>PRO</Text>
           </View>
-          <Text style={pc.price}>{price}</Text>
-          {perMonth && <Text style={pc.sub}>{perMonth}</Text>}
+          <Text style={[pc.price, { color: colors.text }]}>{price}</Text>
+          {perMonth && <Text style={[pc.sub, { color: colors.mutedForeground }]}>{perMonth}</Text>}
         </View>
-        <View style={[pc.radio, { borderColor: ACCENT }]}>
-          <View style={[pc.dot, { backgroundColor: ACCENT }]} />
+        <View style={[pc.radio, { borderColor: accent }]}>
+          <View style={[pc.dot, { backgroundColor: accent }]} />
         </View>
       </View>
     </View>
@@ -118,8 +110,8 @@ const pc = StyleSheet.create({
   info: { gap: 6 },
   badge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
-  price: { fontSize: 26, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: -0.6 },
-  sub: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#5A6C80' },
+  price: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -0.6 },
+  sub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 11, height: 11, borderRadius: 6 },
 });
@@ -127,12 +119,14 @@ const pc = StyleSheet.create({
 // ─── Feature row ──────────────────────────────────────────────────────────────
 
 function FeatureRow({ icon, label }: { icon: string; label: string }) {
+  const colors = useColors();
+  const accent = colors.primary;
   return (
     <View style={frow.row}>
-      <View style={[frow.icon, { backgroundColor: ACCENT + '18' }]}>
-        <Feather name={icon as any} size={13} color={ACCENT} />
+      <View style={[frow.icon, { backgroundColor: accent + '18' }]}>
+        <Feather name={icon as any} size={13} color={accent} />
       </View>
-      <Text style={frow.label}>{label}</Text>
+      <Text style={[frow.label, { color: colors.textSecondary }]}>{label}</Text>
     </View>
   );
 }
@@ -140,7 +134,7 @@ function FeatureRow({ icon, label }: { icon: string; label: string }) {
 const frow = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
   icon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  label: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', color: '#C0CDD8' },
+  label: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular' },
 });
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -152,19 +146,21 @@ interface SubscriptionScreenProps {
 
 export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps) {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const accent = colors.primary;
+  const onAccent = colors.primaryForeground;
   const { offerings, purchase, restore, isPurchasing, isRestoring, launchAccess } = useSubscription();
   const t = useT();
 
   const FEATURES = [
-    { icon: 'layers',      label: t.subUnlimitedInvestments },
-    { icon: 'tool',        label: t.subAllCalculators       },
-    { icon: 'globe',       label: t.subMarketIntelligence   },
-    { icon: 'bar-chart-2', label: t.subPortfolioAnalytics   },
-    { icon: 'moon',        label: t.subZakat                },
-    { icon: 'activity',    label: t.subAdvancedCharts       },
-    { icon: 'zap',         label: t.subEgxRealtime          },
-    { icon: 'download',    label: t.subCsvExport            },
-    { icon: 'headphones',  label: t.subPrioritySupport      },
+    { icon: 'layers',      label: t.subUnlimitedInvestments  },
+    { icon: 'globe',       label: t.subLiveRates             },
+    { icon: 'cpu',         label: t.subPersonalizedSignals   },
+    { icon: 'bar-chart-2', label: t.subHealthScore           },
+    { icon: 'activity',    label: t.subFullCharts            },
+    { icon: 'pie-chart',   label: t.subAllocationBreakdown   },
+    { icon: 'award',       label: t.subTopPerformers         },
+    { icon: 'zap',         label: t.subSmartInsights         },
   ];
 
   const [period, setPeriod] = useState<BillingPeriod>('annual');
@@ -224,19 +220,23 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose}>
       {/* Dimmed backdrop */}
-      <Animated.View style={[StyleSheet.absoluteFill, sw.backdrop, { opacity: bgOpacity }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.overlay, opacity: bgOpacity }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
       {/* Bottom sheet */}
       <Animated.View
-        style={[sw.sheet, { transform: [{ translateY: slideY }], paddingBottom: insets.bottom + 20 }]}
+        style={[
+          sw.sheet,
+          { backgroundColor: colors.card, borderColor: colors.border },
+          { transform: [{ translateY: slideY }], paddingBottom: insets.bottom + 20 },
+        ]}
       >
-        <View style={sw.handle} />
+        <View style={[sw.handle, { backgroundColor: colors.border }]} />
 
         <Pressable onPress={onClose} style={sw.closeBtn} hitSlop={16}>
-          <View style={sw.closeCircle}>
-            <Feather name="x" size={15} color="#5A6C80" />
+          <View style={[sw.closeCircle, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="x" size={15} color={colors.mutedForeground} />
           </View>
         </Pressable>
 
@@ -249,38 +249,31 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
 
           {/* ── Hero ────────────────────────────────────────── */}
           <View style={sw.hero}>
-            <View style={sw.glow3} />
-            <View style={sw.glow2} />
-            <View style={sw.glow1} />
-            <View style={sw.iconWrap}>
-              {Platform.OS === 'ios' ? (
-                <SymbolView name="rosette" tintColor={ACCENT} size={32} />
-              ) : (
-                <Feather name="award" size={32} color={ACCENT} />
-              )}
+            <View style={[sw.iconWrap, { backgroundColor: accent + '15', borderColor: accent + '35' }]}>
+              <Feather name="star" size={30} color={accent} />
             </View>
-            <Text style={sw.heroTitle}>Investry Pro</Text>
-            <Text style={sw.heroSub}>{t.subHeroSub}</Text>
+            <Text style={[sw.heroTitle, { color: colors.text }]}>Investry Pro</Text>
+            <Text style={[sw.heroSub, { color: colors.mutedForeground }]}>{t.subHeroSub}</Text>
           </View>
 
           {/* ── Billing toggle ──────────────────────────────── */}
-          <View style={sw.toggleWrap}>
+          <View style={[sw.toggleWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
             <Pressable
               onPress={() => setPeriod('monthly')}
-              style={[sw.toggleBtn, period === 'monthly' && sw.toggleBtnActive]}
+              style={[sw.toggleBtn, period === 'monthly' && { backgroundColor: colors.card }]}
             >
-              <Text style={[sw.toggleTxt, period === 'monthly' ? sw.toggleTxtOn : sw.toggleTxtOff]}>
+              <Text style={[sw.toggleTxt, { color: period === 'monthly' ? colors.text : colors.mutedForeground }]}>
                 {t.subMonthly}
               </Text>
             </Pressable>
             <Pressable
               onPress={() => setPeriod('annual')}
-              style={[sw.toggleBtn, period === 'annual' && sw.toggleBtnActive]}
+              style={[sw.toggleBtn, period === 'annual' && { backgroundColor: colors.card }]}
             >
-              <Text style={[sw.toggleTxt, period === 'annual' ? sw.toggleTxtOn : sw.toggleTxtOff]}>
+              <Text style={[sw.toggleTxt, { color: period === 'annual' ? colors.text : colors.mutedForeground }]}>
                 {t.subAnnual}
               </Text>
-              <View style={sw.saveBadge}>
+              <View style={[sw.saveBadge, { backgroundColor: colors.green }]}>
                 <Text style={sw.saveBadgeTxt}>{t.subSave33}</Text>
               </View>
             </Pressable>
@@ -292,8 +285,8 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           </View>
 
           {/* ── Features ────────────────────────────────────── */}
-          <View style={sw.featureCard}>
-            <Text style={sw.featureTitle}>{t.subWhatsIncluded}</Text>
+          <View style={[sw.featureCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[sw.featureTitle, { color: colors.mutedForeground }]}>{t.subWhatsIncluded}</Text>
             {FEATURES.map(f => (
               <FeatureRow key={f.label} icon={f.icon} label={f.label} />
             ))}
@@ -306,18 +299,18 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           <Pressable
             onPress={() => setShowConfirm(true)}
             disabled={isPurchasing}
-            style={({ pressed }) => [sw.cta, { backgroundColor: ACCENT, opacity: pressed ? 0.88 : 1 }]}
+            style={({ pressed }) => [sw.cta, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
           >
             {isPurchasing ? (
-              <ActivityIndicator color="#000" />
+              <ActivityIndicator color={onAccent} />
             ) : (
               <View style={sw.ctaRow}>
                 <View>
-                  <Text style={sw.ctaTop}>{t.subContinueWith} Pro</Text>
-                  <Text style={sw.ctaBottom}>{currentPrice}</Text>
+                  <Text style={[sw.ctaTop, { color: onAccent }]}>{t.subContinueWith} Pro</Text>
+                  <Text style={[sw.ctaBottom, { color: onAccent + 'A0' }]}>{currentPrice}</Text>
                 </View>
-                <View style={sw.ctaArrow}>
-                  <Feather name="arrow-right" size={17} color="#000" />
+                <View style={[sw.ctaArrow, { backgroundColor: onAccent + '22' }]}>
+                  <Feather name="arrow-right" size={17} color={onAccent} />
                 </View>
               </View>
             )}
@@ -328,21 +321,21 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
             {!launchAccess && (
               <>
                 <Pressable onPress={() => restore()} disabled={isRestoring}>
-                  <Text style={sw.footerTxt}>{isRestoring ? t.subRestoring : t.subRestorePurchases}</Text>
+                  <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{isRestoring ? t.subRestoring : t.subRestorePurchases}</Text>
                 </Pressable>
-                <View style={sw.dot} />
+                <View style={[sw.dot, { backgroundColor: colors.border }]} />
               </>
             )}
             <Pressable onPress={() => Linking.openURL('https://investry.app/terms')}>
-              <Text style={sw.footerTxt}>{t.subTerms}</Text>
+              <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{t.subTerms}</Text>
             </Pressable>
-            <View style={sw.dot} />
+            <View style={[sw.dot, { backgroundColor: colors.border }]} />
             <Pressable onPress={() => Linking.openURL('https://investry.app/privacy')}>
-              <Text style={sw.footerTxt}>{t.subPrivacy}</Text>
+              <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{t.subPrivacy}</Text>
             </Pressable>
           </View>
 
-          <Text style={sw.disclaimer}>{t.subDisclaimer}</Text>
+          <Text style={[sw.disclaimer, { color: colors.mutedForeground }]}>{t.subDisclaimer}</Text>
         </ScrollView>
       </Animated.View>
 
@@ -361,66 +354,45 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const sw = StyleSheet.create({
-  backdrop: { backgroundColor: 'rgba(0,0,0,0.75)' },
-
   sheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#121212',
     borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    borderTopWidth: 1, borderColor: '#2E2E30',
+    borderTopWidth: 1,
     maxHeight: '95%',
   },
   handle: {
     alignSelf: 'center', width: 42, height: 4,
-    borderRadius: 2, backgroundColor: '#2E2E30',
+    borderRadius: 2,
     marginTop: 12, marginBottom: 2,
   },
   closeBtn: { position: 'absolute', top: 16, right: 18, zIndex: 10 },
   closeCircle: {
-    width: 30, height: 30, borderRadius: 15, backgroundColor: '#0B1525',
-    borderWidth: 1, borderColor: '#2E2E30', alignItems: 'center', justifyContent: 'center',
+    width: 30, height: 30, borderRadius: 15,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
   },
   scroll: { paddingHorizontal: 20 },
 
   // Hero
   hero: { alignItems: 'center', paddingTop: 52, paddingBottom: 26, gap: 10 },
-  glow3: {
-    position: 'absolute', top: 18,
-    width: 200, height: 200, borderRadius: 100,
-    backgroundColor: '#A47FCA', opacity: 0.04,
-  },
-  glow2: {
-    position: 'absolute', top: 36,
-    width: 140, height: 140, borderRadius: 70,
-    backgroundColor: '#A47FCA', opacity: 0.07,
-  },
-  glow1: {
-    position: 'absolute', top: 50,
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: '#A47FCA', opacity: 0.12,
-  },
   iconWrap: {
-    width: 80, height: 80, borderRadius: 28,
-    backgroundColor: '#A47FCA12', borderWidth: 1, borderColor: '#A47FCA35',
+    width: 72, height: 72, borderRadius: 24,
+    borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
-  heroTitle: { fontSize: 30, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: -1 },
-  heroSub: { fontSize: 14, fontFamily: 'Inter_400Regular', color: '#5A6C80', textAlign: 'center' },
+  heroTitle: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
+  heroSub: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center' },
 
   // Toggle
   toggleWrap: {
-    flexDirection: 'row', backgroundColor: '#0B1525',
-    borderRadius: 16, padding: 4, borderWidth: 1, borderColor: '#2E2E30', marginBottom: 14,
+    flexDirection: 'row',
+    borderRadius: 16, padding: 4, borderWidth: 1, marginBottom: 14,
   },
   toggleBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 11, borderRadius: 13, gap: 7,
   },
-  toggleBtnActive: { backgroundColor: '#162235' },
   toggleTxt: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  toggleTxtOn: { color: '#fff' },
-  toggleTxtOff: { color: '#4A5568' },
-  saveBadge: { backgroundColor: '#10B981', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  saveBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   saveBadgeTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: 0.5 },
 
   // Plans
@@ -428,12 +400,12 @@ const sw = StyleSheet.create({
 
   // Features
   featureCard: {
-    backgroundColor: '#0B1525', borderRadius: 20,
-    borderWidth: 1, borderColor: '#2E2E30',
+    borderRadius: 20,
+    borderWidth: 1,
     padding: 18, marginBottom: 20,
   },
   featureTitle: {
-    fontSize: 11, fontFamily: 'Inter_700Bold', color: '#3A4D62',
+    fontSize: 11, fontFamily: 'Inter_700Bold',
     letterSpacing: 1, marginBottom: 8,
   },
 
@@ -443,19 +415,19 @@ const sw = StyleSheet.create({
     minHeight: 68, justifyContent: 'center', marginBottom: 18,
   },
   ctaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  ctaTop: { fontSize: 17, fontFamily: 'Inter_700Bold', color: '#000', letterSpacing: -0.3 },
-  ctaBottom: { fontSize: 13, fontFamily: 'Inter_500Medium', color: 'rgba(0,0,0,0.55)', marginTop: 2 },
+  ctaTop: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
+  ctaBottom: { fontSize: 13, fontFamily: 'Inter_500Medium', marginTop: 2 },
   ctaArrow: {
     width: 38, height: 38, borderRadius: 13,
-    backgroundColor: 'rgba(0,0,0,0.14)', alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
 
   // Footer
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 },
-  footerTxt: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#3A4D62' },
-  dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#2E2E30' },
+  footerTxt: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  dot: { width: 3, height: 3, borderRadius: 1.5 },
   disclaimer: {
-    fontSize: 10, fontFamily: 'Inter_400Regular', color: '#2A3A4A',
-    lineHeight: 15, textAlign: 'center', marginBottom: 4,
+    fontSize: 10, fontFamily: 'Inter_400Regular',
+    lineHeight: 15, textAlign: 'center', marginBottom: 4, opacity: 0.7,
   },
 });
