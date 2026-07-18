@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Alert, Animated, Linking, Modal, Platform, Pressable,
+  Alert, Animated, Linking, Modal, PanResponder, Platform, Pressable,
   ScrollView, StyleSheet, Text, View, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -168,6 +168,38 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
 
   const slideY = useRef(new Animated.Value(700)).current;
   const bgOpacity = useRef(new Animated.Value(0)).current;
+  const dragStart = useRef(0);
+
+  // PanResponder is created once via useRef, so its callbacks close over
+  // whatever `onClose` was on the first render. Route through a ref kept
+  // current every render so a swipe-dismiss always calls the latest one.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const snapOpen = () => {
+    Animated.spring(slideY, { toValue: 0, damping: 26, stiffness: 230, useNativeDriver: Platform.OS !== 'web' }).start();
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        slideY.stopAnimation((value) => { dragStart.current = value; });
+      },
+      onPanResponderMove: (_, gesture) => {
+        slideY.setValue(Math.max(0, dragStart.current + gesture.dy));
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy > 120 || gesture.vy > 0.8) {
+          Animated.timing(slideY, { toValue: 800, duration: 200, useNativeDriver: Platform.OS !== 'web' })
+            .start(() => onCloseRef.current());
+        } else {
+          snapOpen();
+        }
+      },
+      onPanResponderTerminate: snapOpen,
+    })
+  ).current;
 
   useEffect(() => {
     if (visible) {
@@ -232,7 +264,9 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           { transform: [{ translateY: slideY }], paddingBottom: insets.bottom + 20 },
         ]}
       >
-        <View style={[sw.handle, { backgroundColor: colors.border }]} />
+        <View style={sw.dragZone} {...panResponder.panHandlers}>
+          <View style={[sw.handle, { backgroundColor: colors.border }]} />
+        </View>
 
         <Pressable onPress={onClose} style={sw.closeBtn} hitSlop={16}>
           <View style={[sw.closeCircle, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -360,10 +394,13 @@ const sw = StyleSheet.create({
     borderTopWidth: 1,
     maxHeight: '95%',
   },
+  dragZone: {
+    width: '100%', alignItems: 'center',
+    paddingTop: 12, paddingBottom: 10,
+  },
   handle: {
-    alignSelf: 'center', width: 42, height: 4,
+    width: 42, height: 4,
     borderRadius: 2,
-    marginTop: 12, marginBottom: 2,
   },
   closeBtn: { position: 'absolute', top: 16, right: 18, zIndex: 10 },
   closeCircle: {
