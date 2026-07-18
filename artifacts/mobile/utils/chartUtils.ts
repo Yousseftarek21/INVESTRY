@@ -58,17 +58,17 @@ export function snapshotsToValues(
   return filtered.map(s => s.value);
 }
 
-export function genCurve(gainPct: number, period: ChartPeriod, seed: number, n = 60): number[] {
-  const scale: Record<ChartPeriod, number> = { '1D': 0.12, '1W': 0.35, '1M': 0.9, '3M': 1.8, '1Y': 3.5, 'ALL': 6 };
-  const s = scale[period];
-  let r = (seed || 7) % 99991;
-  const rand = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
-  let v = 100;
-  return Array.from({ length: n }, (_, i) => {
-    v += (gainPct / 100) * s * (i / n) + (rand() - 0.47) * 1.8;
-    return v;
-  });
-}
+/**
+ * Smooths a line through real data points using a Catmull-Rom-style spline.
+ * The curve always passes exactly through every real point — only the
+ * flow *between* points is adjusted, never their values — so increasing
+ * the tension here makes existing real data look more organic/flowing
+ * without ever implying movement that wasn't actually observed. With
+ * exactly 2 points there is no curvature information to work with at all:
+ * any smooth curve passing through both endpoints is just the straight
+ * line between them, regardless of this tension value.
+ */
+const SMOOTHING_TENSION = 0.35;
 
 export function buildSmoothPath(pts: ChartPt[]): string {
   if (pts.length < 2) return '';
@@ -78,7 +78,7 @@ export function buildSmoothPath(pts: ChartPt[]): string {
     const p1 = pts[i];
     const p2 = pts[i + 1];
     const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    const t = 0.25;
+    const t = SMOOTHING_TENSION;
     const cp1x = p1.x + (p2.x - p0.x) * t;
     const cp1y = p1.y + (p2.y - p0.y) * t;
     const cp2x = p2.x - (p3.x - p1.x) * t;
