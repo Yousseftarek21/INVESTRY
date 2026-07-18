@@ -534,7 +534,18 @@ export default function AnalyticsScreen() {
   }, [holdings, prices, egxChangeByTicker]);
 
   const { snapshots } = usePortfolioSnapshots(sm.totalValue);
-  const todaySamples = useIntradaySamples(sm.totalValue, sm.totalValue - sm.todayGain);
+  const startOfDayValue = sm.totalValue - sm.todayGain;
+  const rawTodaySamples = useIntradaySamples(sm.totalValue, startOfDayValue);
+  // Keep the chart's start/end always freshly consistent with the "Today"
+  // badge (which always recomputes live) — see index.tsx for the full
+  // explanation. Only the stored samples' middle points (real texture)
+  // are used; the endpoints are always the current live numbers.
+  const todaySamples = useMemo(() => {
+    const middle = rawTodaySamples && rawTodaySamples.length > 2
+      ? rawTodaySamples.slice(1, -1)
+      : [];
+    return [startOfDayValue, ...middle, sm.totalValue];
+  }, [rawTodaySamples, startOfDayValue, sm.totalValue]);
 
   // ── Health ────────────────────────────────────────────────────────────────────
   const typeCount = useMemo(() => new Set(holdings.map(h => h.type)).size, [holdings]);
@@ -861,7 +872,7 @@ export default function AnalyticsScreen() {
                   width={chartWidth}
                   height={110}
                   snapshots={snapshots}
-                  todayValues={todaySamples ?? [sm.totalValue - sm.todayGain, sm.totalValue]}
+                  todayValues={todaySamples}
                   allTimeValues={[sm.totalCost, sm.totalValue]}
                 />
               </View>

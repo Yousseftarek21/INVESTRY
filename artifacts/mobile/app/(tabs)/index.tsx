@@ -366,7 +366,23 @@ export default function HomeScreen() {
   }, [holdings, prices, egxChangeByTicker]);
 
   const { snapshots } = usePortfolioSnapshots(summary.totalValue);
-  const todaySamples = useIntradaySamples(summary.totalValue, summary.totalValue - summary.todayGain);
+  const startOfDayValue = summary.totalValue - summary.todayGain;
+  const rawTodaySamples = useIntradaySamples(summary.totalValue, startOfDayValue);
+  // The stored samples' own first/last points can be up to ~10 minutes
+  // stale (they're debounced to avoid flooding storage), while the "Today"
+  // badge above always recomputes live on every render. Using stale
+  // endpoints here could make the chart's color disagree with that badge
+  // if the live gain direction shifted since the last sample was written.
+  // So: always anchor the chart's start/end to the current live numbers
+  // (identical to what drives the badge), and only use the stored samples
+  // for real texture *in between* those two fresh, guaranteed-consistent
+  // points.
+  const todaySamples = useMemo(() => {
+    const middle = rawTodaySamples && rawTodaySamples.length > 2
+      ? rawTodaySamples.slice(1, -1)
+      : [];
+    return [startOfDayValue, ...middle, summary.totalValue];
+  }, [rawTodaySamples, startOfDayValue, summary.totalValue]);
 
   const displayValue = useCounterDisplay(toDisp(summary.totalValue));
 
@@ -634,7 +650,7 @@ export default function HomeScreen() {
                   width={sparkWidth}
                   height={78}
                   snapshots={snapshots}
-                  todayValues={todaySamples ?? [summary.totalValue - summary.todayGain, summary.totalValue]}
+                  todayValues={todaySamples}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
                 />
               </View>
