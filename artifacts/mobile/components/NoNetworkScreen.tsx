@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Updates from "expo-updates";
+import { useT } from "@/hooks/useTranslation";
 
 export function NoNetworkScreen() {
+  const t = useT();
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -32,10 +34,9 @@ export function NoNetworkScreen() {
         <Text style={styles.iconText}>↯</Text>
       </View>
 
-      <Text style={styles.title}>No Connection</Text>
+      <Text style={styles.title}>{t.noConnectionTitle}</Text>
       <Text style={styles.body}>
-        Unable to connect to INVESTRY servers.{"\n"}
-        Please check your internet connection and try again.
+        {t.noConnectionMessage}
       </Text>
 
       <Pressable
@@ -46,7 +47,7 @@ export function NoNetworkScreen() {
         {retrying ? (
           <ActivityIndicator color="#121212" size="small" />
         ) : (
-          <Text style={styles.buttonText}>Try Again</Text>
+          <Text style={styles.buttonText}>{t.tryAgain}</Text>
         )}
       </Pressable>
     </View>

@@ -143,12 +143,12 @@ export function useEGXMarket() {
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
-export function fmtMarketCap(cap?: number): string {
+export function fmtMarketCap(cap?: number, currency: string = 'EGP'): string {
   if (!cap) return '—';
-  if (cap >= 1_000_000_000_000) return `${(cap / 1_000_000_000_000).toFixed(1)}T EGP`;
-  if (cap >= 1_000_000_000)     return `${(cap / 1_000_000_000).toFixed(1)}B EGP`;
-  if (cap >= 1_000_000)         return `${(cap / 1_000_000).toFixed(0)}M EGP`;
-  return `${cap.toLocaleString()} EGP`;
+  if (cap >= 1_000_000_000_000) return `${(cap / 1_000_000_000_000).toFixed(1)}T ${currency}`;
+  if (cap >= 1_000_000_000)     return `${(cap / 1_000_000_000).toFixed(1)}B ${currency}`;
+  if (cap >= 1_000_000)         return `${(cap / 1_000_000).toFixed(0)}M ${currency}`;
+  return `${cap.toLocaleString()} ${currency}`;
 }
 
 export function fmtVolume(vol?: number): string {

@@ -16,6 +16,7 @@ import { useClerk } from "@clerk/expo";
 import { useRouter } from "expo-router";
 
 import { useColors } from "@/hooks/useColors";
+import { useT } from "@/hooks/useTranslation";
 
 export type ErrorFallbackProps = {
   error: Error;
@@ -24,6 +25,7 @@ export type ErrorFallbackProps = {
 
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   const colors = useColors();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { signOut } = useClerk();
   const router = useRouter();
@@ -72,7 +74,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
       {/* Help button — top-left, always visible */}
       <Pressable
         onPress={() => router.replace('/(auth)/sign-in' as any)}
-        accessibilityLabel="Go to sign in"
+        accessibilityLabel={t.goToSignIn}
         accessibilityRole="button"
         style={({ pressed }) => [
           styles.helpButton,
@@ -85,13 +87,13 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         ]}
       >
         <Feather name="help-circle" size={16} color={colors.mutedForeground} />
-        <Text style={[styles.helpText, { color: colors.mutedForeground }]}>Help</Text>
+        <Text style={[styles.helpText, { color: colors.mutedForeground }]}>{t.helpLabel}</Text>
       </Pressable>
 
       {__DEV__ ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
-          accessibilityLabel="View error details"
+          accessibilityLabel={t.errorDetailsTitle}
           accessibilityRole="button"
           style={({ pressed }) => [
             styles.topButton,
@@ -112,11 +114,11 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </View>
 
         <Text style={[styles.title, { color: colors.foreground }]}>
-          Something went wrong
+          {t.somethingWentWrong}
         </Text>
 
         <Text style={[styles.message, { color: colors.mutedForeground }]}>
-          Please reload the app to continue. If the problem persists, sign out and sign back in.
+          {t.errorFallbackMessage}
         </Text>
 
         <Pressable
@@ -132,7 +134,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         >
           <Feather name="refresh-cw" size={16} color={colors.primaryForeground} style={{ marginRight: 8 }} />
           <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>
-            Try Again
+            {t.tryAgain}
           </Text>
         </Pressable>
 
@@ -154,7 +156,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
             <>
               <Feather name="log-out" size={16} color={colors.red} style={{ marginRight: 8 }} />
               <Text style={[styles.buttonText, { color: colors.red }]}>
-                Sign Out &amp; Restart
+                {t.signOutAndRestart}
               </Text>
             </>
           )}
@@ -182,11 +184,11 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                 ]}
               >
                 <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-                  Error Details
+                  {t.errorDetailsTitle}
                 </Text>
                 <Pressable
                   onPress={() => setIsModalVisible(false)}
-                  accessibilityLabel="Close error details"
+                  accessibilityLabel={t.closeErrorDetails}
                   accessibilityRole="button"
                   style={({ pressed }) => [
                     styles.closeButton,

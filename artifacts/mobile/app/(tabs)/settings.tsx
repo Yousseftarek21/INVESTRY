@@ -20,7 +20,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
-import { useAppSettings, ThemeMode, WeightUnit } from '@/context/AppSettingsContext';
+import { useAppSettings, ThemeMode, WeightUnit, DisplayCurrency } from '@/context/AppSettingsContext';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
@@ -196,6 +196,53 @@ function DetailModal({ visible, title, content, onClose }: {
     </Modal>
   );
 }
+
+// ─── Display currency picker ────────────────────────────────────────────────
+
+const DISPLAY_CURRENCIES: DisplayCurrency[] = ['EGP', 'USD', 'EUR', 'AED'];
+
+function CurrencyPickerModal({ visible, value, onSelect, onClose }: {
+  visible: boolean; value: DisplayCurrency; onSelect: (c: DisplayCurrency) => void; onClose: () => void;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const t = useT();
+  if (!visible) return null;
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={mo.backdrop} onPress={onClose} />
+      <View style={[mo.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]}>
+        <View style={[mo.handle, { backgroundColor: colors.border }]} />
+        <View style={[mo.header, { borderBottomColor: colors.border }]}>
+          <Text style={[mo.title, { color: colors.text }]}>{t.currencyRowLabel}</Text>
+          <TouchableOpacity onPress={onClose} style={[mo.close, { backgroundColor: colors.muted }]}>
+            <Feather name="x" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+        <View style={{ padding: 12 }}>
+          {DISPLAY_CURRENCIES.map(c => {
+            const active = c === value;
+            return (
+              <TouchableOpacity
+                key={c}
+                onPress={() => { onSelect(c); onClose(); }}
+                style={[cp.row, active && { backgroundColor: colors.primary + '12' }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[cp.label, { color: active ? colors.primary : colors.text }]}>{c}</Text>
+                {active && <Feather name="check" size={18} color={colors.primary} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+const cp = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 15, borderRadius: 14 },
+  label: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+});
 
 // ─── Confirm modal (replaces Alert.alert on web) ────────────────────────────
 
@@ -728,7 +775,7 @@ export default function SettingsScreen() {
   const { plan, isPro, launchAccess, isLoading: subLoading, showPaywall, manageSubscription } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
-    biometricLock, setBiometricLock,
+    biometricLock, setBiometricLock, displayCurrency, setDisplayCurrency,
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
   } = useAppSettings();
   const { holdings, removeHolding } = useHoldings();
@@ -737,6 +784,7 @@ export default function SettingsScreen() {
   const [modal, setModal]         = useState<{ title: string; content: string } | null>(null);
   const [confirm, setConfirm]     = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
   const [langOpen, setLangOpen]   = useState(false);
+  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -1042,8 +1090,8 @@ export default function SettingsScreen() {
             onPress={() => showModal(t.dateFormatLabel, 'Dates are currently shown in DD/MM/YYYY format, matching Egyptian conventions.\n\nCustom date formats are not yet configurable — this is coming in a future update.')} />
           <NavRow icon="type"      iconBg="#6B7280" label={t.numberFormatLabel} value="1,234.56"
             onPress={() => showModal(t.numberFormatLabel, 'Numbers are currently shown with a comma thousands separator and period decimal (e.g. 1,234.56).\n\nCustom number formats are not yet configurable — this is coming in a future update.')} />
-          <NavRow icon="dollar-sign" iconBg="#059669" label={t.currencyRowLabel} value="EGP (ج.م)"
-            onPress={() => showModal(t.currencyRowLabel, 'INVESTRY displays all portfolio values in Egyptian Pounds (EGP), converting live gold, silver, and stock prices as needed.\n\nSupport for additional display currencies may be added in a future update.')} last />
+          <NavRow icon="dollar-sign" iconBg="#059669" label={t.currencyRowLabel} value={displayCurrency}
+            onPress={() => setCurrencyPickerOpen(true)} last />
         </Sect>
 
         {/* ── PORTFOLIO PREFERENCES ────────────────────────── */}
@@ -1081,6 +1129,8 @@ export default function SettingsScreen() {
         {/* ── NOTIFICATIONS ────────────────────────────────── */}
         <Sect label={t.settingsSectNotifications}>
           <ToggleRow icon="bell"      iconBg="#F59E0B" label={t.priceAlertsLabel}    sublabel={t.priceAlertsDesc}    value={notifications.priceAlerts}    onChange={v => setNotification('priceAlerts', v)} />
+          <NavRow icon="sliders"     iconBg="#F59E0B" label={t.managePriceAlerts} sublabel={t.managePriceAlertsDesc}
+            onPress={() => router.push('/price-alerts' as any)} />
           <ToggleRow icon="briefcase" iconBg="#8B5CF6" label={t.portfolioAlertsLabel} sublabel={t.portfolioAlertsDesc}  value={notifications.portfolioAlerts} onChange={v => setNotification('portfolioAlerts', v)} />
           <ToggleRow icon="sun"       iconBg="#EF4444" label={t.dailySummaryLabel}    sublabel={t.dailySummaryDesc}     value={notifications.dailySummary}    onChange={v => setNotification('dailySummary', v)} />
           <ToggleRow icon="calendar"  iconBg="#10B981" label={t.weeklyReportLabel}    sublabel={t.weeklyReportDesc}     value={notifications.weeklySummary}   onChange={v => setNotification('weeklySummary', v)} last />
@@ -1137,6 +1187,12 @@ export default function SettingsScreen() {
       {modal && (
         <DetailModal visible title={modal.title} content={modal.content} onClose={() => setModal(null)} />
       )}
+      <CurrencyPickerModal
+        visible={currencyPickerOpen}
+        value={displayCurrency}
+        onSelect={setDisplayCurrency}
+        onClose={() => setCurrencyPickerOpen(false)}
+      />
       {confirm && (
         <ConfirmModal
           visible

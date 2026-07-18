@@ -714,6 +714,126 @@ const en = {
   biometricLock: 'Biometric Lock',
   biometricLockDesc: 'Require Face ID or Touch ID on launch',
 
+  // Biometric Gate screen
+  biometricAuthPrompt: 'Authenticate to access INVESTRY',
+  biometricFallbackLabel: 'Use passcode',
+  biometricCancelLabel: 'Cancel',
+  biometricAuthFailed: 'Authentication failed. Try again.',
+  biometricSubtitle: 'Authenticate to view your portfolio',
+  biometricUseFaceId: 'Use Face ID',
+  biometricUseTouchId: 'Use Touch ID',
+  biometricUnlock: 'Unlock',
+
+  // Error Fallback / crash screen
+  goToSignIn: 'Go to sign in',
+  helpLabel: 'Help',
+  somethingWentWrong: 'Something went wrong',
+  errorFallbackMessage: 'Please reload the app to continue. If the problem persists, sign out and sign back in.',
+  tryAgain: 'Try Again',
+  signOutAndRestart: 'Sign Out & Restart',
+  errorDetailsTitle: 'Error Details',
+  closeErrorDetails: 'Close error details',
+
+  // No Network screen
+  noConnectionTitle: 'No Connection',
+  noConnectionMessage: 'Unable to connect to INVESTRY servers.\nPlease check your internet connection and try again.',
+
+  // 404 / not-found screen
+  screenNotFoundTitle: "This screen doesn't exist.",
+  goToHomeScreen: 'Go to home screen!',
+  oopsTitle: 'Oops!',
+
+  // Financial Tools — shared
+  calcLoading: 'Loading…',
+
+  // Financial Tools — tool grid
+  toolZakatLabel: 'Zakat',
+  toolZakatSub: 'Smart Calculator',
+  toolGoldLabel: 'Gold Value',
+  toolSilverLabel: 'Silver Value',
+  toolLivePriceSub: 'Live price',
+  toolCurrencyLabel: 'Currency',
+  toolCurrencySub: 'EGP ↔ USD',
+  toolROILabel: 'ROI',
+  toolROISub: 'Return on invest',
+  toolCompoundLabel: 'Compound',
+  toolCompoundSub: 'Growth calc',
+  toolPurityLabel: 'Gold Purity',
+  toolPuritySub: '24K → 21K → 18K',
+  toolWeightLabel: 'Weight',
+  toolWeightSub: 'g ↔ Troy Oz',
+
+  // Financial Tools — Zakat modal
+  zakatModalTitle: 'Smart Zakat Calculator',
+  goldNisabOption: 'Gold Nisab',
+  silverNisabOption: 'Silver Nisab',
+  currentNisabLabel: (unit: string) => `Current Nisab (${unit})`,
+  nisab85gGold: '85g gold',
+  nisab595gSilver: '595g silver',
+  nisabNoLivePrice: 'N/A (no live price)',
+  eligibleAssetsDetected: 'Eligible Assets Detected',
+  includedLabel: 'Included',
+  excludedLabel: 'Excluded',
+  additionalCashLabel: 'Additional Cash / Savings (EGP)',
+  totalZakatableWealth: 'Total Zakatable Wealth',
+  nisabThresholdLabel: 'Nisab Threshold',
+  nisabMetLabel: 'Nisab Met?',
+  nisabMetYes: 'Yes ✓',
+  nisabMetNoBelowNisab: 'No — below nisab',
+  zakatDueLabel: 'Zakat Due (2.5%)',
+  zakatDisclaimer: 'Zakat calculations are estimates based on your tracked assets. Actual obligations may differ based on your specific circumstances, lunar year holding period (hawl), and the scholarly opinion you follow. Please consult a qualified Islamic scholar for definitive rulings.',
+
+  // Financial Tools — Gold/Silver Value modals
+  goldValueModalTitle: 'Gold Value Calculator',
+  silverValueModalTitle: 'Silver Value Calculator',
+  weightGramsLabel: 'Weight (grams)',
+  livePriceKaratLabel: (karat: string) => `Live Price (${karat})`,
+  livePriceLabel: 'Live Price',
+  totalValueLabel: 'Total Value',
+
+  // Financial Tools — Currency modal
+  currencyModalTitle: 'Currency Converter',
+  usdToEgpOption: 'USD → EGP',
+  egpToUsdOption: 'EGP → USD',
+  amountCurLabel: (cur: string) => `Amount (${cur})`,
+  resultCurLabel: (cur: string) => `Result (${cur})`,
+
+  // Financial Tools — ROI modal
+  roiModalTitle: 'ROI Calculator',
+  purchaseCostLabel: 'Purchase Cost (EGP)',
+  currentValueLabel: 'Current Value (EGP)',
+  holdingPeriodLabel: 'Holding Period (years)',
+  gainLossLabel: 'Gain / Loss',
+  totalReturnLabel: 'Total Return',
+  annualizedReturnLabel: 'Annualized Return',
+
+  // Financial Tools — Compound Growth modal
+  compoundModalTitle: 'Compound Growth',
+  compoundMonthlyOption: 'Monthly',
+  compoundYearlyOption: 'Yearly',
+  initialInvestmentLabel: 'Initial Investment (EGP)',
+  annualReturnRateLabel: 'Annual Return Rate (%)',
+  durationYearsLabel: 'Duration (years)',
+  monthlyContributionLabel: 'Monthly Contribution (EGP)',
+  totalContributionsLabel: 'Total Contributions',
+  growthFromReturnsLabel: 'Growth from Returns',
+  finalValueLabel: 'Final Value',
+
+  // Financial Tools — Gold Purity modal
+  goldPurityModalTitle: 'Gold Purity Converter',
+  weightInKaratLabel: (k: string) => `Weight in ${k}K gold (grams)`,
+  equivalentIn24k: 'Equivalent in 24K (pure)',
+  equivalentIn22k: 'Equivalent in 22K',
+  equivalentIn21k: 'Equivalent in 21K',
+  equivalentIn18k: 'Equivalent in 18K',
+
+  // Financial Tools — Weight Converter modal
+  weightModalTitle: 'Weight Converter',
+  gToOzOption: 'g → Troy Oz',
+  ozToGOption: 'Troy Oz → g',
+  oneTroyOzEquals: '1 Troy Oz =',
+  troyOzGramsValue: '31.1035 grams',
+
   // Settings — language & region rows
   regionLabel: 'Region',
   dateFormatLabel: 'Date Format',
@@ -732,6 +852,29 @@ const en = {
   dailySummaryDesc: 'Morning portfolio snapshot',
   weeklyReportLabel: 'Weekly Report',
   weeklyReportDesc: 'End-of-week performance recap',
+  managePriceAlerts: 'Manage Price Alerts',
+  managePriceAlertsDesc: 'Create and view your active alerts',
+
+  // Price Alerts screen
+  addPriceAlert: 'Add Alert',
+  noPriceAlerts: 'No price alerts yet',
+  noPriceAlertsHint: "Get notified when gold, silver, a currency, or a stock hits your target price",
+  selectAssetLabel: 'Asset',
+  selectAssetPlaceholder: 'Choose an asset',
+  alertDirectionLabel: 'Notify me when price goes',
+  directionAbove: 'Above',
+  directionBelow: 'Below',
+  targetPriceLabel: 'Target Price',
+  currentPriceLabel: 'Current',
+  deletePriceAlert: 'Delete Alert',
+  deletePriceAlertConfirm: 'Are you sure you want to delete this price alert?',
+  alertTriggeredLabel: 'Triggered',
+  alertActiveLabel: 'Watching',
+  selectAssetError: 'Please choose an asset to watch.',
+  targetPriceError: 'Please enter a valid target price.',
+  assetGroupMetals: 'GOLD & SILVER',
+  assetGroupCurrency: 'CURRENCY',
+  assetGroupStocks: 'EGX STOCKS',
 
   // Settings — privacy rows
   analyticsSharingLabel: 'Analytics Sharing',
@@ -1498,6 +1641,126 @@ const ar: typeof en = {
   biometricLock: 'القفل البيومتري',
   biometricLockDesc: 'طلب Face ID أو Touch ID عند الفتح',
 
+  // Biometric Gate screen
+  biometricAuthPrompt: 'تحقق للوصول إلى INVESTRY',
+  biometricFallbackLabel: 'استخدام رمز المرور',
+  biometricCancelLabel: 'إلغاء',
+  biometricAuthFailed: 'فشل التحقق. حاول مرة أخرى.',
+  biometricSubtitle: 'تحقق لعرض محفظتك',
+  biometricUseFaceId: 'استخدام Face ID',
+  biometricUseTouchId: 'استخدام Touch ID',
+  biometricUnlock: 'فتح',
+
+  // Error Fallback / crash screen
+  goToSignIn: 'الذهاب إلى تسجيل الدخول',
+  helpLabel: 'مساعدة',
+  somethingWentWrong: 'حدث خطأ ما',
+  errorFallbackMessage: 'يرجى إعادة تحميل التطبيق للمتابعة. إذا استمرت المشكلة، سجّل الخروج ثم سجّل الدخول مرة أخرى.',
+  tryAgain: 'حاول مرة أخرى',
+  signOutAndRestart: 'تسجيل الخروج وإعادة التشغيل',
+  errorDetailsTitle: 'تفاصيل الخطأ',
+  closeErrorDetails: 'إغلاق تفاصيل الخطأ',
+
+  // No Network screen
+  noConnectionTitle: 'لا يوجد اتصال',
+  noConnectionMessage: 'تعذر الاتصال بخوادم INVESTRY.\nيرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.',
+
+  // 404 / not-found screen
+  screenNotFoundTitle: 'هذه الشاشة غير موجودة.',
+  goToHomeScreen: 'الذهاب إلى الشاشة الرئيسية!',
+  oopsTitle: 'عذراً!',
+
+  // Financial Tools — shared
+  calcLoading: 'جارٍ التحميل…',
+
+  // Financial Tools — tool grid
+  toolZakatLabel: 'الزكاة',
+  toolZakatSub: 'حاسبة ذكية',
+  toolGoldLabel: 'قيمة الذهب',
+  toolSilverLabel: 'قيمة الفضة',
+  toolLivePriceSub: 'السعر المباشر',
+  toolCurrencyLabel: 'العملات',
+  toolCurrencySub: 'جنيه ↔ دولار',
+  toolROILabel: 'العائد',
+  toolROISub: 'عائد الاستثمار',
+  toolCompoundLabel: 'النمو المركب',
+  toolCompoundSub: 'حساب النمو',
+  toolPurityLabel: 'عيار الذهب',
+  toolPuritySub: '24 → 21 → 18 قيراط',
+  toolWeightLabel: 'الوزن',
+  toolWeightSub: 'جرام ↔ أونصة',
+
+  // Financial Tools — Zakat modal
+  zakatModalTitle: 'حاسبة الزكاة الذكية',
+  goldNisabOption: 'نصاب الذهب',
+  silverNisabOption: 'نصاب الفضة',
+  currentNisabLabel: (unit: string) => `النصاب الحالي (${unit})`,
+  nisab85gGold: '85 جرام ذهب',
+  nisab595gSilver: '595 جرام فضة',
+  nisabNoLivePrice: 'غير متاح (لا يوجد سعر مباشر)',
+  eligibleAssetsDetected: 'الأصول المؤهلة المكتشفة',
+  includedLabel: 'مضمّن',
+  excludedLabel: 'مستبعد',
+  additionalCashLabel: 'نقد / مدخرات إضافية (جنيه)',
+  totalZakatableWealth: 'إجمالي الثروة الخاضعة للزكاة',
+  nisabThresholdLabel: 'حد النصاب',
+  nisabMetLabel: 'هل بلغ النصاب؟',
+  nisabMetYes: 'نعم ✓',
+  nisabMetNoBelowNisab: 'لا — أقل من النصاب',
+  zakatDueLabel: 'الزكاة المستحقة (2.5٪)',
+  zakatDisclaimer: 'حسابات الزكاة تقديرية استناداً إلى الأصول المسجّلة لديك. قد تختلف الالتزامات الفعلية حسب ظروفك الخاصة، ومدة الحول القمري، والرأي الفقهي الذي تتبعه. يُرجى استشارة عالم شرعي مؤهل للحصول على أحكام قطعية.',
+
+  // Financial Tools — Gold/Silver Value modals
+  goldValueModalTitle: 'حاسبة قيمة الذهب',
+  silverValueModalTitle: 'حاسبة قيمة الفضة',
+  weightGramsLabel: 'الوزن (جرام)',
+  livePriceKaratLabel: (karat: string) => `السعر المباشر (${karat})`,
+  livePriceLabel: 'السعر المباشر',
+  totalValueLabel: 'القيمة الإجمالية',
+
+  // Financial Tools — Currency modal
+  currencyModalTitle: 'محول العملات',
+  usdToEgpOption: 'دولار ← جنيه',
+  egpToUsdOption: 'جنيه ← دولار',
+  amountCurLabel: (cur: string) => `المبلغ (${cur})`,
+  resultCurLabel: (cur: string) => `النتيجة (${cur})`,
+
+  // Financial Tools — ROI modal
+  roiModalTitle: 'حاسبة العائد على الاستثمار',
+  purchaseCostLabel: 'تكلفة الشراء (جنيه)',
+  currentValueLabel: 'القيمة الحالية (جنيه)',
+  holdingPeriodLabel: 'مدة الاحتفاظ (سنوات)',
+  gainLossLabel: 'الربح / الخسارة',
+  totalReturnLabel: 'إجمالي العائد',
+  annualizedReturnLabel: 'العائد السنوي',
+
+  // Financial Tools — Compound Growth modal
+  compoundModalTitle: 'النمو المركب',
+  compoundMonthlyOption: 'شهري',
+  compoundYearlyOption: 'سنوي',
+  initialInvestmentLabel: 'الاستثمار الأولي (جنيه)',
+  annualReturnRateLabel: 'معدل العائد السنوي (٪)',
+  durationYearsLabel: 'المدة (سنوات)',
+  monthlyContributionLabel: 'المساهمة الشهرية (جنيه)',
+  totalContributionsLabel: 'إجمالي المساهمات',
+  growthFromReturnsLabel: 'النمو من العوائد',
+  finalValueLabel: 'القيمة النهائية',
+
+  // Financial Tools — Gold Purity modal
+  goldPurityModalTitle: 'محول عيار الذهب',
+  weightInKaratLabel: (k: string) => `الوزن بعيار ${k} قيراط (جرام)`,
+  equivalentIn24k: 'المعادل بعيار 24 (خالص)',
+  equivalentIn22k: 'المعادل بعيار 22',
+  equivalentIn21k: 'المعادل بعيار 21',
+  equivalentIn18k: 'المعادل بعيار 18',
+
+  // Financial Tools — Weight Converter modal
+  weightModalTitle: 'محول الوزن',
+  gToOzOption: 'جرام ← أونصة',
+  ozToGOption: 'أونصة ← جرام',
+  oneTroyOzEquals: 'الأونصة الترويّة الواحدة =',
+  troyOzGramsValue: '31.1035 جرام',
+
   // Settings — language & region rows
   regionLabel: 'المنطقة',
   dateFormatLabel: 'تنسيق التاريخ',
@@ -1516,6 +1779,29 @@ const ar: typeof en = {
   dailySummaryDesc: 'لقطة صباحية لمحفظتك',
   weeklyReportLabel: 'تقرير أسبوعي',
   weeklyReportDesc: 'ملخص الأداء في نهاية الأسبوع',
+  managePriceAlerts: 'إدارة تنبيهات الأسعار',
+  managePriceAlertsDesc: 'أنشئ وشاهد تنبيهاتك النشطة',
+
+  // Price Alerts screen
+  addPriceAlert: 'إضافة تنبيه',
+  noPriceAlerts: 'لا توجد تنبيهات أسعار بعد',
+  noPriceAlertsHint: 'احصل على إشعار عند وصول الذهب أو الفضة أو عملة أو سهم إلى السعر المستهدف',
+  selectAssetLabel: 'الأصل',
+  selectAssetPlaceholder: 'اختر أصلاً',
+  alertDirectionLabel: 'نبّهني عندما يصبح السعر',
+  directionAbove: 'أعلى من',
+  directionBelow: 'أقل من',
+  targetPriceLabel: 'السعر المستهدف',
+  currentPriceLabel: 'الحالي',
+  deletePriceAlert: 'حذف التنبيه',
+  deletePriceAlertConfirm: 'هل أنت متأكد أنك تريد حذف تنبيه السعر هذا؟',
+  alertTriggeredLabel: 'تم التنبيه',
+  alertActiveLabel: 'قيد المراقبة',
+  selectAssetError: 'الرجاء اختيار أصل للمراقبة.',
+  targetPriceError: 'الرجاء إدخال سعر مستهدف صالح.',
+  assetGroupMetals: 'الذهب والفضة',
+  assetGroupCurrency: 'العملات',
+  assetGroupStocks: 'أسهم البورصة المصرية',
 
   // Settings — privacy rows
   analyticsSharingLabel: 'مشاركة البيانات التحليلية',

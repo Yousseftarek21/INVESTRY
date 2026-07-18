@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { Holding, MarketPrices } from '@/types';
@@ -217,6 +218,7 @@ const dis = StyleSheet.create({
 
 function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const colors = useColors();
+  const t = useT();
   const { holdings } = useHoldings();
   const { data: prices } = useMarketPrices();
   const [nisabType, setNisabType] = useState<'gold' | 'silver'>('gold');
@@ -250,29 +252,29 @@ function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => voi
   const eligible = totalZakatable >= nisabValue && nisabValue > 0;
   const zakatDue = eligible ? totalZakatable * 0.025 : 0;
 
-  const nisabStr = nisabValue > 0 ? `${fmt(nisabValue)} EGP` : 'N/A (no live price)';
+  const nisabStr = nisabValue > 0 ? `${fmt(nisabValue)} EGP` : t.nisabNoLivePrice;
 
   return (
-    <ModalShell visible={visible} title="Smart Zakat Calculator" icon="moon" iconColor="#10B981" onClose={onClose}>
+    <ModalShell visible={visible} title={t.zakatModalTitle} icon="moon" iconColor="#10B981" onClose={onClose}>
       <SegPicker
-        options={[{ key: 'gold', label: 'Gold Nisab' }, { key: 'silver', label: 'Silver Nisab' }]}
+        options={[{ key: 'gold', label: t.goldNisabOption }, { key: 'silver', label: t.silverNisabOption }]}
         value={nisabType}
         onChange={setNisabType}
       />
 
       <View style={[zk.infoRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[zk.infoLabel, { color: colors.mutedForeground }]}>
-          Current Nisab ({nisabType === 'gold' ? '85g gold' : '595g silver'})
+          {t.currentNisabLabel(nisabType === 'gold' ? t.nisab85gGold : t.nisab595gSilver)}
         </Text>
         <Text style={[zk.infoVal, { color: colors.primary }]}>{nisabStr}</Text>
       </View>
 
-      <Text style={[zk.sectionTitle, { color: colors.text }]}>Eligible Assets Detected</Text>
+      <Text style={[zk.sectionTitle, { color: colors.text }]}>{t.eligibleAssetsDetected}</Text>
 
       <View style={[zk.assetList, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {[
-          { label: 'Gold',   value: goldWealth,   icon: { lib: 'mci', name: 'gold' } as const, color: colors.primary },
-          { label: 'Silver', value: silverWealth, icon: { lib: 'mci', name: 'gold' } as const, color: colors.silverColor },
+          { label: t.gold,   value: goldWealth,   icon: { lib: 'mci', name: 'gold' } as const, color: colors.primary },
+          { label: t.silver, value: silverWealth, icon: { lib: 'mci', name: 'gold' } as const, color: colors.silverColor },
         ].map((item, i) => (
           <View key={i} style={[zk.assetRow, i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
             <View style={[zk.assetIcon, { backgroundColor: item.color + '18' }]}>
@@ -286,25 +288,25 @@ function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => voi
           <View style={[zk.assetIcon, { backgroundColor: '#4A9EFF18' }]}>
             <Feather name="bar-chart-2" size={13} color="#4A9EFF" />
           </View>
-          <Text style={[zk.assetLabel, { color: colors.text }]}>EGX Stocks</Text>
+          <Text style={[zk.assetLabel, { color: colors.text }]}>{t.egxStocksAllocLabel}</Text>
           <Pressable onPress={() => setIncludeStocks(v => !v)} style={[zk.toggle, { backgroundColor: includeStocks ? colors.primary + '22' : colors.muted }]}>
             <Text style={[zk.toggleTxt, { color: includeStocks ? colors.primary : colors.mutedForeground }]}>
-              {includeStocks ? 'Included' : 'Excluded'}
+              {includeStocks ? t.includedLabel : t.excludedLabel}
             </Text>
           </Pressable>
         </View>
       </View>
 
-      <CalcInput label="Additional Cash / Savings (EGP)" value={extraCash} onChange={setExtraCash} placeholder="0" unit="EGP" />
+      <CalcInput label={t.additionalCashLabel} value={extraCash} onChange={setExtraCash} placeholder="0" unit="EGP" />
 
       <ResultCard rows={[
-        { label: 'Total Zakatable Wealth', value: `${fmt(totalZakatable)} EGP` },
-        { label: 'Nisab Threshold', value: nisabStr },
-        { label: 'Nisab Met?', value: eligible ? 'Yes ✓' : nisabValue > 0 ? 'No — below nisab' : 'No live price' },
-        { label: 'Zakat Due (2.5%)', value: eligible ? `${fmt(zakatDue)} EGP` : '—', highlight: eligible },
+        { label: t.totalZakatableWealth, value: `${fmt(totalZakatable)} EGP` },
+        { label: t.nisabThresholdLabel, value: nisabStr },
+        { label: t.nisabMetLabel, value: eligible ? t.nisabMetYes : nisabValue > 0 ? t.nisabMetNoBelowNisab : t.nisabNoLivePrice },
+        { label: t.zakatDueLabel, value: eligible ? `${fmt(zakatDue)} EGP` : '—', highlight: eligible },
       ]} />
 
-      <Disclaimer text="Zakat calculations are estimates based on your tracked assets. Actual obligations may differ based on your specific circumstances, lunar year holding period (hawl), and the scholarly opinion you follow. Please consult a qualified Islamic scholar for definitive rulings." />
+      <Disclaimer text={t.zakatDisclaimer} />
     </ModalShell>
   );
 }
@@ -325,6 +327,7 @@ const zk = StyleSheet.create({
 // ─── 2. Gold Value Calculator ─────────────────────────────────────────────────
 
 function GoldValueModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const t = useT();
   const { data: prices } = useMarketPrices();
   const [grams, setGrams] = useState('');
   const [karat, setKarat] = useState<'24k' | '22k' | '21k' | '18k'>('21k');
@@ -332,16 +335,16 @@ function GoldValueModal({ visible, onClose }: { visible: boolean; onClose: () =>
   const value = parseNum(grams) * pricePerGram;
 
   return (
-    <ModalShell visible={visible} title="Gold Value Calculator" icon={{ lib: 'mci', name: 'gold' }} iconColor="#C9A227" onClose={onClose}>
+    <ModalShell visible={visible} title={t.goldValueModalTitle} icon={{ lib: 'mci', name: 'gold' }} iconColor="#C9A227" onClose={onClose}>
       <SegPicker
         options={[{ key: '24k', label: '24K' }, { key: '22k', label: '22K' }, { key: '21k', label: '21K' }, { key: '18k', label: '18K' }]}
         value={karat}
         onChange={setKarat}
       />
-      <CalcInput label="Weight (grams)" value={grams} onChange={setGrams} unit="g" />
+      <CalcInput label={t.weightGramsLabel} value={grams} onChange={setGrams} unit="g" />
       <ResultCard rows={[
-        { label: `Live Price (${karat.toUpperCase()})`, value: pricePerGram > 0 ? `${fmt(pricePerGram, 2)} EGP/g` : 'Loading…' },
-        { label: 'Total Value', value: value > 0 ? `${fmt(value)} EGP` : '—', highlight: true },
+        { label: t.livePriceKaratLabel(karat.toUpperCase()), value: pricePerGram > 0 ? `${fmt(pricePerGram, 2)} EGP/g` : t.calcLoading },
+        { label: t.totalValueLabel, value: value > 0 ? `${fmt(value)} EGP` : '—', highlight: true },
       ]} />
     </ModalShell>
   );
@@ -350,17 +353,18 @@ function GoldValueModal({ visible, onClose }: { visible: boolean; onClose: () =>
 // ─── 3. Silver Value Calculator ───────────────────────────────────────────────
 
 function SilverValueModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const t = useT();
   const { data: prices } = useMarketPrices();
   const [grams, setGrams] = useState('');
   const pricePerGram = prices ? silverPricePerGram(prices) : 0;
   const value = parseNum(grams) * pricePerGram;
 
   return (
-    <ModalShell visible={visible} title="Silver Value Calculator" icon={{ lib: 'mci', name: 'gold' }} iconColor="#C0C8D4" onClose={onClose}>
-      <CalcInput label="Weight (grams)" value={grams} onChange={setGrams} unit="g" />
+    <ModalShell visible={visible} title={t.silverValueModalTitle} icon={{ lib: 'mci', name: 'gold' }} iconColor="#C0C8D4" onClose={onClose}>
+      <CalcInput label={t.weightGramsLabel} value={grams} onChange={setGrams} unit="g" />
       <ResultCard rows={[
-        { label: 'Live Price', value: pricePerGram > 0 ? `${fmt(pricePerGram, 2)} EGP/g` : 'Loading…' },
-        { label: 'Total Value', value: value > 0 ? `${fmt(value)} EGP` : '—', highlight: true },
+        { label: t.livePriceLabel, value: pricePerGram > 0 ? `${fmt(pricePerGram, 2)} EGP/g` : t.calcLoading },
+        { label: t.totalValueLabel, value: value > 0 ? `${fmt(value)} EGP` : '—', highlight: true },
       ]} />
     </ModalShell>
   );
@@ -369,6 +373,7 @@ function SilverValueModal({ visible, onClose }: { visible: boolean; onClose: () 
 // ─── 4. Currency Converter ────────────────────────────────────────────────────
 
 function CurrencyModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const t = useT();
   const { data: prices } = useMarketPrices();
   const [amount, setAmount] = useState('');
   const [dir, setDir] = useState<'egpToUsd' | 'usdToEgp'>('usdToEgp');
@@ -378,16 +383,16 @@ function CurrencyModal({ visible, onClose }: { visible: boolean; onClose: () => 
   const toCur = dir === 'usdToEgp' ? 'EGP' : 'USD';
 
   return (
-    <ModalShell visible={visible} title="Currency Converter" icon="refresh-cw" iconColor="#4A9EFF" onClose={onClose}>
+    <ModalShell visible={visible} title={t.currencyModalTitle} icon="refresh-cw" iconColor="#4A9EFF" onClose={onClose}>
       <SegPicker
-        options={[{ key: 'usdToEgp', label: 'USD → EGP' }, { key: 'egpToUsd', label: 'EGP → USD' }]}
+        options={[{ key: 'usdToEgp', label: t.usdToEgpOption }, { key: 'egpToUsd', label: t.egpToUsdOption }]}
         value={dir}
         onChange={setDir}
       />
-      <CalcInput label={`Amount (${fromCur})`} value={amount} onChange={setAmount} unit={fromCur} />
+      <CalcInput label={t.amountCurLabel(fromCur)} value={amount} onChange={setAmount} unit={fromCur} />
       <ResultCard rows={[
-        { label: 'USD/EGP Rate', value: rate > 0 ? `${rate.toFixed(3)}` : 'Loading…' },
-        { label: `Result (${toCur})`, value: converted > 0 ? fmt(converted, 2) : '—', highlight: true },
+        { label: t.usdEgpRateLabel, value: rate > 0 ? `${rate.toFixed(3)}` : t.calcLoading },
+        { label: t.resultCurLabel(toCur), value: converted > 0 ? fmt(converted, 2) : '—', highlight: true },
       ]} />
     </ModalShell>
   );
@@ -396,6 +401,7 @@ function CurrencyModal({ visible, onClose }: { visible: boolean; onClose: () => 
 // ─── 5. ROI Calculator ────────────────────────────────────────────────────────
 
 function ROIModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const t = useT();
   const [cost, setCost] = useState('');
   const [current, setCurrent] = useState('');
   const [years, setYears] = useState('');
@@ -405,14 +411,14 @@ function ROIModal({ visible, onClose }: { visible: boolean; onClose: () => void 
   const annualized = c > 0 && v > 0 && y > 0 ? (Math.pow(v / c, 1 / y) - 1) * 100 : 0;
 
   return (
-    <ModalShell visible={visible} title="ROI Calculator" icon="trending-up" iconColor="#00D4AA" onClose={onClose}>
-      <CalcInput label="Purchase Cost (EGP)" value={cost} onChange={setCost} unit="EGP" />
-      <CalcInput label="Current Value (EGP)" value={current} onChange={setCurrent} unit="EGP" />
-      <CalcInput label="Holding Period (years)" value={years} onChange={setYears} unit="yrs" />
+    <ModalShell visible={visible} title={t.roiModalTitle} icon="trending-up" iconColor="#00D4AA" onClose={onClose}>
+      <CalcInput label={t.purchaseCostLabel} value={cost} onChange={setCost} unit="EGP" />
+      <CalcInput label={t.currentValueLabel} value={current} onChange={setCurrent} unit="EGP" />
+      <CalcInput label={t.holdingPeriodLabel} value={years} onChange={setYears} unit="yrs" />
       <ResultCard rows={[
-        { label: 'Gain / Loss', value: gain !== 0 ? `${gain >= 0 ? '+' : '−'}${fmt(gain)} EGP` : '—' },
-        { label: 'Total Return', value: roi !== 0 ? `${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%` : '—', highlight: roi > 0 },
-        { label: 'Annualized Return', value: y > 0 && annualized !== 0 ? `${annualized >= 0 ? '+' : ''}${annualized.toFixed(2)}%/yr` : '—' },
+        { label: t.gainLossLabel, value: gain !== 0 ? `${gain >= 0 ? '+' : '−'}${fmt(gain)} EGP` : '—' },
+        { label: t.totalReturnLabel, value: roi !== 0 ? `${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%` : '—', highlight: roi > 0 },
+        { label: t.annualizedReturnLabel, value: y > 0 && annualized !== 0 ? `${annualized >= 0 ? '+' : ''}${annualized.toFixed(2)}%/yr` : '—' },
       ]} />
     </ModalShell>
   );
@@ -421,31 +427,32 @@ function ROIModal({ visible, onClose }: { visible: boolean; onClose: () => void 
 // ─── 6. Compound Growth Calculator ───────────────────────────────────────────
 
 function CompoundModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const t = useT();
   const [principal, setPrincipal] = useState('');
   const [rate, setRate] = useState('');
   const [years, setYears] = useState('');
   const [monthly, setMonthly] = useState('');
   const [freq, setFreq] = useState<'1' | '12'>('12');
-  const P = parseNum(principal), r = parseNum(rate) / 100, n = parseNum(freq), t = parseNum(years), m = parseNum(monthly);
-  const final = P * Math.pow(1 + r / n, n * t) + (m > 0 && r > 0 ? m * ((Math.pow(1 + r / n, n * t) - 1) / (r / n)) : 0);
-  const totalContrib = P + m * 12 * t;
+  const P = parseNum(principal), r = parseNum(rate) / 100, n = parseNum(freq), yrs = parseNum(years), m = parseNum(monthly);
+  const final = P * Math.pow(1 + r / n, n * yrs) + (m > 0 && r > 0 ? m * ((Math.pow(1 + r / n, n * yrs) - 1) / (r / n)) : 0);
+  const totalContrib = P + m * 12 * yrs;
   const growth = final - totalContrib;
 
   return (
-    <ModalShell visible={visible} title="Compound Growth" icon="bar-chart-2" iconColor="#A47FCA" onClose={onClose}>
+    <ModalShell visible={visible} title={t.compoundModalTitle} icon="bar-chart-2" iconColor="#A47FCA" onClose={onClose}>
       <SegPicker
-        options={[{ key: '12', label: 'Monthly' }, { key: '1', label: 'Yearly' }]}
+        options={[{ key: '12', label: t.compoundMonthlyOption }, { key: '1', label: t.compoundYearlyOption }]}
         value={freq}
         onChange={setFreq}
       />
-      <CalcInput label="Initial Investment (EGP)" value={principal} onChange={setPrincipal} unit="EGP" />
-      <CalcInput label="Annual Return Rate (%)" value={rate} onChange={setRate} unit="%" />
-      <CalcInput label="Duration (years)" value={years} onChange={setYears} unit="yrs" />
-      <CalcInput label="Monthly Contribution (EGP)" value={monthly} onChange={setMonthly} placeholder="0" unit="EGP" />
+      <CalcInput label={t.initialInvestmentLabel} value={principal} onChange={setPrincipal} unit="EGP" />
+      <CalcInput label={t.annualReturnRateLabel} value={rate} onChange={setRate} unit="%" />
+      <CalcInput label={t.durationYearsLabel} value={years} onChange={setYears} unit="yrs" />
+      <CalcInput label={t.monthlyContributionLabel} value={monthly} onChange={setMonthly} placeholder="0" unit="EGP" />
       <ResultCard rows={[
-        { label: 'Total Contributions', value: totalContrib > 0 ? `${fmt(totalContrib)} EGP` : '—' },
-        { label: 'Growth from Returns', value: growth > 0 ? `${fmt(growth)} EGP` : '—' },
-        { label: 'Final Value', value: final > 0 ? `${fmt(final)} EGP` : '—', highlight: true },
+        { label: t.totalContributionsLabel, value: totalContrib > 0 ? `${fmt(totalContrib)} EGP` : '—' },
+        { label: t.growthFromReturnsLabel, value: growth > 0 ? `${fmt(growth)} EGP` : '—' },
+        { label: t.finalValueLabel, value: final > 0 ? `${fmt(final)} EGP` : '—', highlight: true },
       ]} />
     </ModalShell>
   );
@@ -454,24 +461,25 @@ function CompoundModal({ visible, onClose }: { visible: boolean; onClose: () => 
 // ─── 7. Gold Purity Converter ─────────────────────────────────────────────────
 
 function GoldPurityModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const t = useT();
   const [grams, setGrams] = useState('');
   const [fromK, setFromK] = useState<'24' | '22' | '21' | '18'>('21');
   const purities: Record<string, number> = { '24': 1, '22': 22/24, '21': 21/24, '18': 18/24 };
   const pureGold = parseNum(grams) * purities[fromK];
 
   return (
-    <ModalShell visible={visible} title="Gold Purity Converter" icon={{ lib: 'mci', name: 'gold' }} iconColor="#C9A227" onClose={onClose}>
+    <ModalShell visible={visible} title={t.goldPurityModalTitle} icon={{ lib: 'mci', name: 'gold' }} iconColor="#C9A227" onClose={onClose}>
       <SegPicker
         options={[{ key: '24', label: '24K' }, { key: '22', label: '22K' }, { key: '21', label: '21K' }, { key: '18', label: '18K' }]}
         value={fromK}
         onChange={setFromK}
       />
-      <CalcInput label={`Weight in ${fromK}K gold (grams)`} value={grams} onChange={setGrams} unit="g" />
+      <CalcInput label={t.weightInKaratLabel(fromK)} value={grams} onChange={setGrams} unit="g" />
       <ResultCard rows={[
-        { label: 'Equivalent in 24K (pure)', value: pureGold > 0 ? `${pureGold.toFixed(3)} g` : '—', highlight: true },
-        { label: 'Equivalent in 22K', value: pureGold > 0 ? `${(pureGold / (22/24)).toFixed(3)} g` : '—' },
-        { label: 'Equivalent in 21K', value: pureGold > 0 ? `${(pureGold / (21/24)).toFixed(3)} g` : '—' },
-        { label: 'Equivalent in 18K', value: pureGold > 0 ? `${(pureGold / (18/24)).toFixed(3)} g` : '—' },
+        { label: t.equivalentIn24k, value: pureGold > 0 ? `${pureGold.toFixed(3)} g` : '—', highlight: true },
+        { label: t.equivalentIn22k, value: pureGold > 0 ? `${(pureGold / (22/24)).toFixed(3)} g` : '—' },
+        { label: t.equivalentIn21k, value: pureGold > 0 ? `${(pureGold / (21/24)).toFixed(3)} g` : '—' },
+        { label: t.equivalentIn18k, value: pureGold > 0 ? `${(pureGold / (18/24)).toFixed(3)} g` : '—' },
       ]} />
     </ModalShell>
   );
@@ -480,6 +488,7 @@ function GoldPurityModal({ visible, onClose }: { visible: boolean; onClose: () =
 // ─── 8. Gram ↔ Troy Oz ───────────────────────────────────────────────────────
 
 function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const t = useT();
   const [amount, setAmount] = useState('');
   const [dir, setDir] = useState<'gToOz' | 'ozToG'>('gToOz');
   const TROY_OZ = 31.1035;
@@ -488,16 +497,16 @@ function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => vo
   const toUnit = dir === 'gToOz' ? 'troy oz' : 'grams';
 
   return (
-    <ModalShell visible={visible} title="Weight Converter" icon="maximize-2" iconColor="#F59E0B" onClose={onClose}>
+    <ModalShell visible={visible} title={t.weightModalTitle} icon="maximize-2" iconColor="#F59E0B" onClose={onClose}>
       <SegPicker
-        options={[{ key: 'gToOz', label: 'g → Troy Oz' }, { key: 'ozToG', label: 'Troy Oz → g' }]}
+        options={[{ key: 'gToOz', label: t.gToOzOption }, { key: 'ozToG', label: t.ozToGOption }]}
         value={dir}
         onChange={setDir}
       />
-      <CalcInput label={`Amount (${fromUnit})`} value={amount} onChange={setAmount} unit={dir === 'gToOz' ? 'g' : 'oz'} />
+      <CalcInput label={t.amountCurLabel(fromUnit)} value={amount} onChange={setAmount} unit={dir === 'gToOz' ? 'g' : 'oz'} />
       <ResultCard rows={[
-        { label: `Result (${toUnit})`, value: result > 0 ? `${result.toFixed(4)} ${toUnit}` : '—', highlight: true },
-        { label: '1 Troy Oz =', value: '31.1035 grams' },
+        { label: t.resultCurLabel(toUnit), value: result > 0 ? `${result.toFixed(4)} ${toUnit}` : '—', highlight: true },
+        { label: t.oneTroyOzEquals, value: t.troyOzGramsValue },
       ]} />
     </ModalShell>
   );
@@ -505,19 +514,21 @@ function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => vo
 
 // ─── Tool grid ─────────────────────────────────────────────────────────────────
 
-const TOOLS = [
-  { id: 'zakat',    icon: 'moon',         label: 'Zakat',           sub: 'Smart Calculator', color: '#10B981' },
-  { id: 'gold',     icon: { lib: 'mci', name: 'gold' } as const, label: 'Gold Value',   sub: 'Live price',       color: '#C9A227' },
-  { id: 'silver',   icon: { lib: 'mci', name: 'gold' } as const, label: 'Silver Value', sub: 'Live price',       color: '#C0C8D4' },
-  { id: 'currency', icon: 'refresh-cw',   label: 'Currency',        sub: 'EGP ↔ USD',       color: '#4A9EFF' },
-  { id: 'roi',      icon: 'trending-up',  label: 'ROI',             sub: 'Return on invest', color: '#00D4AA' },
-  { id: 'compound', icon: 'bar-chart-2',  label: 'Compound',        sub: 'Growth calc',      color: '#A47FCA' },
-  { id: 'purity',   icon: { lib: 'mci', name: 'gold' } as const, label: 'Gold Purity', sub: '24K → 21K → 18K', color: '#C9A227' },
-  { id: 'weight',   icon: 'maximize-2',   label: 'Weight',          sub: 'g ↔ Troy Oz',     color: '#F59E0B' },
-] as const;
-type ToolId = typeof TOOLS[number]['id'];
+function getTools(t: ReturnType<typeof useT>) {
+  return [
+    { id: 'zakat',    icon: 'moon',         label: t.toolZakatLabel,    sub: t.toolZakatSub,     color: '#10B981' },
+    { id: 'gold',     icon: { lib: 'mci', name: 'gold' } as const, label: t.toolGoldLabel,   sub: t.toolLivePriceSub, color: '#C9A227' },
+    { id: 'silver',   icon: { lib: 'mci', name: 'gold' } as const, label: t.toolSilverLabel, sub: t.toolLivePriceSub, color: '#C0C8D4' },
+    { id: 'currency', icon: 'refresh-cw',   label: t.toolCurrencyLabel, sub: t.toolCurrencySub,  color: '#4A9EFF' },
+    { id: 'roi',      icon: 'trending-up',  label: t.toolROILabel,      sub: t.toolROISub,       color: '#00D4AA' },
+    { id: 'compound', icon: 'bar-chart-2',  label: t.toolCompoundLabel, sub: t.toolCompoundSub,  color: '#A47FCA' },
+    { id: 'purity',   icon: { lib: 'mci', name: 'gold' } as const, label: t.toolPurityLabel, sub: t.toolPuritySub,   color: '#C9A227' },
+    { id: 'weight',   icon: 'maximize-2',   label: t.toolWeightLabel,   sub: t.toolWeightSub,    color: '#F59E0B' },
+  ] as const;
+}
+type ToolId = ReturnType<typeof getTools>[number]['id'];
 
-function ToolCard({ tool, onPress }: { tool: typeof TOOLS[number]; onPress: () => void }) {
+function ToolCard({ tool, onPress }: { tool: ReturnType<typeof getTools>[number]; onPress: () => void }) {
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -571,7 +582,9 @@ const tc = StyleSheet.create({
 // ─── Main export ───────────────────────────────────────────────────────────────
 
 export function FinancialTools() {
+  const t = useT();
   const [open, setOpen] = useState<ToolId | null>(null);
+  const tools = getTools(t);
 
   return (
     <>
@@ -581,7 +594,7 @@ export function FinancialTools() {
         style={ft.wrap}
         contentContainerStyle={ft.row}
       >
-        {TOOLS.map(tool => (
+        {tools.map(tool => (
           <ToolCard key={tool.id} tool={tool} onPress={() => setOpen(tool.id)} />
         ))}
       </ScrollView>

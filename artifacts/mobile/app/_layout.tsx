@@ -35,7 +35,7 @@ import { useHoldings } from "@/context/HoldingsContext";
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from "@/hooks/usePrices";
 import { useEGXMarket } from "@/hooks/useEGXMarket";
 import { getRECurrentValue } from "@/utils/rePrice";
-import { usePriceAlertChecker } from "@/hooks/usePriceAlerts";
+import { usePriceAlertChecker, buildAlertPricesDict } from "@/hooks/usePriceAlerts";
 import { getApiBaseUrl } from "@/utils/api";
 import * as Updates from "expo-updates";
 
@@ -97,6 +97,10 @@ function RootLayoutNav() {
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
+        name="price-alerts"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
         name="tbills-calculator"
         options={{ presentation: "modal", headerShown: false }}
       />
@@ -116,26 +120,16 @@ function NotificationsInitializer() {
 function PriceAlertsInitializer() {
   const { data: prices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
-  const pricesDict = useMemo<Record<string, number>>(() => {
-    if (!prices) return {};
-    const dict: Record<string, number> = {
-      usd_egp:    prices.usdToEgp,
-      gold_24k:   goldPricePerGram(prices, '24k'),
-      gold_22k:   goldPricePerGram(prices, '22k'),
-      gold_21k:   goldPricePerGram(prices, '21k'),
-      gold_18k:   goldPricePerGram(prices, '18k'),
-      silver_gram: silverPricePerGram(prices),
-    };
-    egxStocks?.forEach(s => { dict[`stock_${s.ticker}`] = s.price; });
-    return dict;
-  }, [prices, egxStocks]);
-  usePriceAlertChecker(pricesDict);
+  const { notifications } = useAppSettings();
+  const pricesDict = useMemo(() => buildAlertPricesDict(prices, egxStocks), [prices, egxStocks]);
+  usePriceAlertChecker(pricesDict, notifications.priceAlerts);
   return null;
 }
 
 function PortfolioAlertInitializer() {
   const { holdings } = useHoldings();
   const { data: prices } = useMarketPrices();
+  const { notifications } = useAppSettings();
 
   const total = useMemo(() => {
     if (!prices) return 0;
@@ -150,7 +144,7 @@ function PortfolioAlertInitializer() {
     }, 0);
   }, [holdings, prices]);
 
-  usePortfolioAlerts(total);
+  usePortfolioAlerts(total, notifications.portfolioAlerts);
   return null;
 }
 

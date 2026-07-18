@@ -3,6 +3,7 @@ import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 
 interface Props {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface Props {
 
 export function BiometricGate({ children, enabled }: Props) {
   const colors = useColors();
+  const t = useT();
   const [unlocked, setUnlocked] = useState(!enabled || Platform.OS === 'web');
   const [biometricType, setBiometricType] = useState<'face' | 'fingerprint' | 'none'>('none');
   const [errorMsg, setErrorMsg] = useState('');
@@ -19,17 +21,17 @@ export function BiometricGate({ children, enabled }: Props) {
     setErrorMsg('');
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to access INVESTRY',
-        fallbackLabel: 'Use passcode',
-        cancelLabel: 'Cancel',
+        promptMessage: t.biometricAuthPrompt,
+        fallbackLabel: t.biometricFallbackLabel,
+        cancelLabel: t.biometricCancelLabel,
         disableDeviceFallback: false,
       });
       if (result.success) setUnlocked(true);
-      else setErrorMsg('Authentication failed. Try again.');
+      else setErrorMsg(t.biometricAuthFailed);
     } catch {
-      setErrorMsg('Authentication failed. Try again.');
+      setErrorMsg(t.biometricAuthFailed);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!enabled || Platform.OS === 'web') { setUnlocked(true); return; }
@@ -60,7 +62,7 @@ export function BiometricGate({ children, enabled }: Props) {
       </View>
       <Text style={[styles.title, { color: colors.text }]}>INVESTRY</Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        Authenticate to view your portfolio
+        {t.biometricSubtitle}
       </Text>
       {!!errorMsg && <Text style={[styles.error, { color: colors.red }]}>{errorMsg}</Text>}
       <TouchableOpacity
@@ -74,7 +76,7 @@ export function BiometricGate({ children, enabled }: Props) {
           color={colors.primaryForeground}
         />
         <Text style={[styles.btnText, { color: colors.primaryForeground }]}>
-          {biometricType === 'face' ? 'Use Face ID' : biometricType === 'fingerprint' ? 'Use Touch ID' : 'Unlock'}
+          {biometricType === 'face' ? t.biometricUseFaceId : biometricType === 'fingerprint' ? t.biometricUseTouchId : t.biometricUnlock}
         </Text>
       </TouchableOpacity>
     </View>

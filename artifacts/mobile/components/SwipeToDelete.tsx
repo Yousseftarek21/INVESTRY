@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useT } from '@/hooks/useTranslation';
 
 const REVEAL_W = 84;
 const COMMIT_W = 210;
@@ -16,6 +17,7 @@ interface SwipeToDeleteProps {
 
 export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
   const colors = useColors();
+  const t = useT();
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpenRef = useRef(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -85,7 +87,7 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
       <Pressable onPress={commitDelete} style={[st.deleteBack, { backgroundColor: colors.red }]}>
         <Animated.View style={[st.deleteInner, { opacity: deleteOpacity }]}>
           <Feather name="trash-2" size={22} color="#fff" />
-          <Text style={st.deleteLabel}>Delete</Text>
+          <Text style={st.deleteLabel}>{t.delete}</Text>
         </Animated.View>
       </Pressable>
 

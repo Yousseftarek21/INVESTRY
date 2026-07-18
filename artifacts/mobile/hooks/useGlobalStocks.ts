@@ -7,6 +7,12 @@ export interface GlobalStockLive extends GlobalCompany {
   change: number;
   changePercent: number;
   isLive: boolean;
+  volume?: number;
+  marketCap?: number;
+  high52w?: number;
+  low52w?: number;
+  pe?: number;
+  dividendYield?: number;
 }
 
 const API_BASE = `${getApiBaseUrl()}/api`;
@@ -81,6 +87,14 @@ async function fetchGlobalStocksDirect(): Promise<GlobalStockLive[]> {
       price: parseFloat((r.regularMarketPrice ?? company.fallbackPrice).toFixed(2)),
       change: parseFloat((r.regularMarketChange ?? 0).toFixed(2)),
       changePercent: parseFloat((r.regularMarketChangePercent ?? 0).toFixed(2)),
+      volume:        r.regularMarketVolume ?? undefined,
+      marketCap:     r.marketCap          ?? undefined,
+      high52w:       r.fiftyTwoWeekHigh   ?? undefined,
+      low52w:        r.fiftyTwoWeekLow    ?? undefined,
+      pe:            r.trailingPE         ?? undefined,
+      dividendYield: r.trailingAnnualDividendYield != null
+                       ? parseFloat((r.trailingAnnualDividendYield * 100).toFixed(2))
+                       : undefined,
       isLive: true,
     };
   });

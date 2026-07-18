@@ -217,6 +217,13 @@ export default function GoalsScreen() {
                               <Feather name="edit-2" size={13} color={colors.mutedForeground} />
                               <Text style={[s.actionBtnText, { color: colors.mutedForeground }]}>{t.editGoal}</Text>
                             </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[s.actionBtn, { backgroundColor: colors.red + '12' }]}
+                              onPress={() => handleDelete(g.id)}
+                              hitSlop={8}
+                            >
+                              <Feather name="trash-2" size={13} color={colors.red} />
+                            </TouchableOpacity>
                           </View>
                         </View>
                       </SwipeToDelete>

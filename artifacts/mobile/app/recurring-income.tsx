@@ -263,14 +263,23 @@ export default function RecurringIncomeScreen() {
                             </Text>
                           )}
                         </View>
-                        <View style={[s.badge, {
-                          backgroundColor: inc.active ? colors.primary + '18' : colors.muted,
-                        }]}>
-                          <Text style={[s.badgeText, {
-                            color: inc.active ? colors.primary : colors.mutedForeground,
+                        <View style={s.cardSideCol}>
+                          <View style={[s.badge, {
+                            backgroundColor: inc.active ? colors.primary + '18' : colors.muted,
                           }]}>
-                            {inc.active ? t.active : t.paused}
-                          </Text>
+                            <Text style={[s.badgeText, {
+                              color: inc.active ? colors.primary : colors.mutedForeground,
+                            }]}>
+                              {inc.active ? t.active : t.paused}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
+                            onPress={() => handleDelete(inc.id)}
+                            hitSlop={8}
+                          >
+                            <Feather name="trash-2" size={13} color={colors.red} />
+                          </TouchableOpacity>
                         </View>
                       </TouchableOpacity>
                     </SwipeToDelete>
@@ -549,6 +558,8 @@ const s = StyleSheet.create({
   cardLastCredited:{ fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
   badge:           { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   badgeText:   { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  cardSideCol: { alignItems: 'flex-end', gap: 8 },
+  deleteBtn:   { borderRadius: 8, padding: 6 },
 
   form:    { gap: 16, paddingTop: 8 },
   field:   { gap: 6 },

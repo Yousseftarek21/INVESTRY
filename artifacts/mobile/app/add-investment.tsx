@@ -17,7 +17,6 @@ import { EGX_COMPANIES } from '@/data/egx-companies';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { RE_PRICES, REAreaPrice } from '@/data/egypt-real-estate-prices';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
-import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { DatePickerField } from '@/components/DatePickerField';
 
 const FREE_LIMIT = 5;
@@ -390,14 +389,10 @@ export default function AddInvestmentScreen() {
   const { addHolding, updateHolding, holdings } = useHoldings();
   const { isPro, launchAccess, isLoading: subLoading, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
-  const { holdingId, mode } = useLocalSearchParams<{ holdingId?: string; mode?: string }>();
+  const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
 
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
   const isEditing = editingHolding !== null;
-
-  const [screenMode, setScreenMode] = useState<'choose' | 'investment'>(
-    isEditing || mode === 'investment' ? 'investment' : 'choose'
-  );
 
   const [type, setType] = useState<InvestmentType>('gold');
   const [karat, setKarat] = useState<GoldKarat>('21k');
@@ -787,7 +782,7 @@ export default function AddInvestmentScreen() {
           backgroundColor: colors.background,
         }]}>
           <TouchableOpacity
-            onPress={() => (screenMode === 'investment' && !isEditing && !mode) ? setScreenMode('choose') : router.back()}
+            onPress={() => router.back()}
             hitSlop={12}
           >
             <Feather
@@ -797,52 +792,13 @@ export default function AddInvestmentScreen() {
             />
           </TouchableOpacity>
           <Text style={[styles.modalTitle, { color: colors.text }]}>
-            {screenMode === 'choose' ? t.whatToAdd : (isEditing ? t.editInvestment : t.addInvestment)}
+            {isEditing ? t.editInvestment : t.addInvestment}
           </Text>
-          {screenMode === 'investment' ? (
-            <TouchableOpacity onPress={handleSave}>
-              <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: 44 }} />
-          )}
+          <TouchableOpacity onPress={handleSave}>
+            <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
+          </TouchableOpacity>
         </View>
 
-        {screenMode === 'choose' ? (
-          <ScrollView
-            contentContainerStyle={[styles.chooserContent, { paddingBottom: botInsets + 40 }]}
-            showsVerticalScrollIndicator={false}
-          >
-            <TouchableOpacity
-              style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => setScreenMode('investment')}
-              activeOpacity={0.75}
-            >
-              <View style={[styles.choiceIconWrap, { backgroundColor: colors.primary + '18' }]}>
-                <Feather name="trending-up" size={28} color={colors.primary} />
-              </View>
-              <View style={styles.choiceText}>
-                <Text style={[styles.choiceTitle, { color: colors.text }]}>{t.addInvestmentOption}</Text>
-                <Text style={[styles.choiceDesc, { color: colors.mutedForeground }]}>{t.addInvestmentOptionDesc}</Text>
-              </View>
-              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.push('/cash-accounts?openAdd=1' as any)}
-              activeOpacity={0.75}
-            >
-              <View style={[styles.choiceIconWrap, { backgroundColor: '#22C55E18' }]}>
-                <BanknoteIcon size={28} color="#22C55E" />
-              </View>
-              <View style={styles.choiceText}>
-                <Text style={[styles.choiceTitle, { color: colors.text }]}>{t.addCashOption}</Text>
-                <Text style={[styles.choiceDesc, { color: colors.mutedForeground }]}>{t.addCashOptionDesc}</Text>
-              </View>
-              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </ScrollView>
-        ) : (
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: botInsets + 40 }]}
           keyboardShouldPersistTaps="handled"
@@ -1020,7 +976,7 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.governorate}</Text>
               <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => setGovernoratePickerVisible(true)}
                 activeOpacity={0.7}
               >
@@ -1033,7 +989,7 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.city}</Text>
               <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => setCityPickerVisible(true)}
                 activeOpacity={0.7}
               >
@@ -1046,7 +1002,7 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.district}</Text>
               <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => setDistrictPickerVisible(true)}
                 activeOpacity={0.7}
               >
@@ -1111,9 +1067,7 @@ export default function AddInvestmentScreen() {
               />
             </View>
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.lastValuationDate}</Text>
-              <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
-                value={lastValuationDate} onChangeText={setLastValuationDate} />
+              <DatePickerField label={t.lastValuationDate} value={lastValuationDate} onChange={setLastValuationDate} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.valuationSource}</Text>
@@ -1170,9 +1124,9 @@ export default function AddInvestmentScreen() {
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.monthlyInstallment}</Text>
                   <TextInput style={inputStyle} placeholder="e.g. 15000" placeholderTextColor={colors.mutedForeground}
                     value={monthlyInstallment} onChangeText={(v) => setMonthlyInstallment(formatAmountInput(v))} keyboardType="decimal-pad" />
-                  <Text style={[labelStyle, { marginTop: 12 }]}>{t.installmentEndDate}</Text>
-                  <TextInput style={inputStyle} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground}
-                    value={installmentEndDate} onChangeText={setInstallmentEndDate} />
+                  <View style={{ marginTop: 12 }}>
+                    <DatePickerField label={t.installmentEndDate} value={installmentEndDate} onChange={setInstallmentEndDate} onClear={() => setInstallmentEndDate('')} />
+                  </View>
                 </View>
               )}
             </View>
@@ -1391,7 +1345,6 @@ export default function AddInvestmentScreen() {
 
           </>)}
         </ScrollView>
-        )}
       </KeyboardAvoidingView>
 
       {/* Stock Picker Modal */}
@@ -1487,16 +1440,6 @@ const styles = StyleSheet.create({
   warningText: { flex: 1, fontSize: 12, fontFamily: 'Inter_500Medium', lineHeight: 16 },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 16, marginTop: 8 },
   saveButtonText: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  chooserContent: { paddingHorizontal: 20, paddingTop: 32, gap: 14 },
-  choiceCard: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: 18, borderWidth: 1.5,
-    padding: 20, gap: 16,
-  },
-  choiceIconWrap: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  choiceText: { flex: 1 },
-  choiceTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
-  choiceDesc: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 18 },
   // Dropdown
   dropdownTrigger: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

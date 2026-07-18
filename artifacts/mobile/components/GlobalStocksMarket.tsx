@@ -10,6 +10,8 @@ import {
   getUSMarketStatus,
 } from '@/data/global-stocks';
 import { useGlobalStocks, GlobalStockLive } from '@/hooks/useGlobalStocks';
+import { fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
+import { RangeBar } from '@/components/RangeBar';
 
 // ─── Search Bar ───────────────────────────────────────────────────────────────
 
@@ -109,6 +111,8 @@ const cp = StyleSheet.create({
 
 function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean }) {
   const colors = useColors();
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
   const isPos = stock.changePercent >= 0;
   const changeColor = stock.change === 0 && !stock.isLive ? colors.mutedForeground
     : isPos ? colors.green : colors.red;
@@ -116,7 +120,8 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
   const initials = stock.ticker.length <= 4 ? stock.ticker : stock.ticker.slice(0, 4);
 
   return (
-    <View
+    <Pressable
+      onPress={() => setExpanded(e => !e)}
       style={[
         sc.card,
         { backgroundColor: colors.card, borderColor: colors.border },
@@ -133,7 +138,7 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
             <Text style={[sc.ticker, { color: colors.text }]}>{stock.ticker}</Text>
             {!stock.isLive && (
               <View style={[sc.staticBadge, { backgroundColor: colors.muted }]}>
-                <Text style={[sc.staticTxt, { color: colors.mutedForeground }]}>est.</Text>
+                <Text style={[sc.staticTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel.toLowerCase().slice(0, 4)}.</Text>
               </View>
             )}
           </View>
@@ -152,6 +157,11 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
               {isPos ? '+' : ''}{stock.changePercent.toFixed(2)}%
             </Text>
           </View>
+          {stock.change !== 0 && (
+            <Text style={[sc.changeAbs, { color: changeColor }]}>
+              {isPos ? '+' : ''}{stock.change.toFixed(2)}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -159,13 +169,55 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
         <View style={[sc.catTag, { backgroundColor: colors.muted }]}>
           <Text style={[sc.catTxt, { color: colors.mutedForeground }]}>{stock.category}</Text>
         </View>
-        {stock.change !== 0 && (
-          <Text style={[sc.changeAbs, { color: changeColor }]}>
-            {isPos ? '+' : ''}{stock.change.toFixed(2)}
-          </Text>
-        )}
+        <View style={sc.metaRight}>
+          {stock.volume != null && (
+            <Text style={[sc.metaVal, { color: colors.mutedForeground }]}>
+              {t.volLabel} {fmtVolume(stock.volume)}
+            </Text>
+          )}
+          {stock.marketCap != null && (
+            <Text style={[sc.metaVal, { color: colors.mutedForeground }]}>
+              {t.capLabel} {fmtMarketCap(stock.marketCap, 'USD')}
+            </Text>
+          )}
+        </View>
       </View>
-    </View>
+
+      {expanded && (
+        <View style={[sc.detail, { borderTopColor: colors.border }]}>
+          {stock.high52w != null && stock.low52w != null && (
+            <View style={sc.detailRow}>
+              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>{t.weekRange52}</Text>
+              <View style={{ flex: 1 }}>
+                <RangeBar price={stock.price} low={stock.low52w} high={stock.high52w} />
+              </View>
+            </View>
+          )}
+          <View style={sc.detailRow}>
+            <View style={sc.detailItem}>
+              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>{t.peRatio}</Text>
+              <Text style={[sc.detailValue, { color: colors.text }]}>
+                {stock.pe != null ? stock.pe.toFixed(1) : '—'}
+              </Text>
+            </View>
+            <View style={sc.detailItem}>
+              <Text style={[sc.detailLabel, { color: colors.mutedForeground }]}>{t.dividendYield}</Text>
+              <Text style={[sc.detailValue, { color: colors.text }]}>
+                {stock.dividendYield != null ? `${stock.dividendYield.toFixed(2)}%` : '—'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      <View style={[sc.expandRow, { borderTopColor: colors.border }]}>
+        <Feather
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={12}
+          color={colors.mutedForeground}
+        />
+      </View>
+    </Pressable>
   );
 }
 const sc = StyleSheet.create({
@@ -191,10 +243,18 @@ const sc = StyleSheet.create({
   changeAbs: { fontSize: 10, fontFamily: 'Inter_500Medium' },
   meta: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingBottom: 12, gap: 8,
+    paddingHorizontal: 14, paddingBottom: 10, gap: 8,
   },
   catTag: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   catTxt: { fontSize: 10, fontFamily: 'Inter_500Medium' },
+  metaRight: { flexDirection: 'row', gap: 10 },
+  metaVal: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  detail: { padding: 14, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, gap: 10 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  detailItem: { flex: 1, gap: 2 },
+  detailLabel: { fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.5 },
+  detailValue: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  expandRow: { alignItems: 'center', paddingVertical: 5, borderTopWidth: StyleSheet.hairlineWidth },
 });
 
 // ─── Category Group ───────────────────────────────────────────────────────────

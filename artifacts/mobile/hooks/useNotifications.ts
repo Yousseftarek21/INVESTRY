@@ -111,7 +111,7 @@ const ALERT_COOLDOWN_KEY = '@investry_portfolio_alert_last_sent';
 const ALERT_MIN_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
 const SETTLE_DEBOUNCE_MS = 3000;                  // 3s after prices stop changing
 
-export function usePortfolioAlerts(currentTotal: number) {
+export function usePortfolioAlerts(currentTotal: number, enabled: boolean = true) {
   const alertedThisSession = useRef(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestTotal = useRef(currentTotal);
@@ -146,6 +146,7 @@ export function usePortfolioAlerts(currentTotal: number) {
   // Debounced check — only fires after currentTotal hasn't changed for 3 seconds
   useEffect(() => {
     if (Platform.OS === 'web') return;
+    if (!enabled) return;
     if (currentTotal <= 0) return;
     if (alertedThisSession.current) return;
 

@@ -114,16 +114,14 @@ export default function SignInScreen() {
     setGlobalError('');
     setGoogleLoading(true);
     try {
-      const { createdSessionId, setActive, authSessionResult } = await startSSOFlow({
+      const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       } else {
-        // TEMPORARY DEBUG: surface the raw browser-session result on screen
-        // since we have no cable access to pull device console logs.
-        setGlobalError(`Google sign-in did not complete. debug: ${JSON.stringify(authSessionResult)}`);
+        setGlobalError('Google sign-in did not complete. Please try again.');
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Google sign-in failed');
@@ -136,14 +134,14 @@ export default function SignInScreen() {
     setGlobalError('');
     setAppleLoading(true);
     try {
-      const { createdSessionId, setActive, authSessionResult } = await startSSOFlow({
+      const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_apple',
         redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       } else {
-        setGlobalError(`Apple sign-in did not complete. debug: ${JSON.stringify(authSessionResult)}`);
+        setGlobalError('Apple sign-in did not complete. Please try again.');
       }
     } catch (err: any) {
       setGlobalError(err?.message ?? 'Apple sign-in failed');

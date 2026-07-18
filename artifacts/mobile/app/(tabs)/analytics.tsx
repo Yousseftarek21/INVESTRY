@@ -21,6 +21,7 @@ import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
 import { PerfChart } from '@/components/PerfChart';
+import { AllocationBar, AllocationSegment } from '@/components/AllocationBar';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function personalAssetValueEGP(h: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -174,80 +175,6 @@ const ha = StyleSheet.create({
   outOf: { fontSize: 10, fontFamily: 'Inter_400Regular' },
   gradePill: { marginTop: 4, borderRadius: 20, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3 },
   gradeText: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
-});
-
-// ─── Stacked allocation bars ───────────────────────────────────────────────────
-
-function AllocationBars({ segs }: {
-  segs: { label: string; value: number; color: string; pct: number }[];
-}) {
-  const colors = useColors();
-  // Keyed by label (not index) so adding/removing an asset class between
-  // renders can't leave a stale-length array with missing entries — that
-  // used to crash Animated.timing with "Cannot read property 'stopTracking'
-  // of undefined" whenever the number of active asset classes changed
-  // (e.g. adding the first Personal Asset holding).
-  const widthsRef = useRef<Record<string, Animated.Value>>({});
-
-  useEffect(() => {
-    segs.forEach((seg, i) => {
-      if (!widthsRef.current[seg.label]) {
-        widthsRef.current[seg.label] = new Animated.Value(0);
-      }
-      Animated.timing(widthsRef.current[seg.label], {
-        toValue: seg.pct,
-        duration: 700 + i * 100,
-        useNativeDriver: false,
-      }).start();
-    });
-  }, [segs.map(s => s.pct).join(',')]);
-
-  if (!segs.length) return null;
-
-  return (
-    <View style={ab.container}>
-      {segs.map((seg, i) => {
-        if (!widthsRef.current[seg.label]) {
-          widthsRef.current[seg.label] = new Animated.Value(0);
-        }
-        const width = widthsRef.current[seg.label];
-        return (
-          <View key={seg.label} style={ab.row}>
-            <View style={ab.meta}>
-              <View style={[ab.dot, { backgroundColor: seg.color }]} />
-              <Text style={[ab.label, { color: colors.text }]}>{seg.label}</Text>
-              <Text style={[ab.value, { color: colors.mutedForeground }]}>{fmtK(seg.value)} EGP</Text>
-            </View>
-            <View style={[ab.track, { backgroundColor: colors.muted }]}>
-              <Animated.View
-                style={[
-                  ab.fill,
-                  {
-                    backgroundColor: seg.color,
-                    width: width.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) as any,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={[ab.pct, { color: seg.color }]}>
-              {seg.pct.toFixed(1)}%
-            </Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-const ab = StyleSheet.create({
-  container: { gap: 14 },
-  row: { gap: 6 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  label: { flex: 1, fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  value: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  track: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  fill: { height: 8, borderRadius: 4 },
-  pct: { fontSize: 12, fontFamily: 'Inter_700Bold', textAlign: 'right' },
 });
 
 // ─── Full-width performance chart ─────────────────────────────────────────────
@@ -561,6 +488,7 @@ export default function AnalyticsScreen() {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;
     let goldCost = 0, silverCost = 0;
     let totalGoldGrams = 0, totalSilverGrams = 0;
+    let stockCount = 0, reCount = 0, paCount = 0;
     let todayGold = 0, todaySilver = 0, todayStock = 0, todayFI = 0;
     for (const h of holdings) {
       const v = computeValue(h, prices);
@@ -574,17 +502,17 @@ export default function AnalyticsScreen() {
         todaySilver += v * ((prices?.silverChangePercent ?? 0) / 100);
       }
       else if (h.type === 'stock') {
-        stockV += v;
+        stockV += v; stockCount++;
         const changePercent = egxChangeByTicker[h.symbol] ?? 0;
         todayStock += v * (changePercent / 100);
       }
-      else if (h.type === 'personal_asset') { paV += v; }
+      else if (h.type === 'personal_asset') { paV += v; paCount++; }
       else if (h.type === 'fixed_income') {
         fiV += v;
         const yesterday = new Date(Date.now() - ONE_DAY_MS);
         todayFI += v - fixedIncomeAccruedValue(h, yesterday);
       }
-      else { reV += v; }
+      else { reV += v; reCount++; }
     }
     const totalValue = goldV + silverV + stockV + reV + paV + fiV;
     const gain = totalValue - totalCost;
@@ -600,7 +528,7 @@ export default function AnalyticsScreen() {
       goldV, silverV, stockV, reV, paV, fiV,
       goldCost, silverCost, goldGainPct, silverGainPct,
       totalGoldGrams, totalSilverGrams, goldAvgBuy, silverAvgBuy,
-      metalPct,
+      metalPct, stockCount, reCount, paCount,
     };
   }, [holdings, prices, egxChangeByTicker]);
 
@@ -631,17 +559,32 @@ export default function AnalyticsScreen() {
   );
 
   // ── Allocation segs ───────────────────────────────────────────────────────────
-  const allocSegs = useMemo(() => {
-    const raw = [
-      { label: t.gold, value: sm.goldV, color: colors.primary },
-      { label: t.silver, value: sm.silverV, color: colors.silverColor },
-      { label: t.egxStocksAllocLabel, value: sm.stockV, color: '#4A9EFF' },
-      { label: t.realEstate, value: sm.reV, color: '#A47FCA' },
-      { label: t.personalAssetsAllocLabel, value: sm.paV, color: '#E08E45' },
-      { label: t.fixedIncome, value: sm.fiV, color: '#22C55E' },
-    ].filter(s => s.value > 0);
-    return raw.map(s => ({ ...s, pct: sm.totalValue > 0 ? (s.value / sm.totalValue) * 100 : 0 }));
-  }, [sm, colors]);
+  const allocSegs = useMemo<AllocationSegment[]>(() => [
+    {
+      label: t.gold, value: sm.goldV, color: colors.primary,
+      icon: { lib: 'mci' as const, name: 'gold' }, quantity: sm.totalGoldGrams > 0 ? `${sm.totalGoldGrams.toFixed(1)}g` : undefined,
+    },
+    {
+      label: t.silver, value: sm.silverV, color: colors.silverColor,
+      icon: { lib: 'mci' as const, name: 'gold' }, quantity: sm.totalSilverGrams > 0 ? `${sm.totalSilverGrams.toFixed(1)}g` : undefined,
+    },
+    {
+      label: t.egxStocksAllocLabel, value: sm.stockV, color: '#4A9EFF',
+      icon: 'trending-up', quantity: sm.stockCount > 0 ? `${sm.stockCount} stock${sm.stockCount !== 1 ? 's' : ''}` : undefined,
+    },
+    {
+      label: t.realEstate, value: sm.reV, color: '#A47FCA',
+      icon: { lib: 'mci' as const, name: 'home-city' }, quantity: sm.reCount > 0 ? `${sm.reCount} propert${sm.reCount !== 1 ? 'ies' : 'y'}` : undefined,
+    },
+    {
+      label: t.personalAssetsAllocLabel, value: sm.paV, color: '#E08E45',
+      icon: { lib: 'mci' as const, name: 'tag-multiple' }, quantity: sm.paCount > 0 ? `${sm.paCount} asset${sm.paCount !== 1 ? 's' : ''}` : undefined,
+    },
+    {
+      label: t.fixedIncome, value: sm.fiV, color: '#22C55E',
+      icon: { lib: 'mci' as const, name: 'bank-transfer' },
+    },
+  ], [sm, colors, t]);
 
   // ── Insights ──────────────────────────────────────────────────────────────────
   const insights = useMemo(() => {
@@ -958,10 +901,10 @@ export default function AnalyticsScreen() {
             </View>
 
             {/* ── Allocation bars ──────────────────────────────────────── */}
-            {allocSegs.length > 0 && (
+            {sm.totalValue > 0 && (
               <View style={s.section}>
-                <SLabel icon="pie-chart" title={t.assetAllocationLabel} sub={`${allocSegs.length} ${t.classesCount}`} />
-                <AllocationBars segs={allocSegs} />
+                <SLabel icon="pie-chart" title={t.assetAllocationLabel} sub={`${allocSegs.filter(seg => seg.value > 0).length} ${t.classesCount}`} />
+                <AllocationBar segments={allocSegs} />
               </View>
             )}
 

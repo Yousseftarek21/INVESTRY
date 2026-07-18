@@ -2,6 +2,32 @@ import { useCallback, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '@clerk/expo';
+import { MarketPrices } from '@/types';
+import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { EGXStockLive } from '@/hooks/useEGXMarket';
+
+/**
+ * Builds the { assetKey: currentPrice } dict alerts are checked against.
+ * Shared between the background checker (app/_layout.tsx) and the
+ * price-alerts screen (so the "current price" shown while creating an
+ * alert always matches what will actually trigger it).
+ */
+export function buildAlertPricesDict(
+  prices: MarketPrices | undefined,
+  egxStocks: EGXStockLive[] | undefined,
+): Record<string, number> {
+  if (!prices) return {};
+  const dict: Record<string, number> = {
+    usd_egp:     prices.usdToEgp,
+    gold_24k:    goldPricePerGram(prices, '24k'),
+    gold_22k:    goldPricePerGram(prices, '22k'),
+    gold_21k:    goldPricePerGram(prices, '21k'),
+    gold_18k:    goldPricePerGram(prices, '18k'),
+    silver_gram: silverPricePerGram(prices),
+  };
+  egxStocks?.forEach(s => { dict[`stock_${s.ticker}`] = s.price; });
+  return dict;
+}
 
 export interface PriceAlert {
   id: string;
@@ -67,7 +93,7 @@ export async function checkAlerts(
 }
 
 /** Hook that runs checkAlerts whenever `prices` changes. */
-export function usePriceAlertChecker(prices: Record<string, number> | null) {
+export function usePriceAlertChecker(prices: Record<string, number> | null, enabled: boolean = true) {
   const { isSignedIn } = useAuth();
   const lastCheckedRef = useRef<string>('');
 
@@ -79,10 +105,10 @@ export function usePriceAlertChecker(prices: Record<string, number> | null) {
   }, []);
 
   useEffect(() => {
-    if (!prices || !isSignedIn) return;
+    if (!prices || !isSignedIn || !enabled) return;
     const key = JSON.stringify(prices);
     if (lastCheckedRef.current === key) return;
     lastCheckedRef.current = key;
     checkAlerts(prices, sendNotification);
-  }, [prices, isSignedIn, sendNotification]);
+  }, [prices, isSignedIn, enabled, sendNotification]);
 }
