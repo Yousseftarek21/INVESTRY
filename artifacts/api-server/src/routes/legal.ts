@@ -41,7 +41,7 @@ router.get("/legal/privacy", (_req, res) => {
   <p>Investment holdings and cash accounts you add are stored securely, tied to your authenticated account, and are never shared with other users or sold to third parties. A local copy is cached on your device for offline access.</p>
 
   <h2>Third-Party Market Data</h2>
-  <p>We fetch live prices from third-party providers (Yahoo Finance, TradingView, and currency exchange-rate APIs) to display market data. No personal information is sent to these providers — only anonymous, public price lookups.</p>
+  <p>We fetch live prices from third-party providers to display market data. No personal information is sent to these providers — only anonymous, public price lookups.</p>
 
   <h2>Subscriptions</h2>
   <p>All features are currently available free of charge. We do not process payments or store card details.</p>
