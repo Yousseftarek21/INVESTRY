@@ -1135,9 +1135,9 @@ export default function SettingsScreen() {
         {/* ── LEGAL ────────────────────────────────────────── */}
         <Sect label={t.settingsSectLegal}>
           <NavRow icon="file-text"    iconBg="#374151" label={t.termsOfService} onPress={() =>
-            showModal(t.termsOfService, 'Last updated: July 2025\n\nINVESTRY is provided for informational purposes only. Nothing in this app constitutes financial advice, investment advice, or a recommendation to buy or sell any asset.\n\nAll investment data is sourced from third-party providers and may not be 100% accurate or up to date. Past performance does not guarantee future results.\n\nYou agree to use this app at your own risk. We are not liable for any financial decisions made based on information displayed in this app.\n\nAll investment data is stored locally on your device and is never transmitted to our servers.')} />
+            showModal(t.termsOfService, t.termsOfServiceBody)} />
           <NavRow icon="lock"         iconBg="#4B5563" label={t.privacyPolicy}   onPress={() =>
-            showModal(t.privacyPolicy, 'Last updated: July 2025\n\nINVESTRY does not collect or store any personal data on external servers. All portfolio data is stored locally on your device using AsyncStorage.\n\nThird-Party Services\nWe fetch live market prices from:\n• api.gold-api.com\n• Yahoo Finance\n• open.er-api.com\n\nAnalytics (optional): Anonymized usage data only. No personally identifiable information is collected.\n\nContact: privacy@investry.app')} />
+            showModal(t.privacyPolicy, t.privacyPolicyBody)} />
           <NavRow icon="alert-circle" iconBg="#7C3AED" label={t.regulatoryDisclaimer} onPress={() =>
             showModal(t.regulatoryDisclaimer, 'INVESTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nAlways verify prices with a certified financial professional before making investment decisions.')} />
           <NavRow icon="code"         iconBg="#6B7280" label={t.openSourceLicenses} onPress={() =>

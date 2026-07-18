@@ -41,10 +41,10 @@ router.get("/legal/privacy", (_req, res) => {
   <p>Investment holdings and cash accounts you add are stored securely, tied to your authenticated account, and are never shared with other users or sold to third parties. A local copy is cached on your device for offline access.</p>
 
   <h2>Third-Party Market Data</h2>
-  <p>We fetch live prices from third-party providers (e.g. Yahoo Finance, goldprice.org, exchange-rate APIs) to display market data. No personal information is sent to these providers — only aggregate price requests.</p>
+  <p>We fetch live prices from third-party providers (Yahoo Finance, TradingView, and currency exchange-rate APIs) to display market data. No personal information is sent to these providers — only anonymous, public price lookups.</p>
 
-  <h2>Payments</h2>
-  <p>Subscription payments, when active, are processed by Stripe or Apple. We do not store your card details.</p>
+  <h2>Subscriptions</h2>
+  <p>All features are currently available free of charge. We do not process payments or store card details.</p>
 
   <h2>Data Retention & Deletion</h2>
   <p>You may request deletion of your account and all associated data at any time by contacting us below. Data is deleted from our servers within 30 days of a verified request.</p>
@@ -73,7 +73,7 @@ router.get("/legal/terms", (_req, res) => {
   <p>You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account.</p>
 
   <h2>Subscriptions</h2>
-  <p>Pro plan subscriptions, when active, renew automatically until cancelled and are billed through Stripe or the Apple App Store depending on platform.</p>
+  <p>All features are currently available free of charge. No payment or subscription is required to use INVESTRY.</p>
 
   <h2>Disclaimer</h2>
   <p>We make no guarantees about the accuracy of market data. INVESTRY is not liable for financial decisions made using data shown in the app.</p>
