@@ -58,6 +58,14 @@ export default function WelcomeScreen() {
       title: t.onboardSlide3Title,
       subtitle: t.onboardSlide3Sub,
     },
+    {
+      id: '4',
+      icon: 'shield' as const,
+      iconColor: '#4A9EFF',
+      iconBg: '#4A9EFF18',
+      title: t.onboardSlide4Title,
+      subtitle: t.onboardSlide4Sub,
+    },
   ], [t]);
 
   useEffect(() => {
@@ -105,9 +113,16 @@ export default function WelcomeScreen() {
     }
   };
 
-  const handleSkip = async () => {
-    await markDone();
-    setShowWelcome(true);
+  // Skip only fast-forwards past the feature-highlight slides — it always
+  // lands on the final privacy/security slide rather than bypassing it, so
+  // every new user sees that one regardless of whether they skip the rest.
+  const handleSkip = () => {
+    const lastIndex = SLIDES.length - 1;
+    if (currentIndex < lastIndex) {
+      goToSlide(lastIndex);
+    } else {
+      handleNext();
+    }
   };
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
