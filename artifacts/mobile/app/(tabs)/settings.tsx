@@ -951,8 +951,9 @@ export default function SettingsScreen() {
             <Feather name="chevron-right" size={16} color="#000" />
           </Pressable>
         ) : launchAccess ? (
-          <View
-            style={[sc.proBanner, { backgroundColor: colors.card, borderColor: '#A47FCA40' }]}
+          <Pressable
+            onPress={() => showPaywall()}
+            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: '#A47FCA40', opacity: pressed ? 0.88 : 1 }]}
           >
             <View style={[sc.proBannerIcon, { backgroundColor: '#A47FCA18' }]}>
               <Feather name="star" size={18} color="#A47FCA" />
@@ -964,7 +965,8 @@ export default function SettingsScreen() {
             <View style={[sc.activeTag, { backgroundColor: '#A47FCA18' }]}>
               <Text style={[sc.activeTagTxt, { color: '#A47FCA' }]}>FREE</Text>
             </View>
-          </View>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </Pressable>
         ) : (
           <Pressable
             onPress={() => {

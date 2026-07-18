@@ -8,7 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
 import { useSubscription, openWebPopup, BillingPeriod } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
-import { LaunchBadge, LaunchBanner } from '@/components/LaunchAccess';
+import { LaunchBanner } from '@/components/LaunchAccess';
 
 const ACCENT = '#C9A227';
 
@@ -204,6 +204,10 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
       onClose();
       if (success) {
         Alert.alert(t.subThankYouTitle, t.subThankYouBody);
+      } else if (launchAccess) {
+        // `purchase()` short-circuits during Launch Access without calling
+        // any backend — this is the preview flow, not a failed real charge.
+        Alert.alert(t.subPurchaseUnavailableTitle, t.subPurchaseUnavailableBody);
       }
     } catch {
       webPopup?.close();
@@ -296,29 +300,28 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           </View>
 
           {/* ── CTA ─────────────────────────────────────────── */}
-          {launchAccess ? (
-            <LaunchBadge accent={ACCENT} style={sw.cta} />
-          ) : (
-            <Pressable
-              onPress={() => setShowConfirm(true)}
-              disabled={isPurchasing}
-              style={({ pressed }) => [sw.cta, { backgroundColor: ACCENT, opacity: pressed ? 0.88 : 1 }]}
-            >
-              {isPurchasing ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <View style={sw.ctaRow}>
-                  <View>
-                    <Text style={sw.ctaTop}>{t.subContinueWith} Pro</Text>
-                    <Text style={sw.ctaBottom}>{currentPrice}</Text>
-                  </View>
-                  <View style={sw.ctaArrow}>
-                    <Feather name="arrow-right" size={17} color="#000" />
-                  </View>
+          {/* Always shown, even during Launch Access, so the paywall stays
+              clickable as a preview of the real subscribe flow — no charge
+              is ever attempted (see handleConfirm/purchase()). */}
+          <Pressable
+            onPress={() => setShowConfirm(true)}
+            disabled={isPurchasing}
+            style={({ pressed }) => [sw.cta, { backgroundColor: ACCENT, opacity: pressed ? 0.88 : 1 }]}
+          >
+            {isPurchasing ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <View style={sw.ctaRow}>
+                <View>
+                  <Text style={sw.ctaTop}>{t.subContinueWith} Pro</Text>
+                  <Text style={sw.ctaBottom}>{currentPrice}</Text>
                 </View>
-              )}
-            </Pressable>
-          )}
+                <View style={sw.ctaArrow}>
+                  <Feather name="arrow-right" size={17} color="#000" />
+                </View>
+              </View>
+            )}
+          </Pressable>
 
           {/* ── Footer ──────────────────────────────────────── */}
           <View style={sw.footer}>
