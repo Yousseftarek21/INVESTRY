@@ -11,6 +11,7 @@ import { AssetIcon } from '@/components/AssetIcon';
 type HoldingLabels = {
   gold: string; silver: string; realEstate: string; personalAsset: string;
   sharesLabel: string; fiMatured: string; daysLeft: string; manualValue: string;
+  fiMonthly: string; fiQuarterly: string;
 };
 
 interface HoldingCardProps {
@@ -34,6 +35,12 @@ function personalAssetCostEGP(holding: Extract<Holding, { type: 'personal_asset'
 }
 
 function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>): number {
+  // Monthly/quarterly-payout certificates pay interest out to a linked
+  // account each period rather than compounding it back into the
+  // certificate — its own redemption value stays flat at principal until
+  // maturity. Only at-maturity products actually accrue into their value.
+  if (h.paymentFrequency !== 'at_maturity') return h.principal;
+
   const today = new Date();
   const purchase = new Date(h.purchaseDate);
   const maturity = new Date(h.maturityDate);
@@ -99,7 +106,12 @@ function getSubtitle(holding: Holding, labels: HoldingLabels): string {
       : maturityMs > today.getTime()
         ? `${Math.ceil((maturityMs - today.getTime()) / 86400000)} ${labels.daysLeft}`
         : labels.fiMatured;
-    return `${holding.annualRate}% · ${holding.institution}${suffix ? ' · ' + suffix : ''}`;
+    const payout = holding.paymentFrequency === 'monthly'
+      ? labels.fiMonthly
+      : holding.paymentFrequency === 'quarterly'
+        ? labels.fiQuarterly
+        : '';
+    return `${holding.annualRate}% · ${holding.institution}${payout ? ' · ' + payout : ''}${suffix ? ' · ' + suffix : ''}`;
   }
   const typeLabel = holding.propertyType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
   const place = [holding.district, holding.city].filter(Boolean).join(', ');
@@ -122,6 +134,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
     gold: t.gold, silver: t.silver, realEstate: t.realEstate,
     personalAsset: t.personalAsset, sharesLabel: t.sharesLabel,
     fiMatured: t.fiMatured, daysLeft: t.daysLeft, manualValue: t.manualValue,
+    fiMonthly: t.fiMonthly, fiQuarterly: t.fiQuarterly,
   };
   const currentValue = computeCurrentValue(holding, prices);
   const cost = computeCost(holding, prices);

@@ -813,11 +813,18 @@ export default function SettingsScreen() {
           cost = h.currency === 'USD' && prices ? h.purchasePrice * prices.usdToEgp : h.purchasePrice;
         } else if (h.type === 'fixed_income') {
           type = 'Fixed Income'; name = h.label || h.institution; details = `${h.annualRate}% ${h.subtype}`;
-          const today = new Date(), pur = new Date(h.purchaseDate), mat = new Date(h.maturityDate);
-          const daysTotal = Math.max(1, (mat.getTime() - pur.getTime()) / 86400000);
-          const daysElapsed = Math.max(0, Math.min(daysTotal, (today.getTime() - pur.getTime()) / 86400000));
-          value = h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
           cost = h.principal;
+          // Monthly/quarterly-payout certificates pay interest out rather
+          // than accruing it into the certificate's own value — see the
+          // matching logic in components/HoldingCard.tsx.
+          if (h.paymentFrequency === 'at_maturity') {
+            const today = new Date(), pur = new Date(h.purchaseDate), mat = new Date(h.maturityDate);
+            const daysTotal = Math.max(1, (mat.getTime() - pur.getTime()) / 86400000);
+            const daysElapsed = Math.max(0, Math.min(daysTotal, (today.getTime() - pur.getTime()) / 86400000));
+            value = h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
+          } else {
+            value = h.principal;
+          }
         }
         lines.push(`${type},"${name}","${details}",${value.toFixed(0)},${cost.toFixed(0)},${(value - cost).toFixed(0)}`);
       }
