@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, cashAccountsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 
 const router: IRouter = Router();
 
@@ -24,7 +25,7 @@ router.get("/cash-accounts", async (req, res) => {
       .where(eq(cashAccountsTable.userId, userId))
       .orderBy(cashAccountsTable.createdAt);
 
-    res.json(rows.map(r => ({ id: r.id, type: r.type, ...(r.data as object) })));
+    res.json(rows.map(r => ({ id: r.id, type: r.type, ...(decryptFromStorage(r.data) as object) })));
   } catch (err) {
     req.log.error({ err }, "GET /cash-accounts failed");
     res.status(500).json({ error: "Failed to fetch cash accounts" });
@@ -49,7 +50,7 @@ router.post("/cash-accounts", async (req, res) => {
       id: id as string,
       userId,
       type: type as string,
-      data: rest,
+      data: encryptForStorage(rest),
     });
 
     res.status(201).json({ id, type, ...rest });
@@ -100,7 +101,7 @@ router.put("/cash-accounts/:id", async (req, res) => {
   try {
     const updated = await db
       .update(cashAccountsTable)
-      .set({ data: rest, type: type as string, updatedAt: new Date() })
+      .set({ data: encryptForStorage(rest), type: type as string, updatedAt: new Date() })
       .where(and(eq(cashAccountsTable.id, id), eq(cashAccountsTable.userId, userId)))
       .returning({ id: cashAccountsTable.id });
 
