@@ -274,7 +274,7 @@ function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => voi
       <View style={[zk.assetList, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {[
           { label: t.gold,   value: goldWealth,   icon: { lib: 'mci', name: 'gold' } as const, color: colors.primary },
-          { label: t.silver, value: silverWealth, icon: { lib: 'mci', name: 'gold' } as const, color: colors.silverColor },
+          { label: t.silver, value: silverWealth, icon: { lib: 'mci', name: 'diamond-stone' } as const, color: colors.silverColor },
         ].map((item, i) => (
           <View key={i} style={[zk.assetRow, i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
             <View style={[zk.assetIcon, { backgroundColor: item.color + '18' }]}>
@@ -360,7 +360,7 @@ function SilverValueModal({ visible, onClose }: { visible: boolean; onClose: () 
   const value = parseNum(grams) * pricePerGram;
 
   return (
-    <ModalShell visible={visible} title={t.silverValueModalTitle} icon={{ lib: 'mci', name: 'gold' }} iconColor="#C0C8D4" onClose={onClose}>
+    <ModalShell visible={visible} title={t.silverValueModalTitle} icon={{ lib: 'mci', name: 'diamond-stone' }} iconColor="#C0C8D4" onClose={onClose}>
       <CalcInput label={t.weightGramsLabel} value={grams} onChange={setGrams} unit="g" />
       <ResultCard rows={[
         { label: t.livePriceLabel, value: pricePerGram > 0 ? `${fmt(pricePerGram, 2)} EGP/g` : t.calcLoading },
@@ -518,7 +518,7 @@ function getTools(t: ReturnType<typeof useT>) {
   return [
     { id: 'zakat',    icon: 'moon',         label: t.toolZakatLabel,    sub: t.toolZakatSub,     color: '#10B981' },
     { id: 'gold',     icon: { lib: 'mci', name: 'gold' } as const, label: t.toolGoldLabel,   sub: t.toolLivePriceSub, color: '#C9A227' },
-    { id: 'silver',   icon: { lib: 'mci', name: 'gold' } as const, label: t.toolSilverLabel, sub: t.toolLivePriceSub, color: '#C0C8D4' },
+    { id: 'silver',   icon: { lib: 'mci', name: 'diamond-stone' } as const, label: t.toolSilverLabel, sub: t.toolLivePriceSub, color: '#C0C8D4' },
     { id: 'currency', icon: 'refresh-cw',   label: t.toolCurrencyLabel, sub: t.toolCurrencySub,  color: '#4A9EFF' },
     { id: 'roi',      icon: 'trending-up',  label: t.toolROILabel,      sub: t.toolROISub,       color: '#00D4AA' },
     { id: 'compound', icon: 'bar-chart-2',  label: t.toolCompoundLabel, sub: t.toolCompoundSub,  color: '#A47FCA' },

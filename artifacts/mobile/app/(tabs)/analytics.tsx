@@ -579,7 +579,7 @@ export default function AnalyticsScreen() {
     },
     {
       label: t.silver, value: sm.silverV, color: colors.silverColor,
-      icon: { lib: 'mci' as const, name: 'gold' }, quantity: sm.totalSilverGrams > 0 ? `${sm.totalSilverGrams.toFixed(1)}g` : undefined,
+      icon: { lib: 'mci' as const, name: 'diamond-stone' }, quantity: sm.totalSilverGrams > 0 ? `${sm.totalSilverGrams.toFixed(1)}g` : undefined,
     },
     {
       label: t.egxStocksAllocLabel, value: sm.stockV, color: '#4A9EFF',
@@ -972,7 +972,7 @@ export default function AnalyticsScreen() {
             {/* ── Silver spotlight ─────────────────────────────────────── */}
             {sm.silverV > 0 && (
               <View style={s.section}>
-                <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.silverBreakdownLabel} />
+                <SLabel icon={{ lib: 'mci', name: 'diamond-stone' }} title={t.silverBreakdownLabel} />
                 <MetalSpotlight
                   title={t.silverHoldingsTitle}
                   grams={sm.totalSilverGrams}

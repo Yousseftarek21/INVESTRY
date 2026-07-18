@@ -137,6 +137,60 @@ const frow = StyleSheet.create({
   label: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular' },
 });
 
+// ─── Free vs Pro compare table ─────────────────────────────────────────────────
+
+function CompareTable() {
+  const colors = useColors();
+  const t = useT();
+  const accent = colors.primary;
+
+  const ROWS: { label: string; free: string | false; pro: string | true }[] = [
+    { label: t.subCompareHoldings, free: '3', pro: t.subCompareUnlimited },
+    { label: t.subMarketIntelligence, free: false, pro: true },
+    { label: t.subPortfolioAnalytics, free: false, pro: true },
+  ];
+
+  return (
+    <View style={[cmp.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={cmp.headerRow}>
+        <View style={cmp.labelCol} />
+        <Text style={[cmp.headerTxt, cmp.col, { color: colors.mutedForeground }]}>{t.subCompareFree}</Text>
+        <Text style={[cmp.headerTxt, cmp.col, { color: accent }]}>{t.subComparePro}</Text>
+      </View>
+      {ROWS.map((r, i) => (
+        <View
+          key={r.label}
+          style={[cmp.row, i < ROWS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+        >
+          <Text style={[cmp.rowLabel, cmp.labelCol, { color: colors.text }]} numberOfLines={1}>{r.label}</Text>
+          <View style={cmp.col}>
+            {typeof r.free === 'string'
+              ? <Text style={[cmp.cellTxt, { color: colors.mutedForeground }]}>{r.free}</Text>
+              : <Feather name="x" size={14} color={colors.mutedForeground} />}
+          </View>
+          <View style={cmp.col}>
+            {typeof r.pro === 'string'
+              ? <Text style={[cmp.cellTxt, cmp.cellTxtPro, { color: accent }]}>{r.pro}</Text>
+              : <Feather name="check" size={15} color={accent} />}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const cmp = StyleSheet.create({
+  card: { borderRadius: 18, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8 },
+  headerTxt: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, textTransform: 'uppercase', textAlign: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+  labelCol: { flex: 1 },
+  rowLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  col: { width: 56, alignItems: 'center' },
+  cellTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  cellTxtPro: { fontFamily: 'Inter_700Bold' },
+});
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 interface SubscriptionScreenProps {
@@ -289,6 +343,9 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
             <Text style={[sw.heroTitle, { color: colors.text }]}>Investry Pro</Text>
             <Text style={[sw.heroSub, { color: colors.mutedForeground }]}>{t.subHeroSub}</Text>
           </View>
+
+          {/* ── Free vs Pro ─────────────────────────────────── */}
+          <CompareTable />
 
           {/* ── Billing toggle ──────────────────────────────── */}
           <View style={[sw.toggleWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>

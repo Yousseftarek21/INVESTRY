@@ -1105,7 +1105,11 @@ export default function SettingsScreen() {
           </View>
           <Div />
           <NavRow icon="trending-up" iconBg="#6366F1"   label={t.performanceCalc} value="FIFO"
-            onPress={() => showModal(t.performanceCalc, 'Gain/loss is calculated using First-In, First-Out (FIFO): each investment\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} last />
+            onPress={() => showModal(t.performanceCalc, 'Gain/loss is calculated using First-In, First-Out (FIFO): each investment\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} />
+          <NavRow icon="percent" iconBg="#22C55E" label={t.fixedIncomeCalc}
+            onPress={() => showModal(t.fixedIncomeCalc, 'Interest accrues using simple interest (not compounded): principal × rate × days elapsed ÷ 365.\n\nFor monthly or quarterly payout certificates, the bank pays interest out to a linked account each period instead of adding it back to the certificate — so the value shown here stays flat at your principal until maturity. Only "At Maturity" products accrue toward a lump-sum payout.\n\nThis matches how Egyptian bank certificates and deposits are actually structured.')} />
+          <NavRow icon="activity" iconBg="#4A9EFF" label={t.chartMethodology}
+            onPress={() => showModal(t.chartMethodology, 'Performance charts use your real recorded snapshots and today\'s live total — no data points are invented. Where multiple real points exist, a smoothing curve is drawn between them; with only two points (e.g. a single day), the line is straight because there\'s nothing yet to curve.\n\nThe inflation comparison uses a fixed ~25%/year assumption for Egypt, not a live rate from the Central Bank of Egypt — treat it as a rough benchmark, not an official figure.')} last />
         </Sect>
 
         {/* ── NOTIFICATIONS ────────────────────────────────── */}

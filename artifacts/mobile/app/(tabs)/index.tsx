@@ -705,7 +705,7 @@ export default function HomeScreen() {
                 },
                 {
                   label: t.silver,   value: summary.silverV, color: colors.silverColor,
-                  icon: { lib: 'mci' as const, name: 'gold' }, quantity: summary.silverGrams > 0 ? `${summary.silverGrams.toFixed(1)}g` : undefined,
+                  icon: { lib: 'mci' as const, name: 'diamond-stone' }, quantity: summary.silverGrams > 0 ? `${summary.silverGrams.toFixed(1)}g` : undefined,
                 },
                 {
                   label: t.egxStock, value: summary.stockV,  color: '#4A9EFF',

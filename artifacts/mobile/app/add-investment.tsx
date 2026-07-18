@@ -545,7 +545,7 @@ export default function AddInvestmentScreen() {
 
   const TYPES: { key: InvestmentType; label: string; renderIcon: (size: number, color: string) => React.ReactNode; color: string }[] = [
     { key: 'gold',           label: t.gold,         renderIcon: (s, c) => <MaterialCommunityIcons name="gold"          size={s} color={c} />, color: colors.primary },
-    { key: 'silver',         label: t.silver,        renderIcon: (s, c) => <MaterialCommunityIcons name="gold"          size={s} color={c} />, color: colors.silverColor },
+    { key: 'silver',         label: t.silver,        renderIcon: (s, c) => <MaterialCommunityIcons name="diamond-stone" size={s} color={c} />, color: colors.silverColor },
     { key: 'stock',          label: t.egxStock,      renderIcon: (s, c) => <Feather name="trending-up"                  size={s} color={c} />, color: '#4A9EFF' },
     { key: 'real_estate',    label: t.realEstate,    renderIcon: (s, c) => <MaterialCommunityIcons name="home-city"     size={s} color={c} />, color: '#A47FCA' },
     { key: 'personal_asset', label: t.personalAsset, renderIcon: (s, c) => <MaterialCommunityIcons name="tag-multiple"  size={s} color={c} />, color: '#E08E45' },

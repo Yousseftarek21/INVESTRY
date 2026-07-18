@@ -151,9 +151,10 @@ const cb = StyleSheet.create({
 // ─── Metal hero card ───────────────────────────────────────────────────────────
 
 function MetalHeroCard({
-  accentColor, label, price, unit = 'EGP/g',
+  metalType, accentColor, label, price, unit = 'EGP/g',
   usdPrice, troyEgp, changePercent,
 }: {
+  metalType: 'gold' | 'silver';
   accentColor: string;
   label: string;
   price: number;
@@ -177,7 +178,7 @@ function MetalHeroCard({
         <View style={mh.topRow}>
           <View style={mh.nameRow}>
             <View style={[mh.iconWrap, { backgroundColor: accentColor + '18' }]}>
-              <MaterialCommunityIcons name="gold" size={16} color={accentColor} />
+              <MaterialCommunityIcons name={metalType === 'gold' ? 'gold' : 'diamond-stone'} size={16} color={accentColor} />
             </View>
             <Text style={[mh.label, { color: colors.mutedForeground }]}>{label}</Text>
           </View>
@@ -229,7 +230,7 @@ function MetalRow({
     ]}>
       <View style={mr.left}>
         <View style={[mr.iconWrap, { backgroundColor: accentColor + '18' }]}>
-          <MaterialCommunityIcons name="gold" size={17} color={accentColor} />
+          <MaterialCommunityIcons name={metalType === 'gold' ? 'gold' : 'diamond-stone'} size={17} color={accentColor} />
         </View>
         <View style={mr.labels}>
           <Text style={[mr.label, { color: colors.text }, bold && mr.labelBold]}>{label}</Text>
@@ -629,6 +630,7 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
       <View style={tab.section}>
         <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.goldSectionLabel} />
         <MetalHeroCard
+          metalType="gold"
           accentColor={colors.primary}
           label={t.gold24K}
           price={gold24}
@@ -646,8 +648,9 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
 
       {/* Silver section */}
       <View style={tab.section}>
-        <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.silverSectionLabel} />
+        <SLabel icon={{ lib: 'mci', name: 'diamond-stone' }} title={t.silverSectionLabel} />
         <MetalHeroCard
+          metalType="silver"
           accentColor={colors.silverColor}
           label={t.silver999Label}
           price={silver999}

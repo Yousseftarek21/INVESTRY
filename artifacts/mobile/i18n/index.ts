@@ -395,6 +395,10 @@ const en = {
   subAllocationBreakdown: 'Asset allocation breakdown',
   subTopPerformers: 'Top performers ranking',
   subSmartInsights: 'Smart insights on your holdings',
+  subCompareFree: 'Free',
+  subComparePro: 'Pro',
+  subCompareHoldings: 'Holdings',
+  subCompareUnlimited: 'Unlimited',
   subUpgradeTo: 'Upgrade to',
   subFromYearlyPro: 'From 399.99 EGP/year',
   subFromYearlyProPlus: 'From 559.99 EGP/year',
@@ -846,6 +850,8 @@ const en = {
 
   // Settings — portfolio rows
   performanceCalc: 'Performance Calculation',
+  fixedIncomeCalc: 'Fixed Income Calculation',
+  chartMethodology: 'Chart & Inflation Benchmark',
 
   // Settings — notification rows
   priceAlertsLabel: 'Price Alerts',
@@ -1328,6 +1334,10 @@ const ar: typeof en = {
   subAllocationBreakdown: 'تفصيل توزيع الأصول',
   subTopPerformers: 'ترتيب الأفضل أداءً',
   subSmartInsights: 'رؤى ذكية حول أصولك',
+  subCompareFree: 'مجاني',
+  subComparePro: 'Pro',
+  subCompareHoldings: 'الأصول',
+  subCompareUnlimited: 'غير محدود',
   subUpgradeTo: 'ترقية إلى',
   subFromYearlyPro: 'من 399.99 جنيه/سنة',
   subFromYearlyProPlus: 'من 559.99 جنيه/سنة',
@@ -1779,6 +1789,8 @@ const ar: typeof en = {
 
   // Settings — portfolio rows
   performanceCalc: 'حساب الأداء',
+  fixedIncomeCalc: 'حساب الدخل الثابت',
+  chartMethodology: 'المخطط ومعيار التضخم',
 
   // Settings — notification rows
   priceAlertsLabel: 'تنبيهات الأسعار',
