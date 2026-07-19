@@ -722,13 +722,14 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
   );
 }
 
-function EGXTab({ style, refreshing, onRefresh, topHeader }: {
+function EGXTab({ style, refreshing, onRefresh, topHeader, topInset }: {
   style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
   refreshing?: boolean;
   onRefresh?: () => void;
   topHeader?: React.ReactNode;
+  topInset?: number;
 }) {
-  return <EGXMarket style={style} refreshing={refreshing} onRefresh={onRefresh} topHeader={topHeader} />;
+  return <EGXMarket style={style} refreshing={refreshing} onRefresh={onRefresh} topHeader={topHeader} topInset={topInset} />;
 }
 
 const tab = StyleSheet.create({
@@ -802,8 +803,9 @@ export default function MarketsScreen() {
           style={{ flex: 1 }}
           refreshing={isLoading}
           onRefresh={refetch}
+          topInset={topPad}
           topHeader={
-            <View style={{ gap: 16, paddingTop: topPad + 16 }}>
+            <View style={{ gap: 16, paddingTop: 16 }}>
               <View style={s.header}>
                 <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
                 <LiveDot />
@@ -816,7 +818,9 @@ export default function MarketsScreen() {
         /* All other tabs: header + content scroll together */
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[s.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
+          contentContainerStyle={[s.content, { paddingTop: 16, paddingBottom: botPad + 100 }]}
+          contentInset={{ top: topPad }}
+          contentOffset={{ x: 0, y: -topPad }}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
         >

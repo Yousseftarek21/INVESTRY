@@ -417,11 +417,13 @@ export function EGXMarket({
   refreshing,
   onRefresh,
   topHeader,
+  topInset,
 }: {
   style?: StyleProp<ViewStyle>;
   refreshing?: boolean;
   onRefresh?: () => void;
   topHeader?: React.ReactNode;
+  topInset?: number;
 } = {}) {
   const colors = useColors();
   const t = useT();
@@ -571,6 +573,8 @@ export function EGXMarket({
     <FlatList
       style={[{ flex: 1 }, style]}
       contentContainerStyle={[em.listContent, { paddingTop: topHeader ? 0 : 16, paddingBottom: botPad + 120 }]}
+      contentInset={topInset ? { top: topInset } : undefined}
+      contentOffset={topInset ? { x: 0, y: -topInset } : undefined}
       data={listData}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
