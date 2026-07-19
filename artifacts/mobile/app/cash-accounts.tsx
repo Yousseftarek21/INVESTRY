@@ -521,7 +521,13 @@ export default function CashAccountsScreen() {
               <View style={[styles.totalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>{t.totalCash}</Text>
                 {Object.entries(byCurrency).map(([cur, total]) => (
-                  <Text key={cur} style={[styles.totalValue, { color: colors.text }]}>
+                  <Text
+                    key={cur}
+                    style={[styles.totalValue, { color: colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.5}
+                  >
                     {total.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {cur}
                   </Text>
                 ))}
@@ -711,7 +717,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', gap: 6,
   },
   checkmark: {
-    position: 'absolute', top: 7, right: 7,
+    position: 'absolute', top: 7, end: 7,
     width: 16, height: 16, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },

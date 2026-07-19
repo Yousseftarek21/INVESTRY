@@ -376,7 +376,7 @@ const ph = StyleSheet.create({
   avatarPhoto: { width: 66, height: 66, borderRadius: 33 },
   avatarCircle: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
-  verifyDot: { position: 'absolute', bottom: 2, right: 2, width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  verifyDot: { position: 'absolute', bottom: 2, end: 2, width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, gap: 4, paddingTop: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
   name: { fontSize: 18, fontFamily: 'Inter_700Bold', letterSpacing: -0.4 },
@@ -515,7 +515,7 @@ const epm = StyleSheet.create({
   avatarPhoto: { width: 74, height: 74, borderRadius: 37 },
   avatarCircle: { width: 74, height: 74, borderRadius: 37, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
-  cameraBadge: { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  cameraBadge: { position: 'absolute', bottom: 0, end: 0, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
   photoHint: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   field: { gap: 7 },
   fieldLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.2, marginLeft: 2 },
@@ -626,7 +626,7 @@ const tpk = StyleSheet.create({
   card: { borderRadius: 15, padding: 8, gap: 8, overflow: 'hidden' },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   label: { fontSize: 12 },
-  check: { position: 'absolute', top: 8, right: 8, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  check: { position: 'absolute', top: 8, end: 8, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
 });
 
 // ─── Market status card ────────────────────────────────────────────────────────

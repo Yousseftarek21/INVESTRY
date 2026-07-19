@@ -185,10 +185,10 @@ export default function GoalsScreen() {
                           <ProgressBar pct={pct} color={goalColor} />
 
                           <View style={s.cardNums}>
-                            <Text style={[s.savedNum, { color: goalColor }]}>
+                            <Text style={[s.savedNum, { color: goalColor, flexShrink: 1 }]} numberOfLines={1}>
                               {g.savedAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} <Text style={s.numUnit}>EGP saved</Text>
                             </Text>
-                            <Text style={[s.targetNum, { color: colors.mutedForeground }]}>
+                            <Text style={[s.targetNum, { color: colors.mutedForeground, flexShrink: 1 }]} numberOfLines={1}>
                               of {g.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
                             </Text>
                           </View>

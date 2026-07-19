@@ -164,7 +164,12 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
       <View style={styles.right}>
         {prices ? (
           <>
-            <Text style={[styles.value, { color: colors.text }]}>
+            <Text
+              style={[styles.value, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
               {hideValues ? '••••••' : currentValue.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
               {!hideValues && <Text style={[styles.valueUnit, { color: colors.mutedForeground }]}> EGP</Text>}
             </Text>

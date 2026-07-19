@@ -459,7 +459,7 @@ const sw = StyleSheet.create({
     width: 42, height: 4,
     borderRadius: 2,
   },
-  closeBtn: { position: 'absolute', top: 16, right: 18, zIndex: 10 },
+  closeBtn: { position: 'absolute', top: 16, end: 18, zIndex: 10 },
   closeCircle: {
     width: 30, height: 30, borderRadius: 15,
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',

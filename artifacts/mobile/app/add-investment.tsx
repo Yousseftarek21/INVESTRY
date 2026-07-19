@@ -1425,7 +1425,7 @@ const styles = StyleSheet.create({
   typeCard: { borderRadius: 12, borderWidth: 1.5, padding: 14, alignItems: 'center', gap: 6, position: 'relative' },
   typeLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   checkmark: {
-    position: 'absolute', top: 8, right: 8,
+    position: 'absolute', top: 8, end: 8,
     width: 18, height: 18, borderRadius: 9,
     alignItems: 'center', justifyContent: 'center',
   },

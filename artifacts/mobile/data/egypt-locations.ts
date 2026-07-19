@@ -1,6 +1,8 @@
 // Reference data for the Real Estate location picker: governorates -> cities
-// -> districts/compounds. Not exhaustive — the "Other" manual-entry fallback
-// covers anything missing here.
+// -> districts/compounds. Covers all 27 Egyptian governorates so every user
+// can find their own area; well-known cities get a fuller district breakdown,
+// smaller governorates get at least their capital city so nothing is missing
+// entirely. The "Other" manual-entry fallback still covers anything unlisted.
 
 export interface EgyptCity {
   name: string;
@@ -77,6 +79,10 @@ export const EGYPT_LOCATIONS: EgyptGovernorate[] = [
         name: 'Haram',
         districts: ['Faisal', 'Pyramids Gardens'],
       },
+      {
+        name: 'Hadayek El Ahram',
+        districts: ['Hadayek El Ahram Center'],
+      },
     ],
   },
   {
@@ -84,7 +90,7 @@ export const EGYPT_LOCATIONS: EgyptGovernorate[] = [
     cities: [
       {
         name: 'Alexandria City',
-        districts: ['Smouha', 'Roushdy', 'Sidi Gaber', 'Miami', 'San Stefano', 'Kafr Abdo'],
+        districts: ['Smouha', 'Roushdy', 'Sidi Gaber', 'Miami', 'San Stefano', 'Kafr Abdo', 'Stanley', 'Sporting', 'Mandara', 'Agami'],
       },
       {
         name: 'North Coast',
@@ -107,6 +113,14 @@ export const EGYPT_LOCATIONS: EgyptGovernorate[] = [
         name: 'Sahl Hasheesh',
         districts: ['Sahl Hasheesh Bay'],
       },
+      {
+        name: 'Ain Sokhna',
+        districts: ['Ain Sokhna Center'],
+      },
+      {
+        name: 'Makadi Bay',
+        districts: ['Makadi Bay Center'],
+      },
     ],
   },
   {
@@ -120,6 +134,12 @@ export const EGYPT_LOCATIONS: EgyptGovernorate[] = [
         name: 'Dahab',
         districts: ['Dahab Center', 'Assalah'],
       },
+    ],
+  },
+  {
+    name: 'North Sinai',
+    cities: [
+      { name: 'Arish', districts: ['Arish Center'] },
     ],
   },
   {
@@ -148,6 +168,7 @@ export const EGYPT_LOCATIONS: EgyptGovernorate[] = [
     name: 'Dakahlia',
     cities: [
       { name: 'Mansoura', districts: ['Mansoura Center', 'Toriel'] },
+      { name: 'New Mansoura', districts: ['New Mansoura City'] },
     ],
   },
   {
@@ -155,6 +176,110 @@ export const EGYPT_LOCATIONS: EgyptGovernorate[] = [
     cities: [
       { name: 'Zagazig', districts: ['Zagazig Center'] },
       { name: '10th of Ramadan', districts: ['10th of Ramadan Center'] },
+      { name: 'Obour City', districts: ['Obour City Center'] },
+    ],
+  },
+  {
+    name: 'Ismailia',
+    cities: [
+      { name: 'Ismailia City', districts: ['Ismailia City Center'] },
+    ],
+  },
+  {
+    name: 'Suez',
+    cities: [
+      { name: 'Suez City', districts: ['Suez City Center'] },
+    ],
+  },
+  {
+    name: 'Port Said',
+    cities: [
+      { name: 'Port Said City', districts: ['Port Fouad', 'Port Said Center'] },
+    ],
+  },
+  {
+    name: 'Damietta',
+    cities: [
+      { name: 'Damietta City', districts: ['New Damietta', 'Damietta Center'] },
+    ],
+  },
+  {
+    name: 'Beheira',
+    cities: [
+      { name: 'Damanhur', districts: ['Damanhur Center'] },
+    ],
+  },
+  {
+    name: 'Kafr El Sheikh',
+    cities: [
+      { name: 'Kafr El Sheikh City', districts: ['Kafr El Sheikh Center'] },
+    ],
+  },
+  {
+    name: 'Gharbia',
+    cities: [
+      { name: 'Tanta', districts: ['Tanta Center'] },
+    ],
+  },
+  {
+    name: 'Menoufia',
+    cities: [
+      { name: 'Shibin El Kom', districts: ['Shibin El Kom Center'] },
+      { name: 'Sadat City', districts: ['Sadat City Center'] },
+    ],
+  },
+  {
+    name: 'Fayoum',
+    cities: [
+      { name: 'Fayoum City', districts: ['Fayoum City Center'] },
+    ],
+  },
+  {
+    name: 'Beni Suef',
+    cities: [
+      { name: 'Beni Suef City', districts: ['Beni Suef City Center'] },
+    ],
+  },
+  {
+    name: 'Minya',
+    cities: [
+      { name: 'Minya City', districts: ['Minya City Center'] },
+    ],
+  },
+  {
+    name: 'Assiut',
+    cities: [
+      { name: 'Assiut City', districts: ['Assiut City Center'] },
+    ],
+  },
+  {
+    name: 'Sohag',
+    cities: [
+      { name: 'Sohag City', districts: ['Sohag City Center'] },
+    ],
+  },
+  {
+    name: 'Qena',
+    cities: [
+      { name: 'Qena City', districts: ['Qena City Center'] },
+    ],
+  },
+  {
+    name: 'Luxor',
+    cities: [
+      { name: 'Luxor City', districts: ['Luxor City Center'] },
+    ],
+  },
+  {
+    name: 'Aswan',
+    cities: [
+      { name: 'Aswan City', districts: ['Aswan City Center'] },
+    ],
+  },
+  {
+    name: 'New Valley',
+    cities: [
+      { name: 'Kharga', districts: ['Kharga Center'] },
     ],
   },
   {

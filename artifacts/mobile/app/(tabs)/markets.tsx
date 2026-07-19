@@ -186,7 +186,14 @@ function MetalHeroCard({
         </View>
         {/* Price */}
         <View style={mh.priceRow}>
-          <Text style={[mh.price, { color: colors.text }]}>{priceStr}</Text>
+          <Text
+            style={[mh.price, { color: colors.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {priceStr}
+          </Text>
           <Text style={[mh.unit, { color: colors.mutedForeground }]}> {unit}</Text>
         </View>
         {/* Reference prices inline */}
@@ -339,7 +346,12 @@ function CurrencyHeroCard({ rate }: { rate: number }) {
         </View>
         {/* Rate */}
         <View style={ch.rateRow}>
-          <Text style={[ch.rate, { color: colors.text }]}>
+          <Text
+            style={[ch.rate, { color: colors.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
             {rate.toLocaleString('en-EG', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
           </Text>
           <Text style={[ch.rateUnit, { color: colors.mutedForeground }]}> EGP</Text>
@@ -392,7 +404,12 @@ function CurrencyRow({
         <Text style={[cr.pair, { color: colors.mutedForeground }]}>{pair}</Text>
       </View>
       <View style={cr.right}>
-        <Text style={[cr.rate, { color: colors.text }]}>
+        <Text
+          style={[cr.rate, { color: colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
           {rate.toLocaleString('en-EG', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
         </Text>
         <Text style={[cr.unit, { color: colors.mutedForeground }]}>{unit}</Text>

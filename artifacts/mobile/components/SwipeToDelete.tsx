@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  Animated, PanResponder, Platform,
+  Animated, I18nManager, PanResponder, Platform,
   Pressable, StyleSheet, Text, View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
@@ -9,6 +9,9 @@ import { useT } from '@/hooks/useTranslation';
 
 const REVEAL_W = 84;
 const COMMIT_W = 210;
+// In RTL the delete panel sits on the visual left (via `end`), so the reveal
+// gesture mirrors too: dragging right (positive dx) opens it, instead of left.
+const DIR = I18nManager.isRTL ? 1 : -1;
 
 interface SwipeToDeleteProps {
   onDelete: () => void;
@@ -33,7 +36,7 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
   }, []);
 
   const snapOpen = useCallback(() => {
-    Animated.spring(translateX, { toValue: -REVEAL_W, useNativeDriver: true, tension: 60, friction: 9 }).start();
+    Animated.spring(translateX, { toValue: DIR * REVEAL_W, useNativeDriver: true, tension: 60, friction: 9 }).start();
     isOpenRef.current = true;
     setIsOpen(true);
   }, []);
@@ -49,19 +52,25 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
         Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5,
       onPanResponderMove: (_, { dx }) => {
-        const base = isOpenRef.current ? -REVEAL_W : 0;
-        const next = Math.min(0, Math.max(base + dx, -(COMMIT_W + 20)));
+        const base = isOpenRef.current ? DIR * REVEAL_W : 0;
+        const raw = base + dx;
+        const next = DIR === -1
+          ? Math.min(0, Math.max(raw, -(COMMIT_W + 20)))
+          : Math.max(0, Math.min(raw, COMMIT_W + 20));
         translateX.setValue(next);
       },
       onPanResponderRelease: (_, { dx }) => {
-        const base = isOpenRef.current ? -REVEAL_W : 0;
+        const base = isOpenRef.current ? DIR * REVEAL_W : 0;
         const total = base + dx;
+        const pastCommit    = DIR === -1 ? total <= -COMMIT_W        : total >= COMMIT_W;
+        const pastReveal     = DIR === -1 ? total < -(REVEAL_W / 2)   : total > REVEAL_W / 2;
+        const closingDrag    = DIR === -1 ? dx > REVEAL_W / 2         : dx < -(REVEAL_W / 2);
 
-        if (total <= -COMMIT_W) {
+        if (pastCommit) {
           commitDelete();
-        } else if (!isOpenRef.current && total < -(REVEAL_W / 2)) {
+        } else if (!isOpenRef.current && pastReveal) {
           snapOpen();
-        } else if (isOpenRef.current && dx > REVEAL_W / 2) {
+        } else if (isOpenRef.current && closingDrag) {
           snapClose();
         } else if (isOpenRef.current) {
           snapOpen();
@@ -75,8 +84,8 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
   ).current;
 
   const deleteOpacity = translateX.interpolate({
-    inputRange: [-REVEAL_W, -(REVEAL_W / 2), 0],
-    outputRange: [1, 0.4, 0],
+    inputRange: DIR === -1 ? [-REVEAL_W, -(REVEAL_W / 2), 0] : [0, REVEAL_W / 2, REVEAL_W],
+    outputRange: DIR === -1 ? [1, 0.4, 0] : [0, 0.4, 1],
     extrapolate: 'clamp',
   });
 
@@ -101,7 +110,7 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
 
 const st = StyleSheet.create({
   wrap:        { overflow: 'hidden', borderRadius: 16 },
-  deleteBack:  { position: 'absolute', right: 0, top: 0, bottom: 0, width: REVEAL_W, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  deleteBack:  { position: 'absolute', end: 0, top: 0, bottom: 0, width: REVEAL_W, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   deleteInner: { alignItems: 'center', gap: 4 },
   deleteLabel: { color: '#fff', fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
 });
