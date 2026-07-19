@@ -28,7 +28,6 @@ export function NoNetworkScreen() {
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.appName}>INVESTRY</Text>
 
       <View style={styles.iconCircle}>
         <Text style={styles.iconText}>↯</Text>
@@ -64,16 +63,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   logo: {
-    width: 72,
-    height: 72,
+    width: 150,
+    height: 43,
     opacity: 0.5,
-    marginBottom: 8,
-  },
-  appName: {
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    color: "#4A4A4A",
     marginBottom: 48,
   },
   iconCircle: {

@@ -20,22 +20,17 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "splash": {
-      "image": "./assets/images/logo-mark.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#121212"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.investry.app",
-      "buildNumber": "47",
+      "buildNumber": "48",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.investry.app",
-      "versionCode": 34,
+      "versionCode": 35,
       "statusBar": {
         "barStyle": "light-content",
         "backgroundColor": "transparent",
@@ -55,6 +50,18 @@
       "expo-font",
       "expo-web-browser",
       "expo-updates",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo-mark-light.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FDFBF7",
+          "dark": {
+            "image": "./assets/images/logo-mark.png",
+            "backgroundColor": "#121212"
+          }
+        }
+      ],
       [
         "expo-build-properties",
         {

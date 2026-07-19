@@ -1,11 +1,18 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Image, Platform, StyleSheet, Text, View } from "react-native";
+import { useAppSettings } from "@/context/AppSettingsContext";
+import { useColors } from "@/hooks/useColors";
 
 interface Props {
   statusMessage?: string;
 }
 
+const LOGO_DARK = require("@/assets/images/logo-mark.png");
+const LOGO_LIGHT = require("@/assets/images/logo-mark-light.png");
+
 export function CustomSplash({ statusMessage }: Props) {
+  const { resolvedTheme } = useAppSettings();
+  const colors = useColors();
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -22,20 +29,19 @@ export function CustomSplash({ statusMessage }: Props) {
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Image
-        source={require("@/assets/images/logo-mark.png")}
+        source={resolvedTheme === "dark" ? LOGO_DARK : LOGO_LIGHT}
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.appName}>INVESTRY</Text>
-      <Text style={styles.tagline}>Know Your Wealth</Text>
+      <Text style={[styles.tagline, { color: colors.mutedForeground }]}>All Investments. One Place.</Text>
 
-      <View style={styles.barTrack}>
-        <Animated.View style={[styles.barFill, { width: barWidth }]} />
+      <View style={[styles.barTrack, { backgroundColor: colors.secondary }]}>
+        <Animated.View style={[styles.barFill, { width: barWidth, backgroundColor: colors.primary }]} />
       </View>
 
-      <Text style={styles.status}>
+      <Text style={[styles.status, { color: colors.mutedForeground }]}>
         {statusMessage ?? ""}
       </Text>
     </View>
@@ -47,44 +53,32 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#121212",
     zIndex: 999,
     elevation: Platform.OS === "android" ? 999 : undefined,
   },
   logo: {
-    width: 140,
-    height: 140,
-  },
-  appName: {
-    marginTop: 24,
-    fontSize: 28,
-    fontWeight: "700",
-    letterSpacing: 1.5,
-    color: "#C9A227",
+    width: 260,
+    height: 74,
   },
   tagline: {
     marginTop: 8,
     fontSize: 14,
     letterSpacing: 0.5,
-    color: "#8E8E93",
   },
   barTrack: {
     marginTop: 48,
     width: 160,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#2C2C2E",
     overflow: "hidden",
   },
   barFill: {
     height: "100%",
     borderRadius: 2,
-    backgroundColor: "#C9A227",
   },
   status: {
     marginTop: 16,
     fontSize: 12,
-    color: "#8E8E93",
     letterSpacing: 0.3,
     minHeight: 16,
   },
