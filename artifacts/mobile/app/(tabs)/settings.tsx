@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Alert, Animated, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
-  ScrollView, Share, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
+  ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -21,10 +21,12 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings, ThemeMode, WeightUnit, DisplayCurrency } from '@/context/AppSettingsContext';
 import { useHoldings } from '@/context/HoldingsContext';
-import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { useCash } from '@/context/CashContext';
+import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
 import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
 import { PremiumBadge } from '@/components/PremiumBadge';
+import { exportPortfolioAsCsv, exportPortfolioAsPdf } from '@/utils/exportPortfolio';
 
 // Read live from the running binary/update instead of a hand-maintained
 // constant, so this can never silently drift out of sync with reality.
@@ -756,6 +758,7 @@ export default function SettingsScreen() {
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
   } = useAppSettings();
   const { holdings, removeHolding } = useHoldings();
+  const { cashAccounts } = useCash();
   const { data: prices, dataUpdatedAt, refetch: refetchPrices } = useMarketPrices();
 
   const [modal, setModal]         = useState<{ title: string; content: string } | null>(null);
@@ -786,53 +789,31 @@ export default function SettingsScreen() {
     setConfirm({ id: 'delete', title: t.deleteAllData, message: t.deleteAllDataConfirmMsg, label: t.deleteEverything, danger: true });
   };
 
-  const handleExport = async () => {
+  const handleExportCsv = async () => {
     haptic();
     try {
-      const lines: string[] = ['Type,Name,Details,Current Value (EGP),Cost (EGP),Gain/Loss (EGP)'];
-      for (const h of holdings) {
-        let type = '', name = '', details = '', value = 0, cost = 0;
-        if (h.type === 'gold') {
-          type = 'Gold'; name = `${h.karat.toUpperCase()} Gold`; details = `${h.grams}g ${h.form}`;
-          value = prices ? h.grams * goldPricePerGram(prices, h.karat) : 0;
-          cost = h.grams * h.purchasePricePerGram;
-        } else if (h.type === 'silver') {
-          type = 'Silver'; name = 'Silver'; details = `${h.grams}g ${h.form}`;
-          value = prices ? h.grams * silverPricePerGram(prices) : 0;
-          cost = h.grams * h.purchasePricePerGram;
-        } else if (h.type === 'stock') {
-          type = 'EGX Stock'; name = h.symbol; details = `${h.shares} shares`;
-          value = h.shares * h.purchasePricePerShare; cost = h.shares * h.purchasePricePerShare;
-        } else if (h.type === 'real_estate') {
-          type = 'Real Estate'; name = h.propertyName || h.propertyType; details = h.propertyType;
-          value = h.currentValue ?? 0; cost = h.purchasePrice;
-        } else if (h.type === 'personal_asset') {
-          type = 'Personal Asset'; name = h.name; details = h.category;
-          const cv = h.currentValue ?? h.purchasePrice;
-          value = h.currency === 'USD' && prices ? cv * prices.usdToEgp : cv;
-          cost = h.currency === 'USD' && prices ? h.purchasePrice * prices.usdToEgp : h.purchasePrice;
-        } else if (h.type === 'fixed_income') {
-          type = 'Fixed Income'; name = h.label || h.institution; details = `${h.annualRate}% ${h.subtype}`;
-          cost = h.principal;
-          // Monthly/quarterly-payout certificates pay interest out rather
-          // than accruing it into the certificate's own value — see the
-          // matching logic in components/HoldingCard.tsx.
-          if (h.paymentFrequency === 'at_maturity') {
-            const today = new Date(), pur = new Date(h.purchaseDate), mat = new Date(h.maturityDate);
-            const daysTotal = Math.max(1, (mat.getTime() - pur.getTime()) / 86400000);
-            const daysElapsed = Math.max(0, Math.min(daysTotal, (today.getTime() - pur.getTime()) / 86400000));
-            value = h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
-          } else {
-            value = h.principal;
-          }
-        }
-        lines.push(`${type},"${name}","${details}",${value.toFixed(0)},${cost.toFixed(0)},${(value - cost).toFixed(0)}`);
-      }
-      const date = new Date().toLocaleDateString('en-EG', { year: 'numeric', month: '2-digit', day: '2-digit' });
-      await Share.share({ message: lines.join('\n'), title: `INVESTRY Portfolio — ${date}` });
+      await exportPortfolioAsCsv(holdings, cashAccounts, prices);
     } catch {
       Alert.alert(t.exportFailed, t.exportFailedDesc);
     }
+  };
+
+  const handleExportPdf = async () => {
+    haptic();
+    try {
+      await exportPortfolioAsPdf(holdings, cashAccounts, prices, { userName: profileName });
+    } catch {
+      Alert.alert(t.exportFailed, t.exportFailedDesc);
+    }
+  };
+
+  const handleExport = () => {
+    haptic();
+    Alert.alert(t.exportMyData, undefined, [
+      { text: t.exportAsCsv, onPress: handleExportCsv },
+      { text: t.exportAsPdf, onPress: handleExportPdf },
+      { text: t.cancel, style: 'cancel' },
+    ]);
   };
 
   const handleSignOut = () => {
@@ -1145,7 +1126,7 @@ export default function SettingsScreen() {
           <ToggleRow icon="alert-circle" iconBg="#F97316" label={t.crashReportsLabel}     sublabel={t.crashReportsDesc}     value={crashReportsEnabled} onChange={v => setCrashReportsEnabled(v)} />
           <NavRow icon="shield"   iconBg="#047857" label={t.privacySettingsLabel}  sublabel={t.privacySettingsDesc} onPress={() => Linking.openSettings()} />
           <NavRow icon="download" iconBg="#0EA5E9" label={t.exportMyData}
-            sublabel={`${holdings.length} ${t.investmentsLabel} · CSV`}
+            sublabel={`${holdings.length} ${t.investmentsLabel} · CSV / PDF`}
             onPress={handleExport} />
           <NavRow icon="trash-2"  iconBg={colors.red} label={t.deleteAllData} sublabel={t.deleteAllDataDesc} onPress={handleDeleteAll} destructive last />
         </Sect>
