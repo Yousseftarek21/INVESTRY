@@ -586,7 +586,12 @@ export function EGXMarket({
       keyboardShouldPersistTaps="handled"
       refreshControl={
         onRefresh ? (
-          <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={!!refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
         ) : undefined
       }
     />
