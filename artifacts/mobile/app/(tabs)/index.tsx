@@ -475,7 +475,7 @@ export default function HomeScreen() {
       style={[styles.scrollTransparent, { flex: 1 }]}
       contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.text} />}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} colors={[colors.primary]} />}
     >
       {/* ── Portfolio label ─────────────────────────────────────── */}
       <View style={styles.titleRow}>
