@@ -1,11 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Platform, StyleSheet, Text } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { Animated, StyleSheet, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-
-const PURPLE = '#C9A227';
+import { useColors } from '@/hooks/useColors';
 
 export function PremiumBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const colors = useColors();
   const scale = useRef(new Animated.Value(0.6)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
@@ -37,7 +36,6 @@ export function PremiumBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
     };
   }, [glow]);
 
-  const isIOS = Platform.OS === 'ios';
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] });
 
   return (
@@ -45,15 +43,24 @@ export function PremiumBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
       style={[
         styles.pill,
         size === 'sm' ? styles.pillSm : styles.pillMd,
-        { opacity: Animated.multiply(opacity, glowOpacity), transform: [{ scale }] },
+        {
+          borderColor: colors.primary + '40',
+          backgroundColor: colors.primary + '16',
+          opacity: Animated.multiply(opacity, glowOpacity),
+          transform: [{ scale }],
+        },
       ]}
     >
-      {isIOS ? (
-        <SymbolView name="rosette" tintColor={PURPLE} size={iconSize} />
-      ) : (
-        <Feather name="award" size={iconSize} color={PURPLE} />
-      )}
-      <Text style={[styles.pillText, size === 'sm' ? styles.pillTextSm : styles.pillTextMd]}>PRO</Text>
+      <Feather name="star" size={iconSize} color={colors.primary} />
+      <Text
+        style={[
+          styles.pillText,
+          size === 'sm' ? styles.pillTextSm : styles.pillTextMd,
+          { color: colors.primary },
+        ]}
+      >
+        PRO
+      </Text>
     </Animated.View>
   );
 }
@@ -64,14 +71,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: PURPLE + '40',
-    backgroundColor: PURPLE + '16',
   },
   pillSm: { gap: 3, paddingHorizontal: 7, paddingVertical: 3 },
   pillMd: { gap: 4, paddingHorizontal: 9, paddingVertical: 4 },
   pillText: {
     fontFamily: 'Inter_700Bold',
-    color: PURPLE,
     letterSpacing: 0.6,
   },
   pillTextSm: { fontSize: 10 },

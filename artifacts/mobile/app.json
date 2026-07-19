@@ -31,6 +31,10 @@
     "android": {
       "package": "com.investry.app",
       "versionCode": 35,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "backgroundColor": "#FFFFFF"
+      },
       "statusBar": {
         "barStyle": "light-content",
         "backgroundColor": "transparent",

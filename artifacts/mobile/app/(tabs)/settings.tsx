@@ -308,9 +308,9 @@ function ProfileHero({
       onPress={onPress} activeOpacity={0.75}
       style={[ph.card, { backgroundColor: colors.card, borderColor: colors.border }]}
     >
-      {/* Purple accent line at top of card (matches Pro badge color) */}
+      {/* Accent line at top of card (matches Pro badge color) */}
       <ExpoLinearGradient
-        colors={['#A47FCA00', '#A47FCACC', '#A47FCA00']}
+        colors={[colors.primary + '00', colors.primary + 'CC', colors.primary + '00']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={ph.accentBar}
@@ -960,17 +960,17 @@ export default function SettingsScreen() {
         ) : launchAccess ? (
           <Pressable
             onPress={() => showPaywall()}
-            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: '#A47FCA40', opacity: pressed ? 0.88 : 1 }]}
+            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: colors.primary + '40', opacity: pressed ? 0.88 : 1 }]}
           >
-            <View style={[sc.proBannerIcon, { backgroundColor: '#A47FCA18' }]}>
-              <Feather name="star" size={18} color="#A47FCA" />
+            <View style={[sc.proBannerIcon, { backgroundColor: colors.primary + '18' }]}>
+              <Feather name="star" size={18} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[sc.proBannerTitle, { color: colors.text }]}>Investry Pro</Text>
               <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>{t.allFeaturesUnlocked}</Text>
             </View>
-            <View style={[sc.activeTag, { backgroundColor: '#A47FCA18' }]}>
-              <Text style={[sc.activeTagTxt, { color: '#A47FCA' }]}>FREE</Text>
+            <View style={[sc.activeTag, { backgroundColor: colors.primary + '18' }]}>
+              <Text style={[sc.activeTagTxt, { color: colors.primary }]}>FREE</Text>
             </View>
             <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
           </Pressable>
@@ -986,19 +986,31 @@ export default function SettingsScreen() {
                 showModal('Could not open billing portal', 'Please check your internet connection and try again.');
               });
             }}
-            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: '#A47FCA40', opacity: pressed ? 0.88 : 1 }]}
+            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: colors.primary + '40', opacity: pressed ? 0.88 : 1 }]}
           >
-            <View style={[sc.proBannerIcon, { backgroundColor: '#A47FCA18' }]}>
-              <Feather name="star" size={18} color="#A47FCA" />
+            <View style={[sc.proBannerIcon, { backgroundColor: colors.primary + '18' }]}>
+              <Feather name="star" size={18} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[sc.proBannerTitle, { color: colors.text }]}>Investry Pro</Text>
               <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>{t.allFeaturesManage}</Text>
             </View>
-            <View style={[sc.activeTag, { backgroundColor: '#A47FCA18' }]}>
-              <Text style={[sc.activeTagTxt, { color: '#A47FCA' }]}>{t.proActiveLabel}</Text>
+            <View style={[sc.activeTag, { backgroundColor: colors.primary + '18' }]}>
+              <Text style={[sc.activeTagTxt, { color: colors.primary }]}>{t.proActiveLabel}</Text>
             </View>
           </Pressable>
+        )}
+
+        {/* ── INVITE FRIENDS ────────────────────────────────── */}
+        {!!user && (
+          <Sect label={t.settingsSectInvite}>
+            <NavRow
+              icon="gift" iconBg={colors.primary}
+              label={t.inviteFriendsNav} sublabel={t.inviteFriendsNavSub}
+              onPress={() => { haptic(); router.push('/invite-friends' as any); }}
+              last
+            />
+          </Sect>
         )}
 
         {/* ── ACCOUNT & SECURITY ─────────────────────────── */}

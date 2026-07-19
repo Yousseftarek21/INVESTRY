@@ -9,6 +9,9 @@ export const usersTable = pgTable("users", {
   stripeSubscriptionId:   text("stripe_subscription_id"),
   plan:                   text("plan").notNull().default("free"), // 'free' | 'pro'
   billingPeriod:          text("billing_period").notNull().default("monthly"), // 'monthly' | 'annual'
+  referralCode:           text("referral_code").unique(), // short shareable code, lazily generated
+  referredByUserId:       text("referred_by_user_id"), // id of the user whose code was redeemed
+  proCreditExpiresAt:     timestamp("pro_credit_expires_at", { withTimezone: true }), // bonus Pro time earned from referrals
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
