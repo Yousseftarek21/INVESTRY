@@ -9,7 +9,6 @@ import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
-import { usePortfolioNotifications } from '@/hooks/usePortfolioNotifications';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
@@ -42,7 +41,13 @@ function personalAssetCostEGP(h: Extract<Holding, { type: 'personal_asset' }>, p
   return h.purchasePrice;
 }
 
+// Monthly/quarterly-payout certificates pay interest out to a linked account
+// each period rather than compounding it back into the certificate — its
+// value stays flat at principal until maturity. Only at-maturity products
+// accrue. Matches components/HoldingCard.tsx, the canonical per-holding
+// display — this used to accrue unconditionally, overstating totals here.
 function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>, asOf: Date = new Date()): number {
+  if (h.paymentFrequency !== 'at_maturity') return h.principal;
   const purchase = new Date(h.purchaseDate);
   const maturity = new Date(h.maturityDate);
   const daysTotal = Math.max(1, (maturity.getTime() - purchase.getTime()) / 86400000);

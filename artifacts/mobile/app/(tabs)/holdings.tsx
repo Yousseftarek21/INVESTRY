@@ -57,13 +57,30 @@ const TYPE_COLORS: Record<Holding['type'], string> = {
 type SortMode = 'default' | 'value' | 'gain' | 'date';
 type PricesArg = (MarketPrices & { egxPrices?: Record<string, number> }) | null | undefined;
 
+// Monthly/quarterly-payout certificates pay interest out to a linked account
+// each period rather than compounding it back into the certificate — its
+// own redemption value stays flat at principal until maturity. Only
+// at-maturity products actually accrue into their value. Matches
+// components/HoldingCard.tsx, the canonical per-holding display — this used
+// to just return principal unconditionally here, which meant sorting by
+// value/gain disagreed with what each card actually showed.
+function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>): number {
+  if (h.paymentFrequency !== 'at_maturity') return h.principal;
+  const today = new Date();
+  const purchase = new Date(h.purchaseDate);
+  const maturity = new Date(h.maturityDate);
+  const daysTotal = Math.max(1, (maturity.getTime() - purchase.getTime()) / 86400000);
+  const daysElapsed = Math.max(0, Math.min(daysTotal, (today.getTime() - purchase.getTime()) / 86400000));
+  return h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
+}
+
 function getHoldingValue(h: Holding, p: PricesArg): number {
+  if (h.type === 'fixed_income') return fixedIncomeAccruedValue(h);
   if (!p) {
     if (h.type === 'gold' || h.type === 'silver') return h.grams * h.purchasePricePerGram;
     if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
     if (h.type === 'real_estate') return h.purchasePrice;
     if (h.type === 'personal_asset') return (h.currentValue ?? h.purchasePrice);
-    if (h.type === 'fixed_income') return h.principal;
     return 0;
   }
   if (h.type === 'gold') return goldPricePerGram(p, h.karat) * h.grams;
@@ -71,7 +88,6 @@ function getHoldingValue(h: Holding, p: PricesArg): number {
   if (h.type === 'stock') return (p.egxPrices?.[h.symbol] ?? h.purchasePricePerShare) * h.shares;
   if (h.type === 'real_estate') return getRECurrentValue(h);
   if (h.type === 'personal_asset') return (h.currentValue ?? h.purchasePrice) * (h.currency === 'USD' ? p.usdToEgp : 1);
-  if (h.type === 'fixed_income') return h.principal;
   return 0;
 }
 
