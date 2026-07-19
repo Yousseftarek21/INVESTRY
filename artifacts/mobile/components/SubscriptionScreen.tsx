@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { useSubscription, openWebPopup, BillingPeriod } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
 import { useColors } from '@/hooks/useColors';
@@ -68,52 +69,79 @@ const cm = StyleSheet.create({
   legalTxt: { fontSize: 10, fontFamily: 'Inter_400Regular', lineHeight: 15, textAlign: 'center' },
 });
 
-// ─── Plan card ─────────────────────────────────────────────────────────────────
+// ─── Plan cards — both options shown together, tap either to select ──────────
 
-function PlanCard({ period }: { period: BillingPeriod }) {
+function PlanOptionCard({
+  period, selected, onPress,
+}: { period: BillingPeriod; selected: boolean; onPress: () => void }) {
   const { offerings } = useSubscription();
   const t = useT();
   const colors = useColors();
   const accent = colors.primary;
   const product = offerings.pro;
-  const price = period === 'monthly'
-    ? `${product.priceString}/${t.subMonth}`
-    : `${product.annualPriceString}/${t.subYear}`;
-  const perMonth = period === 'annual'
+
+  const isAnnual = period === 'annual';
+  const price = isAnnual ? product.annualPriceString : product.priceString;
+  const perMonth = isAnnual
     ? `≈ ${Math.round(product.annualPrice / 12).toLocaleString('en-EG')} EGP/${t.subMonth}`
     : null;
 
   return (
-    <View style={[pc.card, { borderColor: accent, borderWidth: 2, backgroundColor: accent + '08' }]}>
-      <View style={[pc.topBar, { backgroundColor: accent }]} />
-
-      <View style={pc.row}>
-        <View style={pc.info}>
-          <View style={[pc.badge, { backgroundColor: accent + '1A', borderColor: accent + '35' }]}>
-            <Text style={[pc.badgeTxt, { color: accent }]}>PRO</Text>
-          </View>
-          <Text style={[pc.price, { color: colors.text }]}>{price}</Text>
-          {perMonth && <Text style={[pc.sub, { color: colors.mutedForeground }]}>{perMonth}</Text>}
+    <Pressable
+      onPress={onPress}
+      style={[
+        pc.card,
+        {
+          borderColor: selected ? accent : colors.border,
+          borderWidth: selected ? 2 : 1,
+          backgroundColor: selected ? accent + '0D' : colors.card,
+        },
+      ]}
+    >
+      {isAnnual && (
+        <View style={[pc.ribbon, { backgroundColor: accent }]}>
+          <Text style={pc.ribbonTxt}>{t.subSave33}</Text>
         </View>
-        <View style={[pc.radio, { borderColor: accent }]}>
-          <View style={[pc.dot, { backgroundColor: accent }]} />
-        </View>
+      )}
+      <Text style={[pc.periodLabel, { color: selected ? accent : colors.mutedForeground }]}>
+        {isAnnual ? t.subAnnual : t.subMonthly}
+      </Text>
+      <Text style={[pc.price, { color: colors.text }]}>{price}</Text>
+      <Text style={[pc.priceUnit, { color: colors.mutedForeground }]}>
+        /{isAnnual ? t.subYear : t.subMonth}
+      </Text>
+      {perMonth ? (
+        <Text style={[pc.sub, { color: colors.mutedForeground }]}>{perMonth}</Text>
+      ) : (
+        <View style={pc.subSpacer} />
+      )}
+      <View style={[pc.radio, { borderColor: selected ? accent : colors.border, backgroundColor: selected ? accent : 'transparent' }]}>
+        {selected && <Feather name="check" size={12} color={colors.primaryForeground} />}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 const pc = StyleSheet.create({
-  card: { borderRadius: 20, overflow: 'hidden' },
-  topBar: { height: 2, position: 'absolute', top: 0, left: 0, right: 0 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 22 },
-  info: { gap: 6 },
-  badge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
-  badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
-  price: { fontSize: 26, fontFamily: 'Inter_700Bold', letterSpacing: -0.6 },
-  sub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  dot: { width: 11, height: 11, borderRadius: 6 },
+  card: {
+    flex: 1, borderRadius: 18, padding: 16, paddingTop: 18,
+    alignItems: 'flex-start', overflow: 'visible',
+  },
+  ribbon: {
+    position: 'absolute', top: -10, alignSelf: 'center',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
+  },
+  ribbonTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: 0.4 },
+  periodLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginBottom: 8, letterSpacing: 0.2 },
+  price: { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
+  priceUnit: { fontSize: 11, fontFamily: 'Inter_500Medium', marginTop: 1 },
+  sub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 4 },
+  subSpacer: { height: 15, marginTop: 4 },
+  radio: {
+    position: 'absolute', top: 16, end: 16,
+    width: 20, height: 20, borderRadius: 10, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
 });
 
 // ─── Feature row ──────────────────────────────────────────────────────────────
@@ -122,19 +150,19 @@ function FeatureRow({ icon, label }: { icon: string; label: string }) {
   const colors = useColors();
   const accent = colors.primary;
   return (
-    <View style={frow.row}>
+    <View style={frow.cell}>
       <View style={[frow.icon, { backgroundColor: accent + '18' }]}>
         <Feather name={icon as any} size={13} color={accent} />
       </View>
-      <Text style={[frow.label, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[frow.label, { color: colors.textSecondary }]} numberOfLines={2}>{label}</Text>
     </View>
   );
 }
 
 const frow = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
-  icon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  label: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular' },
+  cell: { width: '50%', flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 9, paddingEnd: 8 },
+  icon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  label: { flex: 1, fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 16 },
 });
 
 // ─── Free vs Pro compare table ─────────────────────────────────────────────────
@@ -155,38 +183,46 @@ function CompareTable() {
       <View style={cmp.headerRow}>
         <View style={cmp.labelCol} />
         <Text style={[cmp.headerTxt, cmp.col, { color: colors.mutedForeground }]}>{t.subCompareFree}</Text>
-        <Text style={[cmp.headerTxt, cmp.col, { color: accent }]}>{t.subComparePro}</Text>
-      </View>
-      {ROWS.map((r, i) => (
-        <View
-          key={r.label}
-          style={[cmp.row, i < ROWS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
-        >
-          <Text style={[cmp.rowLabel, cmp.labelCol, { color: colors.text }]} numberOfLines={1}>{r.label}</Text>
-          <View style={cmp.col}>
-            {typeof r.free === 'string'
-              ? <Text style={[cmp.cellTxt, { color: colors.mutedForeground }]}>{r.free}</Text>
-              : <Feather name="x" size={14} color={colors.mutedForeground} />}
-          </View>
-          <View style={cmp.col}>
-            {typeof r.pro === 'string'
-              ? <Text style={[cmp.cellTxt, cmp.cellTxtPro, { color: accent }]}>{r.pro}</Text>
-              : <Feather name="check" size={15} color={accent} />}
-          </View>
+        <View style={[cmp.colPro, cmp.colProTop, { backgroundColor: accent + '0F' }]}>
+          <Text style={[cmp.headerTxt, { color: accent }]}>{t.subComparePro}</Text>
         </View>
-      ))}
+      </View>
+      {ROWS.map((r, i) => {
+        const isLast = i === ROWS.length - 1;
+        return (
+          <View
+            key={r.label}
+            style={[cmp.row, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+          >
+            <Text style={[cmp.rowLabel, cmp.labelCol, { color: colors.text }]} numberOfLines={1}>{r.label}</Text>
+            <View style={cmp.col}>
+              {typeof r.free === 'string'
+                ? <Text style={[cmp.cellTxt, { color: colors.mutedForeground }]}>{r.free}</Text>
+                : <Feather name="x" size={14} color={colors.mutedForeground} />}
+            </View>
+            <View style={[cmp.colPro, isLast && cmp.colProBottom, { backgroundColor: accent + '0F' }]}>
+              {typeof r.pro === 'string'
+                ? <Text style={[cmp.cellTxt, cmp.cellTxtPro, { color: accent }]}>{r.pro}</Text>
+                : <Feather name="check" size={15} color={accent} />}
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 const cmp = StyleSheet.create({
   card: { borderRadius: 18, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 14, paddingHorizontal: 16, paddingBottom: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'stretch', paddingStart: 16, paddingTop: 14 },
   headerTxt: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, textTransform: 'uppercase', textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
-  labelCol: { flex: 1 },
+  row: { flexDirection: 'row', alignItems: 'stretch', paddingStart: 16 },
+  labelCol: { flex: 1, justifyContent: 'center' },
   rowLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  col: { width: 56, alignItems: 'center' },
+  col: { width: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+  colPro: { width: 64, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+  colProTop: { paddingBottom: 8 },
+  colProBottom: { paddingBottom: 14 },
   cellTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   cellTxtPro: { fontFamily: 'Inter_700Bold' },
 });
@@ -337,51 +373,37 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
 
           {/* ── Hero ────────────────────────────────────────── */}
           <View style={sw.hero}>
-            <View style={[sw.iconWrap, { backgroundColor: accent + '15', borderColor: accent + '35' }]}>
-              <Feather name="star" size={30} color={accent} />
+            <View style={sw.iconGlowWrap}>
+              <ExpoLinearGradient
+                colors={[accent + '40', accent + '00']}
+                style={sw.iconGlow}
+              />
+              <View style={[sw.iconWrap, { backgroundColor: accent + '15', borderColor: accent + '35' }]}>
+                <Feather name="star" size={30} color={accent} />
+              </View>
             </View>
             <Text style={[sw.heroTitle, { color: colors.text }]}>Investry Pro</Text>
             <Text style={[sw.heroSub, { color: colors.mutedForeground }]}>{t.subHeroSub}</Text>
           </View>
 
-          {/* ── Free vs Pro ─────────────────────────────────── */}
-          <CompareTable />
-
-          {/* ── Billing toggle ──────────────────────────────── */}
-          <View style={[sw.toggleWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <Pressable
-              onPress={() => setPeriod('monthly')}
-              style={[sw.toggleBtn, period === 'monthly' && { backgroundColor: colors.card }]}
-            >
-              <Text style={[sw.toggleTxt, { color: period === 'monthly' ? colors.text : colors.mutedForeground }]}>
-                {t.subMonthly}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setPeriod('annual')}
-              style={[sw.toggleBtn, period === 'annual' && { backgroundColor: colors.card }]}
-            >
-              <Text style={[sw.toggleTxt, { color: period === 'annual' ? colors.text : colors.mutedForeground }]}>
-                {t.subAnnual}
-              </Text>
-              <View style={[sw.saveBadge, { backgroundColor: colors.green }]}>
-                <Text style={sw.saveBadgeTxt}>{t.subSave33}</Text>
-              </View>
-            </Pressable>
-          </View>
-
-          {/* ── Plan card ───────────────────────────────────── */}
+          {/* ── Plan cards — tap either to choose ─────────────── */}
           <View style={sw.plans}>
-            <PlanCard period={period} />
+            <PlanOptionCard period="monthly" selected={period === 'monthly'} onPress={() => setPeriod('monthly')} />
+            <PlanOptionCard period="annual" selected={period === 'annual'} onPress={() => setPeriod('annual')} />
           </View>
 
           {/* ── Features ────────────────────────────────────── */}
           <View style={[sw.featureCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[sw.featureTitle, { color: colors.mutedForeground }]}>{t.subWhatsIncluded}</Text>
-            {FEATURES.map(f => (
-              <FeatureRow key={f.label} icon={f.icon} label={f.label} />
-            ))}
+            <View style={sw.featureGrid}>
+              {FEATURES.map(f => (
+                <FeatureRow key={f.label} icon={f.icon} label={f.label} />
+              ))}
+            </View>
           </View>
+
+          {/* ── Free vs Pro ─────────────────────────────────── */}
+          <CompareTable />
 
           {/* ── CTA ─────────────────────────────────────────── */}
           {/* Always shown, even during Launch Access, so the paywall stays
@@ -467,7 +489,9 @@ const sw = StyleSheet.create({
   scroll: { paddingHorizontal: 20 },
 
   // Hero
-  hero: { alignItems: 'center', paddingTop: 52, paddingBottom: 26, gap: 10 },
+  hero: { alignItems: 'center', paddingTop: 44, paddingBottom: 26, gap: 10 },
+  iconGlowWrap: { width: 100, height: 100, alignItems: 'center', justifyContent: 'center' },
+  iconGlow: { position: 'absolute', width: 100, height: 100, borderRadius: 50 },
   iconWrap: {
     width: 72, height: 72, borderRadius: 24,
     borderWidth: 1,
@@ -476,21 +500,8 @@ const sw = StyleSheet.create({
   heroTitle: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   heroSub: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center' },
 
-  // Toggle
-  toggleWrap: {
-    flexDirection: 'row',
-    borderRadius: 16, padding: 4, borderWidth: 1, marginBottom: 14,
-  },
-  toggleBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 11, borderRadius: 13, gap: 7,
-  },
-  toggleTxt: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  saveBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-  saveBadgeTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: 0.5 },
-
-  // Plans
-  plans: { gap: 10, marginBottom: 16 },
+  // Plans — two selectable cards side by side
+  plans: { flexDirection: 'row', gap: 10, marginBottom: 16 },
 
   // Features
   featureCard: {
@@ -500,8 +511,9 @@ const sw = StyleSheet.create({
   },
   featureTitle: {
     fontSize: 11, fontFamily: 'Inter_700Bold',
-    letterSpacing: 1, marginBottom: 8,
+    letterSpacing: 1, marginBottom: 4,
   },
+  featureGrid: { flexDirection: 'row', flexWrap: 'wrap' },
 
   // CTA
   cta: {
