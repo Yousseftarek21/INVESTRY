@@ -868,9 +868,9 @@ const styles = StyleSheet.create({
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
-  heroValueRow:   { flexDirection: 'row', alignItems: 'flex-end', gap: 8, justifyContent: 'center', alignSelf: 'stretch' },
-  heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, lineHeight: 52, flexShrink: 1, textAlign: 'center' },
-  currencyPill:       { borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 5, marginBottom: 5 },
+  heroValueRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', alignSelf: 'stretch' },
+  heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, flexShrink: 1, textAlign: 'center' },
+  currencyPill:       { borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 5 },
   currencyPillText:   { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
   currencyTabStrip:   { flexDirection: 'row', gap: 6, justifyContent: 'center', marginTop: 2, marginBottom: 2 },
   currencyTab:        { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 7 },
