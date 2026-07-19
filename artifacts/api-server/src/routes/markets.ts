@@ -676,6 +676,21 @@ async function fetchFxCrossRates(usdToEgp: number): Promise<Record<string, numbe
   return out;
 }
 
+// ─── Metals market hours ──────────────────────────────────────────────────────
+// Gold/silver CFDs trade continuously Sun 22:00 UTC – Fri 22:00 UTC (standard
+// forex-hours approximation). Outside that window the market is closed, so
+// "today's change" reads 0% instead of carrying over the last completed
+// session's change — clearer than a frozen non-zero number over the weekend.
+
+function isMetalsMarketOpen(now: Date): boolean {
+  const day  = now.getUTCDay();  // 0=Sun, 5=Fri, 6=Sat
+  const hour = now.getUTCHours();
+  if (day === 6) return false;               // Saturday: always closed
+  if (day === 0 && hour < 22) return false;   // Sunday before 22:00 UTC: not yet open
+  if (day === 5 && hour >= 22) return false;  // Friday from 22:00 UTC: closed
+  return true;
+}
+
 // ─── Assemble prices ──────────────────────────────────────────────────────────
 
 async function fetchPrices(): Promise<MarketPricesResponse> {
@@ -690,13 +705,14 @@ async function fetchPrices(): Promise<MarketPricesResponse> {
 
   const goldUsd   = metals?.xau ?? FALLBACK_GOLD;
   const silverUsd = metals?.xag ?? FALLBACK_SILVER;
+  const metalsOpen = isMetalsMarketOpen(new Date());
 
-  const goldChange    = metals ? round2(goldUsd   - metals.xauPrevClose) : 0;
-  const goldChangePct = metals && metals.xauPrevClose > 0
+  const goldChange    = metals && metalsOpen ? round2(goldUsd   - metals.xauPrevClose) : 0;
+  const goldChangePct = metals && metalsOpen && metals.xauPrevClose > 0
     ? round2((goldChange / metals.xauPrevClose) * 100) : 0;
 
-  const silverChange    = metals ? round2(silverUsd - metals.xagPrevClose) : 0;
-  const silverChangePct = metals && metals.xagPrevClose > 0
+  const silverChange    = metals && metalsOpen ? round2(silverUsd - metals.xagPrevClose) : 0;
+  const silverChangePct = metals && metalsOpen && metals.xagPrevClose > 0
     ? round2((silverChange / metals.xagPrevClose) * 100) : 0;
 
   const price24k = round2((goldUsd * usdToEgp) / TROY_OZ);
