@@ -507,7 +507,12 @@ export default function HomeScreen() {
               accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
               style={{ flexShrink: 1 }}
             >
-              <Text style={[styles.heroValue, { color: colors.text }]}>
+              <Text
+                style={[styles.heroValue, { color: colors.text }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
+              >
                 {hideValues ? '••••••' : displayValue}
               </Text>
             </TouchableOpacity>

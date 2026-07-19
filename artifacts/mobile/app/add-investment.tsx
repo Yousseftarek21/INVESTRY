@@ -757,10 +757,14 @@ export default function AddInvestmentScreen() {
     notify();
     if (isEditing) {
       await updateHolding(holding);
+      router.back();
     } else {
       await addHolding(holding);
+      // Editing came from the holdings list, so `back()` already returns there.
+      // Adding came through the add-choose type picker, so `back()` alone would
+      // just land back on that picker sheet — dismiss past it to the list instead.
+      router.dismissTo('/(tabs)/holdings');
     }
-    router.back();
   };
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
