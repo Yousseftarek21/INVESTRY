@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Platform, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Path, Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 import { useAppSettings } from "@/context/AppSettingsContext";
 import { useColors } from "@/hooks/useColors";
@@ -33,28 +33,42 @@ export function CustomSplash({ statusMessage }: Props) {
   const colors = useColors();
   const progress = useRef(new Animated.Value(0)).current;
   const logoIn = useRef(new Animated.Value(0)).current;
+  const taglineIn = useRef(new Animated.Value(0)).current;
+  const chartIn = useRef(new Animated.Value(0)).current;
+  const statusIn = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(logoIn, {
-      toValue: 1,
-      duration: 550,
-      useNativeDriver: true,
-    }).start();
+    // A cascading reveal — logo settles in with a soft spring, then the
+    // tagline, chart, and status fade in one after another, instead of
+    // everything appearing at once.
+    Animated.sequence([
+      Animated.spring(logoIn, {
+        toValue: 1, useNativeDriver: true,
+        friction: 7, tension: 60,
+      }),
+      Animated.stagger(120, [
+        Animated.timing(taglineIn, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(chartIn, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(statusIn, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      ]),
+    ]).start();
 
     Animated.timing(progress, {
       toValue: 1,
-      duration: 2200,
+      duration: 2000,
+      delay: 350,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, { toValue: 1, duration: 1400, useNativeDriver: true }),
-        Animated.timing(glow, { toValue: 0.4, duration: 1400, useNativeDriver: true }),
+        Animated.timing(glow, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(glow, { toValue: 0.4, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ]),
     ).start();
-  }, [progress, logoIn, glow]);
+  }, [progress, logoIn, taglineIn, chartIn, statusIn, glow]);
 
   const strokeDashoffset = progress.interpolate({
     inputRange: [0, 1],
@@ -66,8 +80,9 @@ export function CustomSplash({ statusMessage }: Props) {
     extrapolate: "clamp",
   });
   const logoOpacity = logoIn;
-  const logoScale = logoIn.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
-  const logoTranslateY = logoIn.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const logoScale = logoIn.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+  const taglineTranslateY = taglineIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] });
+  const chartTranslateY = chartIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] });
   const logoSource = resolvedTheme === "dark" ? LOGO_DARK : LOGO_LIGHT;
 
   return (
@@ -89,14 +104,22 @@ export function CustomSplash({ statusMessage }: Props) {
           source={logoSource}
           style={[
             styles.logo,
-            { opacity: logoOpacity, transform: [{ scale: logoScale }, { translateY: logoTranslateY }] },
+            { opacity: logoOpacity, transform: [{ scale: logoScale }] },
           ]}
           resizeMode="contain"
         />
       </View>
-      <Text style={[styles.tagline, { color: colors.mutedForeground }]}>All Investments. One Place.</Text>
 
-      <View style={styles.chartWrap}>
+      <Animated.Text
+        style={[
+          styles.tagline,
+          { color: colors.mutedForeground, opacity: taglineIn, transform: [{ translateY: taglineTranslateY }] },
+        ]}
+      >
+        All Investments. One Place.
+      </Animated.Text>
+
+      <Animated.View style={[styles.chartWrap, { opacity: chartIn, transform: [{ translateY: chartTranslateY }] }]}>
         <Svg width={CHART_W} height={CHART_H} viewBox={`0 0 ${CHART_W} ${CHART_H}`}>
           <AnimatedPath
             d={CHART_PATH}
@@ -116,11 +139,11 @@ export function CustomSplash({ statusMessage }: Props) {
             opacity={dotOpacity}
           />
         </Svg>
-      </View>
+      </Animated.View>
 
-      <Text style={[styles.status, { color: colors.mutedForeground }]}>
+      <Animated.Text style={[styles.status, { color: colors.mutedForeground, opacity: statusIn }]}>
         {statusMessage ?? ""}
-      </Text>
+      </Animated.Text>
     </View>
   );
 }
