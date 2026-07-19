@@ -8,6 +8,7 @@ import legalRouter from "./legal";
 import configRouter from "./config";
 import demoRouter from "./demo";
 import referralRouter from "./referral";
+import pushRouter from "./push";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(legalRouter);
 router.use(configRouter);
 router.use(demoRouter);
 router.use(referralRouter);
+router.use(pushRouter);
 
 export default router;

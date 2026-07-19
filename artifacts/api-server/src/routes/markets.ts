@@ -25,7 +25,7 @@ const globalStocksCache = makeCache<EGXStockResponse[]>(5 * 60_000); // 5 min (T
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface MarketPricesResponse {
+export interface MarketPricesResponse {
   goldUsd: number;
   silverUsd: number;
   usdToEgp: number;
@@ -693,7 +693,7 @@ function isMetalsMarketOpen(now: Date): boolean {
 
 // ─── Assemble prices ──────────────────────────────────────────────────────────
 
-async function fetchPrices(): Promise<MarketPricesResponse> {
+export async function fetchPrices(): Promise<MarketPricesResponse> {
   // All three run in parallel — TradingView scanner is ~100-200 ms, no key needed.
   // fetchFxCrossRates uses FALLBACK_EGP only for its ER-API cross-rate fallback;
   // Wise fetches each pair directly so it doesn't need usdToEgp at fetch time.

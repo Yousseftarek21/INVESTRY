@@ -55,6 +55,13 @@
       "expo-web-browser",
       "expo-updates",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#A9821E"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/logo-mark-light.png",

@@ -31,6 +31,7 @@ import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 import { useNotifications, usePortfolioAlerts } from "@/hooks/useNotifications";
+import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { useHoldings } from "@/context/HoldingsContext";
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from "@/hooks/usePrices";
 import { useEGXMarket } from "@/hooks/useEGXMarket";
@@ -114,6 +115,7 @@ function RootLayoutNav() {
 
 function NotificationsInitializer() {
   useNotifications();
+  usePushRegistration();
   return null;
 }
 

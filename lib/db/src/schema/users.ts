@@ -12,6 +12,7 @@ export const usersTable = pgTable("users", {
   referralCode:           text("referral_code").unique(), // short shareable code, lazily generated
   referredByUserId:       text("referred_by_user_id"), // id of the user whose code was redeemed
   proCreditExpiresAt:     timestamp("pro_credit_expires_at", { withTimezone: true }), // bonus Pro time earned from referrals
+  pushToken:              text("push_token"), // Expo push token for the user's most recent device
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
