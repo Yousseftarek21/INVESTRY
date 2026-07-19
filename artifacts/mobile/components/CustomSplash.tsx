@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
-import Svg, { Path, Circle, Defs, RadialGradient, Stop } from "react-native-svg";
+import Svg, { Path, Circle } from "react-native-svg";
 import { useAppSettings } from "@/context/AppSettingsContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -26,8 +26,6 @@ const CHART_POINTS = [
 const CHART_PATH = CHART_POINTS.map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`).join(" ");
 const CHART_PATH_LENGTH = 190; // approx length of the segments above, with margin
 
-const GLOW_SIZE = 240;
-
 export function CustomSplash({ statusMessage }: Props) {
   const { resolvedTheme } = useAppSettings();
   const colors = useColors();
@@ -36,39 +34,30 @@ export function CustomSplash({ statusMessage }: Props) {
   const taglineIn = useRef(new Animated.Value(0)).current;
   const chartIn = useRef(new Animated.Value(0)).current;
   const statusIn = useRef(new Animated.Value(0)).current;
-  const glow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // A cascading reveal — logo settles in with a soft spring, then the
-    // tagline, chart, and status fade in one after another, instead of
-    // everything appearing at once.
-    Animated.sequence([
-      Animated.spring(logoIn, {
-        toValue: 1, useNativeDriver: true,
-        friction: 7, tension: 60,
-      }),
-      Animated.stagger(120, [
-        Animated.timing(taglineIn, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(chartIn, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(statusIn, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      ]),
-    ]).start();
+    // Logo settles first with a soft spring, then a short beat later
+    // everything else (tagline, chart, status) fades in together — and the
+    // chart line's fade-in and its draw-in share that same start time, so it
+    // never appears partway-drawn the moment it becomes visible.
+    Animated.spring(logoIn, {
+      toValue: 1, useNativeDriver: true,
+      friction: 7, tension: 60,
+    }).start();
+
+    const REVEAL_DELAY = 150;
+    Animated.timing(taglineIn, { toValue: 1, duration: 280, delay: REVEAL_DELAY, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    Animated.timing(chartIn, { toValue: 1, duration: 280, delay: REVEAL_DELAY, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    Animated.timing(statusIn, { toValue: 1, duration: 280, delay: REVEAL_DELAY, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
 
     Animated.timing(progress, {
       toValue: 1,
-      duration: 2000,
-      delay: 350,
+      duration: 1800,
+      delay: REVEAL_DELAY,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glow, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(glow, { toValue: 0.4, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
-    ).start();
-  }, [progress, logoIn, taglineIn, chartIn, statusIn, glow]);
+  }, [progress, logoIn, taglineIn, chartIn, statusIn]);
 
   const strokeDashoffset = progress.interpolate({
     inputRange: [0, 1],
@@ -87,28 +76,14 @@ export function CustomSplash({ statusMessage }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.logoWrap}>
-        <Animated.View style={[styles.glowWrap, { opacity: glow }]}>
-          <Svg width={GLOW_SIZE} height={GLOW_SIZE} viewBox={`0 0 ${GLOW_SIZE} ${GLOW_SIZE}`}>
-            <Defs>
-              <RadialGradient id="splashGlow" cx="50%" cy="50%" r="50%">
-                <Stop offset="0%" stopColor={colors.primary} stopOpacity={0.28} />
-                <Stop offset="60%" stopColor={colors.primary} stopOpacity={0.08} />
-                <Stop offset="100%" stopColor={colors.primary} stopOpacity={0} />
-              </RadialGradient>
-            </Defs>
-            <Circle cx={GLOW_SIZE / 2} cy={GLOW_SIZE / 2} r={GLOW_SIZE / 2} fill="url(#splashGlow)" />
-          </Svg>
-        </Animated.View>
-        <Animated.Image
-          source={logoSource}
-          style={[
-            styles.logo,
-            { opacity: logoOpacity, transform: [{ scale: logoScale }] },
-          ]}
-          resizeMode="contain"
-        />
-      </View>
+      <Animated.Image
+        source={logoSource}
+        style={[
+          styles.logo,
+          { opacity: logoOpacity, transform: [{ scale: logoScale }] },
+        ]}
+        resizeMode="contain"
+      />
 
       <Animated.Text
         style={[
@@ -155,19 +130,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 999,
     elevation: Platform.OS === "android" ? 999 : undefined,
-  },
-  logoWrap: {
-    width: 260,
-    height: 74,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  glowWrap: {
-    position: "absolute",
-    width: GLOW_SIZE,
-    height: GLOW_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
   },
   logo: {
     width: 260,
