@@ -91,7 +91,7 @@ export function CustomSplash({ statusMessage }: Props) {
           { color: colors.mutedForeground, opacity: taglineIn, transform: [{ translateY: taglineTranslateY }] },
         ]}
       >
-        All Investments. One Place.
+        All Investments. One Place
       </Animated.Text>
 
       <Animated.View style={[styles.chartWrap, { opacity: chartIn, transform: [{ translateY: chartTranslateY }] }]}>
@@ -133,12 +133,14 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: 260,
-    height: 74,
+    height: 40,
   },
   tagline: {
-    marginTop: 8,
-    fontSize: 14,
-    letterSpacing: 0.5,
+    marginTop: 10,
+    maxWidth: 230,
+    fontSize: 13,
+    letterSpacing: 0.4,
+    textAlign: "center",
   },
   chartWrap: {
     marginTop: 48,

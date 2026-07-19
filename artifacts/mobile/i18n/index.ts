@@ -3,7 +3,7 @@ export type Language = 'en' | 'ar';
 const en = {
   // App
   appName: 'INVESTRY',
-  appTagline: 'All Investments. One Place.',
+  appTagline: 'All Investments. One Place',
 
   // Tabs
   portfolio: 'Overview',
@@ -439,7 +439,7 @@ const en = {
   onboardSlide4Sub: 'Your portfolio is stored securely under your account and sent over encrypted connections. We never sell or share your data with third parties.',
   getStarted: 'Get Started',
   skip: 'Skip',
-  welcomeTagline: 'All Investments. One Place.',
+  welcomeTagline: 'All Investments. One Place',
   welcomeDesc: 'Track gold, silver, EGX stocks and real estate — live prices in Egyptian pounds.',
   signInBtn: 'Sign In',
 
@@ -614,7 +614,7 @@ const en = {
   goldSilverUnit: 'Gold & silver display unit',
   signInToYourAccount: 'Sign in to your account',
   loadSavedInvestments: 'Load your saved investments & sync data',
-  knowYourWealth: 'All Investments. One Place.',
+  knowYourWealth: 'All Investments. One Place',
   versionLabel: 'Version',
   lastApiUpdateLabel: 'Last API Update',
   dataStorageLabel: 'Data Storage',
