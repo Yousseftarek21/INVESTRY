@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Image, Platform, StyleSheet, Text, View } from "react-native";
-import Svg, { Path, Circle } from "react-native-svg";
+import { Animated, Platform, StyleSheet, Text, View } from "react-native";
+import Svg, { Path, Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 import { useAppSettings } from "@/context/AppSettingsContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -18,13 +18,15 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 // a generic bar — echoes the app's own portfolio charts. Straight segments
 // over a fixed set of points (up-with-volatility, not a boring straight
 // climb) approximated to a path length used for the stroke-draw animation.
-const CHART_W = 160;
-const CHART_H = 36;
+const CHART_W = 176;
+const CHART_H = 40;
 const CHART_POINTS = [
-  [0, 28], [32, 22], [64, 26], [96, 14], [128, 18], [160, 6],
+  [0, 30], [35, 23], [70, 28], [106, 15], [141, 20], [176, 6],
 ] as const;
 const CHART_PATH = CHART_POINTS.map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`).join(" ");
-const CHART_PATH_LENGTH = 170; // approx length of the segments above, with margin
+const CHART_PATH_LENGTH = 190; // approx length of the segments above, with margin
+
+const GLOW_SIZE = 240;
 
 export function CustomSplash({ statusMessage }: Props) {
   const { resolvedTheme } = useAppSettings();
@@ -48,8 +50,8 @@ export function CustomSplash({ statusMessage }: Props) {
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, { toValue: 1, duration: 1100, useNativeDriver: true }),
-        Animated.timing(glow, { toValue: 0.3, duration: 1100, useNativeDriver: true }),
+        Animated.timing(glow, { toValue: 1, duration: 1400, useNativeDriver: true }),
+        Animated.timing(glow, { toValue: 0.4, duration: 1400, useNativeDriver: true }),
       ]),
     ).start();
   }, [progress, logoIn, glow]);
@@ -66,13 +68,25 @@ export function CustomSplash({ statusMessage }: Props) {
   const logoOpacity = logoIn;
   const logoScale = logoIn.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
   const logoTranslateY = logoIn.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const logoSource = resolvedTheme === "dark" ? LOGO_DARK : LOGO_LIGHT;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.logoWrap}>
-        <Animated.View style={[styles.logoGlow, { backgroundColor: colors.primary, opacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.16] }) }]} />
+        <Animated.View style={[styles.glowWrap, { opacity: glow }]}>
+          <Svg width={GLOW_SIZE} height={GLOW_SIZE} viewBox={`0 0 ${GLOW_SIZE} ${GLOW_SIZE}`}>
+            <Defs>
+              <RadialGradient id="splashGlow" cx="50%" cy="50%" r="50%">
+                <Stop offset="0%" stopColor={colors.primary} stopOpacity={0.28} />
+                <Stop offset="60%" stopColor={colors.primary} stopOpacity={0.08} />
+                <Stop offset="100%" stopColor={colors.primary} stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Circle cx={GLOW_SIZE / 2} cy={GLOW_SIZE / 2} r={GLOW_SIZE / 2} fill="url(#splashGlow)" />
+          </Svg>
+        </Animated.View>
         <Animated.Image
-          source={resolvedTheme === "dark" ? LOGO_DARK : LOGO_LIGHT}
+          source={logoSource}
           style={[
             styles.logo,
             { opacity: logoOpacity, transform: [{ scale: logoScale }, { translateY: logoTranslateY }] },
@@ -84,18 +98,10 @@ export function CustomSplash({ statusMessage }: Props) {
 
       <View style={styles.chartWrap}>
         <Svg width={CHART_W} height={CHART_H} viewBox={`0 0 ${CHART_W} ${CHART_H}`}>
-          <Path
-            d={CHART_PATH}
-            stroke={colors.secondary}
-            strokeWidth={2}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
           <AnimatedPath
             d={CHART_PATH}
             stroke={colors.primary}
-            strokeWidth={2.5}
+            strokeWidth={3}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -105,7 +111,7 @@ export function CustomSplash({ statusMessage }: Props) {
           <AnimatedCircle
             cx={CHART_POINTS[CHART_POINTS.length - 1][0]}
             cy={CHART_POINTS[CHART_POINTS.length - 1][1]}
-            r={3.5}
+            r={4}
             fill={colors.primary}
             opacity={dotOpacity}
           />
@@ -133,11 +139,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  logoGlow: {
+  glowWrap: {
     position: "absolute",
-    width: 220,
-    height: 90,
-    borderRadius: 45,
+    width: GLOW_SIZE,
+    height: GLOW_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
   },
   logo: {
     width: 260,
