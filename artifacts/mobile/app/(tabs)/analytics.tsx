@@ -17,6 +17,7 @@ import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/u
 import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
+import { useInflationRate } from '@/hooks/useInflationRate';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
@@ -540,6 +541,7 @@ export default function AnalyticsScreen() {
   }, [holdings, prices, egxChangeByTicker]);
 
   const { snapshots } = usePortfolioSnapshots(sm.totalValue);
+  const { data: inflation } = useInflationRate();
   const startOfDayValue = sm.totalValue - sm.todayGain;
   const rawTodaySamples = useIntradaySamples(sm.totalValue, startOfDayValue);
   // Keep the chart's start/end always freshly consistent with the "Today"
@@ -903,17 +905,17 @@ export default function AnalyticsScreen() {
               <Text style={[s.chartNote, { color: colors.mutedForeground }]}>
                 {t.simulatedTrendNote}
               </Text>
-              {sm.totalCost > 0 && (
+              {sm.totalCost > 0 && inflation && (
                 <View style={s.inflationRow}>
                   <Feather
-                    name={sm.gainPct >= 25 ? 'check-circle' : 'alert-circle'}
+                    name={sm.gainPct >= inflation.rate ? 'check-circle' : 'alert-circle'}
                     size={11}
-                    color={sm.gainPct >= 25 ? colors.green : '#F59E0B'}
+                    color={sm.gainPct >= inflation.rate ? colors.green : '#F59E0B'}
                   />
                   <Text style={[s.inflationNote, { color: colors.mutedForeground }]}>
-                    {sm.gainPct >= 25
-                      ? t.egpInflationBeating((sm.gainPct - 25).toFixed(1))
-                      : t.egpInflationLagging(`${sm.gainPct >= 0 ? '+' : ''}${sm.gainPct.toFixed(1)}%`)}
+                    {sm.gainPct >= inflation.rate
+                      ? t.egpInflationBeating((sm.gainPct - inflation.rate).toFixed(1), inflation.rate.toFixed(1))
+                      : t.egpInflationLagging(`${sm.gainPct >= 0 ? '+' : ''}${sm.gainPct.toFixed(1)}%`, inflation.rate.toFixed(1))}
                   </Text>
                 </View>
               )}

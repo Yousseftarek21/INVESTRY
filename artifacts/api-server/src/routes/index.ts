@@ -9,6 +9,7 @@ import configRouter from "./config";
 import referralRouter from "./referral";
 import pushRouter from "./push";
 import accountRouter from "./account";
+import inflationRouter from "./inflation";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(configRouter);
 router.use(referralRouter);
 router.use(pushRouter);
 router.use(accountRouter);
+router.use(inflationRouter);
 
 export default router;
