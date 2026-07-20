@@ -64,11 +64,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/native-splash-light.png",
-          "resizeMode": "contain",
           "backgroundColor": "#FDFBF7",
           "dark": {
-            "image": "./assets/images/native-splash-dark.png",
             "backgroundColor": "#121212"
           }
         }
