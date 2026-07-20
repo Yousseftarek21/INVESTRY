@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Alert, Animated, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
+  ActivityIndicator, Alert, Animated, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { useClerk, useUser } from '@clerk/expo';
+import { useAuth, useClerk, useUser } from '@clerk/expo';
 import { Stack, useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -27,6 +27,7 @@ import { Language } from '@/i18n';
 import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
 import { PremiumBadge } from '@/components/PremiumBadge';
 import { exportPortfolioAsCsv, exportPortfolioAsPdf } from '@/utils/exportPortfolio';
+import { apiFetch } from '@/utils/api';
 
 // Read live from the running binary/update instead of a hand-maintained
 // constant, so this can never silently drift out of sync with reality.
@@ -751,6 +752,7 @@ export default function SettingsScreen() {
   const { impact: haptic, notify } = useHaptic();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { getToken } = useAuth();
   const { plan, isPro, launchAccess, isLoading: subLoading, showPaywall, manageSubscription } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
@@ -767,6 +769,7 @@ export default function SettingsScreen() {
   const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -787,6 +790,11 @@ export default function SettingsScreen() {
   const handleDeleteAll = () => {
     haptic(Haptics.ImpactFeedbackStyle.Heavy);
     setConfirm({ id: 'delete', title: t.deleteAllData, message: t.deleteAllDataConfirmMsg, label: t.deleteEverything, danger: true });
+  };
+
+  const handleDeleteAccount = () => {
+    haptic(Haptics.ImpactFeedbackStyle.Heavy);
+    setConfirm({ id: 'deleteAccount', title: t.deleteAccount, message: t.deleteAccountConfirmMsg, label: t.deleteAccount, danger: true });
   };
 
   const handleExportCsv = async () => {
@@ -859,6 +867,22 @@ export default function SettingsScreen() {
     } else if (confirm.id === 'signout') {
       await signOut();
       router.replace('/(auth)/welcome' as any);
+    } else if (confirm.id === 'deleteAccount') {
+      setConfirm(null);
+      setDeletingAccount(true);
+      try {
+        const token = await getToken();
+        if (!token) throw new Error('No auth token');
+        const res = await apiFetch('/api/account', token, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        await signOut();
+        router.replace('/(auth)/welcome' as any);
+      } catch {
+        showModal(t.deleteAccountFailed, t.deleteAccountFailedDesc);
+      } finally {
+        setDeletingAccount(false);
+      }
+      return;
     }
     setConfirm(null);
   };
@@ -1128,7 +1152,8 @@ export default function SettingsScreen() {
           <NavRow icon="download" iconBg="#0EA5E9" label={t.exportMyData}
             sublabel={`${holdings.length} ${t.investmentsLabel} · CSV / PDF`}
             onPress={handleExport} />
-          <NavRow icon="trash-2"  iconBg={colors.red} label={t.deleteAllData} sublabel={t.deleteAllDataDesc} onPress={handleDeleteAll} destructive last />
+          <NavRow icon="trash-2"  iconBg={colors.red} label={t.deleteAllData} sublabel={t.deleteAllDataDesc} onPress={handleDeleteAll} destructive />
+          <NavRow icon="user-x"   iconBg={colors.red} label={t.deleteAccount} sublabel={t.deleteAccountDesc} onPress={handleDeleteAccount} destructive last />
         </Sect>
 
         {/* ── SUPPORT ──────────────────────────────────────── */}
@@ -1185,6 +1210,16 @@ export default function SettingsScreen() {
           onConfirm={handleConfirm}
           onCancel={() => setConfirm(null)}
         />
+      )}
+      {deletingAccount && (
+        <Modal visible transparent animationType="fade">
+          <View style={cm.overlay}>
+            <View style={[cm.card, { backgroundColor: colors.card, borderColor: colors.border, alignItems: 'center' }]}>
+              <ActivityIndicator color={colors.red} size="large" />
+              <Text style={[cm.msg, { color: colors.mutedForeground, marginTop: 16, marginBottom: 0 }]}>{t.deletingAccount}</Text>
+            </View>
+          </View>
+        </Modal>
       )}
       <EditProfileModal
         visible={editProfileOpen}

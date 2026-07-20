@@ -10,6 +10,7 @@ import { useSubscription, openWebPopup, BillingPeriod } from '@/context/Subscrip
 import { useT } from '@/hooks/useTranslation';
 import { useColors } from '@/hooks/useColors';
 import { LaunchBanner } from '@/components/LaunchAccess';
+import { getApiBaseUrl } from '@/utils/api';
 
 // ─── Confirm modal ─────────────────────────────────────────────────────────────
 
@@ -439,11 +440,11 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
                 <View style={[sw.dot, { backgroundColor: colors.border }]} />
               </>
             )}
-            <Pressable onPress={() => Linking.openURL('https://investry.app/terms')}>
+            <Pressable onPress={() => Linking.openURL(`${getApiBaseUrl()}/legal/terms`)}>
               <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{t.subTerms}</Text>
             </Pressable>
             <View style={[sw.dot, { backgroundColor: colors.border }]} />
-            <Pressable onPress={() => Linking.openURL('https://investry.app/privacy')}>
+            <Pressable onPress={() => Linking.openURL(`${getApiBaseUrl()}/legal/privacy`)}>
               <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{t.subPrivacy}</Text>
             </Pressable>
           </View>

@@ -6,9 +6,9 @@ import cashRouter from "./cash";
 import subscriptionRouter from "./subscription";
 import legalRouter from "./legal";
 import configRouter from "./config";
-import demoRouter from "./demo";
 import referralRouter from "./referral";
 import pushRouter from "./push";
+import accountRouter from "./account";
 
 const router: IRouter = Router();
 
@@ -19,8 +19,8 @@ router.use(cashRouter);
 router.use(subscriptionRouter);
 router.use(legalRouter);
 router.use(configRouter);
-router.use(demoRouter);
 router.use(referralRouter);
 router.use(pushRouter);
+router.use(accountRouter);
 
 export default router;

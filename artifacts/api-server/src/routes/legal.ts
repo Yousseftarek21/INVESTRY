@@ -47,7 +47,7 @@ router.get("/legal/privacy", (_req, res) => {
   <p>All features are currently available free of charge. We do not process payments or store card details.</p>
 
   <h2>Data Retention & Deletion</h2>
-  <p>You may request deletion of your account and all associated data at any time by contacting us below. Data is deleted from our servers within 30 days of a verified request.</p>
+  <p>You can permanently delete your account and all associated data at any time from within the app (Settings → Delete Account). This immediately and permanently removes your portfolio data, cash accounts, and authentication account from our servers.</p>
 
   <h2>Contact</h2>
   <p>Questions about this policy? Email <a href="mailto:privacy@investry.app">privacy@investry.app</a>.</p>

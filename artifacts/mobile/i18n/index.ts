@@ -454,9 +454,6 @@ const en = {
   passwordLabel: 'Password',
   passwordPlaceholder: 'Enter password',
   signInBtnLabel: 'Sign In',
-  useDemoAccount: 'Use Demo Account',
-  demoAccountSubtitle: 'Explore the app with pre-loaded sample data',
-  orSignInWith: 'or sign in with',
   dontHaveAccount: "Don't have an account? ",
   createOne: 'Create one',
 
@@ -905,6 +902,12 @@ const en = {
   deleteAllDataDesc: 'Permanently remove all investments',
   deleteAllDataConfirmMsg: 'Permanently removes all investments and preferences. This cannot be undone.',
   deleteEverything: 'Delete Everything',
+  deleteAccount: 'Delete Account',
+  deleteAccountDesc: 'Permanently delete your account and all data',
+  deleteAccountConfirmMsg: 'Permanently deletes your account, portfolio, and all associated data from our servers. This cannot be undone.',
+  deletingAccount: 'Deleting your account…',
+  deleteAccountFailed: 'Couldn\'t Delete Account',
+  deleteAccountFailedDesc: 'Something went wrong. Please check your connection and try again.',
 
   // Settings — support rows
   helpCenter: 'Help Center',
@@ -1471,9 +1474,6 @@ const ar: typeof en = {
   passwordLabel: 'كلمة المرور',
   passwordPlaceholder: 'أدخل كلمة المرور',
   signInBtnLabel: 'تسجيل الدخول',
-  useDemoAccount: 'استخدام الحساب التجريبي',
-  demoAccountSubtitle: 'استكشف التطبيق ببيانات تجريبية جاهزة',
-  orSignInWith: 'أو تسجيل الدخول باستخدام',
   dontHaveAccount: 'ليس لديك حساب؟ ',
   createOne: 'أنشئ حساباً',
 
@@ -1922,6 +1922,12 @@ const ar: typeof en = {
   deleteAllDataDesc: 'حذف جميع الاستثمارات نهائياً',
   deleteAllDataConfirmMsg: 'يحذف جميع الاستثمارات والتفضيلات نهائياً. لا يمكن التراجع.',
   deleteEverything: 'حذف كل شيء',
+  deleteAccount: 'حذف الحساب',
+  deleteAccountDesc: 'حذف حسابك وجميع بياناتك نهائياً',
+  deleteAccountConfirmMsg: 'يحذف حسابك ومحفظتك وجميع البيانات المرتبطة به نهائياً من خوادمنا. لا يمكن التراجع عن هذا الإجراء.',
+  deletingAccount: 'جارٍ حذف حسابك…',
+  deleteAccountFailed: 'تعذر حذف الحساب',
+  deleteAccountFailedDesc: 'حدث خطأ ما. يرجى التحقق من اتصالك والمحاولة مرة أخرى.',
 
   // Settings — support rows
   helpCenter: 'مركز المساعدة',

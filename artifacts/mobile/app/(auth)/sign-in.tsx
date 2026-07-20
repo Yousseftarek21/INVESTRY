@@ -11,7 +11,6 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { getApiBaseUrl } from '@/utils/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -39,7 +38,6 @@ export default function SignInScreen() {
   const [showPass, setShowPass] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -80,33 +78,6 @@ export default function SignInScreen() {
       }
     } catch (err: any) {
       setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Sign in failed. Please try again.');
-    }
-  };
-
-  const handleDemoSignIn = async () => {
-    if (!signIn) return;
-    setGlobalError('');
-    setDemoLoading(true);
-    try {
-      // Call the setup endpoint to ensure the demo user exists with the stable
-      // password. We don't need the response — fire and move on regardless.
-      try { await fetch(`${getApiBaseUrl()}/api/demo/token`); } catch { /* non-fatal */ }
-
-      const result = await signIn.password({
-        emailAddress: 'demo@investry.app',
-        password: 'Investry_Demo_2025!',
-      });
-      if (result.error) throw new Error(result.error.message ?? 'Demo sign-in failed');
-
-      if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
-        await activateSession(signIn.createdSessionId);
-      } else {
-        throw new Error(`Unexpected sign-in status: ${signIn.status}`);
-      }
-    } catch (err: any) {
-      setGlobalError(err.message ?? 'Demo sign-in failed. Please try again.');
-    } finally {
-      setDemoLoading(false);
     }
   };
 
@@ -173,39 +144,6 @@ export default function SignInScreen() {
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               {t.signInSubtitle}
             </Text>
-          </View>
-
-          {/* Demo account — prominent card for App Store reviewers */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.demoCard,
-              {
-                borderColor: colors.primary + '40',
-                backgroundColor: colors.primary + '12',
-                opacity: (pressed || demoLoading) ? 0.7 : 1,
-              },
-            ]}
-            onPress={handleDemoSignIn}
-            disabled={demoLoading}
-          >
-            <View style={styles.demoCardIcon}>
-              <Feather name="user" size={18} color={colors.primary} />
-            </View>
-            <View style={styles.demoCardText}>
-              <Text style={[styles.demoCardTitle, { color: colors.text }]}>{t.useDemoAccount}</Text>
-              <Text style={[styles.demoCardSub, { color: colors.mutedForeground }]}>{t.demoAccountSubtitle}</Text>
-            </View>
-            {demoLoading
-              ? <ActivityIndicator size="small" color={colors.primary} />
-              : <Feather name="arrow-right" size={16} color={colors.primary} />
-            }
-          </Pressable>
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>{t.orSignInWith}</Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
           {/* Apple (iOS only, satisfies App Store guideline 4.8) */}
@@ -383,17 +321,4 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   footerText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
   linkText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-
-  demoCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderWidth: 1, borderRadius: 16, padding: 14,
-  },
-  demoCardIcon: {
-    width: 36, height: 36, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(212,172,13,0.15)',
-  },
-  demoCardText: { flex: 1, gap: 2 },
-  demoCardTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  demoCardSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
 });
