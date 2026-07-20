@@ -440,11 +440,11 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
                 <View style={[sw.dot, { backgroundColor: colors.border }]} />
               </>
             )}
-            <Pressable onPress={() => Linking.openURL(`${getApiBaseUrl()}/legal/terms`)}>
+            <Pressable onPress={() => Linking.openURL(`${getApiBaseUrl()}/api/legal/terms`)}>
               <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{t.subTerms}</Text>
             </Pressable>
             <View style={[sw.dot, { backgroundColor: colors.border }]} />
-            <Pressable onPress={() => Linking.openURL(`${getApiBaseUrl()}/legal/privacy`)}>
+            <Pressable onPress={() => Linking.openURL(`${getApiBaseUrl()}/api/legal/privacy`)}>
               <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{t.subPrivacy}</Text>
             </Pressable>
           </View>

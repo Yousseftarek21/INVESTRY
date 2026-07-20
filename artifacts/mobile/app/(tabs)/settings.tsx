@@ -797,6 +797,15 @@ export default function SettingsScreen() {
     setConfirm({ id: 'deleteAccount', title: t.deleteAccount, message: t.deleteAccountConfirmMsg, label: t.deleteAccount, danger: true });
   };
 
+  const handleDeleteMenu = () => {
+    haptic();
+    Alert.alert(t.deleteAccount, undefined, [
+      { text: t.deleteAllData, onPress: handleDeleteAll, style: 'destructive' },
+      { text: t.deleteAccount, onPress: handleDeleteAccount, style: 'destructive' },
+      { text: t.cancel, style: 'cancel' },
+    ]);
+  };
+
   const handleExportCsv = async () => {
     haptic();
     try {
@@ -1152,8 +1161,7 @@ export default function SettingsScreen() {
           <NavRow icon="download" iconBg="#0EA5E9" label={t.exportMyData}
             sublabel={`${holdings.length} ${t.investmentsLabel} · CSV / PDF`}
             onPress={handleExport} />
-          <NavRow icon="trash-2"  iconBg={colors.red} label={t.deleteAllData} sublabel={t.deleteAllDataDesc} onPress={handleDeleteAll} destructive />
-          <NavRow icon="user-x"   iconBg={colors.red} label={t.deleteAccount} sublabel={t.deleteAccountDesc} onPress={handleDeleteAccount} destructive last />
+          <NavRow icon="trash-2"  iconBg={colors.red} label={t.deleteAccount} sublabel={t.deleteAccountRowDesc} onPress={handleDeleteMenu} destructive last />
         </Sect>
 
         {/* ── SUPPORT ──────────────────────────────────────── */}
