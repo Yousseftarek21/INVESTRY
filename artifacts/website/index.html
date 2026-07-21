@@ -4,7 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>INVESTRY — All Investments. One Place.</title>
-<meta name="description" content="Track gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, in one app built for Egypt.">
+<meta name="description" content="Track gold, silver, stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.">
+<meta property="og:title" content="INVESTRY — All Investments. One Place.">
+<meta property="og:description" content="Track gold, silver, stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.">
+<meta property="og:image" content="assets/icon.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="INVESTRY — All Investments. One Place.">
+<meta name="twitter:description" content="Track gold, silver, stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.">
+<meta name="twitter:image" content="assets/icon.png">
 <link rel="icon" type="image/png" href="assets/icon.png">
 <link rel="apple-touch-icon" href="assets/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -108,7 +116,9 @@
     color: var(--text); border-bottom: 1.5px solid var(--accent);
     padding: 15px 2px; font-family: 'Inter', sans-serif;
     font-weight: 600; font-size: 15px; text-decoration: none;
+    transition: gap 0.15s ease;
   }
+  .btn-ghost:hover { gap: 12px; }
   html[dir="rtl"] .btn-ghost { font-family: 'Cairo', sans-serif; }
   html[dir="rtl"] .btn-ghost .arrow { transform: scaleX(-1); }
 
@@ -167,17 +177,13 @@
   .feature-row h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.3px; }
   .feature-row p { font-size: 14.5px; color: var(--muted); margin: 0; line-height: 1.6; }
 
-  /* Egypt band */
+  /* Regional band — accent bar, not a national flag, since positioning is
+     "starting in Egypt, expanding regionally," not Egypt-exclusive. */
   .egypt-band {
     border: 1px solid var(--border); border-radius: 20px;
     padding: 4px; overflow: hidden;
   }
-  /* Always red/white/black left-to-right — a national flag's colour order
-     shouldn't mirror just because the surrounding text direction did. */
-  .egypt-flagbar { display: flex; height: 5px; direction: ltr; }
-  .egypt-flagbar span:nth-child(1) { background: #CE1126; flex: 1; }
-  .egypt-flagbar span:nth-child(2) { background: #FFFFFF; flex: 1; }
-  .egypt-flagbar span:nth-child(3) { background: #000000; flex: 1; }
+  .egypt-flagbar { height: 4px; background: var(--accent); opacity: 0.55; }
   .egypt-body { padding: 40px 36px; text-align: center; }
   @media (max-width: 620px) { .egypt-body { padding: 32px 24px; } }
   .egypt-body h2 { font-size: 25px; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.5px; }
@@ -215,7 +221,7 @@
 <main id="top">
   <section class="hero wrap">
     <div>
-      <div class="eyebrow-tag"><span class="dot"></span><span data-i18n="eyebrow">Built for Egyptian investors</span></div>
+      <div class="eyebrow-tag"><span class="dot"></span><span data-i18n="eyebrow">Starting in Egypt, expanding across the region</span></div>
       <h1 class="headline" data-i18n-html="headline">All Investments.<br><span class="accent">One Place.</span></h1>
       <p class="sub" data-i18n="sub">Track gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.</p>
       <div class="cta-row">
@@ -342,10 +348,10 @@
   <section class="block">
     <div class="wrap">
       <div class="egypt-band">
-        <div class="egypt-flagbar"><span></span><span></span><span></span></div>
+        <div class="egypt-flagbar"></div>
         <div class="egypt-body">
-          <h2 data-i18n="egyptTitle">Speaks Egyptian finance natively</h2>
-          <p data-i18n="egyptBody">Live EGX stock prices. Gold and silver priced the way Egyptians actually buy it — in grams. Real exchange rates. Local certificate and T-bill products your bank already sells. Fully bilingual, in Arabic and English.</p>
+          <h2 data-i18n="egyptTitle">Starting in Egypt. Expanding across the region.</h2>
+          <p data-i18n="egyptBody">Today: live EGX stock prices, gold and silver priced in grams, real exchange rates, and the local certificate and T-bill products your bank already sells — fully bilingual in Arabic and English. More markets are coming as we expand.</p>
         </div>
       </div>
     </div>
@@ -376,7 +382,7 @@
 <script>
   var translations = {
     en: {
-      eyebrow: "Built for Egyptian investors",
+      eyebrow: "Starting in Egypt, expanding across the region",
       headline: 'All Investments.<br><span class="accent">One Place.</span>',
       sub: "Track gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.",
       comingSoon: "Coming soon to the App Store",
@@ -393,15 +399,15 @@
       f4t: "Fixed Income", f4d: "Bank certificates, T-bills, deposits and sukuk — with real accrual, not guesswork.",
       f5t: "Cash Accounts", f5d: "Bank balances, cash at home, and foreign currency — all converted to one clear number.",
       f6t: "Portfolio Analytics", f6d: "A health score, allocation breakdown, and real performance charts — never simulated.",
-      egyptTitle: "Speaks Egyptian finance natively",
-      egyptBody: "Live EGX stock prices. Gold and silver priced the way Egyptians actually buy it — in grams. Real exchange rates. Local certificate and T-bill products your bank already sells. Fully bilingual, in Arabic and English.",
+      egyptTitle: "Starting in Egypt. Expanding across the region.",
+      egyptBody: "Today: live EGX stock prices, gold and silver priced in grams, real exchange rates, and the local certificate and T-bill products your bank already sells — fully bilingual in Arabic and English. More markets are coming as we expand.",
       finalCta: "Know your real net worth.",
       footerTerms: "Terms", footerPrivacy: "Privacy", footerContact: "Contact",
       copyright: "© 2026 INVESTRY. All rights reserved.",
       toggleLabel: "العربية",
     },
     ar: {
-      eyebrow: "مصمم للمستثمر المصري",
+      eyebrow: "بنبدأ في مصر، وبنتوسع في المنطقة",
       headline: 'كل استثماراتك.<br><span class="accent">في مكان واحد.</span>',
       sub: "تابع الذهب والفضة، وأسهم البورصة المصرية، والعقارات، والشهادات، والكاش — محفظتك بالكامل، في مكان واحد، بأسعار حية.",
       comingSoon: "قريبًا على App Store",
@@ -418,8 +424,8 @@
       f4t: "الشهادات وأذون الخزانة", f4d: "شهادات البنوك، وأذون الخزانة، والودائع، والصكوك — بعائد حقيقي، مش تقدير.",
       f5t: "الحسابات النقدية", f5d: "أرصدة البنوك، والكاش في البيت، والعملات الأجنبية — كله في رقم واحد واضح.",
       f6t: "تحليلات المحفظة", f6d: "تقييم لصحة محفظتك، وتوزيع الأصول، ورسوم بيانية حقيقية — مش محاكاة.",
-      egyptTitle: "بيتكلم لغة المال المصري",
-      egyptBody: "أسعار حية للبورصة المصرية. الذهب والفضة بالجرام، زي ما المصريين فعلاً بيشتروا. أسعار صرف حقيقية. شهادات وأذون خزانة البنك اللي بيبيعها بنكك فعلاً. بالعربي والإنجليزي بالكامل.",
+      egyptTitle: "بنبدأ في مصر. وبنتوسع في المنطقة.",
+      egyptBody: "دلوقتي: أسعار حية للبورصة المصرية، والذهب والفضة بالجرام، وأسعار صرف حقيقية، وشهادات وأذون خزانة البنك اللي بيبيعها بنكك فعلاً — بالعربي والإنجليزي بالكامل. أسواق تانية جاية مع توسعنا.",
       finalCta: "اعرف صافي ثروتك الحقيقي.",
       footerTerms: "الشروط", footerPrivacy: "الخصوصية", footerContact: "تواصل معنا",
       copyright: "© 2026 إنفستري. جميع الحقوق محفوظة.",
