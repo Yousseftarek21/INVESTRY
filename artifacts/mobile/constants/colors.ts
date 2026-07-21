@@ -23,8 +23,8 @@ const colors = {
     foreground: '#FFFFFF',
   },
   light: {
-    background: '#FDFBF7',
-    card: '#FFFFFF',
+    background: '#FFFFFF',
+    card: '#FDFBF7',
     cardSecondary: '#F5F1E8',
     primary: '#A9821E',
     primaryForeground: '#FFFFFF',
