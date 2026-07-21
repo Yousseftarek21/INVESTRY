@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { useSubscription, openWebPopup, BillingPeriod } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
 import { useColors } from '@/hooks/useColors';
@@ -375,10 +375,15 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           {/* ── Hero ────────────────────────────────────────── */}
           <View style={sw.hero}>
             <View style={sw.iconGlowWrap}>
-              <ExpoLinearGradient
-                colors={[accent + '40', accent + '00']}
-                style={sw.iconGlow}
-              />
+              <Svg width={100} height={100} style={StyleSheet.absoluteFill}>
+                <Defs>
+                  <RadialGradient id="heroGlow" cx="50%" cy="50%" r="50%">
+                    <Stop offset="0%" stopColor={accent} stopOpacity={0.4} />
+                    <Stop offset="100%" stopColor={accent} stopOpacity={0} />
+                  </RadialGradient>
+                </Defs>
+                <Circle cx={50} cy={50} r={50} fill="url(#heroGlow)" />
+              </Svg>
               <View style={[sw.iconWrap, { backgroundColor: accent + '15', borderColor: accent + '35' }]}>
                 <Feather name="star" size={30} color={accent} />
               </View>
@@ -475,7 +480,9 @@ const sw = StyleSheet.create({
     maxHeight: '95%',
   },
   dragZone: {
-    width: '100%', alignItems: 'center',
+    // Narrower than full-width and centered, so it doesn't share touch
+    // space with closeBtn (absolutely positioned in the same top strip).
+    width: 160, alignSelf: 'center', alignItems: 'center',
     paddingTop: 12, paddingBottom: 10,
   },
   handle: {
@@ -492,7 +499,6 @@ const sw = StyleSheet.create({
   // Hero
   hero: { alignItems: 'center', paddingTop: 44, paddingBottom: 26, gap: 10 },
   iconGlowWrap: { width: 100, height: 100, alignItems: 'center', justifyContent: 'center' },
-  iconGlow: { position: 'absolute', width: 100, height: 100, borderRadius: 50 },
   iconWrap: {
     width: 72, height: 72, borderRadius: 24,
     borderWidth: 1,

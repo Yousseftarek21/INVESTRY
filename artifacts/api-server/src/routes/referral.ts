@@ -70,7 +70,11 @@ router.get("/referral", async (req, res) => {
 
     res.json({
       code,
-      link: `https://investry.app/invite/${code}`,
+      // investry.app has no server behind it yet (no real deep-link/redirect
+      // page exists there) — point to the real App Store listing instead so
+      // the shared link actually goes somewhere; the code itself is what the
+      // friend enters in the app's own redeem field after installing.
+      link: `https://apps.apple.com/app/id6787447052`,
       referredCount: Number(referredCount ?? 0),
       proCreditExpiresAt: self?.proCreditExpiresAt ?? null,
       hasRedeemed: Boolean(self?.referredByUserId),
@@ -107,14 +111,25 @@ router.post("/referral/redeem", async (req, res) => {
       return;
     }
 
+    // Both sides get a free month — the referrer for inviting, and the
+    // redeemer for joining, matching what the invite screen promises
+    // ("you both get a free month of Pro").
     const now = new Date();
-    const base = referrer.proCreditExpiresAt && referrer.proCreditExpiresAt > now ? referrer.proCreditExpiresAt : now;
-    const newExpiry = new Date(base);
-    newExpiry.setMonth(newExpiry.getMonth() + 1);
+    const referrerBase = referrer.proCreditExpiresAt && referrer.proCreditExpiresAt > now ? referrer.proCreditExpiresAt : now;
+    const referrerNewExpiry = new Date(referrerBase);
+    referrerNewExpiry.setMonth(referrerNewExpiry.getMonth() + 1);
+
+    const meBase = me?.proCreditExpiresAt && me.proCreditExpiresAt > now ? me.proCreditExpiresAt : now;
+    const meNewExpiry = new Date(meBase);
+    meNewExpiry.setMonth(meNewExpiry.getMonth() + 1);
 
     await db.transaction(async (tx) => {
-      await tx.update(usersTable).set({ referredByUserId: referrer.id, updatedAt: new Date() }).where(eq(usersTable.id, userId));
-      await tx.update(usersTable).set({ proCreditExpiresAt: newExpiry, updatedAt: new Date() }).where(eq(usersTable.id, referrer.id));
+      await tx.update(usersTable).set({
+        referredByUserId: referrer.id,
+        proCreditExpiresAt: meNewExpiry,
+        updatedAt: new Date(),
+      }).where(eq(usersTable.id, userId));
+      await tx.update(usersTable).set({ proCreditExpiresAt: referrerNewExpiry, updatedAt: new Date() }).where(eq(usersTable.id, referrer.id));
     });
 
     res.json({ success: true });
