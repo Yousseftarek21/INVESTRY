@@ -178,7 +178,7 @@ function MetalHeroCard({
         <View style={mh.topRow}>
           <View style={mh.nameRow}>
             <View style={[mh.iconWrap, { backgroundColor: accentColor + '18' }]}>
-              <MaterialCommunityIcons name={metalType === 'gold' ? 'gold' : 'medal'} size={16} color={accentColor} />
+              <MaterialCommunityIcons name="gold" size={16} color={accentColor} />
             </View>
             <Text style={[mh.label, { color: colors.mutedForeground }]}>{label}</Text>
           </View>
@@ -237,7 +237,7 @@ function MetalRow({
     ]}>
       <View style={mr.left}>
         <View style={[mr.iconWrap, { backgroundColor: accentColor + '18' }]}>
-          <MaterialCommunityIcons name={metalType === 'gold' ? 'gold' : 'medal'} size={17} color={accentColor} />
+          <MaterialCommunityIcons name="gold" size={17} color={accentColor} />
         </View>
         <View style={mr.labels}>
           <Text style={[mr.label, { color: colors.text }, bold && mr.labelBold]}>{label}</Text>
@@ -665,7 +665,7 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
 
       {/* Silver section */}
       <View style={tab.section}>
-        <SLabel icon={{ lib: 'mci', name: 'medal' }} title={t.silverSectionLabel} />
+        <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.silverSectionLabel} />
         <MetalHeroCard
           metalType="silver"
           accentColor={colors.silverColor}

@@ -79,7 +79,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="add-choose"
-        options={{ presentation: "transparentModal", headerShown: false, animation: "none" }}
+        options={{ presentation: "transparentModal", headerShown: false, animation: "fade" }}
       />
       <Stack.Screen
         name="add-investment"

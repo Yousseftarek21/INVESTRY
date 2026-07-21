@@ -38,7 +38,7 @@ const TYPE_ORDER: Holding['type'][] = ['gold', 'silver', 'stock', 'real_estate',
 type HoldingIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
 const TYPE_ICONS: Record<Holding['type'], HoldingIcon> = {
   gold:           { lib: 'mci', name: 'gold' },
-  silver:         { lib: 'mci', name: 'medal' },
+  silver:         { lib: 'mci', name: 'gold' },
   stock:          'bar-chart-2',
   real_estate:    { lib: 'mci', name: 'home-city' },
   personal_asset: { lib: 'mci', name: 'tag-multiple' },
