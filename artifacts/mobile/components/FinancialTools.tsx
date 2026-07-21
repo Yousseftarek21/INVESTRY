@@ -98,6 +98,8 @@ function ModalShell({
               contentContainerStyle={sh.body}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
+              bounces={false}
+              overScrollMode="never"
             >
               {children}
             </ScrollView>

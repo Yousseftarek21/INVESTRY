@@ -1,8 +1,7 @@
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect, router } from 'expo-router';
-import React, { useCallback, useRef } from 'react';
+import { router } from 'expo-router';
+import React from 'react';
 import {
-  Animated,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,31 +15,18 @@ import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 
+// Entrance/exit are handled entirely by the navigator's own
+// "slide_from_bottom" transition (see _layout.tsx) — a hand-rolled JS
+// animation here previously raced against that transition and read as
+// laggy. Letting the native transition own the whole screen (dim + sheet
+// together) matches how the other native "modal" screens (cash-accounts,
+// goals) already feel, since those get the same native-driven treatment.
 export default function AddChooseScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
 
-  const slideY = useRef(new Animated.Value(500)).current;
-  const dimOpacity = useRef(new Animated.Value(0)).current;
-
-  useFocusEffect(
-    useCallback(() => {
-      slideY.setValue(500);
-      dimOpacity.setValue(0);
-      Animated.parallel([
-        Animated.spring(slideY, { toValue: 0, bounciness: 3, speed: 16, useNativeDriver: true }),
-        Animated.timing(dimOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
-    }, []),
-  );
-
-  const dismiss = () => {
-    Animated.parallel([
-      Animated.timing(slideY, { toValue: 500, duration: 220, useNativeDriver: true }),
-      Animated.timing(dimOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
-    ]).start(() => router.back());
-  };
+  const dismiss = () => router.back();
 
   const goInvestment = () => router.push('/add-investment?mode=investment' as any);
   const goCash = () => router.push('/cash-accounts?openAdd=1' as any);
@@ -50,17 +36,16 @@ export default function AddChooseScreen() {
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Animated.View style={[s.dim, { opacity: dimOpacity }]}>
+      <View style={s.dim}>
         <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
-      </Animated.View>
+      </View>
 
-      <Animated.View
+      <View
         style={[
           s.sheet,
           {
             backgroundColor: colors.card,
             paddingBottom: bottomPad,
-            transform: [{ translateY: slideY }],
           },
         ]}
       >
@@ -111,7 +96,7 @@ export default function AddChooseScreen() {
           </View>
           <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     </View>
   );
 }
