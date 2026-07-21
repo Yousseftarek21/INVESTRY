@@ -3,7 +3,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Animated, KeyboardAvoidingView, Modal, Platform,
+  Animated, KeyboardAvoidingView, Modal, PanResponder, Platform,
   Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,14 +49,45 @@ function ModalShell({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(300)).current;
+  const dragStart = useRef(0);
+
+  // Routed through a ref kept current every render so a swipe-dismiss
+  // (created once via useRef below) always calls the latest onClose.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  const snapOpen = () => {
+    Animated.spring(slideAnim, { toValue: 0, useNativeDriver: Platform.OS !== 'web', damping: 20, stiffness: 120 }).start();
+  };
 
   useEffect(() => {
     if (visible) {
-      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: Platform.OS !== 'web', damping: 20, stiffness: 120 }).start();
+      snapOpen();
     } else {
       Animated.timing(slideAnim, { toValue: 300, duration: 200, useNativeDriver: Platform.OS !== 'web' }).start();
     }
   }, [visible]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        slideAnim.stopAnimation((value) => { dragStart.current = value; });
+      },
+      onPanResponderMove: (_, gesture) => {
+        slideAnim.setValue(Math.max(0, dragStart.current + gesture.dy));
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy > 120 || gesture.vy > 0.8) {
+          Animated.timing(slideAnim, { toValue: 500, duration: 200, useNativeDriver: Platform.OS !== 'web' })
+            .start(() => onCloseRef.current());
+        } else {
+          snapOpen();
+        }
+      },
+      onPanResponderTerminate: snapOpen,
+    })
+  ).current;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -78,8 +109,10 @@ function ModalShell({
               transform: [{ translateY: slideAnim }],
             }]}
           >
-            {/* Handle */}
-            <View style={[sh.handle, { backgroundColor: colors.border }]} />
+            {/* Handle — swipe down here to dismiss */}
+            <View style={sh.dragZone} {...panResponder.panHandlers}>
+              <View style={[sh.handle, { backgroundColor: colors.border }]} />
+            </View>
 
             {/* Header */}
             <View style={sh.header}>
@@ -112,8 +145,9 @@ function ModalShell({
 const sh = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   kav: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12, maxHeight: '90%' },
-  handle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
+  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%' },
+  dragZone: { width: '100%', alignItems: 'center', paddingTop: 12, paddingBottom: 10 },
+  handle: { width: 40, height: 4, borderRadius: 2 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, gap: 12 },
   iconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontSize: 17, fontFamily: 'Inter_700Bold' },
