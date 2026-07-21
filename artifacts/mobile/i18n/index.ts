@@ -3,7 +3,7 @@ export type Language = 'en' | 'ar';
 const en = {
   // App
   appName: 'INVESTRY',
-  appTagline: 'All Investments. One Place',
+  appTagline: 'Track All Investments. One Place',
 
   // Tabs
   portfolio: 'Overview',
@@ -439,7 +439,7 @@ const en = {
   onboardSlide4Sub: 'Your portfolio is stored securely under your account and sent over encrypted connections. We never sell or share your data with third parties.',
   getStarted: 'Get Started',
   skip: 'Skip',
-  welcomeTagline: 'All Investments. One Place',
+  welcomeTagline: 'Track All Investments. One Place',
   welcomeDesc: 'Track gold, silver, EGX stocks and real estate — live prices in Egyptian pounds.',
   signInBtn: 'Sign In',
 
@@ -611,7 +611,7 @@ const en = {
   goldSilverUnit: 'Gold & silver display unit',
   signInToYourAccount: 'Sign in to your account',
   loadSavedInvestments: 'Load your saved investments & sync data',
-  knowYourWealth: 'All Investments. One Place',
+  knowYourWealth: 'Track All Investments. One Place',
   versionLabel: 'Version',
   lastApiUpdateLabel: 'Last API Update',
   dataStorageLabel: 'Data Storage',
@@ -1024,7 +1024,7 @@ const en = {
 const ar: typeof en = {
   // App
   appName: 'INVESTRY',
-  appTagline: 'جميع استثماراتك في مكان واحد',
+  appTagline: 'تابع جميع استثماراتك في مكان واحد',
 
   // Tabs
   portfolio: 'نظرة عامة',
@@ -1460,7 +1460,7 @@ const ar: typeof en = {
   onboardSlide4Sub: 'يتم تخزين محفظتك بشكل آمن ضمن حسابك وإرسالها عبر اتصالات مشفّرة. نحن لا نبيع أو نشارك بياناتك أبداً مع أطراف ثالثة.',
   getStarted: 'ابدأ الآن',
   skip: 'تخطى',
-  welcomeTagline: 'جميع استثماراتك في مكان واحد',
+  welcomeTagline: 'تابع جميع استثماراتك في مكان واحد',
   welcomeDesc: 'تتبع الذهب والفضة وأسهم البورصة والعقارات — بأسعار حية بالجنيه المصري.',
   signInBtn: 'تسجيل الدخول',
 
@@ -1632,7 +1632,7 @@ const ar: typeof en = {
   goldSilverUnit: 'وحدة عرض الذهب والفضة',
   signInToYourAccount: 'سجّل دخولك',
   loadSavedInvestments: 'تحميل استثماراتك المحفوظة ومزامنة البيانات',
-  knowYourWealth: 'جميع استثماراتك في مكان واحد',
+  knowYourWealth: 'تابع جميع استثماراتك في مكان واحد',
   versionLabel: 'الإصدار',
   lastApiUpdateLabel: 'آخر تحديث API',
   dataStorageLabel: 'تخزين البيانات',
