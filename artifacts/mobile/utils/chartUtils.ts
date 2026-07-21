@@ -68,22 +68,16 @@ export function snapshotsToValues(
  * any smooth curve passing through both endpoints is just the straight
  * line between them, regardless of this tension value.
  */
-const SMOOTHING_TENSION = 0.35;
-
-export function buildSmoothPath(pts: ChartPt[]): string {
+/**
+ * Straight-line segments between real points only — no smoothing. A curve
+ * would imply motion between two real samples that never actually happened;
+ * this matches the app's own "no data points are invented" chart policy.
+ */
+export function buildLinearPath(pts: ChartPt[]): string {
   if (pts.length < 2) return '';
   let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    const t = SMOOTHING_TENSION;
-    const cp1x = p1.x + (p2.x - p0.x) * t;
-    const cp1y = p1.y + (p2.y - p0.y) * t;
-    const cp2x = p2.x - (p3.x - p1.x) * t;
-    const cp2y = p2.y - (p3.y - p1.y) * t;
-    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+  for (let i = 1; i < pts.length; i++) {
+    d += ` L ${pts[i].x.toFixed(2)},${pts[i].y.toFixed(2)}`;
   }
   return d;
 }

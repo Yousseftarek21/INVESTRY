@@ -232,10 +232,14 @@ export default function CashAccountsScreen() {
         dateAdded,
         notes: notes.trim() || undefined,
       };
+      // addCashAccount/updateCashAccount update local state synchronously
+      // before their network call — don't wait on the round-trip just to
+      // dismiss the form (failures are handled by the context's own
+      // rollback + syncError).
       if (editingId && !isEditingIncome) {
-        await updateCashAccount(account);
+        updateCashAccount(account);
       } else {
-        await addCashAccount(account);
+        addCashAccount(account);
       }
     }
     notify();

@@ -4,7 +4,7 @@ import Svg, { Path, Defs, LinearGradient, Stop, Circle } from 'react-native-svg'
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { buildSmoothPath, snapshotsToValues, ChartPt, ChartPeriod, PortfolioSnapshotItem } from '@/utils/chartUtils';
+import { buildLinearPath, snapshotsToValues, ChartPt, ChartPeriod, PortfolioSnapshotItem } from '@/utils/chartUtils';
 
 interface PerfChartProps {
   period: ChartPeriod;
@@ -95,7 +95,7 @@ export function PerfChart({ period, width, height = 110, snapshots, todayValues,
     value: v,
   }));
 
-  const linePath = buildSmoothPath(pts);
+  const linePath = buildLinearPath(pts);
   const firstPt = pts[0];
   const lastPt = pts[pts.length - 1];
   const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;

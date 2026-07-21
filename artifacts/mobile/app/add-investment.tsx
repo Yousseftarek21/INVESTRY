@@ -756,10 +756,14 @@ export default function AddInvestmentScreen() {
     if (!holding) return;
     notify();
     if (isEditing) {
-      await updateHolding(holding);
+      // addHolding/updateHolding update local state synchronously before the
+      // network call — navigate immediately instead of waiting on the
+      // round-trip, which otherwise stalls the UI for no benefit (any
+      // failure is handled by the context's own rollback + syncError).
+      updateHolding(holding);
       router.back();
     } else {
-      await addHolding(holding);
+      addHolding(holding);
       // Editing came from the holdings list, so `back()` already returns there.
       // Adding came through the add-choose type picker, so `back()` alone would
       // just land back on that picker sheet — dismiss past it to the list instead.
