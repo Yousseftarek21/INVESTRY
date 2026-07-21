@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="assets/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #FFFFFF;
@@ -34,18 +34,34 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
   }
+  html[dir="rtl"] body { font-family: 'Cairo', 'Inter', sans-serif; }
+  html[dir="rtl"] h1, html[dir="rtl"] h2, html[dir="rtl"] h3 { font-family: 'Cairo', serif; }
   img { max-width: 100%; display: block; }
   a { color: inherit; }
   h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; }
 
   .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 
-  /* Header */
+  /* Header — a real nav bar, not a standalone logo lockup */
   header.site {
-    padding: 24px 0;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
   }
-  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-  .brand img { height: 22px; width: auto; }
+  header.site .wrap {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 16px; padding-bottom: 16px;
+  }
+  .brand { display: flex; align-items: center; text-decoration: none; }
+  .brand img { height: 17px; width: auto; opacity: 0.92; }
+  .lang-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 14px; background: var(--bg);
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--text);
+    cursor: pointer; transition: border-color 0.15s ease;
+  }
+  .lang-toggle:hover { border-color: var(--accent); }
+  html[dir="rtl"] .lang-toggle { font-family: 'Cairo', sans-serif; }
 
   /* Hero */
   .hero {
@@ -59,13 +75,15 @@
     padding: 6px 14px 6px 8px; margin-bottom: 22px;
   }
   .eyebrow-tag .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-  .eyebrow-tag span { font-size: 12.5px; font-weight: 600; letter-spacing: 0.2px; color: var(--muted); }
+  .eyebrow-tag span:last-child { font-size: 12.5px; font-weight: 600; letter-spacing: 0.2px; color: var(--muted); }
   h1.headline {
     font-size: 54px; font-weight: 700; letter-spacing: -1.6px; line-height: 1.03;
     margin: 0 0 22px; text-wrap: balance;
   }
+  html[dir="rtl"] h1.headline { letter-spacing: 0; }
   @media (max-width: 860px) { h1.headline { font-size: 42px; } }
   .headline .accent { color: var(--accent); font-style: italic; }
+  html[dir="rtl"] .headline .accent { font-style: normal; }
   p.sub {
     font-size: 18px; color: var(--muted); max-width: 460px;
     margin: 0 0 34px; text-wrap: balance;
@@ -79,6 +97,7 @@
     font-weight: 600; font-size: 15px; text-decoration: none;
     transition: opacity 0.15s ease;
   }
+  html[dir="rtl"] .btn-store { font-family: 'Cairo', sans-serif; }
   .btn-store:hover { opacity: 0.85; }
   .btn-store.disabled {
     opacity: 1; cursor: default; pointer-events: none;
@@ -90,6 +109,8 @@
     padding: 15px 2px; font-family: 'Inter', sans-serif;
     font-weight: 600; font-size: 15px; text-decoration: none;
   }
+  html[dir="rtl"] .btn-ghost { font-family: 'Cairo', sans-serif; }
+  html[dir="rtl"] .btn-ghost .arrow { transform: scaleX(-1); }
 
   /* Portfolio preview card */
   .preview-card {
@@ -103,7 +124,9 @@
   .preview-value {
     font-family: 'Fraunces', Georgia, serif;
     font-size: 38px; font-weight: 700; letter-spacing: -1px; margin: 0 0 22px;
+    font-variant-numeric: tabular-nums;
   }
+  html[dir="rtl"] .preview-value { font-family: 'Cairo', serif; }
   .preview-bar {
     display: flex; width: 100%; height: 10px; border-radius: 6px; overflow: hidden;
     margin-bottom: 20px;
@@ -122,6 +145,7 @@
   h2.section-title {
     font-size: 32px; font-weight: 700; letter-spacing: -0.9px; margin: 0 0 12px; text-wrap: balance;
   }
+  html[dir="rtl"] h2.section-title { letter-spacing: 0; }
   p.section-sub { color: var(--muted); font-size: 16.5px; margin: 0; }
 
   /* Feature list — editorial rows, not boxed cards */
@@ -145,7 +169,9 @@
     border: 1px solid var(--border); border-radius: 20px;
     padding: 4px; overflow: hidden;
   }
-  .egypt-flagbar { display: flex; height: 5px; }
+  /* Always red/white/black left-to-right — a national flag's colour order
+     shouldn't mirror just because the surrounding text direction did. */
+  .egypt-flagbar { display: flex; height: 5px; direction: ltr; }
   .egypt-flagbar span:nth-child(1) { background: #CE1126; flex: 1; }
   .egypt-flagbar span:nth-child(2) { background: #FFFFFF; flex: 1; }
   .egypt-flagbar span:nth-child(3) { background: #000000; flex: 1; }
@@ -177,28 +203,31 @@
     <a class="brand" href="#top">
       <img src="assets/logo-light.png" alt="INVESTRY">
     </a>
+    <button class="lang-toggle" id="langToggle" type="button">
+      <span id="langToggleLabel">العربية</span>
+    </button>
   </div>
 </header>
 
 <main id="top">
   <section class="hero wrap">
     <div>
-      <div class="eyebrow-tag"><span class="dot"></span><span>Built for Egyptian investors</span></div>
-      <h1 class="headline">All Investments.<br><span class="accent">One Place.</span></h1>
-      <p class="sub">Track gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.</p>
+      <div class="eyebrow-tag"><span class="dot"></span><span data-i18n="eyebrow">Built for Egyptian investors</span></div>
+      <h1 class="headline" data-i18n-html="headline">All Investments.<br><span class="accent">One Place.</span></h1>
+      <p class="sub" data-i18n="sub">Track gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.</p>
       <div class="cta-row">
         <!-- App Store link isn't live yet (app hasn't cleared review) — swap
              back to <a class="btn-store" href="https://apps.apple.com/app/id6787447052"> once it's actually published. -->
         <span class="btn-store disabled" aria-disabled="true">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.94-.07 1.85-.62 2.83-.71 1.44-.11 2.51.47 3.24 1.43-2.94 1.76-2.35 5.62.32 6.71-.5 1.29-1.15 2.58-2.47 3.74zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.32-2.12 4.05-3.74 4.25z"/></svg>
-          Coming soon to the App Store
+          <span data-i18n="comingSoon">Coming soon to the App Store</span>
         </span>
-        <a class="btn-ghost" href="#features">See what's included →</a>
+        <a class="btn-ghost" href="#features"><span data-i18n="seeIncluded">See what's included</span> <span class="arrow">→</span></a>
       </div>
     </div>
 
     <div class="preview-card">
-      <p class="preview-label">Total Portfolio Value</p>
+      <p class="preview-label" data-i18n="totalValue">Total Portfolio Value</p>
       <p class="preview-value">1,485,200 EGP</p>
       <div class="preview-bar">
         <span style="width:34%; background:#7B5A1E"></span>
@@ -209,22 +238,22 @@
         <span style="width:4%; background:#B8BEC7"></span>
       </div>
       <div class="preview-legend">
-        <div class="legend-row"><span class="legend-dot" style="background:#7B5A1E"></span><span class="name">Real Estate</span><span class="pct">34%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#C9A227"></span><span class="name">Gold</span><span class="pct">22%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#4A9EFF"></span><span class="name">EGX Stocks</span><span class="pct">18%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#00976E"></span><span class="name">Fixed Income</span><span class="pct">14%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#A47FCA"></span><span class="name">Cash</span><span class="pct">8%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#B8BEC7"></span><span class="name">Silver</span><span class="pct">4%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#7B5A1E"></span><span class="name" data-i18n="assetRealEstate">Real Estate</span><span class="pct">34%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#C9A227"></span><span class="name" data-i18n="assetGold">Gold</span><span class="pct">22%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#4A9EFF"></span><span class="name" data-i18n="assetStocks">EGX Stocks</span><span class="pct">18%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#00976E"></span><span class="name" data-i18n="assetFixedIncome">Fixed Income</span><span class="pct">14%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#A47FCA"></span><span class="name" data-i18n="assetCash">Cash</span><span class="pct">8%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#B8BEC7"></span><span class="name" data-i18n="assetSilver">Silver</span><span class="pct">4%</span></div>
       </div>
-      <p class="preview-note">Sample portfolio, for illustration only</p>
+      <p class="preview-note" data-i18n="sampleNote">Sample portfolio, for illustration only</p>
     </div>
   </section>
 
   <section class="block" id="features">
     <div class="wrap">
       <div class="section-head">
-        <h2 class="section-title">One portfolio, not five spreadsheets</h2>
-        <p class="section-sub">Every asset class you actually hold, tracked together — with real prices, not guesses.</p>
+        <h2 class="section-title" data-i18n="featTitle">One portfolio, not five spreadsheets</h2>
+        <p class="section-sub" data-i18n="featSub">Every asset class you actually hold, tracked together — with real prices, not guesses.</p>
       </div>
 
       <div class="feature-list">
@@ -237,8 +266,8 @@
             </svg>
           </div>
           <div>
-            <h3>Gold &amp; Silver</h3>
-            <p>Physical and digital holdings tracked in grams, priced live against EGP — not troy ounces.</p>
+            <h3 data-i18n="f1t">Gold &amp; Silver</h3>
+            <p data-i18n="f1d">Physical and digital holdings tracked in grams, priced live against EGP — not troy ounces.</p>
           </div>
         </div>
 
@@ -249,8 +278,8 @@
             </svg>
           </div>
           <div>
-            <h3>EGX Stocks</h3>
-            <p>Live prices for Egyptian Exchange stocks, right alongside everything else you own.</p>
+            <h3 data-i18n="f2t">EGX Stocks</h3>
+            <p data-i18n="f2d">Live prices for Egyptian Exchange stocks, right alongside everything else you own.</p>
           </div>
         </div>
 
@@ -261,8 +290,8 @@
             </svg>
           </div>
           <div>
-            <h3>Real Estate</h3>
-            <p>Value properties against real market data for their governorate and district.</p>
+            <h3 data-i18n="f3t">Real Estate</h3>
+            <p data-i18n="f3d">Value properties against real market data for their governorate and district.</p>
           </div>
         </div>
 
@@ -273,8 +302,8 @@
             </svg>
           </div>
           <div>
-            <h3>Fixed Income</h3>
-            <p>Bank certificates, T-bills, deposits and sukuk — with real accrual, not guesswork.</p>
+            <h3 data-i18n="f4t">Fixed Income</h3>
+            <p data-i18n="f4d">Bank certificates, T-bills, deposits and sukuk — with real accrual, not guesswork.</p>
           </div>
         </div>
 
@@ -286,8 +315,8 @@
             </svg>
           </div>
           <div>
-            <h3>Cash Accounts</h3>
-            <p>Bank balances, cash at home, and foreign currency — all converted to one clear number.</p>
+            <h3 data-i18n="f5t">Cash Accounts</h3>
+            <p data-i18n="f5d">Bank balances, cash at home, and foreign currency — all converted to one clear number.</p>
           </div>
         </div>
 
@@ -298,8 +327,8 @@
             </svg>
           </div>
           <div>
-            <h3>Portfolio Analytics</h3>
-            <p>A health score, allocation breakdown, and real performance charts — never simulated.</p>
+            <h3 data-i18n="f6t">Portfolio Analytics</h3>
+            <p data-i18n="f6d">A health score, allocation breakdown, and real performance charts — never simulated.</p>
           </div>
         </div>
 
@@ -312,21 +341,21 @@
       <div class="egypt-band">
         <div class="egypt-flagbar"><span></span><span></span><span></span></div>
         <div class="egypt-body">
-          <h2>Speaks Egyptian finance natively</h2>
-          <p>Live EGX stock prices. Gold and silver priced the way Egyptians actually buy it — in grams. Real exchange rates. Local certificate and T-bill products your bank already sells. Fully bilingual, in Arabic and English.</p>
+          <h2 data-i18n="egyptTitle">Speaks Egyptian finance natively</h2>
+          <p data-i18n="egyptBody">Live EGX stock prices. Gold and silver priced the way Egyptians actually buy it — in grams. Real exchange rates. Local certificate and T-bill products your bank already sells. Fully bilingual, in Arabic and English.</p>
         </div>
       </div>
     </div>
   </section>
 
   <section class="final-cta wrap">
-    <h2>Know your real net worth.</h2>
+    <h2 data-i18n="finalCta">Know your real net worth.</h2>
     <div class="cta-row">
       <!-- App Store link isn't live yet (app hasn't cleared review) — swap
            back to <a class="btn-store" href="https://apps.apple.com/app/id6787447052"> once it's actually published. -->
       <span class="btn-store disabled" aria-disabled="true">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.94-.07 1.85-.62 2.83-.71 1.44-.11 2.51.47 3.24 1.43-2.94 1.76-2.35 5.62.32 6.71-.5 1.29-1.15 2.58-2.47 3.74zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.32-2.12 4.05-3.74 4.25z"/></svg>
-        Coming soon to the App Store
+        <span data-i18n="comingSoon">Coming soon to the App Store</span>
       </span>
     </div>
   </section>
@@ -334,12 +363,94 @@
 
 <footer class="site wrap">
   <div class="links">
-    <a href="https://api.investry.app/api/legal/terms">Terms</a>
-    <a href="https://api.investry.app/api/legal/privacy">Privacy</a>
-    <a href="mailto:support@investry.app">Contact</a>
+    <a href="https://api.investry.app/api/legal/terms" data-i18n="footerTerms">Terms</a>
+    <a href="https://api.investry.app/api/legal/privacy" data-i18n="footerPrivacy">Privacy</a>
+    <a href="mailto:support@investry.app" data-i18n="footerContact">Contact</a>
   </div>
-  <div class="copyright">© 2026 INVESTRY. All rights reserved.</div>
+  <div class="copyright" data-i18n="copyright">© 2026 INVESTRY. All rights reserved.</div>
 </footer>
+
+<script>
+  var translations = {
+    en: {
+      eyebrow: "Built for Egyptian investors",
+      headline: 'All Investments.<br><span class="accent">One Place.</span>',
+      sub: "Track gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.",
+      comingSoon: "Coming soon to the App Store",
+      seeIncluded: "See what's included",
+      totalValue: "Total Portfolio Value",
+      assetRealEstate: "Real Estate", assetGold: "Gold", assetStocks: "EGX Stocks",
+      assetFixedIncome: "Fixed Income", assetCash: "Cash", assetSilver: "Silver",
+      sampleNote: "Sample portfolio, for illustration only",
+      featTitle: "One portfolio, not five spreadsheets",
+      featSub: "Every asset class you actually hold, tracked together — with real prices, not guesses.",
+      f1t: "Gold & Silver", f1d: "Physical and digital holdings tracked in grams, priced live against EGP — not troy ounces.",
+      f2t: "EGX Stocks", f2d: "Live prices for Egyptian Exchange stocks, right alongside everything else you own.",
+      f3t: "Real Estate", f3d: "Value properties against real market data for their governorate and district.",
+      f4t: "Fixed Income", f4d: "Bank certificates, T-bills, deposits and sukuk — with real accrual, not guesswork.",
+      f5t: "Cash Accounts", f5d: "Bank balances, cash at home, and foreign currency — all converted to one clear number.",
+      f6t: "Portfolio Analytics", f6d: "A health score, allocation breakdown, and real performance charts — never simulated.",
+      egyptTitle: "Speaks Egyptian finance natively",
+      egyptBody: "Live EGX stock prices. Gold and silver priced the way Egyptians actually buy it — in grams. Real exchange rates. Local certificate and T-bill products your bank already sells. Fully bilingual, in Arabic and English.",
+      finalCta: "Know your real net worth.",
+      footerTerms: "Terms", footerPrivacy: "Privacy", footerContact: "Contact",
+      copyright: "© 2026 INVESTRY. All rights reserved.",
+      toggleLabel: "العربية",
+    },
+    ar: {
+      eyebrow: "مصمم للمستثمر المصري",
+      headline: 'كل استثماراتك.<br><span class="accent">في مكان واحد.</span>',
+      sub: "تابع الذهب والفضة، وأسهم البورصة المصرية، والعقارات، والشهادات، والكاش — محفظتك بالكامل، في مكان واحد، بأسعار حية.",
+      comingSoon: "قريبًا على App Store",
+      seeIncluded: "شوف اللي جوه",
+      totalValue: "إجمالي قيمة المحفظة",
+      assetRealEstate: "عقارات", assetGold: "ذهب", assetStocks: "أسهم البورصة",
+      assetFixedIncome: "شهادات", assetCash: "كاش", assetSilver: "فضة",
+      sampleNote: "محفظة توضيحية فقط، مش بيانات حقيقية",
+      featTitle: "محفظة واحدة، مش خمس شيتات إكسل",
+      featSub: "كل نوع أصول بتملكه، متابَع مع الباقي — بأسعار حقيقية، مش تخمين.",
+      f1t: "الذهب والفضة", f1d: "الذهب والفضة الفعلي والرقمي بالجرام، بأسعار حية بالجنيه — مش بالأوقية.",
+      f2t: "أسهم البورصة المصرية", f2d: "أسعار حية لأسهم البورصة المصرية، جنب كل حاجة تانية تملكها.",
+      f3t: "العقارات", f3d: "قيّم عقاراتك بأسعار السوق الحقيقية لمحافظتها ومنطقتها.",
+      f4t: "الشهادات وأذون الخزانة", f4d: "شهادات البنوك، وأذون الخزانة، والودائع، والصكوك — بعائد حقيقي، مش تقدير.",
+      f5t: "الحسابات النقدية", f5d: "أرصدة البنوك، والكاش في البيت، والعملات الأجنبية — كله في رقم واحد واضح.",
+      f6t: "تحليلات المحفظة", f6d: "تقييم لصحة محفظتك، وتوزيع الأصول، ورسوم بيانية حقيقية — مش محاكاة.",
+      egyptTitle: "بيتكلم لغة المال المصري",
+      egyptBody: "أسعار حية للبورصة المصرية. الذهب والفضة بالجرام، زي ما المصريين فعلاً بيشتروا. أسعار صرف حقيقية. شهادات وأذون خزانة البنك اللي بيبيعها بنكك فعلاً. بالعربي والإنجليزي بالكامل.",
+      finalCta: "اعرف صافي ثروتك الحقيقي.",
+      footerTerms: "الشروط", footerPrivacy: "الخصوصية", footerContact: "تواصل معنا",
+      copyright: "© 2026 إنفستري. جميع الحقوق محفوظة.",
+      toggleLabel: "English",
+    }
+  };
+
+  function applyLang(lang) {
+    var t = translations[lang];
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n');
+      if (t[key] != null) el.textContent = t[key];
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n-html');
+      if (t[key] != null) el.innerHTML = t[key];
+    });
+    document.getElementById('langToggleLabel').textContent = t.toggleLabel;
+    try { localStorage.setItem('investry-lang', lang); } catch (e) {}
+  }
+
+  document.getElementById('langToggle').addEventListener('click', function () {
+    var current = document.documentElement.lang === 'ar' ? 'ar' : 'en';
+    applyLang(current === 'ar' ? 'en' : 'ar');
+  });
+
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('investry-lang'); } catch (e) {}
+    if (saved === 'ar' || saved === 'en') applyLang(saved);
+  })();
+</script>
 
 </body>
 </html>
