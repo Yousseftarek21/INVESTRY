@@ -21,18 +21,8 @@
     --accent-soft: rgba(169, 130, 30, 0.1);
     --green: #00976E;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #000000;
-      --card: #161616;
-      --text: #FFFFFF;
-      --muted: #9B9FA6;
-      --border: #2E2E30;
-      --accent: #C9A227;
-      --accent-soft: rgba(201, 162, 39, 0.14);
-      --green: #00D4AA;
-    }
-  }
+  /* Light mode only, intentionally — no dark variant. */
+  color-scheme: light;
 
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -164,10 +154,7 @@
 <header class="site">
   <div class="wrap">
     <a class="brand" href="#top">
-      <picture>
-        <source srcset="assets/logo-dark.png" media="(prefers-color-scheme: dark)">
-        <img src="assets/logo-light.png" alt="INVESTRY">
-      </picture>
+      <img src="assets/logo-light.png" alt="INVESTRY">
     </a>
   </div>
 </header>
