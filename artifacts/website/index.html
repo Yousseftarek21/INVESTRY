@@ -200,6 +200,65 @@
   .step h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.3px; }
   .step p { font-size: 14.5px; color: var(--muted); margin: 0; line-height: 1.6; }
 
+  /* "Get in touch" — a modal, not a static section, so it's reachable
+     from anywhere instead of sitting fixed at the page bottom. */
+  .nav-links button.open-contact-modal {
+    background: none; border: none; padding: 0; margin: 0;
+    font: inherit; cursor: pointer; color: var(--text);
+  }
+  .nav-links button.open-contact-modal:hover { color: var(--accent); }
+  footer.site button.open-contact-modal {
+    background: none; border: none; padding: 0; margin: 0 9px;
+    font: inherit; font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+  footer.site button.open-contact-modal:hover { color: var(--accent); }
+  .contact-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(22, 19, 14, 0.5);
+    align-items: center; justify-content: center; padding: 20px; z-index: 100;
+  }
+  .contact-modal-overlay.open { display: flex; }
+  .contact-modal {
+    background: var(--bg); border-radius: 20px; padding: 32px;
+    max-width: 440px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative;
+  }
+  .contact-modal h2 { font-size: 24px; margin: 0 0 8px; letter-spacing: -0.5px; }
+  .contact-modal .modal-sub { color: var(--muted); font-size: 14.5px; margin: 0 0 24px; }
+  .contact-modal-close {
+    position: absolute; top: 16px; inset-inline-end: 16px;
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--muted); font-size: 15px; line-height: 1; padding: 0;
+  }
+  .contact-modal-close:hover { color: var(--text); border-color: var(--accent); }
+  .contact-form { display: flex; flex-direction: column; gap: 14px; text-align: start; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .form-field input, .form-field textarea {
+    border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+    font-family: inherit; font-size: 15px; color: var(--text); background: var(--card);
+    resize: vertical;
+  }
+  .form-field input:focus, .form-field textarea:focus { outline: none; border-color: var(--accent); }
+  .form-submit {
+    background: var(--text); color: #fff; border: none; border-radius: 12px;
+    padding: 14px 24px; font-family: inherit; font-weight: 600; font-size: 15px;
+    cursor: pointer; transition: opacity 0.15s ease;
+  }
+  html[dir="rtl"] .form-submit, html[dir="rtl"] .form-field label,
+  html[dir="rtl"] .contact-modal h2 { font-family: 'Cairo', sans-serif; }
+  .form-submit:hover { opacity: 0.85; }
+  .form-note { font-size: 13px; color: var(--muted); text-align: center; margin-top: 2px; }
+  .form-note a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .form-success { display: none; text-align: center; padding: 12px 4px 4px; }
+  .form-success.visible { display: block; }
+  .form-success .check {
+    width: 48px; height: 48px; border-radius: 50%; background: var(--green);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px; font-size: 22px;
+  }
+  .form-success p { color: var(--muted); font-size: 15px; margin: 0; }
+
   /* Regional band — accent bar, not a national flag, since positioning is
      "starting in Egypt, expanding regionally," not Egypt-exclusive. */
   .egypt-band {
@@ -239,7 +298,7 @@
     <nav class="nav-links">
       <a href="#how-it-works" data-i18n="navHow">How It Works</a>
       <a href="#features" data-i18n="navFeatures">Features</a>
-      <a href="mailto:support@investry.app" data-i18n="navContact">Contact Us</a>
+      <button type="button" class="open-contact-modal" data-i18n="navContact">Get in touch</button>
     </nav>
     <button class="lang-toggle" id="langToggle" type="button">
       <span id="langToggleLabel">العربية</span>
@@ -431,17 +490,47 @@
   <div class="links">
     <a href="https://api.investry.app/api/legal/terms" data-i18n="footerTerms">Terms</a>
     <a href="https://api.investry.app/api/legal/privacy" data-i18n="footerPrivacy">Privacy</a>
-    <a href="mailto:support@investry.app" data-i18n="footerContact">Contact</a>
+    <button type="button" class="open-contact-modal" data-i18n="footerContact">Contact</button>
   </div>
   <div class="copyright" data-i18n="copyright">© 2026 INVESTRY. All rights reserved.</div>
 </footer>
+
+<div class="contact-modal-overlay" id="contactModalOverlay">
+  <div class="contact-modal">
+    <button class="contact-modal-close" id="contactModalClose" type="button" aria-label="Close">✕</button>
+    <h2 data-i18n="contactTitle">Get in touch</h2>
+    <p class="modal-sub" data-i18n="contactSub">Questions, feedback, partnership ideas — we read everything.</p>
+
+    <form class="contact-form" id="contactForm">
+      <div class="form-field">
+        <label for="cf-name" data-i18n="contactName">Name</label>
+        <input type="text" id="cf-name" name="name" required>
+      </div>
+      <div class="form-field">
+        <label for="cf-email" data-i18n="contactEmail">Email</label>
+        <input type="email" id="cf-email" name="email" required>
+      </div>
+      <div class="form-field">
+        <label for="cf-message" data-i18n="contactMessage">Message</label>
+        <textarea id="cf-message" name="message" rows="4" required></textarea>
+      </div>
+      <button type="submit" class="form-submit" data-i18n="contactSend">Send message</button>
+      <p class="form-note" data-i18n-html="contactNote">Or email us directly at <a href="mailto:support@investry.app">support@investry.app</a></p>
+    </form>
+
+    <div class="form-success" id="formSuccess">
+      <div class="check">✓</div>
+      <p data-i18n="contactThanks">Thanks — we'll get back to you soon.</p>
+    </div>
+  </div>
+</div>
 
 <script>
   var translations = {
     en: {
       navHow: "How It Works",
       navFeatures: "Features",
-      navContact: "Contact Us",
+      navContact: "Get in touch",
       eyebrow: "Starting in Egypt, expanding across the region",
       headline: 'Track All Investments.<br><span class="accent">One Place</span>',
       sub: "Gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.",
@@ -467,6 +556,11 @@
       step1t: "Add what you own", step1d: "Gold, stocks, real estate, cash, certificates — enter each holding once, in a couple of minutes.",
       step2t: "We track it live", step2d: "Real EGX prices, live gold and silver rates, real exchange rates — updated automatically, not by you.",
       step3t: "See your true net worth", step3d: "One number, one portfolio, real performance — across everything you hold.",
+      contactTitle: "Get in touch",
+      contactSub: "Questions, feedback, partnership ideas — we read everything.",
+      contactName: "Name", contactEmail: "Email", contactMessage: "Message", contactSend: "Send message",
+      contactNote: 'Or email us directly at <a href="mailto:support@investry.app">support@investry.app</a>',
+      contactThanks: "Thanks — we'll get back to you soon.",
       footerTerms: "Terms", footerPrivacy: "Privacy", footerContact: "Contact",
       copyright: "© 2026 INVESTRY. All rights reserved.",
       toggleLabel: "العربية",
@@ -500,6 +594,11 @@
       step1t: "ضيف اللي بتملكه", step1d: "ذهب، أسهم، عقارات، كاش، شهادات — سجّل كل أصل مرة واحدة، في دقايق معدودة.",
       step2t: "إحنا بنتابعه لحظيًا", step2d: "أسعار حية للبورصة المصرية، وأسعار الذهب والفضة، وأسعار الصرف — بتتحدث تلقائيًا، مش أنت اللي بتحدثها.",
       step3t: "اعرف صافي ثروتك الحقيقي", step3d: "رقم واحد، محفظة واحدة، أداء حقيقي — لكل حاجة بتملكها.",
+      contactTitle: "تواصل معنا",
+      contactSub: "أسئلة، ملاحظات، أفكار شراكة — بنقرأ كل حاجة بتوصلنا.",
+      contactName: "الاسم", contactEmail: "البريد الإلكتروني", contactMessage: "الرسالة", contactSend: "إرسال الرسالة",
+      contactNote: 'أو راسلنا مباشرة على <a href="mailto:support@investry.app">support@investry.app</a>',
+      contactThanks: "شكرًا — هنرد عليك قريبًا.",
       footerTerms: "الشروط", footerPrivacy: "الخصوصية", footerContact: "تواصل معنا",
       copyright: "© 2026 إنفستري. جميع الحقوق محفوظة.",
       toggleLabel: "English",
@@ -532,6 +631,40 @@
     try { saved = localStorage.getItem('investry-lang'); } catch (e) {}
     if (saved === 'ar' || saved === 'en') applyLang(saved);
   })();
+
+  // Contact modal — visual only for now, no backend wired up yet.
+  // Submitting just shows a local confirmation; nothing is actually sent.
+  var overlay = document.getElementById('contactModalOverlay');
+  var contactForm = document.getElementById('contactForm');
+  var formSuccess = document.getElementById('formSuccess');
+
+  function openContactModal() {
+    contactForm.style.display = 'flex';
+    formSuccess.classList.remove('visible');
+    contactForm.reset();
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeContactModal() {
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.querySelectorAll('.open-contact-modal').forEach(function (el) {
+    el.addEventListener('click', openContactModal);
+  });
+  document.getElementById('contactModalClose').addEventListener('click', closeContactModal);
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeContactModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeContactModal();
+  });
+  contactForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    contactForm.style.display = 'none';
+    formSuccess.classList.add('visible');
+  });
 </script>
 
 </body>
