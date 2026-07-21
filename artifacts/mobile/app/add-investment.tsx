@@ -1070,7 +1070,7 @@ export default function AddInvestmentScreen() {
                   : t.currentMarketPricePerM2Placeholder}
                 placeholderTextColor={colors.mutedForeground}
                 value={currentMarketPricePerM2}
-                onChangeText={setCurrentMarketPricePerM2}
+                onChangeText={(v) => setCurrentMarketPricePerM2(formatAmountInput(v))}
                 keyboardType="numeric"
               />
             </View>
