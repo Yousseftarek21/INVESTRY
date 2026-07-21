@@ -298,11 +298,11 @@ const cm = StyleSheet.create({
 // ─── Profile hero card ────────────────────────────────────────────────────────
 
 function ProfileHero({
-  initials, fullName, email, verified, holdingsCount, onPress, plan, imageUrl,
+  initials, fullName, email, verified, holdingsCount, onPress, plan, launchAccess, imageUrl,
 }: {
   initials: string; fullName: string; email: string;
   verified: boolean; holdingsCount: number; onPress: () => void;
-  plan?: 'pro' | null; imageUrl?: string;
+  plan?: 'pro' | null; launchAccess?: boolean; imageUrl?: string;
 }) {
   const colors = useColors();
   const t = useT();
@@ -342,7 +342,7 @@ function ProfileHero({
         <View style={ph.info}>
           <View style={ph.nameRow}>
             <Text style={[ph.name, { color: colors.text }]} numberOfLines={1}>{fullName}</Text>
-            {plan === 'pro' && <PremiumBadge size="sm" />}
+            {plan === 'pro' && !launchAccess && <PremiumBadge size="sm" />}
           </View>
           <Text style={[ph.email, { color: colors.mutedForeground }]} numberOfLines={1}>{email}</Text>
 
@@ -933,6 +933,7 @@ export default function SettingsScreen() {
               initials={initials} fullName={profileName} email={email}
               verified={verified} holdingsCount={holdings.length}
               plan={plan === 'pro' ? plan : null}
+              launchAccess={launchAccess}
               imageUrl={user.imageUrl ?? undefined}
               onPress={() => { haptic(); setEditProfileOpen(true); }}
             />
