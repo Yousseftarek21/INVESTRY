@@ -109,6 +109,10 @@ function RootLayoutNav() {
         name="goals"
         options={{ presentation: "modal", headerShown: false }}
       />
+      <Stack.Screen
+        name="financial-tool"
+        options={{ presentation: "modal", headerShown: false }}
+      />
     </Stack>
   );
 }

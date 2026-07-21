@@ -1,12 +1,18 @@
 /**
- * Financial Tools — calculator grid + modals
+ * Financial Tools — calculator grid + tool content
+ *
+ * Each calculator's content is a plain component (no modal/animation logic
+ * of its own) rendered inside app/financial-tool.tsx, a single shared
+ * native-modal route. That route gets the exact same presentation as
+ * app/goals.tsx (native "modal" transition, no custom JS animation) — the
+ * old approach (a hand-rolled Animated + PanResponder sheet inside a plain
+ * transparent RN Modal) is what caused the open/close lag.
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  Animated, KeyboardAvoidingView, Modal, PanResponder, Platform,
-  Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  Animated, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -36,124 +42,6 @@ function fmt(n: number, dec = 0) {
   return Math.abs(n).toLocaleString('en-EG', { maximumFractionDigits: dec, minimumFractionDigits: dec });
 }
 function parseNum(s: string) { return parseFloat(s.replace(/,/g, '')) || 0; }
-
-// ─── Shared Modal Shell ────────────────────────────────────────────────────────
-
-type ModalIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
-function ModalShell({
-  visible, title, icon, iconColor, onClose, children,
-}: {
-  visible: boolean; title: string; icon: ModalIcon;
-  iconColor: string; onClose: () => void; children: React.ReactNode;
-}) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const slideAnim = useRef(new Animated.Value(300)).current;
-  const dragStart = useRef(0);
-
-  // Routed through a ref kept current every render so a swipe-dismiss
-  // (created once via useRef below) always calls the latest onClose.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  const snapOpen = () => {
-    Animated.spring(slideAnim, { toValue: 0, useNativeDriver: Platform.OS !== 'web', damping: 20, stiffness: 120 }).start();
-  };
-
-  useEffect(() => {
-    if (visible) {
-      snapOpen();
-    } else {
-      Animated.timing(slideAnim, { toValue: 300, duration: 200, useNativeDriver: Platform.OS !== 'web' }).start();
-    }
-  }, [visible]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        slideAnim.stopAnimation((value) => { dragStart.current = value; });
-      },
-      onPanResponderMove: (_, gesture) => {
-        slideAnim.setValue(Math.max(0, dragStart.current + gesture.dy));
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dy > 120 || gesture.vy > 0.8) {
-          Animated.timing(slideAnim, { toValue: 500, duration: 200, useNativeDriver: Platform.OS !== 'web' })
-            .start(() => onCloseRef.current());
-        } else {
-          snapOpen();
-        }
-      },
-      onPanResponderTerminate: snapOpen,
-    })
-  ).current;
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={sh.overlay}>
-        {/* Tappable backdrop — closes when user taps outside the sheet */}
-        <Pressable
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.overlay }]}
-          onPress={onClose}
-        />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={sh.kav}
-          pointerEvents="box-none"
-        >
-          <Animated.View
-            style={[sh.sheet, {
-              backgroundColor: colors.background,
-              paddingBottom: insets.bottom + 16,
-              transform: [{ translateY: slideAnim }],
-            }]}
-          >
-            {/* Handle — swipe down here to dismiss */}
-            <View style={sh.dragZone} {...panResponder.panHandlers}>
-              <View style={[sh.handle, { backgroundColor: colors.border }]} />
-            </View>
-
-            {/* Header */}
-            <View style={sh.header}>
-              <View style={[sh.iconWrap, { backgroundColor: iconColor + '18' }]}>
-                {typeof icon === 'object' && icon.lib === 'mci'
-                  ? <MaterialCommunityIcons name={icon.name as any} size={18} color={iconColor} />
-                  : <Feather name={icon as keyof typeof Feather.glyphMap} size={18} color={iconColor} />}
-              </View>
-              <Text style={[sh.title, { color: colors.text }]}>{title}</Text>
-              <TouchableOpacity onPress={onClose} style={[sh.closeBtn, { backgroundColor: colors.muted }]}>
-                <Feather name="x" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              contentContainerStyle={sh.body}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              overScrollMode="never"
-            >
-              {children}
-            </ScrollView>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
-  );
-}
-const sh = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  kav: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%' },
-  dragZone: { width: '100%', alignItems: 'center', paddingTop: 12, paddingBottom: 10 },
-  handle: { width: 40, height: 4, borderRadius: 2 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, gap: 12 },
-  iconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, fontSize: 17, fontFamily: 'Inter_700Bold' },
-  closeBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  body: { paddingHorizontal: 20, paddingBottom: 20, gap: 16 },
-});
 
 // ─── Shared UI atoms ──────────────────────────────────────────────────────────
 
@@ -252,7 +140,7 @@ const dis = StyleSheet.create({
 
 // ─── 1. Zakat Calculator ──────────────────────────────────────────────────────
 
-function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function ZakatContent() {
   const colors = useColors();
   const t = useT();
   const { holdings } = useHoldings();
@@ -291,7 +179,7 @@ function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => voi
   const nisabStr = nisabValue > 0 ? `${fmt(nisabValue)} EGP` : t.nisabNoLivePrice;
 
   return (
-    <ModalShell visible={visible} title={t.zakatModalTitle} icon="moon" iconColor="#10B981" onClose={onClose}>
+    <>
       <SegPicker
         options={[{ key: 'gold', label: t.goldNisabOption }, { key: 'silver', label: t.silverNisabOption }]}
         value={nisabType}
@@ -343,7 +231,7 @@ function ZakatModal({ visible, onClose }: { visible: boolean; onClose: () => voi
       ]} />
 
       <Disclaimer text={t.zakatDisclaimer} />
-    </ModalShell>
+    </>
   );
 }
 const zk = StyleSheet.create({
@@ -362,7 +250,7 @@ const zk = StyleSheet.create({
 
 // ─── 2. Gold Value Calculator ─────────────────────────────────────────────────
 
-function GoldValueModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function GoldValueContent() {
   const t = useT();
   const { data: prices } = useMarketPrices();
   const [grams, setGrams] = useState('');
@@ -371,7 +259,7 @@ function GoldValueModal({ visible, onClose }: { visible: boolean; onClose: () =>
   const value = parseNum(grams) * pricePerGram;
 
   return (
-    <ModalShell visible={visible} title={t.goldValueModalTitle} icon={{ lib: 'mci', name: 'gold' }} iconColor="#C9A227" onClose={onClose}>
+    <>
       <SegPicker
         options={[{ key: '24k', label: '24K' }, { key: '22k', label: '22K' }, { key: '21k', label: '21K' }, { key: '18k', label: '18K' }]}
         value={karat}
@@ -382,13 +270,13 @@ function GoldValueModal({ visible, onClose }: { visible: boolean; onClose: () =>
         { label: t.livePriceKaratLabel(karat.toUpperCase()), value: pricePerGram > 0 ? `${fmt(pricePerGram, 2)} EGP/g` : t.calcLoading },
         { label: t.totalValueLabel, value: value > 0 ? `${fmt(value)} EGP` : '—', highlight: true },
       ]} />
-    </ModalShell>
+    </>
   );
 }
 
 // ─── 3. Silver Value Calculator ───────────────────────────────────────────────
 
-function SilverValueModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function SilverValueContent() {
   const t = useT();
   const { data: prices } = useMarketPrices();
   const [grams, setGrams] = useState('');
@@ -396,19 +284,19 @@ function SilverValueModal({ visible, onClose }: { visible: boolean; onClose: () 
   const value = parseNum(grams) * pricePerGram;
 
   return (
-    <ModalShell visible={visible} title={t.silverValueModalTitle} icon={{ lib: 'mci', name: 'gold' }} iconColor="#C0C8D4" onClose={onClose}>
+    <>
       <CalcInput label={t.weightGramsLabel} value={grams} onChange={setGrams} unit="g" />
       <ResultCard rows={[
         { label: t.livePriceLabel, value: pricePerGram > 0 ? `${fmt(pricePerGram, 2)} EGP/g` : t.calcLoading },
         { label: t.totalValueLabel, value: value > 0 ? `${fmt(value)} EGP` : '—', highlight: true },
       ]} />
-    </ModalShell>
+    </>
   );
 }
 
 // ─── 4. Currency Converter ────────────────────────────────────────────────────
 
-function CurrencyModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function CurrencyContent() {
   const t = useT();
   const { data: prices } = useMarketPrices();
   const [amount, setAmount] = useState('');
@@ -419,7 +307,7 @@ function CurrencyModal({ visible, onClose }: { visible: boolean; onClose: () => 
   const toCur = dir === 'usdToEgp' ? 'EGP' : 'USD';
 
   return (
-    <ModalShell visible={visible} title={t.currencyModalTitle} icon="refresh-cw" iconColor="#4A9EFF" onClose={onClose}>
+    <>
       <SegPicker
         options={[{ key: 'usdToEgp', label: t.usdToEgpOption }, { key: 'egpToUsd', label: t.egpToUsdOption }]}
         value={dir}
@@ -430,13 +318,13 @@ function CurrencyModal({ visible, onClose }: { visible: boolean; onClose: () => 
         { label: t.usdEgpRateLabel, value: rate > 0 ? `${rate.toFixed(3)}` : t.calcLoading },
         { label: t.resultCurLabel(toCur), value: converted > 0 ? fmt(converted, 2) : '—', highlight: true },
       ]} />
-    </ModalShell>
+    </>
   );
 }
 
 // ─── 5. ROI Calculator ────────────────────────────────────────────────────────
 
-function ROIModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function ROIContent() {
   const t = useT();
   const [cost, setCost] = useState('');
   const [current, setCurrent] = useState('');
@@ -447,7 +335,7 @@ function ROIModal({ visible, onClose }: { visible: boolean; onClose: () => void 
   const annualized = c > 0 && v > 0 && y > 0 ? (Math.pow(v / c, 1 / y) - 1) * 100 : 0;
 
   return (
-    <ModalShell visible={visible} title={t.roiModalTitle} icon="trending-up" iconColor="#00D4AA" onClose={onClose}>
+    <>
       <CalcInput label={t.purchaseCostLabel} value={cost} onChange={setCost} unit="EGP" />
       <CalcInput label={t.currentValueLabel} value={current} onChange={setCurrent} unit="EGP" />
       <CalcInput label={t.holdingPeriodLabel} value={years} onChange={setYears} unit="yrs" />
@@ -456,13 +344,13 @@ function ROIModal({ visible, onClose }: { visible: boolean; onClose: () => void 
         { label: t.totalReturnLabel, value: roi !== 0 ? `${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%` : '—', highlight: roi > 0 },
         { label: t.annualizedReturnLabel, value: y > 0 && annualized !== 0 ? `${annualized >= 0 ? '+' : ''}${annualized.toFixed(2)}%/yr` : '—' },
       ]} />
-    </ModalShell>
+    </>
   );
 }
 
 // ─── 6. Compound Growth Calculator ───────────────────────────────────────────
 
-function CompoundModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function CompoundContent() {
   const t = useT();
   const [principal, setPrincipal] = useState('');
   const [rate, setRate] = useState('');
@@ -475,7 +363,7 @@ function CompoundModal({ visible, onClose }: { visible: boolean; onClose: () => 
   const growth = final - totalContrib;
 
   return (
-    <ModalShell visible={visible} title={t.compoundModalTitle} icon="bar-chart-2" iconColor="#A47FCA" onClose={onClose}>
+    <>
       <SegPicker
         options={[{ key: '12', label: t.compoundMonthlyOption }, { key: '1', label: t.compoundYearlyOption }]}
         value={freq}
@@ -490,13 +378,13 @@ function CompoundModal({ visible, onClose }: { visible: boolean; onClose: () => 
         { label: t.growthFromReturnsLabel, value: growth > 0 ? `${fmt(growth)} EGP` : '—' },
         { label: t.finalValueLabel, value: final > 0 ? `${fmt(final)} EGP` : '—', highlight: true },
       ]} />
-    </ModalShell>
+    </>
   );
 }
 
 // ─── 7. Gold Purity Converter ─────────────────────────────────────────────────
 
-function GoldPurityModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function GoldPurityContent() {
   const t = useT();
   const [grams, setGrams] = useState('');
   const [fromK, setFromK] = useState<'24' | '22' | '21' | '18'>('21');
@@ -504,7 +392,7 @@ function GoldPurityModal({ visible, onClose }: { visible: boolean; onClose: () =
   const pureGold = parseNum(grams) * purities[fromK];
 
   return (
-    <ModalShell visible={visible} title={t.goldPurityModalTitle} icon={{ lib: 'mci', name: 'gold' }} iconColor="#C9A227" onClose={onClose}>
+    <>
       <SegPicker
         options={[{ key: '24', label: '24K' }, { key: '22', label: '22K' }, { key: '21', label: '21K' }, { key: '18', label: '18K' }]}
         value={fromK}
@@ -517,13 +405,13 @@ function GoldPurityModal({ visible, onClose }: { visible: boolean; onClose: () =
         { label: t.equivalentIn21k, value: pureGold > 0 ? `${(pureGold / (21/24)).toFixed(3)} g` : '—' },
         { label: t.equivalentIn18k, value: pureGold > 0 ? `${(pureGold / (18/24)).toFixed(3)} g` : '—' },
       ]} />
-    </ModalShell>
+    </>
   );
 }
 
 // ─── 8. Gram ↔ Troy Oz ───────────────────────────────────────────────────────
 
-function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function WeightContent() {
   const t = useT();
   const [amount, setAmount] = useState('');
   const [dir, setDir] = useState<'gToOz' | 'ozToG'>('gToOz');
@@ -533,7 +421,7 @@ function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => vo
   const toUnit = dir === 'gToOz' ? 'troy oz' : 'grams';
 
   return (
-    <ModalShell visible={visible} title={t.weightModalTitle} icon="maximize-2" iconColor="#F59E0B" onClose={onClose}>
+    <>
       <SegPicker
         options={[{ key: 'gToOz', label: t.gToOzOption }, { key: 'ozToG', label: t.ozToGOption }]}
         value={dir}
@@ -544,25 +432,27 @@ function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => vo
         { label: t.resultCurLabel(toUnit), value: result > 0 ? `${result.toFixed(4)} ${toUnit}` : '—', highlight: true },
         { label: t.oneTroyOzEquals, value: t.troyOzGramsValue },
       ]} />
-    </ModalShell>
+    </>
   );
 }
 
-// ─── Tool grid ─────────────────────────────────────────────────────────────────
+// ─── Tool metadata (grid card + header, shared with app/financial-tool.tsx) ───
 
-function getTools(t: ReturnType<typeof useT>) {
+export type ToolIcon = string | { lib: 'mci'; name: string };
+
+export function getTools(t: ReturnType<typeof useT>) {
   return [
-    { id: 'zakat',    icon: 'moon',         label: t.toolZakatLabel,    sub: t.toolZakatSub,     color: '#10B981' },
-    { id: 'gold',     icon: { lib: 'mci', name: 'gold' } as const, label: t.toolGoldLabel,   sub: t.toolLivePriceSub, color: '#C9A227' },
-    { id: 'silver',   icon: { lib: 'mci', name: 'gold' } as const, label: t.toolSilverLabel, sub: t.toolLivePriceSub, color: '#C0C8D4' },
-    { id: 'currency', icon: 'refresh-cw',   label: t.toolCurrencyLabel, sub: t.toolCurrencySub,  color: '#4A9EFF' },
-    { id: 'roi',      icon: 'trending-up',  label: t.toolROILabel,      sub: t.toolROISub,       color: '#00D4AA' },
-    { id: 'compound', icon: 'bar-chart-2',  label: t.toolCompoundLabel, sub: t.toolCompoundSub,  color: '#A47FCA' },
-    { id: 'purity',   icon: { lib: 'mci', name: 'gold' } as const, label: t.toolPurityLabel, sub: t.toolPuritySub,   color: '#C9A227' },
-    { id: 'weight',   icon: 'maximize-2',   label: t.toolWeightLabel,   sub: t.toolWeightSub,    color: '#F59E0B' },
+    { id: 'zakat',    icon: 'moon',         label: t.toolZakatLabel,    sub: t.toolZakatSub,     color: '#10B981', title: t.zakatModalTitle },
+    { id: 'gold',     icon: { lib: 'mci', name: 'gold' } as const, label: t.toolGoldLabel,   sub: t.toolLivePriceSub, color: '#C9A227', title: t.goldValueModalTitle },
+    { id: 'silver',   icon: { lib: 'mci', name: 'gold' } as const, label: t.toolSilverLabel, sub: t.toolLivePriceSub, color: '#C0C8D4', title: t.silverValueModalTitle },
+    { id: 'currency', icon: 'refresh-cw',   label: t.toolCurrencyLabel, sub: t.toolCurrencySub,  color: '#4A9EFF', title: t.currencyModalTitle },
+    { id: 'roi',      icon: 'trending-up',  label: t.toolROILabel,      sub: t.toolROISub,       color: '#00D4AA', title: t.roiModalTitle },
+    { id: 'compound', icon: 'bar-chart-2',  label: t.toolCompoundLabel, sub: t.toolCompoundSub,  color: '#A47FCA', title: t.compoundModalTitle },
+    { id: 'purity',   icon: { lib: 'mci', name: 'gold' } as const, label: t.toolPurityLabel, sub: t.toolPuritySub,   color: '#C9A227', title: t.goldPurityModalTitle },
+    { id: 'weight',   icon: 'maximize-2',   label: t.toolWeightLabel,   sub: t.toolWeightSub,    color: '#F59E0B', title: t.weightModalTitle },
   ] as const;
 }
-type ToolId = ReturnType<typeof getTools>[number]['id'];
+export type ToolId = ReturnType<typeof getTools>[number]['id'];
 
 function ToolCard({ tool, onPress }: { tool: ReturnType<typeof getTools>[number]; onPress: () => void }) {
   const colors = useColors();
@@ -619,32 +509,19 @@ const tc = StyleSheet.create({
 
 export function FinancialTools() {
   const t = useT();
-  const [open, setOpen] = useState<ToolId | null>(null);
   const tools = getTools(t);
 
   return (
-    <>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={ft.wrap}
-        contentContainerStyle={ft.row}
-      >
-        {tools.map(tool => (
-          <ToolCard key={tool.id} tool={tool} onPress={() => setOpen(tool.id)} />
-        ))}
-      </ScrollView>
-
-      {/* Modals */}
-      <ZakatModal      visible={open === 'zakat'}    onClose={() => setOpen(null)} />
-      <GoldValueModal  visible={open === 'gold'}     onClose={() => setOpen(null)} />
-      <SilverValueModal visible={open === 'silver'}  onClose={() => setOpen(null)} />
-      <CurrencyModal   visible={open === 'currency'} onClose={() => setOpen(null)} />
-      <ROIModal        visible={open === 'roi'}      onClose={() => setOpen(null)} />
-      <CompoundModal   visible={open === 'compound'} onClose={() => setOpen(null)} />
-      <GoldPurityModal visible={open === 'purity'}   onClose={() => setOpen(null)} />
-      <WeightModal     visible={open === 'weight'}   onClose={() => setOpen(null)} />
-    </>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={ft.wrap}
+      contentContainerStyle={ft.row}
+    >
+      {tools.map(tool => (
+        <ToolCard key={tool.id} tool={tool} onPress={() => router.push(`/financial-tool?tool=${tool.id}` as any)} />
+      ))}
+    </ScrollView>
   );
 }
 const ft = StyleSheet.create({
