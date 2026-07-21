@@ -184,6 +184,50 @@
   .feature-row h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.3px; }
   .feature-row p { font-size: 14.5px; color: var(--muted); margin: 0; line-height: 1.6; }
 
+  /* How it works — numbered steps, a genuine sequence (unlike the feature
+     list above, which is an unordered set — hence numbers here but not there) */
+  .steps { display: flex; flex-direction: column; align-items: center; max-width: 480px; margin: 0 auto; }
+  .step { display: flex; flex-direction: column; align-items: center; padding: 28px 0; border-top: 1px solid var(--border); width: 100%; }
+  .step:last-child { border-bottom: 1px solid var(--border); }
+  .step-badge {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--text); color: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 15px;
+    margin-bottom: 16px;
+  }
+  html[dir="rtl"] .step-badge { font-family: 'Cairo', sans-serif; }
+  .step h3 { font-size: 18px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.3px; }
+  .step p { font-size: 14.5px; color: var(--muted); margin: 0; line-height: 1.6; }
+
+  /* Contact form — visual only for now, no backend wired up yet */
+  .contact-form { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; text-align: start; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 13px; font-weight: 600; color: var(--text); }
+  .form-field input, .form-field textarea {
+    border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+    font-family: inherit; font-size: 15px; color: var(--text); background: var(--card);
+    resize: vertical;
+  }
+  .form-field input:focus, .form-field textarea:focus { outline: none; border-color: var(--accent); }
+  .form-submit {
+    background: var(--text); color: #fff; border: none; border-radius: 12px;
+    padding: 14px 24px; font-family: inherit; font-weight: 600; font-size: 15px;
+    cursor: pointer; transition: opacity 0.15s ease;
+  }
+  html[dir="rtl"] .form-submit, html[dir="rtl"] .form-field label { font-family: 'Cairo', sans-serif; }
+  .form-submit:hover { opacity: 0.85; }
+  .form-note { font-size: 13px; color: var(--muted); text-align: center; margin-top: 2px; }
+  .form-note a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .form-success { display: none; text-align: center; padding: 20px 20px 8px; }
+  .form-success.visible { display: block; }
+  .form-success .check {
+    width: 48px; height: 48px; border-radius: 50%; background: var(--green);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px; font-size: 22px;
+  }
+  .form-success p { color: var(--muted); font-size: 15px; margin: 0; }
+
   /* Regional band — accent bar, not a national flag, since positioning is
      "starting in Egypt, expanding regionally," not Egypt-exclusive. */
   .egypt-band {
@@ -221,8 +265,9 @@
       <img src="assets/logo-light.png" alt="INVESTRY">
     </a>
     <nav class="nav-links">
+      <a href="#how-it-works" data-i18n="navHow">How It Works</a>
       <a href="#features" data-i18n="navFeatures">Features</a>
-      <a href="mailto:support@investry.app" data-i18n="navSupport">Support</a>
+      <a href="#contact" data-i18n="navContact">Contact Us</a>
     </nav>
     <button class="lang-toggle" id="langToggle" type="button">
       <span id="langToggleLabel">العربية</span>
@@ -267,6 +312,33 @@
         <div class="legend-row"><span class="legend-dot" style="background:#B8BEC7"></span><span class="name" data-i18n="assetSilver">Silver</span><span class="pct">4%</span></div>
       </div>
       <p class="preview-note" data-i18n="sampleNote">Sample portfolio, for illustration only</p>
+    </div>
+  </section>
+
+  <section class="block" id="how-it-works">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="section-title" data-i18n="howTitle">Three steps. That's it.</h2>
+        <p class="section-sub" data-i18n="howSub">No linking bank logins, no manual spreadsheets — just what you actually own.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-badge">1</div>
+          <h3 data-i18n="step1t">Add what you own</h3>
+          <p data-i18n="step1d">Gold, stocks, real estate, cash, certificates — enter each holding once, in a couple of minutes.</p>
+        </div>
+        <div class="step">
+          <div class="step-badge">2</div>
+          <h3 data-i18n="step2t">We track it live</h3>
+          <p data-i18n="step2d">Real EGX prices, live gold and silver rates, real exchange rates — updated automatically, not by you.</p>
+        </div>
+        <div class="step">
+          <div class="step-badge">3</div>
+          <h3 data-i18n="step3t">See your true net worth</h3>
+          <p data-i18n="step3d">One number, one portfolio, real performance — across everything you hold.</p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -380,13 +452,47 @@
       </span>
     </div>
   </section>
+
+  <section class="block" id="contact">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="section-title" data-i18n="contactTitle">Get in touch</h2>
+        <p class="section-sub" data-i18n="contactSub">Questions, feedback, partnership ideas — we read everything.</p>
+      </div>
+
+      <!-- Visual only for now — no backend wired up yet. Submitting just
+           shows a confirmation locally; nothing is actually sent. Real
+           people should use the mailto link below until this is wired up. -->
+      <form class="contact-form" id="contactForm">
+        <div class="form-field">
+          <label for="cf-name" data-i18n="contactName">Name</label>
+          <input type="text" id="cf-name" name="name" required>
+        </div>
+        <div class="form-field">
+          <label for="cf-email" data-i18n="contactEmail">Email</label>
+          <input type="email" id="cf-email" name="email" required>
+        </div>
+        <div class="form-field">
+          <label for="cf-message" data-i18n="contactMessage">Message</label>
+          <textarea id="cf-message" name="message" rows="4" required></textarea>
+        </div>
+        <button type="submit" class="form-submit" data-i18n="contactSend">Send message</button>
+        <p class="form-note" data-i18n-html="contactNote">Or email us directly at <a href="mailto:support@investry.app">support@investry.app</a></p>
+      </form>
+
+      <div class="form-success" id="formSuccess">
+        <div class="check">✓</div>
+        <p data-i18n="contactThanks">Thanks — we'll get back to you soon.</p>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="site wrap">
   <div class="links">
     <a href="https://api.investry.app/api/legal/terms" data-i18n="footerTerms">Terms</a>
     <a href="https://api.investry.app/api/legal/privacy" data-i18n="footerPrivacy">Privacy</a>
-    <a href="mailto:support@investry.app" data-i18n="footerContact">Contact</a>
+    <a href="#contact" data-i18n="footerContact">Contact</a>
   </div>
   <div class="copyright" data-i18n="copyright">© 2026 INVESTRY. All rights reserved.</div>
 </footer>
@@ -394,8 +500,9 @@
 <script>
   var translations = {
     en: {
+      navHow: "How It Works",
       navFeatures: "Features",
-      navSupport: "Support",
+      navContact: "Contact Us",
       eyebrow: "Starting in Egypt, expanding across the region",
       headline: 'Track All Investments.<br><span class="accent">One Place</span>',
       sub: "Track gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.",
@@ -416,13 +523,24 @@
       egyptTitle: "Starting in Egypt. Expanding across the region.",
       egyptBody: "Today: live EGX stock prices, gold and silver priced in grams, real exchange rates, and the local certificate and T-bill products your bank already sells — fully bilingual in Arabic and English. More markets are coming as we expand.",
       finalCta: "Know your real net worth.",
+      howTitle: "Three steps. That's it.",
+      howSub: "No linking bank logins, no manual spreadsheets — just what you actually own.",
+      step1t: "Add what you own", step1d: "Gold, stocks, real estate, cash, certificates — enter each holding once, in a couple of minutes.",
+      step2t: "We track it live", step2d: "Real EGX prices, live gold and silver rates, real exchange rates — updated automatically, not by you.",
+      step3t: "See your true net worth", step3d: "One number, one portfolio, real performance — across everything you hold.",
+      contactTitle: "Get in touch",
+      contactSub: "Questions, feedback, partnership ideas — we read everything.",
+      contactName: "Name", contactEmail: "Email", contactMessage: "Message", contactSend: "Send message",
+      contactNote: 'Or email us directly at <a href="mailto:support@investry.app">support@investry.app</a>',
+      contactThanks: "Thanks — we'll get back to you soon.",
       footerTerms: "Terms", footerPrivacy: "Privacy", footerContact: "Contact",
       copyright: "© 2026 INVESTRY. All rights reserved.",
       toggleLabel: "العربية",
     },
     ar: {
+      navHow: "طريقة الاستخدام",
       navFeatures: "المميزات",
-      navSupport: "الدعم",
+      navContact: "تواصل معنا",
       eyebrow: "بنبدأ في مصر، وبنتوسع في المنطقة",
       headline: 'تابع كل استثماراتك.<br><span class="accent">في مكان واحد</span>',
       sub: "تابع الذهب والفضة، وأسهم البورصة المصرية، والعقارات، والشهادات، والكاش — محفظتك بالكامل، في مكان واحد، بأسعار حية.",
@@ -443,6 +561,16 @@
       egyptTitle: "بنبدأ في مصر. وبنتوسع في المنطقة.",
       egyptBody: "دلوقتي: أسعار حية للبورصة المصرية، والذهب والفضة بالجرام، وأسعار صرف حقيقية، وشهادات وأذون خزانة البنك اللي بيبيعها بنكك فعلاً — بالعربي والإنجليزي بالكامل. أسواق تانية جاية مع توسعنا.",
       finalCta: "اعرف صافي ثروتك الحقيقي.",
+      howTitle: "ثلاث خطوات. خلاص.",
+      howSub: "من غير ربط حسابات بنكية، ومن غير شيتات إكسل يدوية — بس اللي فعلاً بتملكه.",
+      step1t: "ضيف اللي بتملكه", step1d: "ذهب، أسهم، عقارات، كاش، شهادات — سجّل كل أصل مرة واحدة، في دقايق معدودة.",
+      step2t: "إحنا بنتابعه لحظيًا", step2d: "أسعار حية للبورصة المصرية، وأسعار الذهب والفضة، وأسعار الصرف — بتتحدث تلقائيًا، مش أنت اللي بتحدثها.",
+      step3t: "اعرف صافي ثروتك الحقيقي", step3d: "رقم واحد، محفظة واحدة، أداء حقيقي — لكل حاجة بتملكها.",
+      contactTitle: "تواصل معنا",
+      contactSub: "أسئلة، ملاحظات، أفكار شراكة — بنقرأ كل حاجة بتوصلنا.",
+      contactName: "الاسم", contactEmail: "البريد الإلكتروني", contactMessage: "الرسالة", contactSend: "إرسال الرسالة",
+      contactNote: 'أو راسلنا مباشرة على <a href="mailto:support@investry.app">support@investry.app</a>',
+      contactThanks: "شكرًا — هنرد عليك قريبًا.",
       footerTerms: "الشروط", footerPrivacy: "الخصوصية", footerContact: "تواصل معنا",
       copyright: "© 2026 إنفستري. جميع الحقوق محفوظة.",
       toggleLabel: "English",
@@ -475,6 +603,17 @@
     try { saved = localStorage.getItem('investry-lang'); } catch (e) {}
     if (saved === 'ar' || saved === 'en') applyLang(saved);
   })();
+
+  // Contact form is visual only for now — no backend to submit to yet.
+  // Just shows a local confirmation; nothing is actually sent anywhere.
+  var contactForm = document.getElementById('contactForm');
+  if (contactForm) {
+    contactForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      contactForm.style.display = 'none';
+      document.getElementById('formSuccess').classList.add('visible');
+    });
+  }
 </script>
 
 </body>
