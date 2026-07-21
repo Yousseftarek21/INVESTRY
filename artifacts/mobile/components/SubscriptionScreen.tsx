@@ -155,13 +155,15 @@ function FeatureRow({ icon, label }: { icon: string; label: string }) {
       <View style={[frow.icon, { backgroundColor: accent + '18' }]}>
         <Feather name={icon as any} size={13} color={accent} />
       </View>
-      <Text style={[frow.label, { color: colors.textSecondary }]} numberOfLines={2}>{label}</Text>
+      <Text style={[frow.label, { color: colors.textSecondary }]}>{label}</Text>
     </View>
   );
 }
 
 const frow = StyleSheet.create({
-  cell: { width: '50%', flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 9, paddingEnd: 8 },
+  // Full-width single-column rows — a 2-column 50%-width grid left no room
+  // for the longer feature labels, forcing them to truncate with "...".
+  cell: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 9 },
   icon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   label: { flex: 1, fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 16 },
 });
@@ -203,7 +205,7 @@ function CompareTable() {
             </View>
             <View style={[cmp.colPro, isLast && cmp.colProBottom, { backgroundColor: accent + '0F' }]}>
               {typeof r.pro === 'string'
-                ? <Text style={[cmp.cellTxt, cmp.cellTxtPro, { color: accent }]}>{r.pro}</Text>
+                ? <Text style={[cmp.cellTxt, cmp.cellTxtPro, { color: accent }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{r.pro}</Text>
                 : <Feather name="check" size={15} color={accent} />}
             </View>
           </View>
@@ -221,7 +223,9 @@ const cmp = StyleSheet.create({
   labelCol: { flex: 1, justifyContent: 'center' },
   rowLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   col: { width: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
-  colPro: { width: 64, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
+  // Wide enough for "Unlimited" (and its Arabic equivalent) on one line —
+  // it was wrapping mid-word at the old 64px width.
+  colPro: { width: 92, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 4 },
   colProTop: { paddingBottom: 8 },
   colProBottom: { paddingBottom: 14 },
   cellTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
