@@ -28,9 +28,9 @@
     --accent: #A9821E;
     --accent-soft: rgba(169, 130, 30, 0.09);
     --green: #00976E;
+    /* Light mode only, intentionally — no dark variant. */
+    color-scheme: light;
   }
-  /* Light mode only, intentionally — no dark variant. */
-  color-scheme: light;
 
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -70,13 +70,20 @@
   }
   .lang-toggle:hover { border-color: var(--accent); }
   html[dir="rtl"] .lang-toggle { font-family: 'Cairo', sans-serif; }
+  .nav-links { display: flex; align-items: center; gap: 28px; }
+  .nav-links a { font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; }
+  .nav-links a:hover { color: var(--accent); }
+  html[dir="rtl"] .nav-links a { font-family: 'Cairo', sans-serif; }
+  @media (max-width: 640px) { .nav-links { display: none; } }
 
   /* Hero — centered, stacked top to bottom */
   .hero {
     display: flex; flex-direction: column; align-items: center; text-align: center;
-    padding: 56px 0 88px;
+    /* padding-top/bottom only — a "padding" shorthand here would zero out
+       .wrap's horizontal padding (same element, later in source order). */
+    padding-top: 56px; padding-bottom: 88px;
   }
-  @media (max-width: 860px) { .hero { padding: 24px 0 56px; } }
+  @media (max-width: 860px) { .hero { padding-top: 24px; padding-bottom: 56px; } }
   .eyebrow-tag {
     display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--border); border-radius: 999px;
@@ -190,14 +197,15 @@
   .egypt-body p { font-size: 15.5px; color: var(--muted); margin: 0 auto; line-height: 1.7; max-width: 560px; }
 
   /* Final CTA */
-  .final-cta { padding: 88px 0 96px; text-align: center; }
+  .final-cta { padding-top: 88px; padding-bottom: 96px; text-align: center; }
   .final-cta h2 { font-size: 34px; font-weight: 700; margin: 0 0 30px; letter-spacing: -0.8px; }
   .final-cta .cta-row { justify-content: center; }
 
   /* Footer — centered, stacked */
   footer.site {
     border-top: 1px solid var(--border);
-    padding: 30px 0; display: flex; flex-direction: column; align-items: center;
+    padding-top: 30px; padding-bottom: 30px;
+    display: flex; flex-direction: column; align-items: center;
     gap: 10px; text-align: center;
   }
   footer.site .links a { font-size: 13px; color: var(--muted); text-decoration: none; margin: 0 9px; }
@@ -212,6 +220,10 @@
     <a class="brand" href="#top">
       <img src="assets/logo-light.png" alt="INVESTRY">
     </a>
+    <nav class="nav-links">
+      <a href="#features" data-i18n="navFeatures">Features</a>
+      <a href="mailto:support@investry.app" data-i18n="navSupport">Support</a>
+    </nav>
     <button class="lang-toggle" id="langToggle" type="button">
       <span id="langToggleLabel">العربية</span>
     </button>
@@ -382,6 +394,8 @@
 <script>
   var translations = {
     en: {
+      navFeatures: "Features",
+      navSupport: "Support",
       eyebrow: "Starting in Egypt, expanding across the region",
       headline: 'Track All Investments.<br><span class="accent">One Place</span>',
       sub: "Track gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.",
@@ -407,6 +421,8 @@
       toggleLabel: "العربية",
     },
     ar: {
+      navFeatures: "المميزات",
+      navSupport: "الدعم",
       eyebrow: "بنبدأ في مصر، وبنتوسع في المنطقة",
       headline: 'تابع كل استثماراتك.<br><span class="accent">في مكان واحد</span>',
       sub: "تابع الذهب والفضة، وأسهم البورصة المصرية، والعقارات، والشهادات، والكاش — محفظتك بالكامل، في مكان واحد، بأسعار حية.",
