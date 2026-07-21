@@ -364,7 +364,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AppSettingsProvider>
         <DirectionWrapper>
-        <View style={{ flex: 1, backgroundColor: "#121212" }}>
+        <View style={{ flex: 1, backgroundColor: "#000000" }}>
           {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
 
           {showNetworkError && <NoNetworkScreen />}

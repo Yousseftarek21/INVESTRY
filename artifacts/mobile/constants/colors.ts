@@ -1,7 +1,7 @@
 const colors = {
   dark: {
-    background: '#121212',
-    card: '#1C1C1E',
+    background: '#000000',
+    card: '#161616',
     cardSecondary: '#242426',
     primary: '#C9A227',
     primaryForeground: '#121212',

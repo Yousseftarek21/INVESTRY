@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#121212",
+    backgroundColor: "#000000",
     zIndex: 998,
     paddingHorizontal: 40,
   },

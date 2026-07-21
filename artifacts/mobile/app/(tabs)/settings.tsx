@@ -533,8 +533,8 @@ const epm = StyleSheet.create({
 // ─── Theme preview cards ───────────────────────────────────────────────────────
 
 function ThemeMiniPreview({ mode }: { mode: ThemeMode }) {
-  const bg   = mode === 'light' ? '#F5F5F7' : '#121212';
-  const card = mode === 'light' ? '#FFFFFF'  : '#1C1C1E';
+  const bg   = mode === 'light' ? '#F5F5F7' : '#000000';
+  const card = mode === 'light' ? '#FFFFFF'  : '#161616';
   const a    = '#C9A227';
   const r1   = mode === 'light' ? '#EBE5D8' : '#242426';
   const r2   = mode === 'light' ? '#E0D8CA' : '#2C2C2E';
