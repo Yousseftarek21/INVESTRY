@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerField } from '@/components/DatePickerField';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -177,7 +177,7 @@ export default function GoalsScreen() {
               goals.length === 0 ? (
                 <View style={[s.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={[s.emptyIcon, { backgroundColor: colors.primary + '18' }]}>
-                    <Feather name="target" size={30} color={colors.primary} />
+                    <MaterialCommunityIcons name="piggy-bank" size={30} color={colors.primary} />
                   </View>
                   <Text style={[s.emptyTitle, { color: colors.text }]}>{t.noGoals}</Text>
                   <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.noGoalsHint}</Text>
@@ -200,7 +200,11 @@ export default function GoalsScreen() {
                         <View style={[s.card, { backgroundColor: colors.card, borderColor: done ? colors.green + '40' : colors.border }]}>
                           <View style={s.cardTop}>
                             <View style={[s.cardIcon, { backgroundColor: goalColor + '18' }]}>
-                              <Feather name={done ? 'check-circle' : 'target'} size={18} color={goalColor} />
+                              {done ? (
+                                <Feather name="check-circle" size={18} color={goalColor} />
+                              ) : (
+                                <MaterialCommunityIcons name="piggy-bank" size={19} color={goalColor} />
+                              )}
                             </View>
                             <View style={s.cardBody}>
                               <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>{g.name}</Text>
@@ -440,7 +444,7 @@ const s = StyleSheet.create({
 
   list: { gap: 12 },
   card: { borderRadius: 18, borderWidth: 1, padding: 16 },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 4 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
   cardIcon: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   cardBody: { flex: 1, gap: 3 },
   cardName: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
