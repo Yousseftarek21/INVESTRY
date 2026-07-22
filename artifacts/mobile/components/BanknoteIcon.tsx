@@ -1,15 +1,13 @@
 import React from 'react';
-import Svg, { Rect, Circle, Line } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
+// Matches the wallet icon used for "Cash Accounts" on the marketing site
+// (artifacts/website/index.html) — kept visually consistent across both.
 export function BanknoteIcon({ size, color }: { size: number; color: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Rect x="1" y="6" width="22" height="13" rx="2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx="12" cy="12.5" r="2.5" stroke={color} strokeWidth="2" />
-      <Line x1="1" y1="10" x2="5" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <Line x1="19" y1="10" x2="23" y2="10" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <Line x1="1" y1="15" x2="5" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <Line x1="19" y1="15" x2="23" y2="15" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Path d="M20 7H5a2 2 0 00-2 2v9a2 2 0 002 2h15a1 1 0 001-1v-3M16 12a1 1 0 100 2 1 1 0 000-2z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M18 7V5a2 2 0 00-2-2H6a2 2 0 00-2 2v2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
