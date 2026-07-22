@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, lt } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { db, usersTable, portfolioSnapshotsTable } from "@workspace/db";
 import { computeUserPortfolioValue } from "./portfolioValue";
 import { sendPushToTokens } from "./expoPush";
@@ -20,7 +20,12 @@ function generateId(): string {
   return `snap_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
 
-async function checkUser(userId: string, today: string): Promise<void> {
+// Snapshot history is written for every user daily regardless of push
+// settings — it's what the mobile 1W/1M/etc charts read as durable,
+// per-account history (see /api/portfolio/snapshots), independent of
+// whether this particular user ever registered for push. Only the push
+// *send* below is gated on having a token and alerts being enabled.
+async function checkUser(userId: string, today: string, pushToken: string | null): Promise<void> {
   const [existingToday] = await db
     .select({ id: portfolioSnapshotsTable.id })
     .from(portfolioSnapshotsTable)
@@ -39,24 +44,17 @@ async function checkUser(userId: string, today: string): Promise<void> {
     .limit(1);
 
   let notified = false;
-  if (prior && prior.totalValue > 0) {
+  if (prior && prior.totalValue > 0 && pushToken) {
     const pctChange = ((totalValue - prior.totalValue) / prior.totalValue) * 100;
     if (Math.abs(pctChange) >= CHANGE_THRESHOLD_PCT) {
-      const [user] = await db
-        .select({ pushToken: usersTable.pushToken })
-        .from(usersTable)
-        .where(eq(usersTable.id, userId))
-        .limit(1);
-      if (user?.pushToken) {
-        const dir = pctChange > 0 ? "up" : "down";
-        await sendPushToTokens(
-          [user.pushToken],
-          "Portfolio update",
-          `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% since yesterday`,
-          { type: "portfolio_alert" },
-        );
-        notified = true;
-      }
+      const dir = pctChange > 0 ? "up" : "down";
+      await sendPushToTokens(
+        [pushToken],
+        "Portfolio update",
+        `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% since yesterday`,
+        { type: "portfolio_alert" },
+      );
+      notified = true;
     }
   }
 
@@ -74,13 +72,12 @@ async function checkAllUsers(): Promise<void> {
   try {
     const today = cairoDateString();
     const users = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(and(isNotNull(usersTable.pushToken), eq(usersTable.portfolioAlertsEnabled, true)));
+      .select({ id: usersTable.id, pushToken: usersTable.pushToken, alertsEnabled: usersTable.portfolioAlertsEnabled })
+      .from(usersTable);
 
     for (const u of users) {
       try {
-        await checkUser(u.id, today);
+        await checkUser(u.id, today, u.alertsEnabled ? u.pushToken : null);
       } catch (err) {
         logger.warn({ err, userId: u.id }, "Portfolio alert check failed for user");
       }

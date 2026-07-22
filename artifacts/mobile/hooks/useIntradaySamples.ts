@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@clerk/expo';
 
-const KEY = '@investry_intraday_samples';
+// Namespaced per-user, matching every other local data store — without
+// this, one account's intraday samples would stay readable by (and get
+// overwritten by) whoever signs in next on the same device.
+function storageKey(userId: string) {
+  return `@investry_intraday_samples_${userId}`;
+}
 const MIN_INTERVAL_MS = 10 * 60 * 1000; // don't sample more than once per 10 minutes
 const MAX_SAMPLES = 60;
 
@@ -21,29 +27,32 @@ interface StoredIntraday { date: string; samples: number[]; lastSampleAt: number
  * in with real shape as you use the app throughout the day.
  */
 export function useIntradaySamples(totalValue: number, startOfDayValue: number): number[] | null {
+  const { userId } = useAuth();
   const [samples, setSamples] = useState<number[] | null>(null);
-  const loadedRef = useRef(false);
+  const loadedRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!userId) { setSamples(null); loadedRef.current = null; return; }
+    loadedRef.current = null;
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(KEY);
+        const raw = await AsyncStorage.getItem(storageKey(userId));
         const stored: StoredIntraday | null = raw ? JSON.parse(raw) : null;
         setSamples(stored && stored.date === todayStr() ? stored.samples : null);
       } catch {
         setSamples(null);
       } finally {
-        loadedRef.current = true;
+        loadedRef.current = userId;
       }
     })();
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
-    if (!loadedRef.current || totalValue <= 0) return;
+    if (!userId || loadedRef.current !== userId || totalValue <= 0) return;
 
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(KEY);
+        const raw = await AsyncStorage.getItem(storageKey(userId));
         const stored: StoredIntraday | null = raw ? JSON.parse(raw) : null;
         const today = todayStr();
 
@@ -53,7 +62,7 @@ export function useIntradaySamples(totalValue: number, startOfDayValue: number):
             samples: startOfDayValue > 0 ? [startOfDayValue, totalValue] : [totalValue],
             lastSampleAt: Date.now(),
           };
-          await AsyncStorage.setItem(KEY, JSON.stringify(fresh));
+          await AsyncStorage.setItem(storageKey(userId), JSON.stringify(fresh));
           setSamples(fresh.samples);
           return;
         }
@@ -62,11 +71,11 @@ export function useIntradaySamples(totalValue: number, startOfDayValue: number):
 
         const nextSamples = [...stored.samples, totalValue].slice(-MAX_SAMPLES);
         const next: StoredIntraday = { date: today, samples: nextSamples, lastSampleAt: Date.now() };
-        await AsyncStorage.setItem(KEY, JSON.stringify(next));
+        await AsyncStorage.setItem(storageKey(userId), JSON.stringify(next));
         setSamples(nextSamples);
       } catch { /* ignore */ }
     })();
-  }, [totalValue, startOfDayValue]);
+  }, [totalValue, startOfDayValue, userId]);
 
   return samples;
 }
