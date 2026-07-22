@@ -14,7 +14,8 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
-import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
+import { parseAmount } from '@/utils/parseAmount';
+import { AmountInput } from '@/components/AmountInput';
 import { RecurringIncome } from '@/types';
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
@@ -306,13 +307,12 @@ export default function RecurringIncomeScreen() {
                 {/* Amount */}
                 <View style={s.field}>
                   <Text style={[s.label, { color: colors.mutedForeground }]}>{t.amount}</Text>
-                  <TextInput
+                  <AmountInput
                     style={[s.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
                     value={amountRaw}
-                    onChangeText={v => setAmountRaw(formatAmountInput(v))}
+                    onChangeText={setAmountRaw}
                     placeholder="0"
                     placeholderTextColor={colors.mutedForeground}
-                    keyboardType="decimal-pad"
                   />
                 </View>
 

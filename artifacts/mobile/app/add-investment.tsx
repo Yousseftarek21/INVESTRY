@@ -16,8 +16,9 @@ import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, Pe
 import { EGX_COMPANIES } from '@/data/egx-companies';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { RE_PRICES, REAreaPrice } from '@/data/egypt-real-estate-prices';
-import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
+import { parseAmount, cleanAmountInput } from '@/utils/parseAmount';
 import { DatePickerField } from '@/components/DatePickerField';
+import { AmountInput } from '@/components/AmountInput';
 
 const FREE_LIMIT = 3;
 
@@ -877,13 +878,13 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.weightGrams}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 50" placeholderTextColor={colors.mutedForeground}
-                value={grams} onChangeText={(v) => setGrams(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder="e.g. 50" placeholderTextColor={colors.mutedForeground}
+                value={grams} onChangeText={setGrams} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 3900" placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerGram} onChangeText={(v) => setPurchasePricePerGram(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder="e.g. 3900" placeholderTextColor={colors.mutedForeground}
+                value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
             </View>
             <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
@@ -903,13 +904,13 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.weightGrams}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 500" placeholderTextColor={colors.mutedForeground}
-                value={grams} onChangeText={(v) => setGrams(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder="e.g. 500" placeholderTextColor={colors.mutedForeground}
+                value={grams} onChangeText={setGrams} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 52" placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerGram} onChangeText={(v) => setPurchasePricePerGram(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder="e.g. 52" placeholderTextColor={colors.mutedForeground}
+                value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
             </View>
             <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
@@ -958,13 +959,13 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.numberOfShares}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 100" placeholderTextColor={colors.mutedForeground}
-                value={shares} onChangeText={(v) => setShares(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder="e.g. 100" placeholderTextColor={colors.mutedForeground}
+                value={shares} onChangeText={setShares} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerShare}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 95.50" placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerShare} onChangeText={(v) => setPurchasePricePerShare(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder="e.g. 95.50" placeholderTextColor={colors.mutedForeground}
+                value={purchasePricePerShare} onChangeText={setPurchasePricePerShare} />
             </View>
             <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
@@ -1032,14 +1033,14 @@ export default function AddInvestmentScreen() {
 
             <View style={styles.section}>
               <Text style={labelStyle}>{t.area}</Text>
-              <TextInput style={inputStyle} placeholder={t.areaPlaceholder} placeholderTextColor={colors.mutedForeground}
-                value={area} onChangeText={(v) => setArea(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder={t.areaPlaceholder} placeholderTextColor={colors.mutedForeground}
+                value={area} onChangeText={setArea} />
             </View>
 
             <View style={styles.section}>
               <Text style={labelStyle}>{t.realEstatePurchasePrice}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 3500000" placeholderTextColor={colors.mutedForeground}
-                value={purchasePrice} onChangeText={(v) => setPurchasePrice(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder="e.g. 3500000" placeholderTextColor={colors.mutedForeground}
+                value={purchasePrice} onChangeText={setPurchasePrice} />
               <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
                 {t.realEstatePurchasePriceHint}
                 {reAreaNum > 0 && rePurchasePriceNum > 0
@@ -1072,14 +1073,14 @@ export default function AddInvestmentScreen() {
                   </Text>
                 </View>
               )}
-              <TextInput
+              <AmountInput
                 style={inputStyle}
                 placeholder={autoFilledArea
                   ? `Market avg: ${autoFilledArea.avgPricePerM2.toLocaleString()} EGP/m²`
                   : t.currentMarketPricePerM2Placeholder}
                 placeholderTextColor={colors.mutedForeground}
                 value={currentMarketPricePerM2}
-                onChangeText={(v) => setCurrentMarketPricePerM2(formatAmountInput(v))}
+                onChangeText={setCurrentMarketPricePerM2}
                 keyboardType="numeric"
               />
             </View>
@@ -1133,14 +1134,14 @@ export default function AddInvestmentScreen() {
               {hasInstallmentPlan && installmentExpanded && (
                 <View style={styles.collapsibleBody}>
                   <Text style={labelStyle}>{t.downPayment}</Text>
-                  <TextInput style={inputStyle} placeholder="e.g. 500000" placeholderTextColor={colors.mutedForeground}
-                    value={downPayment} onChangeText={(v) => setDownPayment(formatAmountInput(v))} keyboardType="decimal-pad" />
+                  <AmountInput style={inputStyle} placeholder="e.g. 500000" placeholderTextColor={colors.mutedForeground}
+                    value={downPayment} onChangeText={setDownPayment} />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.remainingBalance}</Text>
-                  <TextInput style={inputStyle} placeholder="e.g. 2000000" placeholderTextColor={colors.mutedForeground}
-                    value={remainingBalance} onChangeText={(v) => setRemainingBalance(formatAmountInput(v))} keyboardType="decimal-pad" />
+                  <AmountInput style={inputStyle} placeholder="e.g. 2000000" placeholderTextColor={colors.mutedForeground}
+                    value={remainingBalance} onChangeText={setRemainingBalance} />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.monthlyInstallment}</Text>
-                  <TextInput style={inputStyle} placeholder="e.g. 15000" placeholderTextColor={colors.mutedForeground}
-                    value={monthlyInstallment} onChangeText={(v) => setMonthlyInstallment(formatAmountInput(v))} keyboardType="decimal-pad" />
+                  <AmountInput style={inputStyle} placeholder="e.g. 15000" placeholderTextColor={colors.mutedForeground}
+                    value={monthlyInstallment} onChangeText={setMonthlyInstallment} />
                   <View style={{ marginTop: 12 }}>
                     <DatePickerField label={t.installmentEndDate} value={installmentEndDate} onChange={setInstallmentEndDate} onClear={() => setInstallmentEndDate('')} />
                   </View>
@@ -1168,15 +1169,13 @@ export default function AddInvestmentScreen() {
               {hasRentalInfo && rentalExpanded && (
                 <View style={styles.collapsibleBody}>
                   <Text style={labelStyle}>{t.monthlyRent}</Text>
-                  <TextInput style={inputStyle} placeholder="e.g. 20000" placeholderTextColor={colors.mutedForeground}
+                  <AmountInput style={inputStyle} placeholder="e.g. 20000" placeholderTextColor={colors.mutedForeground}
                     value={monthlyRent}
-                    onChangeText={(v) => { const f = formatAmountInput(v); setMonthlyRent(f); const n = parseAmount(f); setAnnualRent(!isNaN(n) ? formatAmountInput(String(n * 12)) : ''); }}
-                    keyboardType="decimal-pad" />
+                    onChangeText={(v) => { setMonthlyRent(v); const n = parseAmount(v); setAnnualRent(!isNaN(n) ? cleanAmountInput(String(n * 12)) : ''); }} />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.annualRent}</Text>
-                  <TextInput style={inputStyle} placeholder="e.g. 240000" placeholderTextColor={colors.mutedForeground}
+                  <AmountInput style={inputStyle} placeholder="e.g. 240000" placeholderTextColor={colors.mutedForeground}
                     value={annualRent}
-                    onChangeText={(v) => { const f = formatAmountInput(v); setAnnualRent(f); const n = parseAmount(f); setMonthlyRent(!isNaN(n) ? formatAmountInput(String(n / 12)) : ''); }}
-                    keyboardType="decimal-pad" />
+                    onChangeText={(v) => { setAnnualRent(v); const n = parseAmount(v); setMonthlyRent(!isNaN(n) ? cleanAmountInput(String(n / 12)) : ''); }} />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.propertyStatus}</Text>
                   <View style={styles.chips}>
                     {PROPERTY_STATUSES.map(s => (
@@ -1268,14 +1267,14 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePrice}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 250000" placeholderTextColor={colors.mutedForeground}
-                value={purchasePrice} onChangeText={(v) => setPurchasePrice(formatAmountInput(v))} keyboardType="decimal-pad" />
+              <AmountInput style={inputStyle} placeholder="e.g. 250000" placeholderTextColor={colors.mutedForeground}
+                value={purchasePrice} onChangeText={setPurchasePrice} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentEstimatedValue}</Text>
-              <TextInput style={inputStyle} placeholder="Defaults to purchase price if left blank"
+              <AmountInput style={inputStyle} placeholder="Defaults to purchase price if left blank"
                 placeholderTextColor={colors.mutedForeground}
-                value={currentValue} onChangeText={(v) => setCurrentValue(formatAmountInput(v))} keyboardType="decimal-pad" />
+                value={currentValue} onChangeText={setCurrentValue} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.assetCurrency}</Text>
@@ -1320,17 +1319,15 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.fiPrincipal}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. 100000"
+              <AmountInput style={inputStyle} placeholder="e.g. 100000"
                 placeholderTextColor={colors.mutedForeground}
-                value={fiPrincipal} onChangeText={(v) => setFiPrincipal(formatAmountInput(v))}
-                keyboardType="decimal-pad" />
+                value={fiPrincipal} onChangeText={setFiPrincipal} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.fiAnnualRate}</Text>
-              <TextInput style={inputStyle} placeholder={t.fiAnnualRatePlaceholder}
+              <AmountInput style={inputStyle} placeholder={t.fiAnnualRatePlaceholder}
                 placeholderTextColor={colors.mutedForeground}
-                value={fiAnnualRate} onChangeText={(v) => setFiAnnualRate(formatAmountInput(v))}
-                keyboardType="decimal-pad" />
+                value={fiAnnualRate} onChangeText={setFiAnnualRate} />
             </View>
             <View style={styles.section}>
               <DatePickerField label={t.fiPurchaseDate} value={fiPurchaseDate} onChange={setFiPurchaseDate} />

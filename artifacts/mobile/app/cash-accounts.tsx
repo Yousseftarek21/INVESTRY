@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { DatePickerField } from '@/components/DatePickerField';
+import { AmountInput } from '@/components/AmountInput';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -16,7 +17,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
-import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
+import { parseAmount } from '@/utils/parseAmount';
 
 type EntryType = CashAccountType | 'recurring_income';
 
@@ -156,7 +157,7 @@ export default function CashAccountsScreen() {
     setIsEditingIncome(false);
     setEntryType(a.type);
     setAccountName(a.accountName);
-    setBalance(formatAmountInput(String(a.balance)));
+    setBalance(String(a.balance));
     setCurrency(a.currency);
     setDateAdded(a.dateAdded ?? todayISO());
     setNotes(a.notes ?? '');
@@ -169,7 +170,7 @@ export default function CashAccountsScreen() {
     setIsEditingIncome(true);
     setEntryType('recurring_income');
     setAccountName(r.name);
-    setIncomeAmount(formatAmountInput(String(r.amount)));
+    setIncomeAmount(String(r.amount));
     setCurrency(r.currency);
     setCreditDay(String(r.creditDay));
     setStartDate(r.startDate);
@@ -398,13 +399,12 @@ export default function CashAccountsScreen() {
                 {/* ── Monthly Amount ──────────────────────────────── */}
                 <View style={styles.section}>
                   <Text style={labelStyle}>{t.amount}</Text>
-                  <TextInput
+                  <AmountInput
                     style={inputStyle}
                     placeholder="0.00"
                     placeholderTextColor={colors.mutedForeground}
-                    keyboardType="decimal-pad"
                     value={incomeAmount}
-                    onChangeText={v => setIncomeAmount(formatAmountInput(v))}
+                    onChangeText={setIncomeAmount}
                   />
                 </View>
 
@@ -461,13 +461,12 @@ export default function CashAccountsScreen() {
                 {/* ── Balance ──────────────────────────────────────── */}
                 <View style={styles.section}>
                   <Text style={labelStyle}>{t.balance}</Text>
-                  <TextInput
+                  <AmountInput
                     style={inputStyle}
                     placeholder="0.00"
                     placeholderTextColor={colors.mutedForeground}
-                    keyboardType="decimal-pad"
                     value={balance}
-                    onChangeText={v => setBalance(formatAmountInput(v))}
+                    onChangeText={setBalance}
                   />
                   <Text style={[styles.hint, { color: colors.mutedForeground }]}>{BALANCE_HINT[entryType as CashAccountType] ?? ''}</Text>
                 </View>

@@ -9,7 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerField } from '@/components/DatePickerField';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
+import { parseAmount } from '@/utils/parseAmount';
+import { AmountInput } from '@/components/AmountInput';
 
 function todayISO() { return new Date().toISOString().split('T')[0]; }
 
@@ -131,13 +132,12 @@ export default function TBillsCalculatorScreen() {
               <View style={s.field}>
                 <Text style={[s.label, { color: colors.mutedForeground }]}>{t.faceValue}</Text>
                 <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>
-                  <TextInput
+                  <AmountInput
                     style={[s.input, { color: colors.text }]}
                     value={faceValueRaw}
-                    onChangeText={v => setFaceValueRaw(formatAmountInput(v))}
+                    onChangeText={setFaceValueRaw}
                     placeholder="100,000"
                     placeholderTextColor={colors.mutedForeground}
-                    keyboardType="decimal-pad"
                   />
                   <Text style={[s.unit, { color: colors.mutedForeground }]}>EGP</Text>
                 </View>

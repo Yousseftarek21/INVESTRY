@@ -14,7 +14,8 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { Goal, useGoals } from '@/context/GoalsContext';
 import { useCash } from '@/context/CashContext';
-import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
+import { parseAmount } from '@/utils/parseAmount';
+import { AmountInput } from '@/components/AmountInput';
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -268,7 +269,7 @@ export default function GoalsScreen() {
                 <View style={s.field}>
                   <Text style={[s.label, { color: colors.mutedForeground }]}>{t.targetAmount}</Text>
                   <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>
-                    <TextInput style={[s.inputFlex, { color: colors.text }]} value={targetRaw} onChangeText={v => setTargetRaw(formatAmountInput(v))} placeholder="0" placeholderTextColor={colors.mutedForeground} keyboardType="decimal-pad" />
+                    <AmountInput style={[s.inputFlex, { color: colors.text }]} value={targetRaw} onChangeText={setTargetRaw} placeholder="0" placeholderTextColor={colors.mutedForeground} />
                     <Text style={[s.unit, { color: colors.mutedForeground }]}>EGP</Text>
                   </View>
                 </View>
@@ -316,7 +317,7 @@ export default function GoalsScreen() {
                   <View style={s.field}>
                     <Text style={[s.label, { color: colors.mutedForeground }]}>{t.goalSaved}</Text>
                     <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>
-                      <TextInput style={[s.inputFlex, { color: colors.text }]} value={savedRaw} onChangeText={v => setSavedRaw(formatAmountInput(v))} placeholder="0" placeholderTextColor={colors.mutedForeground} keyboardType="decimal-pad" />
+                      <AmountInput style={[s.inputFlex, { color: colors.text }]} value={savedRaw} onChangeText={setSavedRaw} placeholder="0" placeholderTextColor={colors.mutedForeground} />
                       <Text style={[s.unit, { color: colors.mutedForeground }]}>EGP</Text>
                     </View>
                   </View>
@@ -348,13 +349,12 @@ export default function GoalsScreen() {
               <Text style={[s.progressTitle, { color: colors.text }]}>{t.updateProgress}</Text>
               <Text style={[s.progressSub, { color: colors.mutedForeground }]}>{t.goalSaved}</Text>
               <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border, marginTop: 12 }]}>
-                <TextInput
+                <AmountInput
                   style={[s.inputFlex, { color: colors.text, fontSize: 18 }]}
                   value={progressRaw}
-                  onChangeText={v => setProgressRaw(formatAmountInput(v))}
+                  onChangeText={setProgressRaw}
                   placeholder="0"
                   placeholderTextColor={colors.mutedForeground}
-                  keyboardType="decimal-pad"
                   autoFocus
                 />
                 <Text style={[s.unit, { color: colors.mutedForeground }]}>EGP</Text>

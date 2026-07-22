@@ -17,7 +17,8 @@ import { useMarketPrices } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { PriceAlert, loadAlerts, addAlert, removeAlert, buildAlertPricesDict } from '@/hooks/usePriceAlerts';
 import { EGX_COMPANIES } from '@/data/egx-companies';
-import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
+import { parseAmount } from '@/utils/parseAmount';
+import { AmountInput } from '@/components/AmountInput';
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -266,13 +267,12 @@ export default function PriceAlertsScreen() {
                 <View style={s.field}>
                   <Text style={[s.label, { color: colors.mutedForeground }]}>{t.targetPriceLabel}</Text>
                   <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>
-                    <TextInput
+                    <AmountInput
                       style={[s.inputFlex, { color: colors.text }]}
                       value={targetRaw}
-                      onChangeText={v => setTargetRaw(formatAmountInput(v))}
+                      onChangeText={setTargetRaw}
                       placeholder="0"
                       placeholderTextColor={colors.mutedForeground}
-                      keyboardType="decimal-pad"
                     />
                     <Text style={[s.unit, { color: colors.mutedForeground }]}>EGP</Text>
                   </View>
