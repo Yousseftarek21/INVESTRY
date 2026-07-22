@@ -54,6 +54,7 @@
   header.site {
     background: var(--card);
     border-bottom: 1px solid var(--border);
+    position: relative;
   }
   header.site .wrap {
     display: flex; align-items: center; justify-content: space-between;
@@ -61,20 +62,47 @@
   }
   .brand { display: flex; align-items: center; text-decoration: none; }
   .brand img { height: 17px; width: auto; opacity: 0.92; }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
   .lang-toggle {
-    display: inline-flex; align-items: center; gap: 6px;
+    display: inline-flex; align-items: center; gap: 7px;
     border: 1px solid var(--border); border-radius: 999px;
-    padding: 7px 14px; background: var(--bg);
+    padding: 7px 14px 7px 12px; background: var(--bg);
     font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: var(--text);
-    cursor: pointer; transition: border-color 0.15s ease;
+    cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
   }
-  .lang-toggle:hover { border-color: var(--accent); }
-  html[dir="rtl"] .lang-toggle { font-family: 'Cairo', sans-serif; }
+  .lang-toggle:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .lang-toggle:active { transform: scale(0.96); }
+  .lang-toggle svg { color: var(--muted); flex-shrink: 0; transition: color 0.15s ease; }
+  .lang-toggle:hover svg { color: var(--accent); }
+  html[dir="rtl"] .lang-toggle { font-family: 'Cairo', sans-serif; padding: 7px 12px 7px 14px; }
   .nav-links { display: flex; align-items: center; gap: 28px; }
   .nav-links a { font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; }
   .nav-links a:hover { color: var(--accent); }
   html[dir="rtl"] .nav-links a { font-family: 'Cairo', sans-serif; }
-  @media (max-width: 640px) { .nav-links { display: none; } }
+  .menu-toggle {
+    display: none; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 10px; padding: 0;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); cursor: pointer;
+  }
+  .menu-toggle:hover { border-color: var(--accent); }
+  /* Below 640px the inline nav becomes a toggled dropdown panel, anchored
+     to header.site (position:relative above) so it spans full width. */
+  @media (max-width: 640px) {
+    .menu-toggle { display: inline-flex; }
+    .nav-links {
+      display: none;
+      position: absolute; left: 0; right: 0; top: 100%;
+      flex-direction: column; align-items: stretch; gap: 0;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 4px 24px 10px;
+    }
+    .nav-links.open { display: flex; }
+    .nav-links a, .nav-links button.open-contact-modal {
+      width: 100%; text-align: start; padding: 14px 0;
+      border-top: 1px solid var(--border);
+    }
+  }
 
   /* Hero — centered, stacked top to bottom */
   .hero {
@@ -129,11 +157,29 @@
   html[dir="rtl"] .btn-ghost { font-family: 'Cairo', sans-serif; }
   html[dir="rtl"] .btn-ghost .arrow { transform: scaleX(-1); }
 
-  /* Portfolio preview card */
+  /* Hero visual — the real app screenshot paired with a summary card.
+     Row on wide screens, stacks on narrow ones via flex-wrap (no absolute
+     positioning, so it's inherently overflow-safe at every width). */
+  .hero-visual {
+    width: 100%; display: flex; flex-wrap: wrap;
+    align-items: flex-start; justify-content: center; gap: 32px;
+  }
+
+  /* Hero device shot — cropped to just the phone (its own baked-in
+     headline is cropped off so it doesn't repeat the h1.headline above),
+     background matted to the same white as the page so it isn't boxed in
+     a visible frame — it just sits on the page like any other graphic. */
+  .hero-shot { width: 100%; max-width: 300px; }
+  .hero-shot img { display: block; width: 100%; height: auto; }
+  @media (max-width: 860px) { .hero-shot { max-width: 240px; } }
+
+  /* Portfolio preview card — paired with the real screenshot; total value
+     matches the screenshot's own header card exactly, so the two read as
+     the same portfolio rather than two unrelated numbers. */
   .preview-card {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 22px; padding: 30px;
-    width: 100%; max-width: 480px; text-align: start;
+    width: 100%; max-width: 380px; text-align: start;
   }
   .preview-label {
     font-size: 12px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase;
@@ -141,7 +187,7 @@
   }
   .preview-value {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 38px; font-weight: 700; letter-spacing: -1px; margin: 0 0 22px;
+    font-size: 34px; font-weight: 700; letter-spacing: -1px; margin: 0 0 22px;
     font-variant-numeric: tabular-nums;
   }
   html[dir="rtl"] .preview-value { font-family: 'Cairo', serif; }
@@ -295,14 +341,20 @@
     <a class="brand" href="#top">
       <img src="assets/logo-light.png" alt="INVESTRY">
     </a>
-    <nav class="nav-links">
+    <nav class="nav-links" id="navLinks">
       <a href="#how-it-works" data-i18n="navHow">How It Works</a>
       <a href="#features" data-i18n="navFeatures">Features</a>
       <button type="button" class="open-contact-modal" data-i18n="navContact">Get in touch</button>
     </nav>
-    <button class="lang-toggle" id="langToggle" type="button">
-      <span id="langToggleLabel">العربية</span>
-    </button>
+    <div class="header-actions">
+      <button class="lang-toggle" id="langToggle" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg>
+        <span id="langToggleLabel">العربية</span>
+      </button>
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="navLinks">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2.5 5h13M2.5 9h13M2.5 13h13"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -323,26 +375,31 @@
       </div>
     </div>
 
-    <div class="preview-card">
-      <p class="preview-label" data-i18n="totalValue">Total Portfolio Value</p>
-      <p class="preview-value">1,485,200 EGP</p>
-      <div class="preview-bar">
-        <span style="width:34%; background:#7B5A1E"></span>
-        <span style="width:22%; background:#C9A227"></span>
-        <span style="width:18%; background:#4A9EFF"></span>
-        <span style="width:14%; background:#00976E"></span>
-        <span style="width:8%; background:#A47FCA"></span>
-        <span style="width:4%; background:#B8BEC7"></span>
+    <div class="hero-visual">
+      <div class="hero-shot">
+        <img src="assets/app-screenshot.png?v=4" width="1284" height="1968" alt="INVESTRY portfolio screen showing total value, allocation by asset, and live performance">
       </div>
-      <div class="preview-legend">
-        <div class="legend-row"><span class="legend-dot" style="background:#7B5A1E"></span><span class="name" data-i18n="assetRealEstate">Real Estate</span><span class="pct">34%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#C9A227"></span><span class="name" data-i18n="assetGold">Gold</span><span class="pct">22%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#4A9EFF"></span><span class="name" data-i18n="assetStocks">EGX Stocks</span><span class="pct">18%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#00976E"></span><span class="name" data-i18n="assetFixedIncome">Fixed Income</span><span class="pct">14%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#A47FCA"></span><span class="name" data-i18n="assetCash">Cash</span><span class="pct">8%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#B8BEC7"></span><span class="name" data-i18n="assetSilver">Silver</span><span class="pct">4%</span></div>
+      <div class="preview-card">
+        <p class="preview-label" data-i18n="totalValue">Total Portfolio Value</p>
+        <p class="preview-value">7,445,273 EGP</p>
+        <div class="preview-bar">
+          <span style="width:34%; background:#7B5A1E"></span>
+          <span style="width:22%; background:#C9A227"></span>
+          <span style="width:18%; background:#4A9EFF"></span>
+          <span style="width:14%; background:#00976E"></span>
+          <span style="width:8%; background:#A47FCA"></span>
+          <span style="width:4%; background:#B8BEC7"></span>
+        </div>
+        <div class="preview-legend">
+          <div class="legend-row"><span class="legend-dot" style="background:#7B5A1E"></span><span class="name" data-i18n="assetRealEstate">Real Estate</span><span class="pct">34%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#C9A227"></span><span class="name" data-i18n="assetGold">Gold</span><span class="pct">22%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#4A9EFF"></span><span class="name" data-i18n="assetStocks">EGX Stocks</span><span class="pct">18%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#00976E"></span><span class="name" data-i18n="assetFixedIncome">Fixed Income</span><span class="pct">14%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#A47FCA"></span><span class="name" data-i18n="assetCash">Cash</span><span class="pct">8%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#B8BEC7"></span><span class="name" data-i18n="assetSilver">Silver</span><span class="pct">4%</span></div>
+        </div>
+        <p class="preview-note" data-i18n="sampleNote">Sample portfolio, for illustration only</p>
       </div>
-      <p class="preview-note" data-i18n="sampleNote">Sample portfolio, for illustration only</p>
     </div>
   </section>
 
@@ -624,6 +681,24 @@
   document.getElementById('langToggle').addEventListener('click', function () {
     var current = document.documentElement.lang === 'ar' ? 'ar' : 'en';
     applyLang(current === 'ar' ? 'en' : 'ar');
+  });
+
+  // Mobile nav — below 640px the inline links become a toggled dropdown.
+  var navLinks = document.getElementById('navLinks');
+  var menuToggle = document.getElementById('menuToggle');
+  function closeMenu() {
+    navLinks.classList.remove('open');
+    menuToggle.setAttribute('aria-expanded', 'false');
+  }
+  menuToggle.addEventListener('click', function () {
+    var open = navLinks.classList.toggle('open');
+    menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  navLinks.querySelectorAll('a, button').forEach(function (el) {
+    el.addEventListener('click', closeMenu);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeMenu();
   });
 
   (function () {
