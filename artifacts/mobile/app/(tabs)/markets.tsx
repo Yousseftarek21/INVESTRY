@@ -499,7 +499,7 @@ function RERow({ area, isLast }: { area: REAreaPrice; isLast: boolean }) {
       !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
     ]}>
       <View style={[rer.icon, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '28' }]}>
-        <Feather name="home" size={14} color={colors.primary} />
+        <MaterialCommunityIcons name="home-city" size={14} color={colors.primary} />
       </View>
       <View style={rer.info}>
         <Text style={[rer.name, { color: colors.text }]} numberOfLines={1}>{area.area}</Text>
@@ -546,7 +546,7 @@ function RealEstateTab() {
           <View style={reh.topRow}>
             <View style={reh.nameRow}>
               <View style={[reh.iconWrap, { backgroundColor: colors.primary + '18' }]}>
-                <Feather name="home" size={15} color={colors.primary} />
+                <MaterialCommunityIcons name="home-city" size={15} color={colors.primary} />
               </View>
               <Text style={[reh.label, { color: colors.mutedForeground }]} numberOfLines={1}>
                 {t.rePropertyMarketTitle}
