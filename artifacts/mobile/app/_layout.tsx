@@ -39,7 +39,11 @@ import * as Updates from "expo-updates";
 SplashScreen.preventAutoHideAsync();
 
 const splashStartTime = Date.now();
-const MIN_SPLASH_DURATION_MS = Platform.OS === 'web' ? 0 : 2500;
+// Kept just above CustomSplash's own animation length (~1.55s: logo spring +
+// 150ms reveal delay + 1400ms chart draw) so the chart line still finishes
+// drawing cleanly before hide, while cutting the old 2.5s floor down
+// noticeably for a snappier feel on fast loads.
+const MIN_SPLASH_DURATION_MS = Platform.OS === 'web' ? 0 : 1600;
 
 const webTokenCache: TokenCache = {
   getToken: (key: string) => Promise.resolve(localStorage.getItem(key)),
@@ -130,7 +134,22 @@ function DirectionWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function BiometricWrapper({ children }: { children: React.ReactNode }) {
-  const { biometricLock } = useAppSettings();
+  const { biometricLock, setBiometricLock } = useAppSettings();
+  const { isSignedIn } = useAuth();
+  const wasSignedInRef = useRef(false);
+
+  // Biometric lock is a plain device-level toggle (one AsyncStorage key,
+  // not scoped per account), so without this it silently carries over to
+  // whoever signs in next. Reset it on a genuine sign-out transition (not
+  // on initial mount before any sign-in has happened) so re-signing in
+  // requires explicitly turning it back on.
+  useEffect(() => {
+    if (wasSignedInRef.current && isSignedIn === false) {
+      setBiometricLock(false);
+    }
+    if (isSignedIn) wasSignedInRef.current = true;
+  }, [isSignedIn, setBiometricLock]);
+
   return <BiometricGate enabled={biometricLock}>{children}</BiometricGate>;
 }
 

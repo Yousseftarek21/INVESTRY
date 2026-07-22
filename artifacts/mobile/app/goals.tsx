@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerField } from '@/components/DatePickerField';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -177,7 +177,7 @@ export default function GoalsScreen() {
               goals.length === 0 ? (
                 <View style={[s.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={[s.emptyIcon, { backgroundColor: colors.primary + '18' }]}>
-                    <MaterialCommunityIcons name="piggy-bank" size={30} color={colors.primary} />
+                    <Feather name="target" size={30} color={colors.primary} />
                   </View>
                   <Text style={[s.emptyTitle, { color: colors.text }]}>{t.noGoals}</Text>
                   <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.noGoalsHint}</Text>
@@ -200,11 +200,7 @@ export default function GoalsScreen() {
                         <View style={[s.card, { backgroundColor: colors.card, borderColor: done ? colors.green + '40' : colors.border }]}>
                           <View style={s.cardTop}>
                             <View style={[s.cardIcon, { backgroundColor: goalColor + '18' }]}>
-                              {done ? (
-                                <Feather name="check-circle" size={18} color={goalColor} />
-                              ) : (
-                                <MaterialCommunityIcons name="piggy-bank" size={19} color={goalColor} />
-                              )}
+                              <Feather name={done ? 'check-circle' : 'target'} size={18} color={goalColor} />
                             </View>
                             <View style={s.cardBody}>
                               <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>{g.name}</Text>
