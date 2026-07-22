@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Feather } from '@expo/vector-icons';
@@ -16,9 +16,17 @@ export function BiometricGate({ children, enabled }: Props) {
   const [unlocked, setUnlocked] = useState(!enabled || Platform.OS === 'web');
   const [biometricType, setBiometricType] = useState<'face' | 'fingerprint' | 'none'>('none');
   const [errorMsg, setErrorMsg] = useState('');
+  // Independent of errorMsg — a safety net that guarantees a way to retry
+  // even if something hangs/throws without ever reaching an explicit error
+  // (see the timeout effect below and the try/catch this used to be
+  // missing entirely, which could leave the screen stuck forever with no
+  // button and no message at all).
+  const [showRetry, setShowRetry] = useState(false);
+  const attemptIdRef = useRef(0);
 
   const authenticate = useCallback(async () => {
     setErrorMsg('');
+    setShowRetry(false);
     try {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: t.biometricAuthPrompt,
@@ -27,9 +35,10 @@ export function BiometricGate({ children, enabled }: Props) {
         disableDeviceFallback: false,
       });
       if (result.success) setUnlocked(true);
-      else setErrorMsg(t.biometricAuthFailed);
+      else { setErrorMsg(t.biometricAuthFailed); setShowRetry(true); }
     } catch {
       setErrorMsg(t.biometricAuthFailed);
+      setShowRetry(true);
     }
   }, [t]);
 
@@ -37,21 +46,39 @@ export function BiometricGate({ children, enabled }: Props) {
     if (!enabled || Platform.OS === 'web') { setUnlocked(true); return; }
     setUnlocked(false);
     setErrorMsg('');
+    setShowRetry(false);
+    const attemptId = ++attemptIdRef.current;
+
+    // Safety net: guarantees a retry button appears within a few seconds no
+    // matter what — whether a native call throws, hangs, or the biometric
+    // prompt is dismissed in a way that doesn't resolve cleanly. Cleared
+    // the moment this attempt actually settles (success/failure/new attempt).
+    const timeoutId = setTimeout(() => {
+      if (attemptIdRef.current === attemptId) setShowRetry(true);
+    }, 5000);
+
     (async () => {
-      const available = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (!available || !enrolled) { setUnlocked(true); return; }
-      const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-      if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-        setBiometricType('face');
-      } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-        setBiometricType('fingerprint');
-      } else {
-        setBiometricType('none');
+      try {
+        const available = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        if (!available || !enrolled) { setUnlocked(true); return; }
+        const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+        if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+          setBiometricType('face');
+        } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+          setBiometricType('fingerprint');
+        } else {
+          setBiometricType('none');
+        }
+        await authenticate();
+      } catch {
+        setErrorMsg(t.biometricAuthFailed);
+        setShowRetry(true);
       }
-      authenticate();
     })();
-  }, [enabled, authenticate]);
+
+    return () => clearTimeout(timeoutId);
+  }, [enabled, authenticate, t]);
 
   // Always render children — the app's navigator (and its Clerk-session-
   // dependent auth routing) mounts and settles on its own timeline,
@@ -80,14 +107,16 @@ export function BiometricGate({ children, enabled }: Props) {
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             {t.biometricSubtitle}
           </Text>
-          {/* The retry button only appears after a real failed/cancelled
-              attempt (errorMsg set) — on a fresh mount, authenticate() is
-              already firing automatically, so showing a "tap to scan"
-              button by default would be a pointless extra step in front of
-              the system Face ID prompt that's about to appear on its own. */}
-          {!!errorMsg && (
+          {/* The retry button only appears once this attempt has actually
+              settled unsuccessfully (or a 5s safety-net timeout fires,
+              covering any hang/throw that never reaches an explicit error)
+              — on a fresh mount, authenticate() is already firing
+              automatically, so showing a "tap to scan" button by default
+              would be a pointless extra step in front of the system Face
+              ID prompt that's about to appear on its own. */}
+          {showRetry && (
             <>
-              <Text style={[styles.error, { color: colors.red }]}>{errorMsg}</Text>
+              {!!errorMsg && <Text style={[styles.error, { color: colors.red }]}>{errorMsg}</Text>}
               <TouchableOpacity
                 style={[styles.btn, { backgroundColor: colors.primary }]}
                 onPress={authenticate}
