@@ -172,20 +172,16 @@ export function PerfChart({
         <Circle cx={lastPt.x} cy={lastPt.y} r="9" fill={color} fillOpacity="0.15" />
       </Svg>
       {usingAllTimeFallback && (
-        <View style={{
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-          marginTop: 8, alignSelf: 'center', paddingHorizontal: 10, paddingVertical: 5,
-          borderRadius: 20, backgroundColor: colors.mutedForeground + '14',
+        <Text style={{
+          textAlign: 'center',
+          color: colors.mutedForeground,
+          fontSize: 10,
+          fontFamily: 'Inter_400Regular',
+          marginTop: 4,
+          opacity: 0.7,
         }}>
-          <Feather name="clock" size={11} color={colors.mutedForeground} />
-          <Text style={{
-            color: colors.mutedForeground,
-            fontSize: 11,
-            fontFamily: 'Inter_500Medium',
-          }}>
-            {t.chartAllTimeFallbackHint}
-          </Text>
-        </View>
+          {t.chartAllTimeFallbackHint}
+        </Text>
       )}
       {trendPath && (
         <Text style={{

@@ -80,21 +80,30 @@ export function BiometricGate({ children, enabled }: Props) {
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             {t.biometricSubtitle}
           </Text>
-          {!!errorMsg && <Text style={[styles.error, { color: colors.red }]}>{errorMsg}</Text>}
-          <TouchableOpacity
-            style={[styles.btn, { backgroundColor: colors.primary }]}
-            onPress={authenticate}
-            activeOpacity={0.85}
-          >
-            <Feather
-              name={biometricType === 'face' ? 'eye' : biometricType === 'fingerprint' ? 'crosshair' : 'lock'}
-              size={17}
-              color={colors.primaryForeground}
-            />
-            <Text style={[styles.btnText, { color: colors.primaryForeground }]}>
-              {biometricType === 'face' ? t.biometricUseFaceId : biometricType === 'fingerprint' ? t.biometricUseTouchId : t.biometricUnlock}
-            </Text>
-          </TouchableOpacity>
+          {/* The retry button only appears after a real failed/cancelled
+              attempt (errorMsg set) — on a fresh mount, authenticate() is
+              already firing automatically, so showing a "tap to scan"
+              button by default would be a pointless extra step in front of
+              the system Face ID prompt that's about to appear on its own. */}
+          {!!errorMsg && (
+            <>
+              <Text style={[styles.error, { color: colors.red }]}>{errorMsg}</Text>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: colors.primary }]}
+                onPress={authenticate}
+                activeOpacity={0.85}
+              >
+                <Feather
+                  name={biometricType === 'face' ? 'eye' : biometricType === 'fingerprint' ? 'crosshair' : 'lock'}
+                  size={17}
+                  color={colors.primaryForeground}
+                />
+                <Text style={[styles.btnText, { color: colors.primaryForeground }]}>
+                  {biometricType === 'face' ? t.biometricUseFaceId : biometricType === 'fingerprint' ? t.biometricUseTouchId : t.biometricUnlock}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       )}
     </View>
