@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +13,7 @@ export const usersTable = pgTable("users", {
   referredByUserId:       text("referred_by_user_id"), // id of the user whose code was redeemed
   proCreditExpiresAt:     timestamp("pro_credit_expires_at", { withTimezone: true }), // bonus Pro time earned from referrals
   pushToken:              text("push_token"), // Expo push token for the user's most recent device
+  portfolioAlertsEnabled: boolean("portfolio_alerts_enabled").notNull().default(true), // gates the daily ±1% portfolio-value push
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

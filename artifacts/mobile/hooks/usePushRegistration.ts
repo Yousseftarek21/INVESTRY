@@ -8,13 +8,20 @@ import { requestNotificationPermission } from './useNotifications';
 
 /**
  * Registers this device's Expo push token with the backend once the user is
- * signed in, so server-triggered pushes (e.g. the gold/silver ±1% alert)
- * have somewhere to go. Runs once per sign-in; harmless to re-run since the
- * backend just upserts the latest token for the user.
+ * signed in, so server-triggered pushes (e.g. the gold/silver ±1% alert and
+ * the daily portfolio-value ±1% alert) have somewhere to go. Runs once per
+ * sign-in; harmless to re-run since the backend just upserts the latest
+ * token for the user.
+ *
+ * Also keeps the server's portfolioAlertsEnabled flag in sync with the
+ * user's local "Portfolio Alerts" toggle in Settings — without this, the
+ * toggle would only affect a since-removed local notification path and do
+ * nothing to the server-driven one.
  */
-export function usePushRegistration() {
+export function usePushRegistration(portfolioAlertsEnabled: boolean) {
   const { isSignedIn, userId, getToken } = useAuth();
   const registeredForUserId = useRef<string | null>(null);
+  const lastSyncedPortfolioPref = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -46,4 +53,24 @@ export function usePushRegistration() {
       }
     })();
   }, [isSignedIn, userId, getToken]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (!isSignedIn || !userId) return;
+    if (lastSyncedPortfolioPref.current === portfolioAlertsEnabled) return;
+
+    (async () => {
+      try {
+        const authToken = await getToken();
+        if (!authToken) return;
+        const res = await apiFetch('/api/push/preferences', authToken, {
+          method: 'PUT',
+          body: JSON.stringify({ portfolioAlertsEnabled }),
+        });
+        if (res.ok) lastSyncedPortfolioPref.current = portfolioAlertsEnabled;
+      } catch {
+        // Silent — will retry next time this value changes or the app restarts.
+      }
+    })();
+  }, [isSignedIn, userId, getToken, portfolioAlertsEnabled]);
 }

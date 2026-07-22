@@ -344,6 +344,11 @@ const en = {
   updateProgress: 'Update',
   remaining: 'remaining',
   achieved: 'Goal achieved!',
+  linkCashAccount: 'Link to Cash Account',
+  linkCashAccountHint: 'Track this goal automatically from a cash account balance instead of updating it by hand.',
+  noLinkManualEntry: 'None — enter manually',
+  syncedWith: 'Synced with',
+  noCashAccountsToLink: 'Add a cash account first to link one here.',
 
   // Export
   exportCSV: 'Export Portfolio as CSV',
@@ -1365,6 +1370,11 @@ const ar: typeof en = {
   updateProgress: 'تحديث',
   remaining: 'متبقي',
   achieved: 'تم تحقيق الهدف!',
+  linkCashAccount: 'ربط بحساب نقدي',
+  linkCashAccountHint: 'تابع هذا الهدف تلقائيًا من رصيد حساب نقدي بدل تحديثه يدويًا.',
+  noLinkManualEntry: 'بدون ربط — إدخال يدوي',
+  syncedWith: 'متزامن مع',
+  noCashAccountsToLink: 'أضف حساب نقدي أولاً لتتمكن من ربطه هنا.',
 
   // Export
   exportCSV: 'تصدير المحفظة كـ CSV',

@@ -13,6 +13,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { Goal, useGoals } from '@/context/GoalsContext';
+import { useCash } from '@/context/CashContext';
 import { parseAmount, formatAmountInput } from '@/utils/parseAmount';
 
 function generateId() {
@@ -38,6 +39,7 @@ export default function GoalsScreen() {
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
   const { goals, addGoal, updateGoal, removeGoal } = useGoals();
+  const { cashAccounts } = useCash();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,6 +53,16 @@ export default function GoalsScreen() {
   const [savedRaw, setSavedRaw] = useState('');
   const [deadline, setDeadline] = useState('');
   const [note, setNote] = useState('');
+  const [linkedAccountId, setLinkedAccountId] = useState<string | null>(null);
+
+  // A goal linked to a cash account tracks that account's live balance
+  // instead of the manually-entered savedAmount — falls back to the last
+  // stored snapshot if the account was since deleted.
+  const effectiveSaved = useCallback((g: Goal) => {
+    if (!g.linkedCashAccountId) return g.savedAmount;
+    const account = cashAccounts.find(a => a.id === g.linkedCashAccountId);
+    return account ? account.balance : g.savedAmount;
+  }, [cashAccounts]);
 
   const resetForm = useCallback(() => {
     setShowForm(false);
@@ -60,6 +72,7 @@ export default function GoalsScreen() {
     setSavedRaw('');
     setDeadline('');
     setNote('');
+    setLinkedAccountId(null);
   }, []);
 
   const openAdd = () => { resetForm(); setShowForm(true); };
@@ -70,22 +83,24 @@ export default function GoalsScreen() {
     setSavedRaw(String(g.savedAmount));
     setDeadline(g.deadline ?? '');
     setNote(g.note ?? '');
+    setLinkedAccountId(g.linkedCashAccountId ?? null);
     setShowForm(true);
   };
 
   const handleSave = async () => {
     const trimmed = name.trim();
     const target = parseAmount(targetRaw);
-    const saved = parseAmount(savedRaw);
+    const linkedAccount = linkedAccountId ? cashAccounts.find(a => a.id === linkedAccountId) : undefined;
+    const saved = linkedAccount ? linkedAccount.balance : parseAmount(savedRaw);
     if (!trimmed) { Alert.alert(t.goalName, t.goalNameError); return; }
     if (target <= 0) { Alert.alert(t.targetAmount, t.goalTargetError); return; }
     impact(Haptics.ImpactFeedbackStyle.Light);
     if (editingId) {
       const existing = goals.find(g => g.id === editingId);
       if (!existing) return;
-      await updateGoal({ ...existing, name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined });
+      await updateGoal({ ...existing, name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, linkedCashAccountId: linkedAccountId ?? undefined });
     } else {
-      await addGoal({ id: generateId(), name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, createdAt: new Date().toISOString() });
+      await addGoal({ id: generateId(), name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, createdAt: new Date().toISOString(), linkedCashAccountId: linkedAccountId ?? undefined });
     }
     resetForm();
   };
@@ -158,10 +173,12 @@ export default function GoalsScreen() {
               ) : (
                 <View style={s.list}>
                   {goals.map(g => {
-                    const pct = g.targetAmount > 0 ? (g.savedAmount / g.targetAmount) * 100 : 0;
+                    const saved = effectiveSaved(g);
+                    const pct = g.targetAmount > 0 ? (saved / g.targetAmount) * 100 : 0;
                     const done = pct >= 100;
                     const goalColor = done ? colors.green : colors.primary;
-                    const remaining = Math.max(0, g.targetAmount - g.savedAmount);
+                    const remaining = Math.max(0, g.targetAmount - saved);
+                    const linkedAccount = g.linkedCashAccountId ? cashAccounts.find(a => a.id === g.linkedCashAccountId) : undefined;
                     return (
                       <SwipeToDelete key={g.id} onDelete={() => handleDelete(g.id)}>
                         <View style={[s.card, { backgroundColor: colors.card, borderColor: done ? colors.green + '40' : colors.border }]}>
@@ -186,7 +203,7 @@ export default function GoalsScreen() {
 
                           <View style={s.cardNums}>
                             <Text style={[s.savedNum, { color: goalColor, flexShrink: 1 }]} numberOfLines={1}>
-                              {g.savedAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} <Text style={s.numUnit}>EGP saved</Text>
+                              {saved.toLocaleString('en-EG', { maximumFractionDigits: 0 })} <Text style={s.numUnit}>EGP saved</Text>
                             </Text>
                             <Text style={[s.targetNum, { color: colors.mutedForeground, flexShrink: 1 }]} numberOfLines={1}>
                               of {g.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
@@ -202,14 +219,25 @@ export default function GoalsScreen() {
                             <Text style={[s.achieved, { color: colors.green }]}>{t.achieved}</Text>
                           )}
 
+                          {linkedAccount && (
+                            <View style={s.syncedRow}>
+                              <Feather name="refresh-cw" size={11} color={colors.primary} />
+                              <Text style={[s.syncedText, { color: colors.primary }]} numberOfLines={1}>
+                                {t.syncedWith} {linkedAccount.accountName}
+                              </Text>
+                            </View>
+                          )}
+
                           <View style={s.cardActions}>
-                            <TouchableOpacity
-                              style={[s.actionBtn, { backgroundColor: colors.muted }]}
-                              onPress={() => openProgress(g)}
-                            >
-                              <Feather name="trending-up" size={13} color={colors.mutedForeground} />
-                              <Text style={[s.actionBtnText, { color: colors.mutedForeground }]}>{t.updateProgress}</Text>
-                            </TouchableOpacity>
+                            {!linkedAccount && (
+                              <TouchableOpacity
+                                style={[s.actionBtn, { backgroundColor: colors.muted }]}
+                                onPress={() => openProgress(g)}
+                              >
+                                <Feather name="trending-up" size={13} color={colors.mutedForeground} />
+                                <Text style={[s.actionBtnText, { color: colors.mutedForeground }]}>{t.updateProgress}</Text>
+                              </TouchableOpacity>
+                            )}
                             <TouchableOpacity
                               style={[s.actionBtn, { backgroundColor: colors.muted }]}
                               onPress={() => openEdit(g)}
@@ -245,12 +273,54 @@ export default function GoalsScreen() {
                   </View>
                 </View>
                 <View style={s.field}>
-                  <Text style={[s.label, { color: colors.mutedForeground }]}>{t.goalSaved}</Text>
-                  <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>
-                    <TextInput style={[s.inputFlex, { color: colors.text }]} value={savedRaw} onChangeText={v => setSavedRaw(formatAmountInput(v))} placeholder="0" placeholderTextColor={colors.mutedForeground} keyboardType="decimal-pad" />
-                    <Text style={[s.unit, { color: colors.mutedForeground }]}>EGP</Text>
-                  </View>
+                  <Text style={[s.label, { color: colors.mutedForeground }]}>{t.linkCashAccount}</Text>
+                  <Text style={[s.hint, { color: colors.mutedForeground }]}>{t.linkCashAccountHint}</Text>
+                  {cashAccounts.length === 0 ? (
+                    <Text style={[s.hint, { color: colors.mutedForeground, marginTop: 4 }]}>{t.noCashAccountsToLink}</Text>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipRow}>
+                      <TouchableOpacity
+                        style={[s.chip, { backgroundColor: linkedAccountId === null ? colors.primary : colors.muted }]}
+                        onPress={() => setLinkedAccountId(null)}
+                      >
+                        <Text style={[s.chipText, { color: linkedAccountId === null ? colors.primaryForeground : colors.mutedForeground }]}>{t.noLinkManualEntry}</Text>
+                      </TouchableOpacity>
+                      {cashAccounts.map(a => (
+                        <TouchableOpacity
+                          key={a.id}
+                          style={[s.chip, { backgroundColor: linkedAccountId === a.id ? colors.primary : colors.muted }]}
+                          onPress={() => setLinkedAccountId(a.id)}
+                        >
+                          <Text
+                            style={[s.chipText, { color: linkedAccountId === a.id ? colors.primaryForeground : colors.mutedForeground }]}
+                            numberOfLines={1}
+                          >
+                            {a.accountName} · {a.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
+                {linkedAccountId ? (
+                  <View style={s.field}>
+                    <Text style={[s.label, { color: colors.mutedForeground }]}>{t.goalSaved}</Text>
+                    <View style={[s.inputRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                      <Text style={[s.inputFlex, { color: colors.text, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' }]}>
+                        {(cashAccounts.find(a => a.id === linkedAccountId)?.balance ?? 0).toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+                      </Text>
+                      <Text style={[s.unit, { color: colors.mutedForeground }]}>EGP</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={s.field}>
+                    <Text style={[s.label, { color: colors.mutedForeground }]}>{t.goalSaved}</Text>
+                    <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>
+                      <TextInput style={[s.inputFlex, { color: colors.text }]} value={savedRaw} onChangeText={v => setSavedRaw(formatAmountInput(v))} placeholder="0" placeholderTextColor={colors.mutedForeground} keyboardType="decimal-pad" />
+                      <Text style={[s.unit, { color: colors.mutedForeground }]}>EGP</Text>
+                    </View>
+                  </View>
+                )}
                 <View style={s.field}>
                   <DatePickerField label={t.goalDeadlineOptional} value={deadline} onChange={setDeadline} onClear={() => setDeadline('')} placeholder={t.noEndDate} />
                 </View>
@@ -351,6 +421,8 @@ const s = StyleSheet.create({
   targetNum: { fontSize: 13, fontFamily: 'Inter_400Regular' },
   remaining: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 3 },
   achieved:  { fontSize: 13, fontFamily: 'Inter_700Bold', marginTop: 3 },
+  syncedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  syncedText: { fontSize: 11.5, fontFamily: 'Inter_500Medium' },
   cardActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   actionBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 7 },
   actionBtnText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
@@ -358,6 +430,10 @@ const s = StyleSheet.create({
   form:  { gap: 16, paddingTop: 8 },
   field: { gap: 6 },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
+  hint:  { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
+  chipRow: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
+  chip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9, maxWidth: 220 },
+  chipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
   inputRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, paddingHorizontal: 14 },
   inputFlex: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular', paddingVertical: 12 },

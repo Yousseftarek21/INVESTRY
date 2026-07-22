@@ -40,7 +40,7 @@ export interface MarketPricesResponse {
   sources: string[];
 }
 
-interface EGXStockResponse {
+export interface EGXStockResponse {
   symbol: string;
   name: string;
   price: number;
@@ -883,7 +883,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   return results;
 }
 
-async function fetchStocks(): Promise<EGXStockResponse[]> {
+export async function fetchStocks(): Promise<EGXStockResponse[]> {
   // 1. TradingView Egypt scanner — single request, correct prices, works from server
   try {
     const tvData = await fetchEGXViaTradingView();

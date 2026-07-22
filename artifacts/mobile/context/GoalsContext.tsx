@@ -10,6 +10,11 @@ export interface Goal {
   deadline?: string;
   note?: string;
   createdAt: string;
+  // When set, savedAmount is treated as a last-known snapshot rather than
+  // the source of truth — the goals screen displays the linked cash
+  // account's live balance instead, so the goal tracks itself as the
+  // account balance changes instead of needing manual re-entry.
+  linkedCashAccountId?: string;
 }
 
 interface GoalsContextValue {
