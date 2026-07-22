@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startPriceAlertCron } from "./lib/priceAlertCron";
+import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
 const rawPort = process.env["PORT"];
 
@@ -15,6 +16,8 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+assertEncryptionKeyConfigured();
 
 app.listen(port, (err) => {
   if (err) {

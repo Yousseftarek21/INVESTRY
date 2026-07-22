@@ -15,6 +15,18 @@ function getKey(): Buffer {
   return key;
 }
 
+/**
+ * Called once at server boot. Without this, a missing/invalid key stays
+ * silent until the first holding/cash-account write, which throws inside a
+ * try/catch, gets logged as a generic 500, and the mobile client just
+ * rolls the edit back with a toast — indistinguishable from a flaky network
+ * blip. Failing loudly at startup turns that into an immediate, unmissable
+ * deploy-time error instead.
+ */
+export function assertEncryptionKeyConfigured(): void {
+  getKey();
+}
+
 export interface EncryptedEnvelope {
   __enc: 1;
   iv: string;
