@@ -748,8 +748,8 @@ export default function HomeScreen() {
         onPress={() => router.push('/cash-accounts' as any)}
         activeOpacity={0.85}
       >
-        <View style={[styles.cashIconWrap, { backgroundColor: colors.mutedForeground + '1A' }]}>
-          <BanknoteIcon size={20} color={colors.mutedForeground} />
+        <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
+          <BanknoteIcon size={20} color={colors.green} />
         </View>
         <View style={styles.cashInfo}>
           <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
