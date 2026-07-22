@@ -10,7 +10,13 @@ import { logger } from "./logger";
 // price-alerts screen) against live prices and pushes when crossed — this
 // is what makes those alerts fire while the app is closed or backgrounded,
 // not just while it happens to be open in the foreground.
-const CHECK_INTERVAL_MS = 10 * 60 * 1000;
+//
+// 30s matches fetchPrices()/fetchStocks()'s own cache TTL (see markets.ts),
+// so checking this often costs no extra upstream calls to TradingView/
+// Yahoo beyond what's already being made for other routes — polling any
+// faster than the cache TTL would start hammering those free endpoints on
+// every tick instead of reusing the cached response.
+const CHECK_INTERVAL_MS = 30 * 1000;
 
 interface StoredPriceAlert {
   assetKey: string;
