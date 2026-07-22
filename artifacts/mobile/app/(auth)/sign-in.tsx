@@ -61,16 +61,8 @@ export default function SignInScreen() {
   };
 
   const activateSession = async (createdSessionId: string | null | undefined) => {
-    // Deliberately not navigating here at all, not even via a `navigate`
-    // callback — any imperative navigation right after setActive can still
-    // outrace Clerk's isSignedIn context finishing its update, and
-    // (tabs)/_layout.tsx reading a stale `false` bounces straight back to
-    // the welcome screen. (auth)/_layout.tsx already has a *reactive*
-    // `if (isLoaded && isSignedIn) return <Redirect href="/(tabs)" />` —
-    // once setActive resolves and Clerk's provider re-renders with the new
-    // state, that fires on its own with no race window, since it's
-    // re-evaluated every render rather than fired once imperatively.
     await setActive!({ session: createdSessionId });
+    router.replace('/(tabs)' as any);
   };
 
   const handleSignIn = async () => {
