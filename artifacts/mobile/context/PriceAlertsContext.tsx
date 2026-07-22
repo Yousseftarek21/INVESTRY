@@ -145,7 +145,14 @@ export function PriceAlertsProvider({ children }: { children: React.ReactNode })
     })();
 
     return () => { active = false; };
-  }, [isSignedIn, userId, token, persist]);
+    // Deliberately NOT depending on `token`/`persist` — Clerk's getToken
+    // isn't guaranteed to keep a stable reference across renders, and
+    // including it here caused this effect to refire on every render
+    // (setIsLoading → re-render → new token identity → refire), pegging
+    // the JS thread with a fetch loop from app boot. Matches every other
+    // context's load effect (Goals, RecurringIncome, Cash, Holdings).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, userId]);
 
   const refresh = useCallback(async () => {
     if (!userId) return;

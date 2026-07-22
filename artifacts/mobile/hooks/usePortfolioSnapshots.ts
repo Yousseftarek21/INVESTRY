@@ -18,6 +18,8 @@ export interface PortfolioSnapshot {
 function snapshotKey(userId: string) {
   return `@investry_portfolio_snapshots_${userId}`;
 }
+// Pre-namespacing key — one-time migration only, see load effect below.
+const LEGACY_KEY = '@investry_portfolio_snapshots';
 
 function todayStr(): string {
   return new Date().toISOString().split('T')[0];
@@ -62,7 +64,18 @@ export function usePortfolioSnapshots(currentValue: number) {
 
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(snapshotKey(userId));
+        let raw = await AsyncStorage.getItem(snapshotKey(userId));
+        // One-time migration: local day-by-day history built up under the
+        // pre-namespacing global key would otherwise be silently orphaned
+        // the moment this device adopts a per-user key.
+        if (!raw) {
+          const legacy = await AsyncStorage.getItem(LEGACY_KEY);
+          if (legacy) {
+            await AsyncStorage.setItem(snapshotKey(userId), legacy);
+            await AsyncStorage.removeItem(LEGACY_KEY);
+            raw = legacy;
+          }
+        }
         setLocalStore(raw ? JSON.parse(raw) : {});
       } catch {
         setLocalStore({});
@@ -79,7 +92,11 @@ export function usePortfolioSnapshots(currentValue: number) {
         setServerStore(store);
       } catch { /* offline — local cache still applies */ }
     })();
-  }, [isSignedIn, userId, getToken]);
+    // Deliberately NOT depending on `getToken` — see PriceAlertsContext.tsx
+    // for why an unstable Clerk callback reference in this deps array is
+    // dangerous (refires every render, pegging the JS thread).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, userId]);
 
   useEffect(() => { latestValue.current = currentValue; }, [currentValue]);
 

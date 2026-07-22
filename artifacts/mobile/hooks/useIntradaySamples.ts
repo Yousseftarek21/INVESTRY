@@ -8,6 +8,8 @@ import { useAuth } from '@clerk/expo';
 function storageKey(userId: string) {
   return `@investry_intraday_samples_${userId}`;
 }
+// Pre-namespacing key — one-time migration only, see loadOrMigrate below.
+const LEGACY_KEY = '@investry_intraday_samples';
 const MIN_INTERVAL_MS = 10 * 60 * 1000; // don't sample more than once per 10 minutes
 const MAX_SAMPLES = 60;
 
@@ -36,7 +38,22 @@ export function useIntradaySamples(totalValue: number, startOfDayValue: number):
     loadedRef.current = null;
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(storageKey(userId));
+        let raw = await AsyncStorage.getItem(storageKey(userId));
+        // One-time migration: today's real samples accumulated earlier
+        // under the pre-namespacing global key would otherwise be silently
+        // orphaned the moment this device adopts a per-user key, resetting
+        // an already-real intraday curve back to a bare 2-point line.
+        if (!raw) {
+          const legacy = await AsyncStorage.getItem(LEGACY_KEY);
+          if (legacy) {
+            const legacyStored: StoredIntraday | null = JSON.parse(legacy);
+            if (legacyStored && legacyStored.date === todayStr()) {
+              await AsyncStorage.setItem(storageKey(userId), legacy);
+              raw = legacy;
+            }
+            await AsyncStorage.removeItem(LEGACY_KEY);
+          }
+        }
         const stored: StoredIntraday | null = raw ? JSON.parse(raw) : null;
         setSamples(stored && stored.date === todayStr() ? stored.samples : null);
       } catch {
