@@ -15,7 +15,11 @@ router.get("/portfolio/snapshots", clerkMiddleware(), async (req, res) => {
 
   try {
     const rows = await db
-      .select({ date: portfolioSnapshotsTable.date, totalValue: portfolioSnapshotsTable.totalValue })
+      .select({
+        date: portfolioSnapshotsTable.date,
+        totalValue: portfolioSnapshotsTable.totalValue,
+        notified: portfolioSnapshotsTable.notified,
+      })
       .from(portfolioSnapshotsTable)
       .where(eq(portfolioSnapshotsTable.userId, userId))
       .orderBy(portfolioSnapshotsTable.date);

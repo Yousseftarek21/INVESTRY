@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -10,6 +10,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useCash } from '@/context/CashContext';
+import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 
 type NotifType = 'income' | 'gold' | 'silver';
 
@@ -34,6 +35,10 @@ export default function NotificationsScreen() {
   const { recurringIncomes } = useRecurringIncome();
   const { cashAccounts } = useCash();
   const { data: prices } = useMarketPrices();
+  const { events: recentEvents, markAllRead } = useNotificationHistory();
+
+  // Opening this screen is what "reads" recent alerts — clears the bell badge.
+  useEffect(() => { markAllRead(); }, [markAllRead]);
 
   const items = useMemo<NotifItem[]>(() => {
     const result: NotifItem[] = [];
@@ -117,7 +122,7 @@ export default function NotificationsScreen() {
           contentContainerStyle={[s.content, { paddingBottom: botPad + 32 }]}
           showsVerticalScrollIndicator={false}
         >
-          {items.length === 0 ? (
+          {items.length === 0 && recentEvents.length === 0 ? (
             <View style={[s.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[s.emptyIcon, { backgroundColor: colors.primary + '18' }]}>
                 <Feather name="bell" size={28} color={colors.primary} />
@@ -126,30 +131,62 @@ export default function NotificationsScreen() {
               <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.noNotificationsHint}</Text>
             </View>
           ) : (
-            <View style={s.list}>
-              {items.map(item => (
-                <View
-                  key={item.id}
-                  style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-                >
-                  <View style={[s.iconWrap, { backgroundColor: item.iconBg }]}>
-                    {item.type === 'income' ? (
-                      <Feather name="repeat" size={18} color={item.iconColor} />
-                    ) : (
-                      <MaterialCommunityIcons name="gold" size={18} color={item.iconColor} />
-                    )}
-                  </View>
-                  <View style={s.cardBody}>
-                    <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={2}>
-                      {item.subtitle}
-                    </Text>
-                  </View>
+            <>
+              {items.length > 0 && (
+                <View style={s.list}>
+                  {items.map(item => (
+                    <View
+                      key={item.id}
+                      style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    >
+                      <View style={[s.iconWrap, { backgroundColor: item.iconBg }]}>
+                        {item.type === 'income' ? (
+                          <Feather name="repeat" size={18} color={item.iconColor} />
+                        ) : (
+                          <MaterialCommunityIcons name="gold" size={18} color={item.iconColor} />
+                        )}
+                      </View>
+                      <View style={s.cardBody}>
+                        <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+                          {item.subtitle}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
+              )}
+
+              {recentEvents.length > 0 && (
+                <View style={[s.list, items.length > 0 && { marginTop: 20 }]}>
+                  <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{t.recentAlertsSection}</Text>
+                  {recentEvents.map(item => (
+                    <View
+                      key={item.id}
+                      style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    >
+                      <View style={[s.iconWrap, { backgroundColor: (item.type === 'price_alert' ? colors.primary : colors.green) + '18' }]}>
+                        <Feather
+                          name={item.type === 'price_alert' ? 'target' : 'trending-up'}
+                          size={18}
+                          color={item.type === 'price_alert' ? colors.primary : colors.green}
+                        />
+                      </View>
+                      <View style={s.cardBody}>
+                        <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+                          {item.subtitle}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
           )}
         </ScrollView>
       </View>
@@ -165,6 +202,7 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold' },
   content: { padding: 16, gap: 12 },
+  sectionLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, marginBottom: 10 },
   empty: {
     borderRadius: 18, borderWidth: 1, padding: 32,
     alignItems: 'center', gap: 10, marginTop: 8,

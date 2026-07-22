@@ -9,6 +9,7 @@ import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
+import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
@@ -265,6 +266,7 @@ export default function HomeScreen() {
     return { ...rawPrices, egxPrices };
   }, [rawPrices, egxStocks]);
   const { plan, isPro, launchAccess } = useSubscription();
+  const { unreadCount: unreadNotifications } = useNotificationHistory();
   const { impact } = useHaptic();
   const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, notifications } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
@@ -467,6 +469,9 @@ export default function HomeScreen() {
             onPress={() => router.push('/notifications' as any)}
           >
             <Feather name="bell" size={16} color={colors.text} />
+            {unreadNotifications > 0 && (
+              <View style={[styles.bellBadge, { backgroundColor: colors.red, borderColor: colors.background }]} />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -854,6 +859,7 @@ const styles = StyleSheet.create({
   greetingName:    { fontSize: 15, fontFamily: 'Inter_600SemiBold', flexShrink: 1 },
   headerRight:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bellBtn:         { width: 30, height: 30, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  bellBadge:       { position: 'absolute', top: 3, right: 3, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
   screenTitle:   { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
