@@ -54,7 +54,14 @@ export default function PriceAlertsScreen() {
 
   // Re-pulls from the server so any alert the background push cron marked
   // triggered while this screen was closed shows up as triggered here too.
-  useEffect(() => { refresh(); }, [refresh]);
+  // Deliberately run once on mount, not on every `refresh` identity change —
+  // refresh transitively depends on Clerk's getToken, which isn't guaranteed
+  // stable across renders. Depending on it here meant this effect could
+  // refire on unrelated re-renders (e.g. right after an optimistic delete),
+  // re-fetching the pre-delete list from the server and racing the in-flight
+  // DELETE request — which is what caused a just-deleted alert to flash back.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { refresh(); }, []);
 
   const pricesDict = useMemo(() => buildAlertPricesDict(prices, egxStocks), [prices, egxStocks]);
 
