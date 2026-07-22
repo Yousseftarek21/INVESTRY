@@ -200,6 +200,12 @@ export default function RootLayout() {
   const [showCustomSplash, setShowCustomSplash] = React.useState(true);
   const [clerkConfig, setClerkConfig] = useState<ClerkConfig | null>(null);
   const [updateStatus, setUpdateStatus] = React.useState<string>('');
+  // True once we know there's no pending OTA update to apply — either the
+  // check found nothing, or it failed. If an update WAS found, this stays
+  // false forever because Updates.reloadAsync() wipes the JS context before
+  // it would ever be set, which is fine: nothing after that point runs
+  // again until the fresh reload starts this whole sequence over.
+  const [updateCheckDone, setUpdateCheckDone] = React.useState(Platform.OS === 'web' || !Updates.isEnabled);
 
   // clerkReady tracks whether Clerk has successfully initialised.
   // clerkReadyRef is used inside setTimeout callbacks (avoids stale closures).
@@ -216,7 +222,11 @@ export default function RootLayout() {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
 
-  // Check for OTA update on launch.
+  // Check for OTA update on launch. Deliberately gates appReady below (via
+  // updateCheckDone) so the Clerk/Biometric tree can't start mounting until
+  // this resolves — without that, the app could get most of the way through
+  // sign-in/biometric, then have the update check land afterwards, force a
+  // reload, and restart the whole sequence from a second splash mid-flow.
   useEffect(() => {
     if (Platform.OS === 'web' || !Updates.isEnabled) return;
     (async () => {
@@ -228,11 +238,14 @@ export default function RootLayout() {
           await Updates.fetchUpdateAsync();
           setUpdateStatus('Applying update…');
           await Updates.reloadAsync();
-        } else {
-          setUpdateStatus('');
+          return; // unreachable — reloadAsync() tears down this JS context;
+                   // deliberately NOT setting updateCheckDone here
         }
+        setUpdateStatus('');
+        setUpdateCheckDone(true);
       } catch {
         setUpdateStatus('');
+        setUpdateCheckDone(true);
       }
     })();
   }, []);
@@ -286,7 +299,7 @@ export default function RootLayout() {
       : null;
 
   // App tree requires ClerkProvider — wait until fonts + valid Clerk key ready.
-  const appReady = (fontsLoaded || !!fontError) && validClerkConfig !== null;
+  const appReady = (fontsLoaded || !!fontError) && validClerkConfig !== null && updateCheckDone;
 
   // Register the callbacks that ClerkReadySignal will invoke.
   useEffect(() => {
@@ -316,6 +329,11 @@ export default function RootLayout() {
           publishableKey: 'pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA',
         },
       );
+      // A still-pending update check would otherwise block appReady forever
+      // (e.g. a hung network request) — force it open so the app tree can
+      // still render; worst case, that update is just checked for again
+      // next launch instead of applying immediately.
+      setUpdateCheckDone(true);
       // clerkReadyRef is safe to read here (not stale like state would be).
       if (!clerkReadyRef.current) {
         setNetworkError(true);
