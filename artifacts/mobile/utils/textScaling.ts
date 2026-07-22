@@ -1,14 +1,52 @@
-// Text-scaling cap temporarily disabled.
+import React from 'react';
+import { Text, TextInput } from 'react-native';
+
+// Cap how much the OS "Larger Text" accessibility setting can scale text.
+// Without this, an extreme accessibility text size setting can stretch
+// placeholder text in inputs into oddly letter-spaced, hard-to-read
+// layouts (a real bug, not just cosmetic).
 //
-// The previous approach patched react/jsx-runtime's jsx/jsxs/jsxDEV exports
-// globally (every single component in the app goes through these on every
-// render) to work around Text.defaultProps being a no-op on React 19. That's
-// an unusually invasive technique, and shortly after it shipped, sign-in
-// started silently bouncing back to the sign-in screen. Never confirmed this
-// was the actual cause, but it's the single riskiest change in that OTA and
-// disabling it is safer than debugging live while the app is unusable.
+// The obvious fix — Text.defaultProps.maxFontSizeMultiplier — does nothing:
+// React 19 dropped defaultProps support for function components, and RN's
+// Text/TextInput are function components, so that assignment is a silent
+// no-op.
 //
-// TODO: re-implement the accessibility text-scale cap with a narrower,
-// lower-risk approach (e.g. explicit maxFontSizeMultiplier on the specific
-// inputs that showed the letter-spacing bug) once sign-in is confirmed
-// stable again.
+// Patching React.createElement isn't enough either: this project (like any
+// Expo/babel-preset-expo app) compiles JSX with the *automatic* runtime, so
+// `<Text>` compiles to `jsx(Text, props)` / `jsxDEV(...)` calls from
+// react/jsx-runtime and react/jsx-dev-runtime — React.createElement is never
+// invoked for JSX-authored elements at all. All three entry points are
+// patched here so every Text and TextInput in the app gets capped from this
+// one place regardless of dev/prod bundling; any call site that explicitly
+// passes its own maxFontSizeMultiplier still wins.
+const MAX_FONT_SCALE = 1.3;
+
+function withCappedFontScale(type: unknown, props: any) {
+  if ((type === Text || type === TextInput) && props && props.maxFontSizeMultiplier === undefined) {
+    return { ...props, maxFontSizeMultiplier: MAX_FONT_SCALE };
+  }
+  return props;
+}
+
+const originalCreateElement: (...args: any[]) => any = React.createElement;
+(React as any).createElement = function patchedCreateElement(type: unknown, props: any, ...rest: unknown[]) {
+  return originalCreateElement(type, withCappedFontScale(type, props), ...rest);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const jsxRuntime = require('react/jsx-runtime');
+const originalJsx = jsxRuntime.jsx;
+const originalJsxs = jsxRuntime.jsxs;
+jsxRuntime.jsx = function patchedJsx(type: unknown, props: any, key?: unknown) {
+  return originalJsx(type, withCappedFontScale(type, props), key);
+};
+jsxRuntime.jsxs = function patchedJsxs(type: unknown, props: any, key?: unknown) {
+  return originalJsxs(type, withCappedFontScale(type, props), key);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const jsxDevRuntime = require('react/jsx-dev-runtime');
+const originalJsxDEV = jsxDevRuntime.jsxDEV;
+jsxDevRuntime.jsxDEV = function patchedJsxDEV(type: unknown, props: any, ...rest: unknown[]) {
+  return originalJsxDEV(type, withCappedFontScale(type, props), ...rest);
+};

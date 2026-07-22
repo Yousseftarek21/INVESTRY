@@ -30,12 +30,10 @@ import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContex
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
-import { useNotifications, usePortfolioAlerts } from "@/hooks/useNotifications";
+import { useNotifications } from "@/hooks/useNotifications";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
-import { useHoldings } from "@/context/HoldingsContext";
-import { useMarketPrices, goldPricePerGram, silverPricePerGram } from "@/hooks/usePrices";
+import { useMarketPrices } from "@/hooks/usePrices";
 import { useEGXMarket } from "@/hooks/useEGXMarket";
-import { getRECurrentValue } from "@/utils/rePrice";
 import { usePriceAlertChecker, buildAlertPricesDict } from "@/hooks/usePriceAlerts";
 import { getApiBaseUrl } from "@/utils/api";
 import * as Updates from "expo-updates";
@@ -118,8 +116,9 @@ function RootLayoutNav() {
 }
 
 function NotificationsInitializer() {
+  const { notifications } = useAppSettings();
   useNotifications();
-  usePushRegistration();
+  usePushRegistration(notifications.portfolioAlerts);
   return null;
 }
 
@@ -129,28 +128,6 @@ function PriceAlertsInitializer() {
   const { notifications } = useAppSettings();
   const pricesDict = useMemo(() => buildAlertPricesDict(prices, egxStocks), [prices, egxStocks]);
   usePriceAlertChecker(pricesDict, notifications.priceAlerts);
-  return null;
-}
-
-function PortfolioAlertInitializer() {
-  const { holdings } = useHoldings();
-  const { data: prices } = useMarketPrices();
-  const { notifications } = useAppSettings();
-
-  const total = useMemo(() => {
-    if (!prices) return 0;
-    return holdings.reduce((sum, h) => {
-      if (h.type === 'gold') return sum + goldPricePerGram(prices, h.karat) * h.grams;
-      if (h.type === 'silver') return sum + silverPricePerGram(prices) * h.grams;
-      if (h.type === 'stock') return sum + h.purchasePricePerShare * h.shares;
-      if (h.type === 'real_estate') return sum + getRECurrentValue(h);
-      if (h.type === 'personal_asset') return sum + h.currentValue;
-      if (h.type === 'fixed_income') return sum + h.principal;
-      return sum;
-    }, 0);
-  }, [holdings, prices]);
-
-  usePortfolioAlerts(total, notifications.portfolioAlerts);
   return null;
 }
 
@@ -215,7 +192,6 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
     <>
       <StatusBarManager />
       <NotificationsInitializer />
-      <PortfolioAlertInitializer />
       <PriceAlertsInitializer />
       {children}
       <SubscriptionScreen
