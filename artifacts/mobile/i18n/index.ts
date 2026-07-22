@@ -3,7 +3,7 @@ export type Language = 'en' | 'ar';
 const en = {
   // App
   appName: 'INVESTRY',
-  appTagline: 'Track All Investments. One Place',
+  appTagline: 'Track All Investments. One Portfolio',
 
   // Tabs
   portfolio: 'Overview',
@@ -444,7 +444,7 @@ const en = {
   onboardSlide4Sub: 'Your portfolio is stored securely under your account and sent over encrypted connections. We never sell or share your data with third parties.',
   getStarted: 'Get Started',
   skip: 'Skip',
-  welcomeTagline: 'Track All Investments. One Place',
+  welcomeTagline: 'Track All Investments. One Portfolio',
   welcomeDesc: 'Track gold, silver, EGX stocks and real estate — live prices in Egyptian pounds.',
   signInBtn: 'Sign In',
 
@@ -616,7 +616,7 @@ const en = {
   goldSilverUnit: 'Gold & silver display unit',
   signInToYourAccount: 'Sign in to your account',
   loadSavedInvestments: 'Load your saved investments & sync data',
-  knowYourWealth: 'Track All Investments. One Place',
+  knowYourWealth: 'Track All Investments. One Portfolio',
   versionLabel: 'Version',
   lastApiUpdateLabel: 'Last API Update',
   dataStorageLabel: 'Data Storage',
@@ -1029,7 +1029,7 @@ const en = {
 const ar: typeof en = {
   // App
   appName: 'INVESTRY',
-  appTagline: 'تابع جميع استثماراتك في مكان واحد',
+  appTagline: 'تابع جميع استثماراتك في محفظة واحدة',
 
   // Tabs
   portfolio: 'نظرة عامة',
@@ -1470,7 +1470,7 @@ const ar: typeof en = {
   onboardSlide4Sub: 'يتم تخزين محفظتك بشكل آمن ضمن حسابك وإرسالها عبر اتصالات مشفّرة. نحن لا نبيع أو نشارك بياناتك أبداً مع أطراف ثالثة.',
   getStarted: 'ابدأ الآن',
   skip: 'تخطى',
-  welcomeTagline: 'تابع جميع استثماراتك في مكان واحد',
+  welcomeTagline: 'تابع جميع استثماراتك في محفظة واحدة',
   welcomeDesc: 'تتبع الذهب والفضة وأسهم البورصة والعقارات — بأسعار حية بالجنيه المصري.',
   signInBtn: 'تسجيل الدخول',
 
@@ -1642,7 +1642,7 @@ const ar: typeof en = {
   goldSilverUnit: 'وحدة عرض الذهب والفضة',
   signInToYourAccount: 'سجّل دخولك',
   loadSavedInvestments: 'تحميل استثماراتك المحفوظة ومزامنة البيانات',
-  knowYourWealth: 'تابع جميع استثماراتك في مكان واحد',
+  knowYourWealth: 'تابع جميع استثماراتك في محفظة واحدة',
   versionLabel: 'الإصدار',
   lastApiUpdateLabel: 'آخر تحديث API',
   dataStorageLabel: 'تخزين البيانات',
@@ -2031,7 +2031,7 @@ const ar: typeof en = {
   referralRedeemInvalidCode: 'هذا الرمز غير صحيح — تحقق منه وحاول مرة أخرى.',
   referralRedeemOwnCode: 'هذا رمزك الخاص — شاركه مع صديق بدلاً من ذلك!',
   referralRedeemGenericError: 'حدث خطأ ما. يرجى التحقق من اتصالك والمحاولة مرة أخرى.',
-  referralShareMessage: 'انضم إليّ على Investry — تابع جميع استثماراتك في مكان واحد. استخدم رمزي',
+  referralShareMessage: 'انضم إليّ على Investry — تابع جميع استثماراتك في محفظة واحدة. استخدم رمزي',
   referralShareMessageLink: 'عند التسجيل ويحصل كلانا على شهر مجاني من Pro:',
 
   // Settings — misc

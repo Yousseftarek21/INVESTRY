@@ -97,7 +97,7 @@ export function CustomSplash({ statusMessage }: Props) {
           { color: colors.mutedForeground, opacity: taglineIn, transform: [{ translateY: taglineTranslateY }] },
         ]}
       >
-        Track All Investments. One Place
+        Track All Investments. One Portfolio
       </Animated.Text>
 
       <Animated.View style={[styles.chartWrap, { opacity: chartIn, transform: [{ translateY: chartTranslateY }] }]}>
