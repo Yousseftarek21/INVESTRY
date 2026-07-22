@@ -1,9 +1,22 @@
 export const CHART_PERIODS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
 export type ChartPeriod = typeof CHART_PERIODS[number];
 
-export type ChartPt = { x: number; y: number; value: number };
+export type ChartPt = { x: number; y: number; value: number; time: string | number };
 
 export interface PortfolioSnapshotItem { date: string; value: number; }
+
+/** Canonical shape for a single chart sample — real timestamp when one
+ *  exists (a snapshot's calendar date), otherwise a sample index. */
+export interface ChartDataPoint {
+  time: string | number;
+  value: number;
+}
+
+/** Drops null/undefined/NaN/Infinity entries so a single bad upstream
+ *  sample can never crash path construction or corrupt the min/max scale. */
+export function sanitizeSeries(values: (number | null | undefined)[]): number[] {
+  return values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+}
 
 /** Days of history each period requires to use real snapshot data. */
 const PERIOD_DAYS: Record<ChartPeriod, number> = {
@@ -36,13 +49,15 @@ const MIN_SPAN_FRACTION = 0.6;
 const ALL_TIME_MIN_DAYS = 270;
 
 /**
- * Converts stored portfolio snapshots into chart values for the given period.
- * Returns null when there isn't enough real history to draw a meaningful line.
+ * Converts stored portfolio snapshots into chart points for the given
+ * period. Returns null when there isn't enough real history to draw a
+ * meaningful line. Keeps each point's real calendar date (rather than
+ * collapsing to bare numbers) so the chart can carry genuine timestamps.
  */
 export function snapshotsToValues(
   snapshots: PortfolioSnapshotItem[],
   period: ChartPeriod,
-): number[] | null {
+): PortfolioSnapshotItem[] | null {
   if (period === '1D') return null; // no intraday data
   const days = PERIOD_DAYS[period];
   const cutoff = new Date();
@@ -55,29 +70,47 @@ export function snapshotsToValues(
   const requiredSpanDays = period === 'ALL' ? ALL_TIME_MIN_DAYS : days * MIN_SPAN_FRACTION;
   if (spanDays < requiredSpanDays) return null;
 
-  return filtered.map(s => s.value);
+  return filtered;
 }
 
+const DEFAULT_TENSION = 0.3;
+
 /**
- * Smooths a line through real data points using a Catmull-Rom-style spline.
- * The curve always passes exactly through every real point — only the
- * flow *between* points is adjusted, never their values — so increasing
- * the tension here makes existing real data look more organic/flowing
- * without ever implying movement that wasn't actually observed. With
- * exactly 2 points there is no curvature information to work with at all:
- * any smooth curve passing through both endpoints is just the straight
- * line between them, regardless of this tension value.
+ * Smooths a line through real data points using cubic-Bezier segments whose
+ * control points are derived from each point's neighbors (a Catmull-Rom-style
+ * tangent estimate). The curve always passes exactly through every real
+ * point — only the flow *between* points is adjusted, never the values
+ * themselves — so this never implies a price movement that wasn't actually
+ * observed, it just renders the connection between real samples less
+ * mechanically than a straight ruler line. With exactly 2 points there is no
+ * curvature information to work with at all: any smooth curve through both
+ * endpoints is just the straight line between them, so that case is drawn
+ * directly rather than run through the (identical, but more expensive) curve
+ * math.
  */
-/**
- * Straight-line segments between real points only — no smoothing. A curve
- * would imply motion between two real samples that never actually happened;
- * this matches the app's own "no data points are invented" chart policy.
- */
-export function buildLinearPath(pts: ChartPt[]): string {
+export function buildSmoothPath(pts: ChartPt[], tension: number = DEFAULT_TENSION): string {
   if (pts.length < 2) return '';
+  if (pts.length === 2) {
+    return `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)} L ${pts[1].x.toFixed(2)},${pts[1].y.toFixed(2)}`;
+  }
+
+  const controlPoint = (
+    current: ChartPt, previous: ChartPt | undefined, next: ChartPt | undefined, reverse: boolean,
+  ): [number, number] => {
+    const p = previous ?? current;
+    const n = next ?? current;
+    const dx = n.x - p.x;
+    const dy = n.y - p.y;
+    const angle = Math.atan2(dy, dx) + (reverse ? Math.PI : 0);
+    const length = Math.sqrt(dx * dx + dy * dy) * tension;
+    return [current.x + Math.cos(angle) * length, current.y + Math.sin(angle) * length];
+  };
+
   let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
   for (let i = 1; i < pts.length; i++) {
-    d += ` L ${pts[i].x.toFixed(2)},${pts[i].y.toFixed(2)}`;
+    const [cp1x, cp1y] = controlPoint(pts[i - 1], pts[i - 2], pts[i], false);
+    const [cp2x, cp2y] = controlPoint(pts[i], pts[i - 1], pts[i + 1], true);
+    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${pts[i].x.toFixed(2)},${pts[i].y.toFixed(2)}`;
   }
   return d;
 }
