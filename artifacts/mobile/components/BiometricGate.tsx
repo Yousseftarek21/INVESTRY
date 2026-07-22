@@ -53,38 +53,56 @@ export function BiometricGate({ children, enabled }: Props) {
     })();
   }, [enabled, authenticate]);
 
-  if (unlocked) return <>{children}</>;
-
+  // Always render children — the app's navigator (and its Clerk-session-
+  // dependent auth routing) mounts and settles on its own timeline,
+  // completely independent of how long Face ID/Touch ID takes. The lock
+  // screen renders as an absolute overlay on top instead of gating the
+  // mount itself.
+  //
+  // This used to `return <>{children}</>` only once unlocked, which meant
+  // the (auth)/(tabs) redirect logic didn't mount — and didn't read
+  // useAuth().isSignedIn — until biometric auth succeeded. Face ID is
+  // local and often resolves in under a second; Clerk's session restore
+  // involves a network round-trip and can still be settling at that exact
+  // moment. If biometric finished first, the routing logic mounted, read
+  // isSignedIn before it had caught up to the real persisted session, and
+  // redirected to sign-in even though the session was valid — the bug
+  // behind biometric unlock intermittently landing back on sign-in.
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.iconWrap, { backgroundColor: colors.primary + '20' }]}>
-        <Feather name={biometricType === 'face' ? 'eye' : 'shield'} size={40} color={colors.primary} />
-      </View>
-      <Text style={[styles.title, { color: colors.text }]}>INVESTRY</Text>
-      <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        {t.biometricSubtitle}
-      </Text>
-      {!!errorMsg && <Text style={[styles.error, { color: colors.red }]}>{errorMsg}</Text>}
-      <TouchableOpacity
-        style={[styles.btn, { backgroundColor: colors.primary }]}
-        onPress={authenticate}
-        activeOpacity={0.85}
-      >
-        <Feather
-          name={biometricType === 'face' ? 'eye' : biometricType === 'fingerprint' ? 'crosshair' : 'lock'}
-          size={17}
-          color={colors.primaryForeground}
-        />
-        <Text style={[styles.btnText, { color: colors.primaryForeground }]}>
-          {biometricType === 'face' ? t.biometricUseFaceId : biometricType === 'fingerprint' ? t.biometricUseTouchId : t.biometricUnlock}
-        </Text>
-      </TouchableOpacity>
+    <View style={{ flex: 1 }}>
+      {children}
+      {!unlocked && (
+        <View style={[styles.container, StyleSheet.absoluteFillObject, { backgroundColor: colors.background }]}>
+          <View style={[styles.iconWrap, { backgroundColor: colors.primary + '20' }]}>
+            <Feather name={biometricType === 'face' ? 'eye' : 'shield'} size={40} color={colors.primary} />
+          </View>
+          <Text style={[styles.title, { color: colors.text }]}>INVESTRY</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            {t.biometricSubtitle}
+          </Text>
+          {!!errorMsg && <Text style={[styles.error, { color: colors.red }]}>{errorMsg}</Text>}
+          <TouchableOpacity
+            style={[styles.btn, { backgroundColor: colors.primary }]}
+            onPress={authenticate}
+            activeOpacity={0.85}
+          >
+            <Feather
+              name={biometricType === 'face' ? 'eye' : biometricType === 'fingerprint' ? 'crosshair' : 'lock'}
+              size={17}
+              color={colors.primaryForeground}
+            />
+            <Text style={[styles.btnText, { color: colors.primaryForeground }]}>
+              {biometricType === 'face' ? t.biometricUseFaceId : biometricType === 'fingerprint' ? t.biometricUseTouchId : t.biometricUnlock}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 40 },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 40, zIndex: 999, elevation: Platform.OS === 'android' ? 999 : undefined },
   iconWrap: { width: 88, height: 88, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   title: { fontSize: 26, fontFamily: 'Inter_700Bold' },
   subtitle: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: 2 },
