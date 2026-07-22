@@ -119,36 +119,40 @@ export default function RecurringIncomeScreen() {
 
     impact(Haptics.ImpactFeedbackStyle.Light);
 
-    if (editingId) {
-      const existing = recurringIncomes.find(r => r.id === editingId);
-      if (!existing) return;
-      await updateRecurringIncome({
-        ...existing,
-        name: trimmed,
-        amount,
-        currency,
-        cashAccountId,
-        creditDay,
-        startDate,
-        endDate: endDate || undefined,
-        active,
-      });
-    } else {
-      await addRecurringIncome({
-        id: generateId(),
-        name: trimmed,
-        amount,
-        currency,
-        cashAccountId,
-        creditDay,
-        startDate,
-        endDate: endDate || undefined,
-        active,
-        lastProcessedMonth: null,
-        createdAt: new Date().toISOString(),
-      });
+    try {
+      if (editingId) {
+        const existing = recurringIncomes.find(r => r.id === editingId);
+        if (!existing) return;
+        await updateRecurringIncome({
+          ...existing,
+          name: trimmed,
+          amount,
+          currency,
+          cashAccountId,
+          creditDay,
+          startDate,
+          endDate: endDate || undefined,
+          active,
+        });
+      } else {
+        await addRecurringIncome({
+          id: generateId(),
+          name: trimmed,
+          amount,
+          currency,
+          cashAccountId,
+          creditDay,
+          startDate,
+          endDate: endDate || undefined,
+          active,
+          lastProcessedMonth: null,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      resetForm();
+    } catch {
+      Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc);
     }
-    resetForm();
   };
 
   const handleDelete = (id: string) => {

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { IncomeTransaction, RecurringIncome } from '@/types';
 import { useCash } from '@/context/CashContext';
+import { apiFetch } from '@/utils/api';
 
 function storageKey(userId: string) {
   return `@istithmarak_recurring_incomes_${userId}`;
@@ -41,6 +42,7 @@ interface RecurringIncomeContextValue {
   updateRecurringIncome: (r: RecurringIncome) => Promise<void>;
   removeRecurringIncome: (id: string) => Promise<void>;
   isLoading: boolean;
+  syncError: string | null;
 }
 
 const RecurringIncomeContext = createContext<RecurringIncomeContextValue | null>(null);
@@ -52,11 +54,12 @@ export function useRecurringIncome() {
 }
 
 export function RecurringIncomeProvider({ children }: { children: React.ReactNode }) {
-  const { isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, userId } = useAuth();
   const { cashAccounts, updateCashAccount, isLoading: cashLoading } = useCash();
 
   const [incomes, setIncomes] = useState<RecurringIncome[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const loadedRef = useRef<string | null>(null);
   const processedKeyRef = useRef<string | null>(null);
 
@@ -64,37 +67,169 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
     try { await AsyncStorage.setItem(storageKey(uid), JSON.stringify(data)); } catch {}
   }, []);
 
+  const token = useCallback(async (): Promise<string | null> => {
+    try { return await getToken(); } catch { return null; }
+  }, [getToken]);
+
   // ── Load / clear on auth state change ─────────────────────────────────────
   useEffect(() => {
     if (!isSignedIn || !userId) {
-      const prev = loadedRef.current;
+      const prevUserId = loadedRef.current;
       setIncomes([]);
       setIsLoading(false);
+      setSyncError(null);
       loadedRef.current = null;
       processedKeyRef.current = null;
-      if (prev) AsyncStorage.removeItem(storageKey(prev)).catch(() => null);
+      if (prevUserId) AsyncStorage.removeItem(storageKey(prevUserId)).catch(() => null);
       return;
     }
-    if (loadedRef.current === userId) return;
+
+    if (loadedRef.current && loadedRef.current !== userId) {
+      const prevUserId = loadedRef.current;
+      setIncomes([]);
+      AsyncStorage.removeItem(storageKey(prevUserId)).catch(() => null);
+    }
+
     loadedRef.current = userId;
+    const capturedUserId = userId;
+    let active = true;
 
     (async () => {
       setIsLoading(true);
+      setSyncError(null);
+
+      let localData: RecurringIncome[] = [];
       try {
-        const raw = await AsyncStorage.getItem(storageKey(userId));
-        setIncomes(raw ? (JSON.parse(raw) as RecurringIncome[]) : []);
+        const raw = await AsyncStorage.getItem(storageKey(capturedUserId));
+        if (!active || loadedRef.current !== capturedUserId) return;
+        if (raw) {
+          localData = JSON.parse(raw);
+          setIncomes(localData);
+        }
+      } catch { /* ignore */ }
+
+      try {
+        const t = await token();
+        if (!active || loadedRef.current !== capturedUserId) return;
+        if (!t) { setIsLoading(false); return; }
+
+        const res = await apiFetch('/api/recurring-income', t);
+        if (!active || loadedRef.current !== capturedUserId) return;
+
+        if (res.ok) {
+          const apiData: RecurringIncome[] = await res.json();
+          if (!active || loadedRef.current !== capturedUserId) return;
+
+          if (apiData.length === 0 && localData.length > 0) {
+            await Promise.all(
+              localData.map(r =>
+                apiFetch('/api/recurring-income', t, { method: 'POST', body: JSON.stringify(r) })
+                  .catch(() => null)
+              )
+            );
+            if (!active || loadedRef.current !== capturedUserId) return;
+            await persist(localData, capturedUserId);
+          } else if (apiData.length > 0) {
+            if (!active || loadedRef.current !== capturedUserId) return;
+            setIncomes(apiData);
+            await persist(apiData, capturedUserId);
+          }
+        } else {
+          if (!active || loadedRef.current !== capturedUserId) return;
+          setSyncError('Could not sync — showing local data.');
+        }
       } catch {
-        setIncomes([]);
+        if (!active || loadedRef.current !== capturedUserId) return;
+        setSyncError('Offline — showing local data.');
       } finally {
-        setIsLoading(false);
+        if (active && loadedRef.current === capturedUserId) {
+          setIsLoading(false);
+        }
       }
     })();
+
+    return () => { active = false; };
   }, [isSignedIn, userId]);
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+  const addRecurringIncome = useCallback(async (r: RecurringIncome) => {
+    if (!userId) return;
+    processedKeyRef.current = null;
+    setIncomes(prev => { const next = [...prev, r]; persist(next, userId); return next; });
+    try {
+      const t = await token();
+      if (t) {
+        const res = await apiFetch('/api/recurring-income', t, { method: 'POST', body: JSON.stringify(r) });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch (err) {
+      setIncomes(prev => { const next = prev.filter(x => x.id !== r.id); persist(next, userId); return next; });
+      setSyncError('Failed to save — please try again.');
+      throw err;
+    }
+  }, [token, persist, userId]);
+
+  const updateRecurringIncome = useCallback(async (r: RecurringIncome) => {
+    if (!userId) return;
+    let previous: RecurringIncome | undefined;
+    setIncomes(prev => {
+      previous = prev.find(x => x.id === r.id);
+      const next = prev.map(x => x.id === r.id ? r : x);
+      persist(next, userId);
+      return next;
+    });
+    try {
+      const t = await token();
+      if (t) {
+        const res = await apiFetch(`/api/recurring-income/${r.id}`, t, { method: 'PUT', body: JSON.stringify(r) });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch (err) {
+      setIncomes(prev => {
+        if (!previous) return prev;
+        const next = prev.map(x => x.id === r.id ? previous! : x);
+        persist(next, userId);
+        return next;
+      });
+      setSyncError('Could not update — please try again.');
+      throw err;
+    }
+  }, [token, persist, userId]);
+
+  const removeRecurringIncome = useCallback(async (id: string) => {
+    if (!userId) return;
+    let removed: RecurringIncome | undefined;
+    setIncomes(prev => {
+      removed = prev.find(x => x.id === id);
+      const next = prev.filter(x => x.id !== id);
+      persist(next, userId);
+      return next;
+    });
+    try {
+      const t = await token();
+      if (t) {
+        const res = await apiFetch(`/api/recurring-income/${id}`, t, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`${res.status}`);
+      }
+    } catch {
+      setIncomes(prev => {
+        if (!removed || prev.some(x => x.id === id)) return prev;
+        const next = [...prev, removed!];
+        persist(next, userId);
+        return next;
+      });
+      setSyncError('Could not remove — please try again.');
+    }
+  }, [token, persist, userId]);
 
   // ── Credit processor ───────────────────────────────────────────────────────
   // Credits ALL missed months since lastProcessedMonth, not just the current one.
   // For past months the credit day is irrelevant (it already passed).
   // For the current month the credit day must have been reached today.
+  // Each changed entry is synced through updateRecurringIncome (not a direct
+  // local setIncomes) so an auto-credit is persisted to the server exactly
+  // like a manual edit — otherwise a month's credit would only ever exist on
+  // this one device and vanish on sign-out.
   useEffect(() => {
     if (!userId || cashLoading || isLoading || incomes.length === 0) return;
 
@@ -106,17 +241,17 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
 
     const deltas: Record<string, number> = {};
     const nowISO = now.toISOString();
-    let changed = false;
+    const changedIncomes: RecurringIncome[] = [];
 
-    const next = incomes.map(inc => {
-      if (!inc.active) return inc;
-      if (now < new Date(inc.startDate)) return inc;
+    incomes.forEach(inc => {
+      if (!inc.active) return;
+      if (now < new Date(inc.startDate)) return;
 
       // If the linked cash account was deleted, there's nowhere for this
       // credit to land. Leave lastProcessedMonth untouched (don't fabricate
       // a "credited" transaction for money that never moved) so it can
       // catch up correctly if the account is ever recreated.
-      if (!cashAccounts.some(a => a.id === inc.cashAccountId)) return inc;
+      if (!cashAccounts.some(a => a.id === inc.cashAccountId)) return;
 
       const startYM = currentYearMonth(new Date(inc.startDate));
       const endYM = inc.endDate ? currentYearMonth(new Date(inc.endDate)) : null;
@@ -134,7 +269,7 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
         return true;
       });
 
-      if (monthsToCredit.length === 0) return inc;
+      if (monthsToCredit.length === 0) return;
 
       const totalCredit = inc.amount * monthsToCredit.length;
       deltas[inc.cashAccountId] = (deltas[inc.cashAccountId] || 0) + totalCredit;
@@ -145,54 +280,23 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
         creditedAt: nowISO,
       }));
 
-      changed = true;
-      return {
+      changedIncomes.push({
         ...inc,
         lastProcessedMonth: ym,
         transactions: [...(inc.transactions ?? []), ...newTx],
-      };
+      });
     });
 
-    if (changed) {
+    if (changedIncomes.length > 0) {
       Object.entries(deltas).forEach(([accountId, delta]) => {
         const account = cashAccounts.find(a => a.id === accountId);
         if (account) {
           updateCashAccount({ ...account, balance: (Number(account.balance) || 0) + delta });
         }
       });
-      setIncomes(next);
-      persist(next, userId);
+      changedIncomes.forEach(inc => { updateRecurringIncome(inc).catch(() => null); });
     }
-  }, [incomes, cashAccounts, cashLoading, isLoading, userId, updateCashAccount, persist]);
-
-  // ── CRUD ──────────────────────────────────────────────────────────────────
-  const addRecurringIncome = useCallback(async (r: RecurringIncome) => {
-    if (!userId) return;
-    processedKeyRef.current = null;
-    setIncomes(prev => {
-      const next = [...prev, r];
-      persist(next, userId!);
-      return next;
-    });
-  }, [userId, persist]);
-
-  const updateRecurringIncome = useCallback(async (r: RecurringIncome) => {
-    if (!userId) return;
-    setIncomes(prev => {
-      const next = prev.map(x => x.id === r.id ? r : x);
-      persist(next, userId!);
-      return next;
-    });
-  }, [userId, persist]);
-
-  const removeRecurringIncome = useCallback(async (id: string) => {
-    if (!userId) return;
-    setIncomes(prev => {
-      const next = prev.filter(x => x.id !== id);
-      persist(next, userId!);
-      return next;
-    });
-  }, [userId, persist]);
+  }, [incomes, cashAccounts, cashLoading, isLoading, userId, updateCashAccount, updateRecurringIncome]);
 
   return (
     <RecurringIncomeContext.Provider value={{
@@ -201,6 +305,7 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
       updateRecurringIncome,
       removeRecurringIncome,
       isLoading,
+      syncError,
     }}>
       {children}
     </RecurringIncomeContext.Provider>

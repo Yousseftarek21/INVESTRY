@@ -96,14 +96,18 @@ export default function GoalsScreen() {
     if (!trimmed) { Alert.alert(t.goalName, t.goalNameError); return; }
     if (target <= 0) { Alert.alert(t.targetAmount, t.goalTargetError); return; }
     impact(Haptics.ImpactFeedbackStyle.Light);
-    if (editingId) {
-      const existing = goals.find(g => g.id === editingId);
-      if (!existing) return;
-      await updateGoal({ ...existing, name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, linkedCashAccountId: linkedAccountId ?? undefined });
-    } else {
-      await addGoal({ id: generateId(), name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, createdAt: new Date().toISOString(), linkedCashAccountId: linkedAccountId ?? undefined });
+    try {
+      if (editingId) {
+        const existing = goals.find(g => g.id === editingId);
+        if (!existing) return;
+        await updateGoal({ ...existing, name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, linkedCashAccountId: linkedAccountId ?? undefined });
+      } else {
+        await addGoal({ id: generateId(), name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, createdAt: new Date().toISOString(), linkedCashAccountId: linkedAccountId ?? undefined });
+      }
+      resetForm();
+    } catch {
+      Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc);
     }
-    resetForm();
   };
 
   const handleDelete = (id: string) => {
@@ -126,9 +130,13 @@ export default function GoalsScreen() {
     if (!g) return;
     const amount = parseAmount(progressRaw);
     impact(Haptics.ImpactFeedbackStyle.Light);
-    await updateGoal({ ...g, savedAmount: amount });
-    setShowProgressModal(false);
-    setProgressGoalId(null);
+    try {
+      await updateGoal({ ...g, savedAmount: amount });
+      setShowProgressModal(false);
+      setProgressGoalId(null);
+    } catch {
+      Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc);
+    }
   };
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;

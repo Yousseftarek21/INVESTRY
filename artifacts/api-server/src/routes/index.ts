@@ -10,6 +10,8 @@ import referralRouter from "./referral";
 import pushRouter from "./push";
 import accountRouter from "./account";
 import inflationRouter from "./inflation";
+import goalsRouter from "./goals";
+import recurringIncomeRouter from "./recurringIncome";
 
 const router: IRouter = Router();
 
@@ -24,5 +26,7 @@ router.use(referralRouter);
 router.use(pushRouter);
 router.use(accountRouter);
 router.use(inflationRouter);
+router.use(goalsRouter);
+router.use(recurringIncomeRouter);
 
 export default router;
