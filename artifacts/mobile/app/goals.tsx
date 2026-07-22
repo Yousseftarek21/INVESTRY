@@ -16,6 +16,13 @@ import { Goal, useGoals } from '@/context/GoalsContext';
 import { useCash } from '@/context/CashContext';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
+import { CashAccountType } from '@/types';
+
+const ACCOUNT_TYPE_ICONS: Record<CashAccountType, keyof typeof Feather.glyphMap> = {
+  bank: 'credit-card',
+  cash_home: 'dollar-sign',
+  foreign_currency: 'globe',
+};
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -287,28 +294,45 @@ export default function GoalsScreen() {
                   {cashAccounts.length === 0 ? (
                     <Text style={[s.hint, { color: colors.mutedForeground, marginTop: 4 }]}>{t.noCashAccountsToLink}</Text>
                   ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipRow}>
+                    <View style={s.accountPicker}>
                       <TouchableOpacity
-                        style={[s.chip, { backgroundColor: linkedAccountId === null ? colors.primary : colors.muted }]}
+                        style={[s.accountRow, { backgroundColor: colors.card, borderColor: linkedAccountId === null ? colors.primary : colors.border }]}
                         onPress={() => setLinkedAccountId(null)}
+                        activeOpacity={0.7}
                       >
-                        <Text style={[s.chipText, { color: linkedAccountId === null ? colors.primaryForeground : colors.mutedForeground }]}>{t.noLinkManualEntry}</Text>
+                        <View style={[s.accountRowIcon, { backgroundColor: colors.muted }]}>
+                          <Feather name="edit-3" size={16} color={colors.mutedForeground} />
+                        </View>
+                        <Text style={[s.accountRowName, { color: colors.text, flex: 1 }]}>{t.noLinkManualEntry}</Text>
+                        <View style={[s.radio, { borderColor: linkedAccountId === null ? colors.primary : colors.border }]}>
+                          {linkedAccountId === null && <View style={[s.radioDot, { backgroundColor: colors.primary }]} />}
+                        </View>
                       </TouchableOpacity>
-                      {cashAccounts.map(a => (
-                        <TouchableOpacity
-                          key={a.id}
-                          style={[s.chip, { backgroundColor: linkedAccountId === a.id ? colors.primary : colors.muted }]}
-                          onPress={() => setLinkedAccountId(a.id)}
-                        >
-                          <Text
-                            style={[s.chipText, { color: linkedAccountId === a.id ? colors.primaryForeground : colors.mutedForeground }]}
-                            numberOfLines={1}
+                      {cashAccounts.map(a => {
+                        const selected = linkedAccountId === a.id;
+                        return (
+                          <TouchableOpacity
+                            key={a.id}
+                            style={[s.accountRow, { backgroundColor: colors.card, borderColor: selected ? colors.primary : colors.border }]}
+                            onPress={() => setLinkedAccountId(a.id)}
+                            activeOpacity={0.7}
                           >
-                            {a.accountName} · {a.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+                            <View style={[s.accountRowIcon, { backgroundColor: colors.primary + '16' }]}>
+                              <Feather name={ACCOUNT_TYPE_ICONS[a.type] ?? 'credit-card'} size={16} color={colors.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[s.accountRowName, { color: colors.text }]} numberOfLines={1}>{a.accountName}</Text>
+                              <Text style={[s.accountRowBalance, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                {a.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
+                              </Text>
+                            </View>
+                            <View style={[s.radio, { borderColor: selected ? colors.primary : colors.border }]}>
+                              {selected && <View style={[s.radioDot, { backgroundColor: colors.primary }]} />}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   )}
                 </View>
                 {linkedAccountId ? (
@@ -439,9 +463,22 @@ const s = StyleSheet.create({
   field: { gap: 6 },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
   hint:  { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
-  chipRow: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
-  chip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9, maxWidth: 220 },
-  chipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  accountPicker: { gap: 8, marginTop: 4 },
+  accountRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 14, borderWidth: 1.5, padding: 12,
+  },
+  accountRowIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  accountRowName: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  accountRowBalance: { fontSize: 12.5, fontFamily: 'Inter_400Regular', marginTop: 1, fontVariant: ['tabular-nums'] },
+  radio: {
+    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  radioDot: { width: 10, height: 10, borderRadius: 5 },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
   inputRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, paddingHorizontal: 14 },
   inputFlex: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular', paddingVertical: 12 },
