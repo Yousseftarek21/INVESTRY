@@ -13,15 +13,16 @@ import { requestNotificationPermission } from './useNotifications';
  * sign-in; harmless to re-run since the backend just upserts the latest
  * token for the user.
  *
- * Also keeps the server's portfolioAlertsEnabled flag in sync with the
- * user's local "Portfolio Alerts" toggle in Settings — without this, the
- * toggle would only affect a since-removed local notification path and do
- * nothing to the server-driven one.
+ * Also keeps the server's portfolioAlertsEnabled/priceAlertsEnabled flags in
+ * sync with the user's local "Portfolio Alerts"/"Price Alerts" toggles in
+ * Settings — without this, the toggles would only affect a since-removed
+ * local notification path and do nothing to the server-driven one.
  */
-export function usePushRegistration(portfolioAlertsEnabled: boolean) {
+export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlertsEnabled: boolean) {
   const { isSignedIn, userId, getToken } = useAuth();
   const registeredForUserId = useRef<string | null>(null);
   const lastSyncedPortfolioPref = useRef<boolean | null>(null);
+  const lastSyncedPriceAlertsPref = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -73,4 +74,24 @@ export function usePushRegistration(portfolioAlertsEnabled: boolean) {
       }
     })();
   }, [isSignedIn, userId, getToken, portfolioAlertsEnabled]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (!isSignedIn || !userId) return;
+    if (lastSyncedPriceAlertsPref.current === priceAlertsEnabled) return;
+
+    (async () => {
+      try {
+        const authToken = await getToken();
+        if (!authToken) return;
+        const res = await apiFetch('/api/push/preferences', authToken, {
+          method: 'PUT',
+          body: JSON.stringify({ priceAlertsEnabled }),
+        });
+        if (res.ok) lastSyncedPriceAlertsPref.current = priceAlertsEnabled;
+      } catch {
+        // Silent — will retry next time this value changes or the app restarts.
+      }
+    })();
+  }, [isSignedIn, userId, getToken, priceAlertsEnabled]);
 }

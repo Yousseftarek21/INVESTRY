@@ -12,7 +12,7 @@ import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Platform, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -26,15 +26,13 @@ import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
 import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
 import { GoalsProvider } from "@/context/GoalsContext";
+import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
 import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 import { useNotifications } from "@/hooks/useNotifications";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
-import { useMarketPrices } from "@/hooks/usePrices";
-import { useEGXMarket } from "@/hooks/useEGXMarket";
-import { usePriceAlertChecker, buildAlertPricesDict } from "@/hooks/usePriceAlerts";
 import { getApiBaseUrl } from "@/utils/api";
 import * as Updates from "expo-updates";
 
@@ -118,16 +116,7 @@ function RootLayoutNav() {
 function NotificationsInitializer() {
   const { notifications } = useAppSettings();
   useNotifications();
-  usePushRegistration(notifications.portfolioAlerts);
-  return null;
-}
-
-function PriceAlertsInitializer() {
-  const { data: prices } = useMarketPrices();
-  const { data: egxStocks } = useEGXMarket();
-  const { notifications } = useAppSettings();
-  const pricesDict = useMemo(() => buildAlertPricesDict(prices, egxStocks), [prices, egxStocks]);
-  usePriceAlertChecker(pricesDict, notifications.priceAlerts);
+  usePushRegistration(notifications.portfolioAlerts, notifications.priceAlerts);
   return null;
 }
 
@@ -192,7 +181,6 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
     <>
       <StatusBarManager />
       <NotificationsInitializer />
-      <PriceAlertsInitializer />
       {children}
       <SubscriptionScreen
         visible={paywallVisible}
@@ -375,9 +363,11 @@ export default function RootLayout() {
                           <CashProvider>
                             <GoalsProvider>
                             <RecurringIncomeProvider>
+                            <PriceAlertsProvider>
                               <AppWithPaywall>
                                 <RootLayoutNav />
                               </AppWithPaywall>
+                            </PriceAlertsProvider>
                             </RecurringIncomeProvider>
                           </GoalsProvider>
                           </CashProvider>

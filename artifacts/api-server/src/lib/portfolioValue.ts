@@ -5,7 +5,7 @@ import { fetchPrices, fetchStocks } from "../routes/markets";
 
 const TROY_OZ_TO_GRAMS = 31.1034768;
 
-type GoldKarat = "24k" | "22k" | "21k" | "18k";
+export type GoldKarat = "24k" | "22k" | "21k" | "18k";
 
 // Mirrors artifacts/mobile/types/index.ts's Holding union — only the fields
 // actually needed for valuation are read here, everything else is opaque.
@@ -21,13 +21,13 @@ interface StoredCashAccount {
   [key: string]: unknown;
 }
 
-function goldPricePerGram(goldUsd: number, usdToEgp: number, karat: GoldKarat): number {
+export function goldPricePerGram(goldUsd: number, usdToEgp: number, karat: GoldKarat): number {
   const perGramUsd = goldUsd / TROY_OZ_TO_GRAMS;
   const purity = karat === "24k" ? 1 : karat === "22k" ? 22 / 24 : karat === "21k" ? 0.875 : 0.75;
   return perGramUsd * purity * usdToEgp;
 }
 
-function silverPricePerGram(silverUsd: number, usdToEgp: number): number {
+export function silverPricePerGram(silverUsd: number, usdToEgp: number): number {
   return (silverUsd / TROY_OZ_TO_GRAMS) * usdToEgp;
 }
 

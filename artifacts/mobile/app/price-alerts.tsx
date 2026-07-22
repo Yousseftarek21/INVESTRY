@@ -15,7 +15,8 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
-import { PriceAlert, loadAlerts, addAlert, removeAlert, buildAlertPricesDict } from '@/hooks/usePriceAlerts';
+import { buildAlertPricesDict } from '@/hooks/usePriceAlerts';
+import { usePriceAlertsContext } from '@/context/PriceAlertsContext';
 import { EGX_COMPANIES } from '@/data/egx-companies';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
@@ -40,8 +41,8 @@ export default function PriceAlertsScreen() {
   const { userId } = useAuth();
   const { data: prices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
+  const { alerts, addAlert, removeAlert, refresh } = usePriceAlertsContext();
 
-  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -51,11 +52,9 @@ export default function PriceAlertsScreen() {
   const [direction, setDirection] = useState<'above' | 'below'>('above');
   const [targetRaw, setTargetRaw] = useState('');
 
-  const refreshAlerts = useCallback(async () => {
-    setAlerts(await loadAlerts(userId));
-  }, [userId]);
-
-  useEffect(() => { refreshAlerts(); }, [refreshAlerts]);
+  // Re-pulls from the server so any alert the background push cron marked
+  // triggered while this screen was closed shows up as triggered here too.
+  useEffect(() => { refresh(); }, [refresh]);
 
   const pricesDict = useMemo(() => buildAlertPricesDict(prices, egxStocks), [prices, egxStocks]);
 
@@ -102,17 +101,20 @@ export default function PriceAlertsScreen() {
     const target = parseAmount(targetRaw);
     if (target <= 0) { Alert.alert(t.targetPriceLabel, t.targetPriceError); return; }
     impact(Haptics.ImpactFeedbackStyle.Light);
-    await addAlert({
-      id: generateId(),
-      assetKey: selectedAsset.key,
-      assetLabel: selectedAsset.label,
-      targetPrice: target,
-      direction,
-      triggered: false,
-      createdAt: new Date().toISOString(),
-    }, userId);
-    await refreshAlerts();
-    resetForm();
+    try {
+      await addAlert({
+        id: generateId(),
+        assetKey: selectedAsset.key,
+        assetLabel: selectedAsset.label,
+        targetPrice: target,
+        direction,
+        triggered: false,
+        createdAt: new Date().toISOString(),
+      });
+      resetForm();
+    } catch {
+      Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc);
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -123,8 +125,7 @@ export default function PriceAlertsScreen() {
       {
         text: t.delete, style: 'destructive', onPress: async () => {
           impact(Haptics.ImpactFeedbackStyle.Medium);
-          await removeAlert(id, userId);
-          await refreshAlerts();
+          await removeAlert(id);
         },
       },
     ]);
@@ -134,8 +135,7 @@ export default function PriceAlertsScreen() {
     if (!pendingDeleteId || !userId) return;
     const id = pendingDeleteId;
     setPendingDeleteId(null);
-    await removeAlert(id, userId);
-    await refreshAlerts();
+    await removeAlert(id);
   };
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
