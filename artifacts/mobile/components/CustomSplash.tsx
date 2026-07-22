@@ -50,12 +50,18 @@ export function CustomSplash({ statusMessage }: Props) {
     Animated.timing(chartIn, { toValue: 1, duration: 280, delay: REVEAL_DELAY, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
     Animated.timing(statusIn, { toValue: 1, duration: 280, delay: REVEAL_DELAY, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
 
+    // Native driver keeps this off the JS thread — important here since the
+    // splash renders during heavy JS-thread startup work (fonts, contexts,
+    // AsyncStorage/API reads), which was causing this to visibly stutter,
+    // most noticeably on the chart line's steeper "up" segments where a
+    // dropped frame reads as a bigger jump. react-native-svg supports
+    // useNativeDriver for animatable props like strokeDashoffset.
     Animated.timing(progress, {
       toValue: 1,
-      duration: 1800,
+      duration: 1400,
       delay: REVEAL_DELAY,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   }, [progress, logoIn, taglineIn, chartIn, statusIn]);
 
