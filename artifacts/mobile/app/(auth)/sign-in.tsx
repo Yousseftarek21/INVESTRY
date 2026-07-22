@@ -61,8 +61,13 @@ export default function SignInScreen() {
   };
 
   const activateSession = async (createdSessionId: string | null | undefined) => {
-    await setActive!({ session: createdSessionId });
-    router.replace('/(tabs)' as any);
+    // Don't manually router.replace right after awaiting setActive — Clerk's
+    // isSignedIn context doesn't always finish propagating to (tabs)/_layout's
+    // useAuth() by the time it mounts, so it can read a stale `false` and
+    // bounce straight back to the welcome screen. Passing `navigate` lets
+    // Clerk itself decide when it's actually safe to move on, same pattern
+    // already used correctly by the Google/Apple SSO flow below.
+    await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
   };
 
   const handleSignIn = async () => {
