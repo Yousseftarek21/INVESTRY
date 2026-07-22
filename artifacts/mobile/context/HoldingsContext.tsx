@@ -156,13 +156,14 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         const res = await apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(holding) });
         if (!res.ok) throw new Error(`${res.status}`);
       }
-    } catch {
+    } catch (err) {
       setHoldings(prev => {
         const next = prev.filter(h => h.id !== holding.id);
         persist(next, userId);
         return next;
       });
       setSyncError('Failed to save — please try again.');
+      throw err; // let the caller know the save actually failed instead of navigating away as if it succeeded
     }
   }, [token, persist, userId]);
 
@@ -209,7 +210,7 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         const res = await apiFetch(`/api/holdings/${holding.id}`, t, { method: 'PUT', body: JSON.stringify(holding) });
         if (!res.ok) throw new Error(`${res.status}`);
       }
-    } catch {
+    } catch (err) {
       setHoldings(prev => {
         if (!previous) return prev;
         const next = prev.map(h => h.id === holding.id ? previous! : h);
@@ -217,6 +218,7 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
       setSyncError('Could not update — please try again.');
+      throw err; // let the caller know the save actually failed instead of navigating away as if it succeeded
     }
   }, [token, persist, userId]);
 

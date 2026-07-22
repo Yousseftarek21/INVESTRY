@@ -393,6 +393,7 @@ export default function AddInvestmentScreen() {
 
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
   const isEditing = editingHolding !== null;
+  const [saving, setSaving] = useState(false);
 
   const [type, setType] = useState<InvestmentType>('gold');
   const [karat, setKarat] = useState<GoldKarat>('21k');
@@ -755,19 +756,27 @@ export default function AddInvestmentScreen() {
 
     if (!holding) return;
     notify();
-    if (isEditing) {
-      // addHolding/updateHolding update local state synchronously before the
-      // network call — navigate immediately instead of waiting on the
-      // round-trip, which otherwise stalls the UI for no benefit (any
-      // failure is handled by the context's own rollback + syncError).
-      updateHolding(holding);
-      router.back();
-    } else {
-      addHolding(holding);
-      // Editing came from the holdings list, so `back()` already returns there.
-      // Adding came through the add-choose type picker, so `back()` alone would
-      // just land back on that picker sheet — dismiss past it to the list instead.
-      router.dismissTo('/(tabs)/holdings');
+    // addHolding/updateHolding update local state synchronously (so the list
+    // already reflects the edit) but still await the network round-trip here
+    // before navigating away — otherwise a failed save gets silently rolled
+    // back a moment later, after the user has already left the screen and
+    // has no idea their edit didn't actually stick.
+    try {
+      setSaving(true);
+      if (isEditing) {
+        await updateHolding(holding);
+        router.back();
+      } else {
+        await addHolding(holding);
+        // Editing came from the holdings list, so `back()` already returns there.
+        // Adding came through the add-choose type picker, so `back()` alone would
+        // just land back on that picker sheet — dismiss past it to the list instead.
+        router.dismissTo('/(tabs)/holdings');
+      }
+    } catch {
+      Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -802,8 +811,8 @@ export default function AddInvestmentScreen() {
           <Text style={[styles.modalTitle, { color: colors.text }]}>
             {isEditing ? t.editInvestment : t.addInvestment}
           </Text>
-          <TouchableOpacity onPress={handleSave}>
-            <Text style={[styles.saveBtnText, { color: colors.primary }]}>{t.save}</Text>
+          <TouchableOpacity onPress={handleSave} disabled={saving} hitSlop={8}>
+            <Text style={[styles.saveBtnText, { color: colors.primary, opacity: saving ? 0.4 : 1 }]}>{t.save}</Text>
           </TouchableOpacity>
         </View>
 
