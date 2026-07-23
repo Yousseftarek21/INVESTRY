@@ -5,3 +5,4 @@ export * from "./portfolioSnapshots";
 export * from "./goals";
 export * from "./recurringIncome";
 export * from "./priceAlerts";
+export * from "./metalAlertState";
