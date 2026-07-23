@@ -73,44 +73,69 @@ export function snapshotsToValues(
   return filtered;
 }
 
-const DEFAULT_TENSION = 0.3;
-
 /**
- * Smooths a line through real data points using cubic-Bezier segments whose
- * control points are derived from each point's neighbors (a Catmull-Rom-style
- * tangent estimate). The curve always passes exactly through every real
- * point — only the flow *between* points is adjusted, never the values
- * themselves — so this never implies a price movement that wasn't actually
- * observed, it just renders the connection between real samples less
- * mechanically than a straight ruler line. With exactly 2 points there is no
- * curvature information to work with at all: any smooth curve through both
- * endpoints is just the straight line between them, so that case is drawn
- * directly rather than run through the (identical, but more expensive) curve
- * math.
+ * Smooths a line through real data points using monotonic cubic Hermite
+ * interpolation (Fritsch–Carlson). The curve always passes exactly through
+ * every real point, and — unlike a plain Catmull-Rom-style tangent spline —
+ * is mathematically guaranteed to never overshoot past the range of its
+ * neighboring points. A naive tangent spline can bulge slightly above a
+ * peak or below a valley between two real samples, which both visually
+ * implies a value that was never actually observed and can clip against a
+ * chart's padded bounds (since the padding is sized to the real data range,
+ * not to an overshoot the curve math might introduce). This produces the
+ * same kind of smooth, flowing line for typical price data — the
+ * difference is only visible exactly at sharp peaks/valleys, where this one
+ * flattens the tangent instead of overshooting through it.
  */
-export function buildSmoothPath(pts: ChartPt[], tension: number = DEFAULT_TENSION): string {
-  if (pts.length < 2) return '';
-  if (pts.length === 2) {
+export function buildSmoothPath(pts: ChartPt[]): string {
+  const n = pts.length;
+  if (n < 2) return '';
+  if (n === 2) {
     return `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)} L ${pts[1].x.toFixed(2)},${pts[1].y.toFixed(2)}`;
   }
 
-  const controlPoint = (
-    current: ChartPt, previous: ChartPt | undefined, next: ChartPt | undefined, reverse: boolean,
-  ): [number, number] => {
-    const p = previous ?? current;
-    const n = next ?? current;
-    const dx = n.x - p.x;
-    const dy = n.y - p.y;
-    const angle = Math.atan2(dy, dx) + (reverse ? Math.PI : 0);
-    const length = Math.sqrt(dx * dx + dy * dy) * tension;
-    return [current.x + Math.cos(angle) * length, current.y + Math.sin(angle) * length];
-  };
-
-  let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
-  for (let i = 1; i < pts.length; i++) {
-    const [cp1x, cp1y] = controlPoint(pts[i - 1], pts[i - 2], pts[i], false);
-    const [cp2x, cp2y] = controlPoint(pts[i], pts[i - 1], pts[i + 1], true);
-    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${pts[i].x.toFixed(2)},${pts[i].y.toFixed(2)}`;
+  // Secant slope of each consecutive pair.
+  const d: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const dx = pts[i + 1].x - pts[i].x;
+    d.push(dx === 0 ? 0 : (pts[i + 1].y - pts[i].y) / dx);
   }
-  return d;
+
+  // Initial tangent at each point: the secant itself at the two endpoints;
+  // a flat tangent (0) at any local min/max (a sign change between the two
+  // adjacent secants) since a peak/valley has no meaningful "direction" to
+  // follow through — that flat tangent is exactly what prevents overshoot
+  // at the point this bug was actually happening. Otherwise, the average
+  // of the two adjacent secants.
+  const m: number[] = new Array(n);
+  m[0] = d[0];
+  m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  }
+
+  // Fritsch–Carlson clamp: bounds each tangent relative to its interval's
+  // secant slope so the curve can't overshoot even on non-extremum stretches.
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i];
+    const b = m[i + 1] / d[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      const tau = 3 / Math.sqrt(s);
+      m[i] = tau * a * d[i];
+      m[i + 1] = tau * b * d[i];
+    }
+  }
+
+  let path = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const dx = pts[i + 1].x - pts[i].x;
+    const cp1x = pts[i].x + dx / 3;
+    const cp1y = pts[i].y + (m[i] * dx) / 3;
+    const cp2x = pts[i + 1].x - dx / 3;
+    const cp2y = pts[i + 1].y - (m[i + 1] * dx) / 3;
+    path += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${pts[i + 1].x.toFixed(2)},${pts[i + 1].y.toFixed(2)}`;
+  }
+  return path;
 }

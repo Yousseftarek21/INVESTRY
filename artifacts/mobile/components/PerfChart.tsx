@@ -142,7 +142,7 @@ export function PerfChart({
     time: p.time,
   }));
 
-  const linePath = buildSmoothPath(pts, 0.3);
+  const linePath = buildSmoothPath(pts);
   const firstPt = pts[0];
   const lastPt = pts[pts.length - 1];
   const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
