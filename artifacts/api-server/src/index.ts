@@ -1,6 +1,5 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { startPriceAlertCron } from "./lib/priceAlertCron";
 import { startPortfolioAlertCron } from "./lib/portfolioAlertCron";
 import { startUserPriceAlertCron } from "./lib/userPriceAlertCron";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
@@ -28,7 +27,6 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
-  startPriceAlertCron();
   startPortfolioAlertCron();
   startUserPriceAlertCron();
 });

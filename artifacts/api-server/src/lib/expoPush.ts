@@ -21,7 +21,13 @@ function isValidExpoToken(token: string): boolean {
 
 /**
  * Sends the same title/body to a batch of Expo push tokens. Invalid tokens
- * are skipped up front (rather than sent, which Expo would reject anyway).
+ * are skipped up front (rather than sent, which Expo would reject anyway),
+ * and duplicate token values are collapsed to one send each — the same
+ * physical device's token can end up attached to more than one user row
+ * (e.g. a duplicate account created during troubleshooting), and callers
+ * that gather tokens across multiple users (broadcasts) have no way to
+ * know that from their side. Deduping here, once, protects every current
+ * and future caller instead of relying on each one to do it themselves.
  * Best-effort: failures are logged, never thrown — a notification push
  * should never take down the caller (a cron tick, a route handler, etc).
  */
@@ -31,7 +37,7 @@ export async function sendPushToTokens(
   body: string,
   data?: Record<string, unknown>,
 ): Promise<void> {
-  const valid = tokens.filter(isValidExpoToken);
+  const valid = [...new Set(tokens.filter(isValidExpoToken))];
   if (valid.length === 0) return;
 
   for (let i = 0; i < valid.length; i += BATCH_SIZE) {
