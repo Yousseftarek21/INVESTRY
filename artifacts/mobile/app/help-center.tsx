@@ -103,6 +103,12 @@ export default function HelpCenterScreen() {
       ],
     },
     {
+      icon: 'bell', color: '#F59E0B', title: t.helpCatAlerts,
+      items: [
+        { q: t.helpPriceAlertsQ, a: t.helpPriceAlertsA },
+      ],
+    },
+    {
       icon: 'star', color: '#C9A227', title: t.helpCatSubscription,
       items: [
         { q: t.helpFreeVsProQ, a: t.helpFreeVsProA },

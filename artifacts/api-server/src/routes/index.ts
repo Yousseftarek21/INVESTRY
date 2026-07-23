@@ -13,6 +13,7 @@ import inflationRouter from "./inflation";
 import goalsRouter from "./goals";
 import recurringIncomeRouter from "./recurringIncome";
 import portfolioRouter from "./portfolio";
+import priceAlertsRouter from "./priceAlerts";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(inflationRouter);
 router.use(goalsRouter);
 router.use(recurringIncomeRouter);
 router.use(portfolioRouter);
+router.use(priceAlertsRouter);
 
 export default router;

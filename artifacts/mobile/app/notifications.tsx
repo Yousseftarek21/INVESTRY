@@ -167,8 +167,12 @@ export default function NotificationsScreen() {
                       key={item.id}
                       style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
                     >
-                      <View style={[s.iconWrap, { backgroundColor: colors.green + '18' }]}>
-                        <Feather name="trending-up" size={18} color={colors.green} />
+                      <View style={[s.iconWrap, { backgroundColor: (item.type === 'price_alert' ? colors.primary : colors.green) + '18' }]}>
+                        <Feather
+                          name={item.type === 'price_alert' ? 'target' : 'trending-up'}
+                          size={18}
+                          color={item.type === 'price_alert' ? colors.primary : colors.green}
+                        />
                       </View>
                       <View style={s.cardBody}>
                         <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={1}>
