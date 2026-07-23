@@ -25,16 +25,28 @@ function generateId(): string {
 // per-account history (see /api/portfolio/snapshots), independent of
 // whether this particular user ever registered for push. Only the push
 // *send* below is gated on having a token and alerts being enabled.
+//
+// Re-checked every tick throughout the day (not just once) against the
+// fixed reference of yesterday's close — matching the mobile app's own
+// "Today" card, which recomputes live all day against the same start-of-
+// day baseline. A move that only crosses ±1% later in the day still gets
+// caught, instead of being missed because an early, unrepresentative
+// snapshot already used up the day's one check.
 async function checkUser(userId: string, today: string, pushToken: string | null): Promise<void> {
-  const [existingToday] = await db
-    .select({ id: portfolioSnapshotsTable.id })
-    .from(portfolioSnapshotsTable)
-    .where(and(eq(portfolioSnapshotsTable.userId, userId), eq(portfolioSnapshotsTable.date, today)))
-    .limit(1);
-  if (existingToday) return; // already checked today
-
   const totalValue = await computeUserPortfolioValue(userId);
   if (totalValue <= 0) return; // nothing to track yet
+
+  // Always refresh today's stored value to the latest — never touches
+  // `notified` here, which is the atomic gate for the push send below.
+  await db
+    .insert(portfolioSnapshotsTable)
+    .values({ id: generateId(), userId, date: today, totalValue, notified: false })
+    .onConflictDoUpdate({
+      target: [portfolioSnapshotsTable.userId, portfolioSnapshotsTable.date],
+      set: { totalValue },
+    });
+
+  if (!pushToken) return;
 
   const [prior] = await db
     .select({ totalValue: portfolioSnapshotsTable.totalValue })
@@ -42,26 +54,34 @@ async function checkUser(userId: string, today: string, pushToken: string | null
     .where(and(eq(portfolioSnapshotsTable.userId, userId), lt(portfolioSnapshotsTable.date, today)))
     .orderBy(desc(portfolioSnapshotsTable.date))
     .limit(1);
+  if (!prior || prior.totalValue <= 0) return;
 
-  let notified = false;
-  if (prior && prior.totalValue > 0 && pushToken) {
-    const pctChange = ((totalValue - prior.totalValue) / prior.totalValue) * 100;
-    if (Math.abs(pctChange) >= CHANGE_THRESHOLD_PCT) {
-      const dir = pctChange > 0 ? "up" : "down";
-      await sendPushToTokens(
-        [pushToken],
-        "Portfolio update",
-        `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% since yesterday`,
-        { type: "portfolio_alert" },
-      );
-      notified = true;
-    }
-  }
+  const pctChange = ((totalValue - prior.totalValue) / prior.totalValue) * 100;
+  if (Math.abs(pctChange) < CHANGE_THRESHOLD_PCT) return;
 
-  await db
-    .insert(portfolioSnapshotsTable)
-    .values({ id: generateId(), userId, date: today, totalValue, notified })
-    .onConflictDoNothing({ target: [portfolioSnapshotsTable.userId, portfolioSnapshotsTable.date] });
+  // Atomic compare-and-swap: only the process whose UPDATE actually flips
+  // notified false->true sends the push — same fix as priceAlertCron.ts,
+  // closing the identical multi-process race (e.g. a rolling deploy's
+  // brief old/new instance overlap) for this cron too.
+  const updated = await db
+    .update(portfolioSnapshotsTable)
+    .set({ notified: true })
+    .where(and(
+      eq(portfolioSnapshotsTable.userId, userId),
+      eq(portfolioSnapshotsTable.date, today),
+      eq(portfolioSnapshotsTable.notified, false),
+    ))
+    .returning({ id: portfolioSnapshotsTable.id });
+
+  if (updated.length === 0) return; // already notified today (this check or a concurrent one)
+
+  const dir = pctChange > 0 ? "up" : "down";
+  await sendPushToTokens(
+    [pushToken],
+    "Portfolio update",
+    `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% today`,
+    { type: "portfolio_alert" },
+  );
 }
 
 let running = false;
