@@ -12,9 +12,9 @@ export interface PortfolioSnapshot {
 }
 
 // Namespaced per-user, matching every other local data store (Cash,
-// Holdings, Goals, RecurringIncome, price alerts) — without this, one
-// account's portfolio value history would stay readable by whoever signs
-// in next on the same device.
+// Holdings, Goals, RecurringIncome) — without this, one account's
+// portfolio value history would stay readable by whoever signs in next
+// on the same device.
 function snapshotKey(userId: string) {
   return `@investry_portfolio_snapshots_${userId}`;
 }
@@ -96,9 +96,9 @@ export function usePortfolioSnapshots(currentValue: number) {
         setServerStore(store);
       } catch { /* offline — local cache still applies */ }
     })();
-    // Deliberately NOT depending on `getToken` — see PriceAlertsContext.tsx
-    // for why an unstable Clerk callback reference in this deps array is
-    // dangerous (refires every render, pegging the JS thread).
+    // Deliberately NOT depending on `getToken` — an unstable Clerk callback
+    // reference in this deps array is dangerous (refires every render,
+    // pegging the JS thread).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, userId]);
 

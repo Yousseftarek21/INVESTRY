@@ -60,9 +60,9 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   if (Math.abs(pctChange) < CHANGE_THRESHOLD_PCT) return;
 
   // Atomic compare-and-swap: only the process whose UPDATE actually flips
-  // notified false->true sends the push — same fix as priceAlertCron.ts,
-  // closing the identical multi-process race (e.g. a rolling deploy's
-  // brief old/new instance overlap) for this cron too.
+  // notified false->true sends the push — closes a multi-process race
+  // (e.g. a rolling deploy's brief old/new instance overlap) where two
+  // processes could otherwise both read "not yet notified" and both send.
   const updated = await db
     .update(portfolioSnapshotsTable)
     .set({ notified: true })

@@ -28,7 +28,6 @@ const en = {
 
   // Markets
   currency: 'CURRENCY',
-  usDollar: 'US Dollar',
   goldSection: 'GOLD',
   silverSection: 'SILVER',
   egxSection: 'EGX STOCKS',
@@ -40,14 +39,9 @@ const en = {
   live: 'LIVE',
 
   // Gold karat labels
-  karat24label: '24K · Pure',
-  karat22label: '22K',
-  karat21label: '21K',
-  karat18label: '18K',
   goldOzLabel: 'Gold · Troy Oz',
 
   // Silver labels
-  silverGramLabel: 'Silver · Gram',
   silverOzLabel: 'Silver · Troy Oz',
 
   // Investments (Holdings)
@@ -715,7 +709,6 @@ const en = {
   pctToday: '% today',
   portfolioUpAlert: 'Portfolio is up',
   portfolioDownAlert: 'Portfolio is down',
-  pctSinceYesterday: '% since yesterday',
   recentAlertsSection: 'RECENT',
   settingsSectNotifications: 'NOTIFICATIONS',
   settingsSectTools: 'TOOLS & PLANNING',
@@ -863,37 +856,12 @@ const en = {
   chartMethodology: 'Chart & Inflation Benchmark',
 
   // Settings — notification rows
-  priceAlertsLabel: 'Price Alerts',
-  priceAlertsDesc: 'Gold, silver & FX movements',
   portfolioAlertsLabel: 'Portfolio Alerts',
   portfolioAlertsDesc: 'Significant portfolio changes',
   dailySummaryLabel: 'Daily Summary',
   dailySummaryDesc: 'Morning portfolio snapshot',
   weeklyReportLabel: 'Weekly Report',
   weeklyReportDesc: 'End-of-week performance recap',
-  managePriceAlerts: 'Manage Price Alerts',
-  managePriceAlertsDesc: 'Create and view your active alerts',
-
-  // Price Alerts screen
-  addPriceAlert: 'Add Alert',
-  noPriceAlerts: 'No price alerts yet',
-  noPriceAlertsHint: "Get notified when gold, silver, a currency, or a stock hits your target price",
-  selectAssetLabel: 'Asset',
-  selectAssetPlaceholder: 'Choose an asset',
-  alertDirectionLabel: 'Notify me when price goes',
-  directionAbove: 'Above',
-  directionBelow: 'Below',
-  targetPriceLabel: 'Target Price',
-  currentPriceLabel: 'Current',
-  deletePriceAlert: 'Delete Alert',
-  deletePriceAlertConfirm: 'Are you sure you want to delete this price alert?',
-  alertTriggeredLabel: 'Triggered',
-  alertActiveLabel: 'Watching',
-  selectAssetError: 'Please choose an asset to watch.',
-  targetPriceError: 'Please enter a valid target price.',
-  assetGroupMetals: 'GOLD & SILVER',
-  assetGroupCurrency: 'CURRENCY',
-  assetGroupStocks: 'EGX STOCKS',
 
   // Settings — privacy rows
   analyticsSharingLabel: 'Analytics Sharing',
@@ -932,7 +900,6 @@ const en = {
   helpCatCash: 'Cash & Recurring Income',
   helpCatTools: 'Financial Tools & Calculators',
   helpCatAnalytics: 'Analytics & Charts',
-  helpCatAlerts: 'Price Alerts',
   helpCatSubscription: 'Subscription',
   helpCatPrivacy: 'Data & Privacy',
   helpStillNeedHelp: 'Still need help?',
@@ -964,9 +931,6 @@ const en = {
   helpAnalyticsA: 'A portfolio health score, diversification breakdown, performance chart, asset allocation, your top-performing holdings, and personalized insights.',
   helpChartFlatQ: 'Why is my performance chart a straight line?',
   helpChartFlatA: 'The chart only ever plots real data points — it never invents a curve. With very little price history (like a single day), a straight line is the honest picture; more real data points naturally shape more of a curve over time.',
-
-  helpPriceAlertsQ: 'How do price alerts work?',
-  helpPriceAlertsA: 'Set a target price above or below the current one for any asset, and INVESTRY sends you a local notification the next time prices refresh and cross that target.',
 
   helpFreeVsProQ: "What's the difference between Free and Pro?",
   helpFreeVsProA: 'Free accounts are capped at 3 holdings. Pro unlocks unlimited holdings plus Market Intelligence and Portfolio Analytics. During Launch Access, every signed-in user gets Pro features free.',
@@ -1058,7 +1022,6 @@ const ar: typeof en = {
 
   // Markets
   currency: 'العملات',
-  usDollar: 'الدولار الأمريكي',
   goldSection: 'الذهب',
   silverSection: 'الفضة',
   egxSection: 'البورصة المصرية',
@@ -1070,14 +1033,9 @@ const ar: typeof en = {
   live: 'مباشر',
 
   // Gold karat labels
-  karat24label: '24 قيراط · خالص',
-  karat22label: 'عيار 22',
-  karat21label: 'عيار 21',
-  karat18label: 'عيار 18',
   goldOzLabel: 'ذهب · أوقية',
 
   // Silver labels
-  silverGramLabel: 'فضة · جرام',
   silverOzLabel: 'فضة · أوقية',
 
   // Investments (Holdings)
@@ -1745,7 +1703,6 @@ const ar: typeof en = {
   pctToday: '% اليوم',
   portfolioUpAlert: 'المحفظة ارتفعت',
   portfolioDownAlert: 'المحفظة انخفضت',
-  pctSinceYesterday: '% منذ الأمس',
   recentAlertsSection: 'الأحدث',
   settingsSectNotifications: 'الإشعارات',
   settingsSectTools: 'الأدوات والتخطيط',
@@ -1893,37 +1850,12 @@ const ar: typeof en = {
   chartMethodology: 'المخطط ومعيار التضخم',
 
   // Settings — notification rows
-  priceAlertsLabel: 'تنبيهات الأسعار',
-  priceAlertsDesc: 'تحركات الذهب والفضة وأسعار الصرف',
   portfolioAlertsLabel: 'تنبيهات المحفظة',
   portfolioAlertsDesc: 'تغييرات جوهرية في المحفظة',
   dailySummaryLabel: 'ملخص يومي',
   dailySummaryDesc: 'لقطة صباحية لمحفظتك',
   weeklyReportLabel: 'تقرير أسبوعي',
   weeklyReportDesc: 'ملخص الأداء في نهاية الأسبوع',
-  managePriceAlerts: 'إدارة تنبيهات الأسعار',
-  managePriceAlertsDesc: 'أنشئ وشاهد تنبيهاتك النشطة',
-
-  // Price Alerts screen
-  addPriceAlert: 'إضافة تنبيه',
-  noPriceAlerts: 'لا توجد تنبيهات أسعار بعد',
-  noPriceAlertsHint: 'احصل على إشعار عند وصول الذهب أو الفضة أو عملة أو سهم إلى السعر المستهدف',
-  selectAssetLabel: 'الأصل',
-  selectAssetPlaceholder: 'اختر أصلاً',
-  alertDirectionLabel: 'نبّهني عندما يصبح السعر',
-  directionAbove: 'أعلى من',
-  directionBelow: 'أقل من',
-  targetPriceLabel: 'السعر المستهدف',
-  currentPriceLabel: 'الحالي',
-  deletePriceAlert: 'حذف التنبيه',
-  deletePriceAlertConfirm: 'هل أنت متأكد أنك تريد حذف تنبيه السعر هذا؟',
-  alertTriggeredLabel: 'تم التنبيه',
-  alertActiveLabel: 'قيد المراقبة',
-  selectAssetError: 'الرجاء اختيار أصل للمراقبة.',
-  targetPriceError: 'الرجاء إدخال سعر مستهدف صالح.',
-  assetGroupMetals: 'الذهب والفضة',
-  assetGroupCurrency: 'العملات',
-  assetGroupStocks: 'أسهم البورصة المصرية',
 
   // Settings — privacy rows
   analyticsSharingLabel: 'مشاركة البيانات التحليلية',
@@ -1962,7 +1894,6 @@ const ar: typeof en = {
   helpCatCash: 'النقد والدخل المتكرر',
   helpCatTools: 'الأدوات والآلات الحاسبة المالية',
   helpCatAnalytics: 'التحليلات والمخططات',
-  helpCatAlerts: 'تنبيهات الأسعار',
   helpCatSubscription: 'الاشتراك',
   helpCatPrivacy: 'البيانات والخصوصية',
   helpStillNeedHelp: 'هل ما زلت بحاجة إلى مساعدة؟',
@@ -1994,9 +1925,6 @@ const ar: typeof en = {
   helpAnalyticsA: 'درجة صحة المحفظة، تفصيل التنويع، مخطط الأداء، توزيع الأصول، أفضل أصولك أداءً، ورؤى شخصية.',
   helpChartFlatQ: 'لماذا مخطط الأداء لدي عبارة عن خط مستقيم؟',
   helpChartFlatA: 'يعرض المخطط نقاط بيانات حقيقية فقط — لا يخترع منحنى أبداً. مع سجل أسعار قليل جداً (مثل يوم واحد)، يكون الخط المستقيم هو الصورة الصادقة؛ ومع تراكم نقاط بيانات حقيقية أكثر، يتشكل المنحنى تلقائياً بمرور الوقت.',
-
-  helpPriceAlertsQ: 'كيف تعمل تنبيهات الأسعار؟',
-  helpPriceAlertsA: 'حدد سعراً مستهدفاً أعلى أو أقل من السعر الحالي لأي أصل، ويرسل لك INVESTRY إشعاراً محلياً في أول تحديث أسعار يتجاوز فيه السعر هذا الهدف.',
 
   helpFreeVsProQ: 'ما الفرق بين الخطة المجانية و Pro؟',
   helpFreeVsProA: 'الحسابات المجانية محدودة بـ 3 أصول. تفتح Pro أصولاً غير محدودة بالإضافة إلى ذكاء السوق وتحليلات المحفظة. خلال فترة الإطلاق، يحصل كل مستخدم مسجل دخول على ميزات Pro مجاناً.',

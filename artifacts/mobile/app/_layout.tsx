@@ -26,7 +26,6 @@ import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
 import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
 import { GoalsProvider } from "@/context/GoalsContext";
-import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
@@ -120,7 +119,7 @@ function RootLayoutNav() {
 function NotificationsInitializer() {
   const { notifications } = useAppSettings();
   useNotifications();
-  usePushRegistration(notifications.portfolioAlerts, notifications.priceAlerts);
+  usePushRegistration(notifications.portfolioAlerts);
   return null;
 }
 
@@ -382,11 +381,9 @@ export default function RootLayout() {
                           <CashProvider>
                             <GoalsProvider>
                             <RecurringIncomeProvider>
-                            <PriceAlertsProvider>
                               <AppWithPaywall>
                                 <RootLayoutNav />
                               </AppWithPaywall>
-                            </PriceAlertsProvider>
                             </RecurringIncomeProvider>
                           </GoalsProvider>
                           </CashProvider>

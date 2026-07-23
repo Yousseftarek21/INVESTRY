@@ -8,7 +8,6 @@ export type WeightUnit = 'g' | 'oz';
 export type DisplayCurrency = 'EGP' | 'USD' | 'EUR' | 'AED';
 
 interface NotificationPrefs {
-  priceAlerts: boolean;
   portfolioAlerts: boolean;
   dailySummary: boolean;
   weeklySummary: boolean;
@@ -53,7 +52,6 @@ const K = {
 };
 
 const DEFAULT_NOTIF: NotificationPrefs = {
-  priceAlerts: true,
   portfolioAlerts: true,
   dailySummary: false,
   weeklySummary: false,
