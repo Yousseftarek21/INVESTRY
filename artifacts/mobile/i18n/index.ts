@@ -40,14 +40,14 @@ const en = {
   live: 'LIVE',
 
   // Gold karat labels
-  karat24label: '24K · Pure',
+  karat24label: 'Gold 24K',
   karat22label: '22K',
-  karat21label: '21K',
+  karat21label: 'Gold 21K',
   karat18label: '18K',
   goldOzLabel: 'Gold · Troy Oz',
 
   // Silver labels
-  silverGramLabel: 'Silver · Gram',
+  silverGramLabel: 'Silver',
   silverOzLabel: 'Silver · Troy Oz',
 
   // Investments (Holdings)
@@ -1070,14 +1070,14 @@ const ar: typeof en = {
   live: 'مباشر',
 
   // Gold karat labels
-  karat24label: '24 قيراط · خالص',
+  karat24label: 'ذهب 24 قيراط',
   karat22label: 'عيار 22',
-  karat21label: 'عيار 21',
+  karat21label: 'ذهب عيار 21',
   karat18label: 'عيار 18',
   goldOzLabel: 'ذهب · أوقية',
 
   // Silver labels
-  silverGramLabel: 'فضة · جرام',
+  silverGramLabel: 'فضة',
   silverOzLabel: 'فضة · أوقية',
 
   // Investments (Holdings)
