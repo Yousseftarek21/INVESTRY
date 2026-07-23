@@ -21,8 +21,12 @@ function snapshotKey(userId: string) {
 // Pre-namespacing key — one-time migration only, see load effect below.
 const LEGACY_KEY = '@investry_portfolio_snapshots';
 
+// Africa/Cairo, not UTC — must match the server's cairoDateString() in
+// portfolioAlertCron.ts exactly, or the local cache's date key can be a
+// day behind the server's for the ~3 hours after every Cairo midnight
+// (Egypt is UTC+3), causing a mismatched entry when the two get merged.
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
 }
 
 /**

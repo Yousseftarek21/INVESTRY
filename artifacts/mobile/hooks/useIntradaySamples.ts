@@ -13,8 +13,13 @@ const LEGACY_KEY = '@investry_intraday_samples';
 const MIN_INTERVAL_MS = 10 * 60 * 1000; // don't sample more than once per 10 minutes
 const MAX_SAMPLES = 60;
 
+// Africa/Cairo, not UTC — must match the server's cairoDateString() in
+// portfolioAlertCron.ts exactly. Egypt is UTC+3, so a raw UTC date string
+// disagreed with the server for ~3 hours after every Cairo midnight (the
+// server had already rolled to the new day; the client hadn't), which
+// could keep yesterday's intraday samples around into a "new" 1D chart.
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
 }
 
 interface StoredIntraday { date: string; samples: number[]; lastSampleAt: number; }
