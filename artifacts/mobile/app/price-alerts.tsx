@@ -68,9 +68,7 @@ export default function PriceAlertsScreen() {
   const assetOptions = useMemo<AssetOption[]>(() => {
     const opts: AssetOption[] = [
       { key: 'gold_24k',    label: t.karat24label,    group: 'metals',   price: pricesDict.gold_24k ?? 0 },
-      { key: 'gold_22k',    label: t.karat22label,    group: 'metals',   price: pricesDict.gold_22k ?? 0 },
       { key: 'gold_21k',    label: t.karat21label,    group: 'metals',   price: pricesDict.gold_21k ?? 0 },
-      { key: 'gold_18k',    label: t.karat18label,    group: 'metals',   price: pricesDict.gold_18k ?? 0 },
       { key: 'silver_gram', label: t.silverGramLabel, group: 'metals',   price: pricesDict.silver_gram ?? 0 },
       { key: 'usd_egp',     label: t.usDollar,        group: 'currency', price: pricesDict.usd_egp ?? 0 },
     ];
