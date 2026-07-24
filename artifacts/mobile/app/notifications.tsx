@@ -169,7 +169,7 @@ export default function NotificationsScreen() {
                     >
                       <View style={[s.iconWrap, { backgroundColor: (item.type === 'price_alert' ? colors.primary : colors.green) + '18' }]}>
                         <Feather
-                          name={item.type === 'price_alert' ? 'target' : 'trending-up'}
+                          name={item.type === 'price_alert' ? 'bell' : 'trending-up'}
                           size={18}
                           color={item.type === 'price_alert' ? colors.primary : colors.green}
                         />
