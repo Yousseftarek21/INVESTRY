@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import { useSignIn, useSSO, useClerk } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -133,9 +132,13 @@ export default function SignInScreen() {
     setGlobalError('');
     setGoogleLoading(true);
     try {
+      // Deliberately not passing redirectUrl — @clerk/expo's own default is
+      // AuthSession.makeRedirectUri({ path: 'sso-callback' }), and that exact
+      // path-suffixed URL is what needs to be whitelisted in Clerk Dashboard's
+      // redirect URLs. Overriding it with a bare makeRedirectUri() (no path)
+      // silently mismatches that whitelist and drops the session.
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
-        redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });

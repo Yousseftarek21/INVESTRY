@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import { useSignUp, useSSO } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -135,9 +134,10 @@ export default function SignUpScreen() {
     setGlobalError('');
     setGoogleLoading(true);
     try {
+      // Deliberately not passing redirectUrl — see sign-in.tsx's handleGoogle
+      // for why overriding @clerk/expo's own default silently breaks the flow.
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
-        redirectUrl: AuthSession.makeRedirectUri(),
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
