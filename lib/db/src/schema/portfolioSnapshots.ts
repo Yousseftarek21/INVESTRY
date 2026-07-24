@@ -1,17 +1,19 @@
-import { pgTable, text, real, boolean, timestamp, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 // One row per user per calendar day (Africa/Cairo), used to detect
-// day-over-day portfolio value swings and to avoid re-notifying the same
-// user more than once for the same day's move.
+// day-over-day portfolio value swings and to track which whole-percent
+// milestone (1%, 2%, 3%... in either direction) has already been pushed
+// for that day, so a push fires again each time the move reaches a new
+// milestone rather than only once per day.
 export const portfolioSnapshotsTable = pgTable("portfolio_snapshots", {
-  id:         text("id").primaryKey(),
-  userId:     text("user_id").notNull(),
-  date:       text("date").notNull(), // "YYYY-MM-DD" in Africa/Cairo
-  totalValue: real("total_value").notNull(),
-  notified:   boolean("notified").notNull().default(false), // whether a push already went out for this day's move
-  createdAt:  timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  id:                    text("id").primaryKey(),
+  userId:                text("user_id").notNull(),
+  date:                  text("date").notNull(), // "YYYY-MM-DD" in Africa/Cairo
+  totalValue:            real("total_value").notNull(),
+  lastNotifiedMilestone: integer("last_notified_milestone").notNull().default(0), // signed whole-percent, e.g. -2 or 3
+  createdAt:             timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   userDateUnique: unique().on(t.userId, t.date),
 }));

@@ -18,7 +18,7 @@ router.get("/portfolio/snapshots", clerkMiddleware(), async (req, res) => {
       .select({
         date: portfolioSnapshotsTable.date,
         totalValue: portfolioSnapshotsTable.totalValue,
-        notified: portfolioSnapshotsTable.notified,
+        lastNotifiedMilestone: portfolioSnapshotsTable.lastNotifiedMilestone,
       })
       .from(portfolioSnapshotsTable)
       .where(eq(portfolioSnapshotsTable.userId, userId))

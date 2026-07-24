@@ -1,13 +1,13 @@
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, lt, gt } from "drizzle-orm";
 import { db, usersTable, portfolioSnapshotsTable } from "@workspace/db";
 import { computeUserPortfolioValue } from "./portfolioValue";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
 
-// Checked every 30 minutes, but each user is only actually evaluated once
-// per Africa/Cairo calendar day — the portfolio_snapshots unique(user_id,
-// date) row is what makes every later check that day a cheap no-op, so
-// there's no need for this to be scheduled at a precise midnight instant.
+// Checked every 30 minutes throughout the day — each check compares
+// today's live value against yesterday's close and may push again if the
+// move has reached a new 1% milestone since the last push (see
+// lastNotifiedMilestone below).
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const CHANGE_THRESHOLD_PCT = 1;
 // A real diversified portfolio doesn't swing this much in one day — a
@@ -42,10 +42,11 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   if (totalValue <= 0) return; // nothing to track yet
 
   // Always refresh today's stored value to the latest — never touches
-  // `notified` here, which is the atomic gate for the push send below.
+  // `lastNotifiedMilestone` here, which is the atomic gate for the push
+  // send below.
   await db
     .insert(portfolioSnapshotsTable)
-    .values({ id: generateId(), userId, date: today, totalValue, notified: false })
+    .values({ id: generateId(), userId, date: today, totalValue, lastNotifiedMilestone: 0 })
     .onConflictDoUpdate({
       target: [portfolioSnapshotsTable.userId, portfolioSnapshotsTable.date],
       set: { totalValue },
@@ -62,27 +63,36 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   if (!prior || prior.totalValue <= 0) return;
 
   const pctChange = ((totalValue - prior.totalValue) / prior.totalValue) * 100;
-  if (Math.abs(pctChange) < CHANGE_THRESHOLD_PCT) return;
   if (Math.abs(pctChange) > SANITY_MAX_PCT) {
     logger.warn({ userId, pctChange, totalValue, prior: prior.totalValue }, "Skipping implausible portfolio alert");
     return;
   }
 
-  // Atomic compare-and-swap: only the process whose UPDATE actually flips
-  // notified false->true sends the push — closes a multi-process race
-  // (e.g. a rolling deploy's brief old/new instance overlap) where two
-  // processes could otherwise both read "not yet notified" and both send.
+  // Signed whole-percent bucket, e.g. 2.7% -> 2, -1.4% -> -1. Only a new
+  // milestone further from zero than the last one notified today triggers
+  // a push, so 1%, 2%, 3%... each fire once as they're reached, but
+  // wobbling back and forth under an already-hit milestone stays quiet.
+  const milestone = Math.trunc(pctChange);
+  if (Math.abs(milestone) < CHANGE_THRESHOLD_PCT) return;
+
+  // Atomic compare-and-swap: only the process whose UPDATE actually moves
+  // lastNotifiedMilestone further from zero sends the push — closes a
+  // multi-process race (e.g. a rolling deploy's brief old/new instance
+  // overlap) where two processes could otherwise both read the same stale
+  // milestone and both send.
   const updated = await db
     .update(portfolioSnapshotsTable)
-    .set({ notified: true })
+    .set({ lastNotifiedMilestone: milestone })
     .where(and(
       eq(portfolioSnapshotsTable.userId, userId),
       eq(portfolioSnapshotsTable.date, today),
-      eq(portfolioSnapshotsTable.notified, false),
+      milestone > 0
+        ? lt(portfolioSnapshotsTable.lastNotifiedMilestone, milestone)
+        : gt(portfolioSnapshotsTable.lastNotifiedMilestone, milestone),
     ))
     .returning({ id: portfolioSnapshotsTable.id });
 
-  if (updated.length === 0) return; // already notified today (this check or a concurrent one)
+  if (updated.length === 0) return; // this milestone (or a further one) was already notified today
 
   const dir = pctChange > 0 ? "up" : "down";
   await sendPushToTokens(

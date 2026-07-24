@@ -13,7 +13,7 @@ export interface NotificationEvent {
   at: string; // ISO timestamp
 }
 
-interface ServerSnapshot { date: string; totalValue: number; notified: boolean }
+interface ServerSnapshot { date: string; totalValue: number; lastNotifiedMilestone: number }
 
 function seenKey(userId: string) {
   return `@investry_notifications_last_seen_${userId}`;
@@ -23,7 +23,7 @@ function seenKey(userId: string) {
  * Real, already-happened alerts — distinct from notifications.tsx's own
  * "Upcoming" list (income due soon, live gold/silver moves). Backed by the
  * same rows the push crons already write server-side (price_alerts.
- * triggeredAt, portfolio_snapshots.notified), so this is never fabricated:
+ * triggeredAt, portfolio_snapshots.lastNotifiedMilestone), so this is never fabricated:
  * an event only appears here because a real push was actually sent for it.
  */
 export function useNotificationHistory() {
@@ -80,7 +80,7 @@ export function useNotificationHistory() {
 
     const sorted = [...snapshots].sort((x, y) => x.date.localeCompare(y.date));
     sorted.forEach((s, i) => {
-      if (!s.notified) return;
+      if (s.lastNotifiedMilestone === 0) return;
       const prev = sorted[i - 1];
       if (!prev || prev.totalValue <= 0) return;
       const pct = ((s.totalValue - prev.totalValue) / prev.totalValue) * 100;
