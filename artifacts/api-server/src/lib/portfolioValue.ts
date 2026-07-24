@@ -1,4 +1,4 @@
-import { db, holdingsTable, cashAccountsTable } from "@workspace/db";
+import { db, holdingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { decryptFromStorage } from "./encryption";
 import { fetchPrices, fetchStocks } from "../routes/markets";
@@ -12,12 +12,6 @@ export type GoldKarat = "24k" | "22k" | "21k" | "18k";
 interface StoredHolding {
   id: string;
   type: string;
-  [key: string]: unknown;
-}
-
-interface StoredCashAccount {
-  id: string;
-  balance: number;
   [key: string]: unknown;
 }
 
@@ -86,11 +80,19 @@ function computeHoldingValue(
   }
 }
 
-/** Total current value (EGP) of one user's holdings + cash accounts. */
+/**
+ * Total current value (EGP) of one user's investment holdings only —
+ * matches "Total Portfolio Value" on the Home screen exactly (gold,
+ * silver, stocks, real estate, personal assets, fixed income). Cash is
+ * deliberately excluded: the app shows it separately, under "Net Worth
+ * incl. cash", not as part of the portfolio itself. This value is what
+ * both the multi-day snapshot history (1W/1M/etc charts) and the ±1%
+ * portfolio alert are computed from, so it needs to mean the same thing
+ * the app displays, not a broader net-worth figure.
+ */
 export async function computeUserPortfolioValue(userId: string): Promise<number> {
-  const [holdingRows, cashRows, prices, egxStocks] = await Promise.all([
+  const [holdingRows, prices, egxStocks] = await Promise.all([
     db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
-    db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
     fetchPrices(),
     fetchStocks().catch(() => []), // stock pricing degrades to purchase price if this fails
   ]);
@@ -98,17 +100,8 @@ export async function computeUserPortfolioValue(userId: string): Promise<number>
   const egxPrices: Record<string, number> = {};
   for (const s of egxStocks) egxPrices[s.symbol] = s.price;
 
-  const holdingsTotal = holdingRows.reduce((sum, row) => {
+  return holdingRows.reduce((sum, row) => {
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
     return sum + computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
   }, 0);
-
-  // Cash accounts are summed as-is regardless of currency, matching the
-  // existing (naive) behavior of CashContext.tsx's totalCash on the client.
-  const cashTotal = cashRows.reduce((sum, row) => {
-    const account = { id: row.id, ...(decryptFromStorage(row.data) as object) } as StoredCashAccount;
-    return sum + (Number(account.balance) || 0);
-  }, 0);
-
-  return holdingsTotal + cashTotal;
 }
