@@ -451,7 +451,6 @@ const en = {
   // Auth — sign in
   welcomeBack: 'Welcome back',
   signInSubtitle: 'Sign in to your account',
-  continueWithApple: 'Continue with Apple',
   continueWithGoogle: 'Continue with Google',
   orDivider: 'or',
   emailAddress: 'Email address',
@@ -461,6 +460,14 @@ const en = {
   signInBtnLabel: 'Sign In',
   dontHaveAccount: "Don't have an account? ",
   createOne: 'Create one',
+  forgotPassword: 'Forgot password?',
+  resetPasswordTitle: 'Reset your password',
+  resetPasswordRequestSubtitle: 'Enter your email and we’ll send you a reset code.',
+  sendResetCodeBtn: 'Send Reset Code',
+  resetPasswordVerifySubtitle: 'Enter the 6-digit code we sent to',
+  newPasswordLabel: 'New password',
+  newPasswordPlaceholder: 'Enter new password',
+  resetPasswordBtn: 'Reset Password',
 
   // Auth — sign up
   createAccount: 'Create account',
@@ -1481,7 +1488,6 @@ const ar: typeof en = {
   // Auth — sign in
   welcomeBack: 'مرحباً بعودتك',
   signInSubtitle: 'تسجيل الدخول إلى حسابك',
-  continueWithApple: 'تابع مع Apple',
   continueWithGoogle: 'تابع مع Google',
   orDivider: 'أو',
   emailAddress: 'البريد الإلكتروني',
@@ -1491,6 +1497,14 @@ const ar: typeof en = {
   signInBtnLabel: 'تسجيل الدخول',
   dontHaveAccount: 'ليس لديك حساب؟ ',
   createOne: 'أنشئ حساباً',
+  forgotPassword: 'نسيت كلمة المرور؟',
+  resetPasswordTitle: 'إعادة تعيين كلمة المرور',
+  resetPasswordRequestSubtitle: 'أدخل بريدك الإلكتروني وسنرسل لك رمز إعادة التعيين.',
+  sendResetCodeBtn: 'إرسال رمز إعادة التعيين',
+  resetPasswordVerifySubtitle: 'أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى',
+  newPasswordLabel: 'كلمة المرور الجديدة',
+  newPasswordPlaceholder: 'أدخل كلمة المرور الجديدة',
+  resetPasswordBtn: 'إعادة تعيين كلمة المرور',
 
   // Auth — sign up
   createAccount: 'إنشاء حساب',

@@ -37,8 +37,17 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [appleLoading, setAppleLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
+
+  // Forgot-password flow — a small state machine layered on the same
+  // useSignIn() resource: 'request' sends the reset code, 'verify' takes
+  // the code + new password and completes the reset in one step.
+  const [resetMode, setResetMode] = useState<'none' | 'request' | 'verify'>('none');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [resetError, setResetError] = useState('');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -81,6 +90,45 @@ export default function SignInScreen() {
     }
   };
 
+  const openForgotPassword = () => {
+    setResetError('');
+    setResetEmail(email);
+    setResetCode('');
+    setNewPassword('');
+    setResetMode('request');
+  };
+
+  const handleSendResetCode = async () => {
+    if (!signIn) return;
+    setResetError('');
+    try {
+      await signIn.create({ identifier: resetEmail });
+      const { error } = await signIn.resetPasswordEmailCode.sendCode();
+      if (error) { setResetError(error.message ?? 'Could not send reset code.'); return; }
+      setResetMode('verify');
+    } catch (err: any) {
+      setResetError(err?.errors?.[0]?.message ?? err?.message ?? 'Could not send reset code. Please try again.');
+    }
+  };
+
+  const handleSubmitReset = async () => {
+    if (!signIn) return;
+    setResetError('');
+    try {
+      const verify = await signIn.resetPasswordEmailCode.verifyCode({ code: resetCode });
+      if (verify.error) { setResetError(verify.error.message ?? 'Invalid code. Please check and try again.'); return; }
+      const submit = await signIn.resetPasswordEmailCode.submitPassword({ password: newPassword });
+      if (submit.error) { setResetError(submit.error.message ?? 'Could not set new password.'); return; }
+      if (signIn.status === 'complete') {
+        await activateSession(signIn.createdSessionId);
+      } else {
+        setResetError(`Reset could not complete. Please try again. (${signIn.status})`);
+      }
+    } catch (err: any) {
+      setResetError(err?.errors?.[0]?.message ?? err?.message ?? 'Reset failed. Please try again.');
+    }
+  };
+
   const handleGoogle = useCallback(async () => {
     setGlobalError('');
     setGoogleLoading(true);
@@ -101,25 +149,117 @@ export default function SignInScreen() {
     }
   }, [startSSOFlow]);
 
-  const handleApple = useCallback(async () => {
-    setGlobalError('');
-    setAppleLoading(true);
-    try {
-      const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: 'oauth_apple',
-        redirectUrl: AuthSession.makeRedirectUri(),
-      });
-      if (createdSessionId) {
-        await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
-      } else {
-        setGlobalError('Apple sign-in did not complete. Please try again.');
-      }
-    } catch (err: any) {
-      setGlobalError(err?.message ?? 'Apple sign-in failed');
-    } finally {
-      setAppleLoading(false);
-    }
-  }, [startSSOFlow]);
+  if (resetMode !== 'none') {
+    return (
+      <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            contentContainerStyle={[styles.inner, { paddingTop: topPad + 16, paddingBottom: botPad + 40, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Pressable onPress={() => setResetMode('none')} style={styles.backBtn}>
+              <Feather name="arrow-left" size={20} color={colors.text} />
+            </Pressable>
+
+            <View style={styles.headerWrap}>
+              <Text style={[styles.title, { color: colors.text }]}>{t.resetPasswordTitle}</Text>
+              <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+                {resetMode === 'request' ? t.resetPasswordRequestSubtitle : `${t.resetPasswordVerifySubtitle}\n${resetEmail}`}
+              </Text>
+            </View>
+
+            {resetMode === 'request' ? (
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.emailAddress}</Text>
+                <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <Feather name="mail" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    placeholder={t.emailPlaceholder}
+                    placeholderTextColor={colors.mutedForeground}
+                    value={resetEmail}
+                    onChangeText={setResetEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                  />
+                </View>
+              </View>
+            ) : (
+              <>
+                <View style={styles.fieldGroup}>
+                  <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <TextInput
+                      style={[styles.input, { color: colors.text, textAlign: 'center', fontSize: 22, letterSpacing: 8 }]}
+                      placeholder="······"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={resetCode}
+                      onChangeText={setResetCode}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                    />
+                  </View>
+                </View>
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.newPasswordLabel}</Text>
+                  <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Feather name="lock" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { color: colors.text }]}
+                      placeholder={t.newPasswordPlaceholder}
+                      placeholderTextColor={colors.mutedForeground}
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      secureTextEntry={!showNewPass}
+                      autoComplete="new-password"
+                    />
+                    <Pressable onPress={() => setShowNewPass(v => !v)} style={styles.eyeBtn}>
+                      <Feather name={showNewPass ? 'eye' : 'eye-off'} size={16} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {resetError ? (
+              <View style={[styles.errorBanner, { backgroundColor: colors.red + '15', borderColor: colors.red + '30' }]}>
+                <Feather name="alert-circle" size={14} color={colors.red} />
+                <Text style={[styles.errorBannerText, { color: colors.red }]}>{resetError}</Text>
+              </View>
+            ) : null}
+
+            {resetMode === 'request' ? (
+              <Pressable
+                style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: (!resetEmail || isFetching) ? 0.5 : 1 }]}
+                onPress={handleSendResetCode}
+                disabled={!resetEmail || isFetching}
+              >
+                {isFetching
+                  ? <ActivityIndicator color={colors.primaryForeground} />
+                  : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>{t.sendResetCodeBtn}</Text>
+                }
+              </Pressable>
+            ) : (
+              <Pressable
+                style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: (resetCode.length < 4 || !newPassword || isFetching) ? 0.5 : 1 }]}
+                onPress={handleSubmitReset}
+                disabled={resetCode.length < 4 || !newPassword || isFetching}
+              >
+                {isFetching
+                  ? <ActivityIndicator color={colors.primaryForeground} />
+                  : <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>{t.resetPasswordBtn}</Text>
+                }
+              </Pressable>
+            )}
+
+            {/* Required for Clerk bot protection */}
+            <View nativeID="clerk-captcha" />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Animated.View>
+    );
+  }
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim }]}>
@@ -145,23 +285,6 @@ export default function SignInScreen() {
               {t.signInSubtitle}
             </Text>
           </View>
-
-          {/* Apple (iOS only, satisfies App Store guideline 4.8) */}
-          {Platform.OS === 'ios' && (
-            <Pressable
-              style={[styles.socialBtn, { backgroundColor: colors.text, borderColor: colors.text, marginBottom: 10 }]}
-              onPress={handleApple}
-              disabled={appleLoading}
-            >
-              {appleLoading
-                ? <ActivityIndicator color={colors.background} />
-                : <>
-                    <Feather name="command" size={17} color={colors.background} />
-                    <Text style={[styles.socialBtnText, { color: colors.background }]}>{t.continueWithApple}</Text>
-                  </>
-              }
-            </Pressable>
-          )}
 
           {/* Google */}
           <Pressable
@@ -208,9 +331,7 @@ export default function SignInScreen() {
 
           {/* Password */}
           <View style={styles.fieldGroup}>
-            <View style={styles.fieldLabelRow}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.passwordLabel}</Text>
-            </View>
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.passwordLabel}</Text>
             <View style={[styles.inputWrap, { borderColor: errors.fields.password ? colors.red : colors.border, backgroundColor: colors.card }]}>
               <Feather name="lock" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
               <TextInput
@@ -233,6 +354,9 @@ export default function SignInScreen() {
             {errors.fields.password && (
               <Text style={[styles.fieldError, { color: colors.red }]}>{errors.fields.password.message}</Text>
             )}
+            <Pressable onPress={openForgotPassword} style={styles.forgotRow}>
+              <Text style={[styles.forgotText, { color: colors.primary }]}>{t.forgotPassword}</Text>
+            </Pressable>
           </View>
 
           {globalError ? (
@@ -289,7 +413,7 @@ const styles = StyleSheet.create({
 
   fieldGroup: { gap: 6 },
   fieldLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  fieldLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  forgotRow: { alignItems: 'flex-end', marginTop: 2 },
   forgotText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
