@@ -10,6 +10,11 @@ import { logger } from "./logger";
 // there's no need for this to be scheduled at a precise midnight instant.
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const CHANGE_THRESHOLD_PCT = 1;
+// A real diversified portfolio doesn't swing this much in one day — a
+// reading past this is almost certainly a data artifact (e.g. a valuation
+// formula change comparing against a snapshot taken under the old formula)
+// rather than an actual move, so it's safer to skip the push than mislead.
+const SANITY_MAX_PCT = 20;
 
 function cairoDateString(): string {
   // en-CA gives YYYY-MM-DD directly.
@@ -58,6 +63,10 @@ async function checkUser(userId: string, today: string, pushToken: string | null
 
   const pctChange = ((totalValue - prior.totalValue) / prior.totalValue) * 100;
   if (Math.abs(pctChange) < CHANGE_THRESHOLD_PCT) return;
+  if (Math.abs(pctChange) > SANITY_MAX_PCT) {
+    logger.warn({ userId, pctChange, totalValue, prior: prior.totalValue }, "Skipping implausible portfolio alert");
+    return;
+  }
 
   // Atomic compare-and-swap: only the process whose UPDATE actually flips
   // notified false->true sends the push — closes a multi-process race
