@@ -137,19 +137,16 @@ export default function SignInScreen() {
       // path-suffixed URL is what needs to be whitelisted in Clerk Dashboard's
       // redirect URLs. Overriding it with a bare makeRedirectUri() (no path)
       // silently mismatches that whitelist and drops the session.
-      const { createdSessionId, setActive, authSessionResult } = await startSSOFlow({
+      const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
       });
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       } else {
-        // TEMPORARY DEBUG: no device console access — surface the raw
-        // browser-session result on screen to see exactly what's coming
-        // back instead of guessing. Remove once the cause is confirmed.
-        setGlobalError(`Google sign-in did not complete. debug: ${JSON.stringify(authSessionResult)}`);
+        setGlobalError('Google sign-in did not complete. Please try again.');
       }
     } catch (err: any) {
-      setGlobalError(`Google sign-in failed (catch): ${err?.message ?? JSON.stringify(err)}`);
+      setGlobalError(err?.message ?? 'Google sign-in failed');
     } finally {
       setGoogleLoading(false);
     }
