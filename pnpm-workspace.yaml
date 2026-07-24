@@ -166,7 +166,6 @@ overrides:
   uuid: ">=11.1.1"
 
 allowBuilds:
-  '@sentry/cli': true
   browser-tabs-lock: true
   core-js: true
   dtrace-provider: true
