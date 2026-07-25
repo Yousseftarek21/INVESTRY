@@ -372,6 +372,115 @@
   .price-period-toggle button.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   .price-status-note { font-size: 13px; color: var(--muted); text-align: center; margin: 18px auto 0; max-width: 420px; }
 
+  /* Pricing — Pro gets real visual weight (badge, soft glow, hover lift);
+     Free stays intentionally quiet (muted checks, plain border). */
+  .pricing-cards { max-width: 700px; gap: 24px; align-items: stretch; }
+  .price-card { max-width: 320px; padding: 32px; border-radius: 22px; position: relative; display: flex; flex-direction: column; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .price-card.pro {
+    box-shadow: 0 0 0 1px var(--accent), 0 16px 40px -20px rgba(169, 130, 30, 0.35);
+    padding-top: 38px;
+  }
+  .price-card.pro:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--accent), 0 22px 48px -18px rgba(169, 130, 30, 0.42); }
+  @media (prefers-reduced-motion: reduce) { .price-card.pro:hover { transform: none; } }
+
+  .pro-badge {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--accent); color: #fff;
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.3px;
+    padding: 6px 14px; border-radius: 999px; white-space: nowrap;
+  }
+  html[dir="rtl"] .pro-badge { font-family: 'Cairo', sans-serif; }
+
+  .price-card.free .price-features li svg { color: var(--muted); }
+  .price-card.free .price-cta.secondary { border-color: var(--border); color: var(--muted); }
+
+  .price-savings-note {
+    font-size: 12.5px; font-weight: 600; color: var(--accent);
+    background: var(--accent-soft); display: inline-block;
+    padding: 4px 10px; border-radius: 999px; margin: 0 0 18px;
+  }
+
+  .price-features { flex: 1; }
+  .price-card.pro .price-features { gap: 16px; margin-bottom: 26px; }
+  .price-card.pro .price-features li { align-items: flex-start; }
+  .price-feature-pro .pf-icon {
+    width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-size: 14.5px; line-height: 1;
+  }
+  .price-feature-pro .pf-text { display: flex; flex-direction: column; gap: 1px; }
+  .price-feature-pro .pf-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .price-feature-pro .pf-desc { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+  .price-cta.primary-lg { padding: 15px 18px; font-size: 15px; transition: opacity 0.15s ease, transform 0.15s ease; }
+  .price-cta.primary-lg:hover { opacity: 0.9; transform: translateY(-1px); }
+  @media (prefers-reduced-motion: reduce) { .price-cta.primary-lg:hover { transform: none; } }
+
+  .trust-line {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    flex-wrap: wrap; font-size: 12.5px; color: var(--muted);
+    margin: 22px auto 0; max-width: 460px; text-align: center;
+  }
+  .trust-line .sep { opacity: 0.5; }
+
+  /* Why Investors Choose Pro — fills whitespace below pricing without a
+     second hero-weight header; a plain responsive icon grid. */
+  .why-pro-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 18px; text-align: start; max-width: 920px; margin: 0 auto;
+  }
+  .why-pro-card {
+    border: 1px solid var(--border); border-radius: 18px; padding: 24px;
+    background: var(--card); transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .why-pro-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { .why-pro-card:hover { transform: none; } }
+  .why-pro-card .icon { font-size: 20px; margin-bottom: 12px; display: block; }
+  .why-pro-card h3 { font-size: 15.5px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.2px; }
+  .why-pro-card p { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.55; }
+
+  /* Comparison table — a real table on wide screens; on narrow screens each
+     row becomes its own labeled line via data-label, not a scroll-jail. */
+  .compare-wrap { max-width: 720px; margin: 0 auto; border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+  table.compare-table { width: 100%; border-collapse: collapse; text-align: start; }
+  .compare-table th, .compare-table td { padding: 14px 20px; font-size: 14px; border-top: 1px solid var(--border); }
+  .compare-table thead th { border-top: none; font-size: 12px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); background: var(--card); }
+  .compare-table th:first-child, .compare-table td:first-child { text-align: start; color: var(--text); font-weight: 500; }
+  .compare-table th:not(:first-child), .compare-table td:not(:first-child) { text-align: center; }
+  .compare-table td.pro-cell { font-weight: 600; color: var(--accent); }
+  .compare-table svg.yes { color: var(--accent); }
+  .compare-table svg.no { color: var(--muted); opacity: 0.4; }
+  @media (max-width: 640px) {
+    .compare-table thead { display: none; }
+    .compare-table, .compare-table tbody, .compare-table tr, .compare-table td { display: block; width: 100%; }
+    .compare-table tr { border-top: 1px solid var(--border); padding: 14px 20px; }
+    .compare-table tr:first-child { border-top: none; }
+    .compare-table td { border: none; padding: 4px 0; text-align: start !important; }
+    .compare-table td:first-child { font-weight: 600; padding-bottom: 6px; }
+    .compare-table td:not(:first-child) { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
+    .compare-table td:not(:first-child)::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--muted); }
+    .compare-table td.pro-cell::before { color: var(--accent); opacity: 0.7; }
+  }
+
+  /* FAQ — native <details>/<summary>, no JS needed, keyboard/AT accessible
+     for free. */
+  .faq-list { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; text-align: start; }
+  .faq-item { border: 1px solid var(--border); border-radius: 14px; padding: 4px 20px; background: var(--card); }
+  .faq-item summary {
+    padding: 16px 0; font-size: 15px; font-weight: 600; cursor: pointer;
+    list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary .chev { color: var(--muted); transition: transform 0.2s ease; flex-shrink: 0; }
+  .faq-item[open] summary .chev { transform: rotate(180deg); }
+  .faq-item p { font-size: 14px; color: var(--muted); line-height: 1.65; margin: 0 0 18px; }
+
+  /* Scroll-reveal — subtle fade+rise, off by default for reduced-motion. */
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.5s ease, transform 0.5s ease; }
+  .reveal.in-view { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+
   /* Regional band — accent bar, not a national flag, since positioning is
      "starting in Egypt, expanding regionally," not Egypt-exclusive. */
   .egypt-band {
@@ -589,25 +698,27 @@
     <div class="wrap">
       <div class="section-head">
         <h2 class="section-title" data-i18n="pricingTitle">Simple pricing</h2>
-        <p class="section-sub" data-i18n="pricingSub">Start free. Upgrade any time — cancel any time.</p>
+        <p class="section-sub" data-i18n="pricingSub">Everything you need to track your investments. Upgrade only when you're ready.</p>
       </div>
 
       <div class="pricing-cards">
-        <div class="price-card">
+        <div class="price-card free">
           <p class="price-plan" data-i18n="planFree">Free</p>
           <p class="price-amount">0 EGP</p>
           <p class="price-unit" data-i18n="planFreeUnit">forever</p>
           <ul class="price-features">
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF1">Up to 3 holdings</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF2">Live prices, 1D chart</span></li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF2">Live prices</span></li>
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF3">1 price alert</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF4">1 cash account, 1 goal</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF5">No recurring income tracking</span></li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF4">1 cash account</span></li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF5">1 goal</span></li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF6">Basic portfolio tracking</span></li>
           </ul>
           <button class="price-cta secondary" disabled data-i18n="planCurrentFree">Your current plan</button>
         </div>
 
         <div class="price-card pro">
+          <span class="pro-badge">⭐ <span data-i18n="mostPopular">Most Popular</span></span>
           <p class="price-plan">Pro</p>
           <div class="price-period-toggle">
             <button type="button" id="periodMonthly" class="active" data-i18n="periodMonthly">Monthly</button>
@@ -615,22 +726,116 @@
           </div>
           <p class="price-amount" id="proAmount">49.99 EGP</p>
           <p class="price-unit" id="proUnit" data-i18n="perMonth">per month</p>
+          <p class="price-savings-note" id="proSavingsNote" style="display:none;"></p>
           <ul class="price-features">
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planProF1">Unlimited holdings, cash accounts &amp; goals</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planProF2">Full history &amp; analytics</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planProF3">Market Intelligence</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planProF4">Unlimited price alerts &amp; export</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planProF5">Recurring income tracking</span></li>
+            <li class="price-feature-pro"><span class="pf-icon">📈</span><span class="pf-text"><span class="pf-title" data-i18n="planProF1t">Unlimited Investments</span><span class="pf-desc" data-i18n="planProF1d">Track every holding you own — no limits, ever.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-icon">💰</span><span class="pf-text"><span class="pf-title" data-i18n="planProF2t">Unlimited Cash Accounts</span><span class="pf-desc" data-i18n="planProF2d">Every bank balance and wallet, tracked together.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-icon">🎯</span><span class="pf-text"><span class="pf-title" data-i18n="planProF3t">Unlimited Goals</span><span class="pf-desc" data-i18n="planProF3d">Set and track as many goals as you want.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-icon">🧠</span><span class="pf-text"><span class="pf-title" data-i18n="planProF4t">Market Intelligence</span><span class="pf-desc" data-i18n="planProF4d">AI-powered insight into your own portfolio.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-icon">📊</span><span class="pf-text"><span class="pf-title" data-i18n="planProF5t">Advanced Portfolio Analytics</span><span class="pf-desc" data-i18n="planProF5d">Deeper performance and allocation charts.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-icon">📤</span><span class="pf-text"><span class="pf-title" data-i18n="planProF6t">Export Portfolio</span><span class="pf-desc" data-i18n="planProF6d">Download your full portfolio as CSV or Excel.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-icon">🔔</span><span class="pf-text"><span class="pf-title" data-i18n="planProF7t">Unlimited Price Alerts</span><span class="pf-desc" data-i18n="planProF7d">Never miss a move that matters to you.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-icon">💵</span><span class="pf-text"><span class="pf-title" data-i18n="planProF8t">Recurring Income Tracking</span><span class="pf-desc" data-i18n="planProF8d">Salary, dividends, and rent — tracked automatically.</span></span></li>
           </ul>
-          <button class="price-cta" id="proCta" type="button" data-i18n="subscribeBtn">Subscribe</button>
+          <button class="price-cta primary-lg" id="proCta" type="button" data-i18n="subscribeBtn">Unlock Pro</button>
         </div>
       </div>
 
       <p class="price-status-note" id="pricingStatusNote"></p>
+      <p class="trust-line">
+        <span data-i18n="trustStripe">🔒 Secure payments powered by Stripe</span>
+        <span class="sep">·</span>
+        <span data-i18n="trustCancel">Cancel anytime</span>
+        <span class="sep">·</span>
+        <span data-i18n="trustFees">No hidden fees</span>
+      </p>
     </div>
   </section>
 
-  <section class="block">
+  <section class="block reveal" id="why-pro">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="section-title" data-i18n="whyProTitle">Why investors choose Pro</h2>
+        <p class="section-sub" data-i18n="whyProSub">Six reasons serious investors don't stay on Free for long.</p>
+      </div>
+      <div class="why-pro-grid">
+        <div class="why-pro-card"><span class="icon">📈</span><h3 data-i18n="whyPro1t">Advanced Analytics</h3><p data-i18n="whyPro1d">Professional portfolio insights, not just totals.</p></div>
+        <div class="why-pro-card"><span class="icon">🧠</span><h3 data-i18n="whyPro2t">Market Intelligence</h3><p data-i18n="whyPro2d">AI-powered information on your own holdings.</p></div>
+        <div class="why-pro-card"><span class="icon">📤</span><h3 data-i18n="whyPro3t">Export Reports</h3><p data-i18n="whyPro3d">CSV and Excel exports, whenever you need them.</p></div>
+        <div class="why-pro-card"><span class="icon">💰</span><h3 data-i18n="whyPro4t">Unlimited Tracking</h3><p data-i18n="whyPro4d">Track every investment you own, with no caps.</p></div>
+        <div class="why-pro-card"><span class="icon">🔔</span><h3 data-i18n="whyPro5t">Unlimited Alerts</h3><p data-i18n="whyPro5d">Never miss an important price movement again.</p></div>
+        <div class="why-pro-card"><span class="icon">⚡</span><h3 data-i18n="whyPro6t">Priority Features</h3><p data-i18n="whyPro6d">Early access to everything we build next.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block reveal">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="section-title" data-i18n="compareTitle">Free vs. Pro, at a glance</h2>
+      </div>
+      <div class="compare-wrap">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th data-i18n="compareFeature">Feature</th>
+              <th data-i18n="compareFree">Free</th>
+              <th data-i18n="comparePro">Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-i18n="compareRow1">Number of holdings</td>
+              <td data-i18n-label="compareFree" data-label="Free">3</td>
+              <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="compareUnlimited">Unlimited</td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRow2">Cash accounts</td>
+              <td data-i18n-label="compareFree" data-label="Free">1</td>
+              <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="compareUnlimited">Unlimited</td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRow3">Goals</td>
+              <td data-i18n-label="compareFree" data-label="Free">1</td>
+              <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="compareUnlimited">Unlimited</td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRow4">Analytics</td>
+              <td data-i18n-label="compareFree" data-label="Free" data-i18n="compareBasic">Basic</td>
+              <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="compareAdvanced">Advanced</td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRow5">Price alerts</td>
+              <td data-i18n-label="compareFree" data-label="Free">1</td>
+              <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="compareUnlimited">Unlimited</td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRow6">Export (CSV/Excel)</td>
+              <td data-i18n-label="compareFree" data-label="Free"><svg class="no" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></td>
+              <td data-i18n-label="comparePro" data-label="Pro"><svg class="yes" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRow7">Market intelligence</td>
+              <td data-i18n-label="compareFree" data-label="Free"><svg class="no" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></td>
+              <td data-i18n-label="comparePro" data-label="Pro"><svg class="yes" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRow8">Recurring income tracking</td>
+              <td data-i18n-label="compareFree" data-label="Free"><svg class="no" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></td>
+              <td data-i18n-label="comparePro" data-label="Pro"><svg class="yes" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRow9">Support</td>
+              <td data-i18n-label="compareFree" data-label="Free" data-i18n="compareEmail">Email</td>
+              <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="comparePriority">Priority</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="block reveal">
     <div class="wrap">
       <div class="egypt-band">
         <div class="egypt-flagbar"></div>
@@ -638,6 +843,36 @@
           <h2 data-i18n="egyptTitle">The details other apps get wrong</h2>
           <p data-i18n="egyptBody">Today: live EGX stock prices, gold and silver priced in grams, real exchange rates, and the local certificate and T-bill products your bank already sells — fully bilingual in Arabic and English. More markets are coming as we expand.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block reveal" id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 class="section-title" data-i18n="faqTitle">Frequently asked questions</h2>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary><span data-i18n="faq1q">How do subscriptions work?</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p data-i18n="faq1a">Pro is billed monthly or annually through Stripe, on this website. Your subscription applies to your account and unlocks Pro instantly in the app too.</p>
+        </details>
+        <details class="faq-item">
+          <summary><span data-i18n="faq2q">Can I cancel anytime?</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p data-i18n="faq2a">Yes. Manage or cancel your subscription anytime from this page — no calls, no forms, no waiting.</p>
+        </details>
+        <details class="faq-item">
+          <summary><span data-i18n="faq3q">Will my data stay safe?</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p data-i18n="faq3a">Yes. Your portfolio data is yours whether you're on Free or Pro, and payments are handled entirely by Stripe — we never see or store your card details.</p>
+        </details>
+        <details class="faq-item">
+          <summary><span data-i18n="faq4q">Can I switch between monthly and yearly?</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p data-i18n="faq4a">Yes, anytime from the billing portal — your next invoice is prorated automatically.</p>
+        </details>
+        <details class="faq-item">
+          <summary><span data-i18n="faq5q">What happens if my subscription expires?</span><svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></summary>
+          <p data-i18n="faq5a">You're moved back to the Free plan automatically. Nothing you've already entered is ever deleted.</p>
+        </details>
       </div>
     </div>
   </section>
@@ -705,25 +940,77 @@
       signIn: "Sign in",
       signOut: "Sign out",
       pricingTitle: "Simple pricing",
-      pricingSub: "Start free. Upgrade any time — cancel any time.",
+      pricingSub: "Everything you need to track your investments. Upgrade only when you're ready.",
+      mostPopular: "Most Popular",
       planFree: "Free",
       planFreeUnit: "forever",
       planFreeF1: "Up to 3 holdings",
-      planFreeF2: "Live prices, 1D chart",
+      planFreeF2: "Live prices",
       planFreeF3: "1 price alert",
-      planFreeF4: "1 cash account, 1 goal",
-      planFreeF5: "No recurring income tracking",
+      planFreeF4: "1 cash account",
+      planFreeF5: "1 goal",
+      planFreeF6: "Basic portfolio tracking",
       planCurrentFree: "Your current plan",
       periodMonthly: "Monthly",
       periodAnnual: "Annual · Save 33%",
       perMonth: "per month",
       perYear: "per year",
-      planProF1: "Unlimited holdings, cash accounts & goals",
-      planProF2: "Full history & analytics",
-      planProF3: "Market Intelligence",
-      planProF4: "Unlimited price alerts & export",
-      planProF5: "Recurring income tracking",
-      subscribeBtn: "Subscribe",
+      annualPerMonth: "Only {price} EGP/month, billed annually",
+      planProF1t: "Unlimited Investments",
+      planProF1d: "Track every holding you own — no limits, ever.",
+      planProF2t: "Unlimited Cash Accounts",
+      planProF2d: "Every bank balance and wallet, tracked together.",
+      planProF3t: "Unlimited Goals",
+      planProF3d: "Set and track as many goals as you want.",
+      planProF4t: "Market Intelligence",
+      planProF4d: "AI-powered insight into your own portfolio.",
+      planProF5t: "Advanced Portfolio Analytics",
+      planProF5d: "Deeper performance and allocation charts.",
+      planProF6t: "Export Portfolio",
+      planProF6d: "Download your full portfolio as CSV or Excel.",
+      planProF7t: "Unlimited Price Alerts",
+      planProF7d: "Never miss a move that matters to you.",
+      planProF8t: "Recurring Income Tracking",
+      planProF8d: "Salary, dividends, and rent — tracked automatically.",
+      trustStripe: "🔒 Secure payments powered by Stripe",
+      trustCancel: "Cancel anytime",
+      trustFees: "No hidden fees",
+      whyProTitle: "Why investors choose Pro",
+      whyProSub: "Six reasons serious investors don't stay on Free for long.",
+      whyPro1t: "Advanced Analytics", whyPro1d: "Professional portfolio insights, not just totals.",
+      whyPro2t: "Market Intelligence", whyPro2d: "AI-powered information on your own holdings.",
+      whyPro3t: "Export Reports", whyPro3d: "CSV and Excel exports, whenever you need them.",
+      whyPro4t: "Unlimited Tracking", whyPro4d: "Track every investment you own, with no caps.",
+      whyPro5t: "Unlimited Alerts", whyPro5d: "Never miss an important price movement again.",
+      whyPro6t: "Priority Features", whyPro6d: "Early access to everything we build next.",
+      compareTitle: "Free vs. Pro, at a glance",
+      compareFeature: "Feature", compareFree: "Free", comparePro: "Pro",
+      compareRow1: "Number of holdings",
+      compareRow2: "Cash accounts",
+      compareRow3: "Goals",
+      compareRow4: "Analytics",
+      compareRow5: "Price alerts",
+      compareRow6: "Export (CSV/Excel)",
+      compareRow7: "Market intelligence",
+      compareRow8: "Recurring income tracking",
+      compareRow9: "Support",
+      compareUnlimited: "Unlimited",
+      compareBasic: "Basic",
+      compareAdvanced: "Advanced",
+      compareEmail: "Email",
+      comparePriority: "Priority",
+      faqTitle: "Frequently asked questions",
+      faq1q: "How do subscriptions work?",
+      faq1a: "Pro is billed monthly or annually through Stripe, on this website. Your subscription applies to your account and unlocks Pro instantly in the app too.",
+      faq2q: "Can I cancel anytime?",
+      faq2a: "Yes. Manage or cancel your subscription anytime from this page — no calls, no forms, no waiting.",
+      faq3q: "Will my data stay safe?",
+      faq3a: "Yes. Your portfolio data is yours whether you're on Free or Pro, and payments are handled entirely by Stripe — we never see or store your card details.",
+      faq4q: "Can I switch between monthly and yearly?",
+      faq4a: "Yes, anytime from the billing portal — your next invoice is prorated automatically.",
+      faq5q: "What happens if my subscription expires?",
+      faq5a: "You're moved back to the Free plan automatically. Nothing you've already entered is ever deleted.",
+      subscribeBtn: "Unlock Pro",
       manageBillingBtn: "Manage billing",
       currentPlanPro: "You're on the Pro plan",
       signInToSubscribe: "Sign in to subscribe",
@@ -772,25 +1059,77 @@
       signIn: "تسجيل الدخول",
       signOut: "تسجيل الخروج",
       pricingTitle: "أسعار بسيطة",
-      pricingSub: "ابدأ مجاناً. رقّي في أي وقت — وألغِ في أي وقت.",
+      pricingSub: "كل اللي محتاجه عشان تتابع استثماراتك. رقّي بس لما تكون جاهز.",
+      mostPopular: "الأكثر طلباً",
       planFree: "مجاني",
       planFreeUnit: "للأبد",
       planFreeF1: "حتى 3 أصول",
-      planFreeF2: "أسعار حية، رسم بياني يومي",
+      planFreeF2: "أسعار حية",
       planFreeF3: "تنبيه سعر واحد",
-      planFreeF4: "حساب نقدي واحد، هدف واحد",
-      planFreeF5: "بدون تتبع الدخل المتكرر",
+      planFreeF4: "حساب نقدي واحد",
+      planFreeF5: "هدف واحد",
+      planFreeF6: "متابعة أساسية للمحفظة",
       planCurrentFree: "خطتك الحالية",
       periodMonthly: "شهري",
       periodAnnual: "سنوي · وفر 33%",
       perMonth: "شهرياً",
       perYear: "سنوياً",
-      planProF1: "أصول وحسابات نقدية وأهداف غير محدودة",
-      planProF2: "سجل كامل وتحليلات",
-      planProF3: "ذكاء السوق",
-      planProF4: "تنبيهات أسعار غير محدودة وتصدير",
-      planProF5: "تتبع الدخل المتكرر",
-      subscribeBtn: "اشترك",
+      annualPerMonth: "بس {price} جنيه/شهرياً، بفاتورة سنوية",
+      planProF1t: "أصول غير محدودة",
+      planProF1d: "تابع كل أصل بتملكه — من غير أي حد، أبداً.",
+      planProF2t: "حسابات نقدية غير محدودة",
+      planProF2d: "كل رصيد بنكي ومحفظة، متابَعين مع بعض.",
+      planProF3t: "أهداف غير محدودة",
+      planProF3d: "حدد وتابع أي عدد من الأهداف تحبه.",
+      planProF4t: "ذكاء السوق",
+      planProF4d: "رؤى مدعومة بالذكاء الاصطناعي على محفظتك.",
+      planProF5t: "تحليلات محفظة متقدمة",
+      planProF5d: "رسوم بيانية أعمق للأداء وتوزيع الأصول.",
+      planProF6t: "تصدير المحفظة",
+      planProF6d: "حمّل محفظتك بالكامل كملف CSV أو Excel.",
+      planProF7t: "تنبيهات أسعار غير محدودة",
+      planProF7d: "متفوتش أي تحرك سعر مهم بالنسبالك.",
+      planProF8t: "تتبع الدخل المتكرر",
+      planProF8d: "المرتب، والتوزيعات، والإيجار — بيتابعوا تلقائيًا.",
+      trustStripe: "🔒 مدفوعات آمنة عن طريق Stripe",
+      trustCancel: "ألغِ في أي وقت",
+      trustFees: "من غير رسوم مخفية",
+      whyProTitle: "ليه المستثمرين بيختاروا Pro",
+      whyProSub: "ست أسباب ليه المستثمر الجاد ملوش لفة كتير على الخطة المجانية.",
+      whyPro1t: "تحليلات متقدمة", whyPro1d: "رؤى احترافية للمحفظة، مش مجرد أرقام إجمالية.",
+      whyPro2t: "ذكاء السوق", whyPro2d: "معلومات مدعومة بالذكاء الاصطناعي على أصولك.",
+      whyPro3t: "تصدير التقارير", whyPro3d: "تصدير CSV و Excel، وقت ما تحتاجه.",
+      whyPro4t: "متابعة غير محدودة", whyPro4d: "تابع كل استثمار بتملكه، من غير أي سقف.",
+      whyPro5t: "تنبيهات غير محدودة", whyPro5d: "متفوتش أي تحرك سعر مهم تاني.",
+      whyPro6t: "مميزات ذات أولوية", whyPro6d: "وصول مبكر لكل حاجة جديدة بنطورها.",
+      compareTitle: "مجاني مقابل Pro، بنظرة واحدة",
+      compareFeature: "الميزة", compareFree: "مجاني", comparePro: "Pro",
+      compareRow1: "عدد الأصول",
+      compareRow2: "الحسابات النقدية",
+      compareRow3: "الأهداف",
+      compareRow4: "التحليلات",
+      compareRow5: "تنبيهات الأسعار",
+      compareRow6: "تصدير (CSV/Excel)",
+      compareRow7: "ذكاء السوق",
+      compareRow8: "تتبع الدخل المتكرر",
+      compareRow9: "الدعم",
+      compareUnlimited: "غير محدود",
+      compareBasic: "أساسي",
+      compareAdvanced: "متقدم",
+      compareEmail: "بريد إلكتروني",
+      comparePriority: "أولوية",
+      faqTitle: "الأسئلة الشائعة",
+      faq1q: "الاشتراكات بتشتغل إزاي؟",
+      faq1a: "خطة Pro بتتحاسب شهريًا أو سنويًا عن طريق Stripe، من على الموقع ده. اشتراكك بيتفعل على حسابك، وبيفتح Pro فورًا في التطبيق كمان.",
+      faq2q: "أقدر ألغي في أي وقت؟",
+      faq2a: "أيوه. تقدر تدير أو تلغي اشتراكك في أي وقت من الصفحة دي — من غير مكالمات أو استمارات أو انتظار.",
+      faq3q: "بياناتي هتفضل آمنة؟",
+      faq3a: "أيوه. بيانات محفظتك بتاعتك سواء أنت على المجاني أو Pro، والمدفوعات بتتم بالكامل عن طريق Stripe — إحنا مش بنشوف أو نخزّن بيانات كارتك خالص.",
+      faq4q: "أقدر أبدّل بين الشهري والسنوي؟",
+      faq4a: "أيوه، في أي وقت من بوابة الفوترة — الفاتورة الجاية بتتحسب تلقائيًا حسب الفرق.",
+      faq5q: "لو الاشتراك خلص هيحصل إيه؟",
+      faq5a: "هترجع للخطة المجانية تلقائيًا. أي حاجة سجلتها قبل كده متتحذفش خالص.",
+      subscribeBtn: "فعّل Pro",
       manageBillingBtn: "إدارة الفوترة",
       currentPlanPro: "أنت مشترك في خطة Pro",
       signInToSubscribe: "سجّل الدخول للاشتراك",
@@ -844,6 +1183,13 @@
     document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
       var key = el.getAttribute('data-i18n-html');
       if (t[key] != null) el.innerHTML = t[key];
+    });
+    // Mobile comparison-table rows render a "Free"/"Pro" label via CSS
+    // content:attr(data-label) — that attribute isn't textContent, so it
+    // needs its own sync pass rather than being covered by data-i18n above.
+    document.querySelectorAll('[data-i18n-label]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n-label');
+      if (t[key] != null) el.setAttribute('data-label', t[key]);
     });
     document.getElementById('langToggleLabel').textContent = t.toggleLabel;
     try { localStorage.setItem('investry-lang', lang); } catch (e) {}
@@ -930,6 +1276,7 @@
   var pricingStatusNote = document.getElementById('pricingStatusNote');
   var periodMonthlyBtn = document.getElementById('periodMonthly');
   var periodAnnualBtn = document.getElementById('periodAnnual');
+  var proSavingsNote = document.getElementById('proSavingsNote');
   var selectedPeriod = 'monthly';
   var PRICES = { monthly: '49.99 EGP', annual: '399.99 EGP' };
 
@@ -969,6 +1316,13 @@
     periodAnnualBtn.classList.toggle('active', selectedPeriod === 'annual');
     proAmount.textContent = PRICES[selectedPeriod];
     proUnit.textContent = selectedPeriod === 'monthly' ? t.perMonth : t.perYear;
+    if (selectedPeriod === 'annual') {
+      var perMonth = (parseFloat(PRICES.annual) / 12).toFixed(2);
+      proSavingsNote.textContent = t.annualPerMonth.replace('{price}', perMonth);
+      proSavingsNote.style.display = 'inline-block';
+    } else {
+      proSavingsNote.style.display = 'none';
+    }
   }
   periodMonthlyBtn.addEventListener('click', function () { selectedPeriod = 'monthly'; updatePeriodDisplay(); });
   periodAnnualBtn.addEventListener('click', function () { selectedPeriod = 'annual'; updatePeriodDisplay(); });
@@ -1057,6 +1411,23 @@
     handleCheckoutReturn();
     renderAll();
   });
+
+  // Subtle scroll-reveal for the pricing-adjacent sections — fades/rises
+  // once per element, never re-triggers, and is skipped entirely under
+  // reduced motion (CSS already shows .reveal at full opacity in that case).
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    var revealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in-view');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(function (el) { revealObserver.observe(el); });
+  } else {
+    document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in-view'); });
+  }
 </script>
 
 </body>
