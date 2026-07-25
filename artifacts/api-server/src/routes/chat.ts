@@ -11,7 +11,6 @@ import {
 } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { decryptFromStorage } from "../lib/encryption";
-import { getAnthropic } from "../lib/anthropic";
 
 const router: IRouter = Router();
 
@@ -114,21 +113,54 @@ Rules:
 - Be concise and direct — this is a mobile chat, not a report.
 - If asked for something that would cross into specific financial advice, say so plainly and explain why, then offer general education on the topic instead.`;
 
+// OpenRouter's free tier — no billing setup required, but capped at 50
+// requests/day *across the whole app* (not per user) until $10+ in credit
+// has ever been added to the account, then 1000/day. If the assistant
+// starts erroring for everyone around the same time each day, this daily
+// cap is almost certainly why.
+const OPENROUTER_MODEL = "openai/gpt-oss-20b:free";
+
+type ChatTurn = { role: "user" | "assistant"; content: string };
+
+async function callOpenRouter(systemPrompt: string, messages: ChatTurn[]): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
+
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      max_tokens: 1024,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`OpenRouter ${res.status}: ${await res.text()}`);
+  }
+
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  return data.choices?.[0]?.message?.content?.trim() ?? "";
+}
+
 // POST /api/chat — a single grounded turn, not a persisted conversation.
-// The client resends full message history each call (stateless, same as
-// the underlying Messages API); nothing is stored server-side.
+// The client resends full message history each call (stateless); nothing
+// is stored server-side.
 router.post("/chat", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const anthropic = getAnthropic();
-  if (!anthropic) { res.status(503).json({ error: "AI Assistant is not available right now" }); return; }
+  if (!process.env.OPENROUTER_API_KEY) { res.status(503).json({ error: "AI Assistant is not available right now" }); return; }
 
   const [user] = await db.select({ plan: usersTable.plan }).from(usersTable).where(eq(usersTable.id, userId));
   const isPro = user?.plan === "pro" || process.env.BETA_UNLOCK_ALL === "true";
   if (!isPro) { res.status(403).json({ error: "AI Assistant is a Pro feature" }); return; }
 
-  const body = req.body as { messages?: Array<{ role: "user" | "assistant"; content: string }> };
+  const body = req.body as { messages?: ChatTurn[] };
   const messages = body.messages;
   if (!Array.isArray(messages) || messages.length === 0 || messages[messages.length - 1]?.role !== "user") {
     res.status(400).json({ error: "messages must be a non-empty array ending with a user message" });
@@ -137,29 +169,8 @@ router.post("/chat", async (req, res) => {
 
   try {
     const portfolioContext = await buildPortfolioContext(userId);
-
-    // Streamed server-side (avoids long-response timeouts) but buffered into
-    // one JSON reply for the client — see the plan doc for why real
-    // token-by-token streaming to the mobile client is deferred.
-    const stream = anthropic.messages.stream({
-      model: "claude-opus-5",
-      max_tokens: 2048,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "low" },
-      system: [
-        { type: "text", text: SYSTEM_PREAMBLE },
-        { type: "text", text: `Here is the user's current portfolio:\n\n${portfolioContext}` },
-      ],
-      messages,
-    });
-
-    const finalMessage = await stream.finalMessage();
-    const reply = finalMessage.content
-      .filter((block) => block.type === "text")
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
-
+    const systemPrompt = `${SYSTEM_PREAMBLE}\n\nHere is the user's current portfolio:\n\n${portfolioContext}`;
+    const reply = await callOpenRouter(systemPrompt, messages);
     res.json({ reply: reply || "I couldn't come up with a response — try rephrasing your question." });
   } catch (err) {
     req.log.error({ err }, "POST /chat failed");
