@@ -437,6 +437,7 @@ const en = {
   // Auth — sign in
   welcomeBack: 'Welcome back',
   signInSubtitle: 'Sign in to your account',
+  continueWithApple: 'Continue with Apple',
   continueWithGoogle: 'Continue with Google',
   orDivider: 'or',
   emailAddress: 'Email address',
@@ -1460,6 +1461,7 @@ const ar: typeof en = {
   // Auth — sign in
   welcomeBack: 'مرحباً بعودتك',
   signInSubtitle: 'تسجيل الدخول إلى حسابك',
+  continueWithApple: 'تابع مع Apple',
   continueWithGoogle: 'تابع مع Google',
   orDivider: 'أو',
   emailAddress: 'البريد الإلكتروني',

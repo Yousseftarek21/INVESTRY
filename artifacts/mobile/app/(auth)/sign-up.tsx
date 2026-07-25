@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { useSignUp, useSSO } from '@clerk/expo';
+import { useSignInWithApple } from '@clerk/expo/apple';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -70,12 +71,14 @@ export default function SignUpScreen() {
 
   const { signUp, errors, fetchStatus } = useSignUp();
   const { startSSOFlow } = useSSO();
+  const { startAppleAuthenticationFlow } = useSignInWithApple();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [code, setCode] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   // Clerk's signUp resource has no "cancel" API — its status stays at
@@ -150,6 +153,25 @@ export default function SignUpScreen() {
       setGoogleLoading(false);
     }
   }, [startSSOFlow]);
+
+  const handleApple = useCallback(async () => {
+    setGlobalError('');
+    setAppleLoading(true);
+    try {
+      const { createdSessionId, setActive: setAppleActive } = await startAppleAuthenticationFlow();
+      if (createdSessionId && setAppleActive) {
+        await setAppleActive({ session: createdSessionId, navigate: finalizeNavigate });
+      } else {
+        setGlobalError('Apple sign-up did not complete. Please try again.');
+      }
+    } catch (err: any) {
+      if (err?.code !== 'ERR_REQUEST_CANCELED') {
+        setGlobalError(err?.message ?? 'Apple sign-up failed');
+      }
+    } finally {
+      setAppleLoading(false);
+    }
+  }, [startAppleAuthenticationFlow]);
 
   // Email verification step
   const needsVerification =
@@ -241,6 +263,24 @@ export default function SignUpScreen() {
               {t.signUpSubtitle}
             </Text>
           </View>
+
+          {/* Apple — see sign-in.tsx's equivalent button for why it's above
+              Google and iOS-only. */}
+          {Platform.OS === 'ios' && (
+            <Pressable
+              style={[styles.socialBtn, { backgroundColor: colors.text, borderColor: colors.text }]}
+              onPress={handleApple}
+              disabled={appleLoading}
+            >
+              {appleLoading
+                ? <ActivityIndicator color={colors.background} />
+                : <>
+                    <Text style={[styles.appleGlyph, { color: colors.background }]}></Text>
+                    <Text style={[styles.socialBtnText, { color: colors.background }]}>{t.continueWithApple}</Text>
+                  </>
+              }
+            </Pressable>
+          )}
 
           {/* Google */}
           <Pressable
@@ -380,6 +420,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   googleG: { fontSize: 18, fontFamily: 'Inter_700Bold', color: '#4285F4' },
+  appleGlyph: { fontSize: 19, marginTop: -2 },
   socialBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

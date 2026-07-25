@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { useSignIn, useSSO, useClerk } from '@clerk/expo';
+import { useSignInWithApple } from '@clerk/expo/apple';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -31,11 +32,13 @@ export default function SignInScreen() {
   const { signIn, errors, fetchStatus } = useSignIn();
   const { setActive } = useClerk();
   const { startSSOFlow } = useSSO();
+  const { startAppleAuthenticationFlow } = useSignInWithApple();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
 
   // Forgot-password flow — a small state machine layered on the same
@@ -151,6 +154,26 @@ export default function SignInScreen() {
       setGoogleLoading(false);
     }
   }, [startSSOFlow]);
+
+  const handleApple = useCallback(async () => {
+    setGlobalError('');
+    setAppleLoading(true);
+    try {
+      const { createdSessionId, setActive: setAppleActive } = await startAppleAuthenticationFlow();
+      if (createdSessionId && setAppleActive) {
+        await setAppleActive({ session: createdSessionId, navigate: finalizeNavigate });
+      } else {
+        setGlobalError('Apple sign-in did not complete. Please try again.');
+      }
+    } catch (err: any) {
+      // The user dismissing the native Apple prompt is not an error worth surfacing.
+      if (err?.code !== 'ERR_REQUEST_CANCELED') {
+        setGlobalError(err?.message ?? 'Apple sign-in failed');
+      }
+    } finally {
+      setAppleLoading(false);
+    }
+  }, [startAppleAuthenticationFlow]);
 
   if (resetMode !== 'none') {
     return (
@@ -289,6 +312,29 @@ export default function SignInScreen() {
             </Text>
           </View>
 
+          {/* Apple — placed above Google; Apple's guidelines expect Sign in
+              with Apple to be at least as prominent as other third-party
+              login options when both are offered. iOS-only: the native
+              flow needs a real device build, and Android has no equivalent. */}
+          {Platform.OS === 'ios' && (
+            <Pressable
+              style={[styles.socialBtn, { backgroundColor: colors.text, borderColor: colors.text }]}
+              onPress={handleApple}
+              disabled={appleLoading}
+            >
+              {appleLoading
+                ? <ActivityIndicator color={colors.background} />
+                : <>
+                    {/* U+F8FF — renders as the real Apple logo glyph in iOS's
+                        system font. Must NOT take the custom Inter font
+                        family below, which has no glyph at this codepoint. */}
+                    <Text style={[styles.appleGlyph, { color: colors.background }]}></Text>
+                    <Text style={[styles.socialBtnText, { color: colors.background }]}>{t.continueWithApple}</Text>
+                  </>
+              }
+            </Pressable>
+          )}
+
           {/* Google */}
           <Pressable
             style={[styles.socialBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -408,6 +454,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   googleG: { fontSize: 18, fontFamily: 'Inter_700Bold', color: '#4285F4' },
+  appleGlyph: { fontSize: 19, marginTop: -2 },
   socialBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
