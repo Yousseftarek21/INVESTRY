@@ -18,6 +18,11 @@ interface ChatMessage {
   content: string;
 }
 
+// Matches the violet accent on the Analytics-tab entry card — the AI
+// Assistant keeps this identity throughout its own screen instead of
+// reverting to the app-wide gold accent once you're inside it.
+const AI_ACCENT = '#8B5CF6';
+
 export default function AIAssistantScreen() {
   const colors = useColors();
   const t = useT();
@@ -89,8 +94,8 @@ export default function AIAssistantScreen() {
           >
             {messages.length === 0 ? (
               <View style={s.empty}>
-                <View style={[s.emptyIcon, { backgroundColor: colors.primary + '18' }]}>
-                  <Feather name="cpu" size={28} color={colors.primary} />
+                <View style={[s.emptyIcon, { backgroundColor: AI_ACCENT + '18' }]}>
+                  <Feather name="cpu" size={28} color={AI_ACCENT} />
                 </View>
                 <Text style={[s.emptyTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
                 <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.aiAssistantEmptyHint}</Text>
@@ -98,7 +103,7 @@ export default function AIAssistantScreen() {
                   {suggestions.map((sugg) => (
                     <TouchableOpacity
                       key={sugg}
-                      style={[s.suggestionChip, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      style={[s.suggestionChip, { backgroundColor: colors.card, borderColor: AI_ACCENT + '30' }]}
                       onPress={() => send(sugg)}
                       activeOpacity={0.85}
                     >
@@ -114,11 +119,11 @@ export default function AIAssistantScreen() {
                   style={[
                     s.bubble,
                     m.role === 'user'
-                      ? [s.bubbleUser, { backgroundColor: colors.primary }]
+                      ? [s.bubbleUser, { backgroundColor: AI_ACCENT }]
                       : [s.bubbleAssistant, { backgroundColor: colors.card, borderColor: colors.border }],
                   ]}
                 >
-                  <Text style={[s.bubbleText, { color: m.role === 'user' ? colors.primaryForeground : colors.text }]}>
+                  <Text style={[s.bubbleText, { color: m.role === 'user' ? '#FFFFFF' : colors.text }]}>
                     {m.content}
                   </Text>
                 </View>
@@ -149,9 +154,9 @@ export default function AIAssistantScreen() {
               <TouchableOpacity
                 onPress={() => send(input)}
                 disabled={loading || !input.trim()}
-                style={[s.sendBtn, { backgroundColor: colors.primary, opacity: loading || !input.trim() ? 0.5 : 1 }]}
+                style={[s.sendBtn, { backgroundColor: AI_ACCENT, opacity: loading || !input.trim() ? 0.5 : 1 }]}
               >
-                <Feather name="arrow-up" size={18} color={colors.primaryForeground} />
+                <Feather name="arrow-up" size={18} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
