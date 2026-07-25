@@ -388,7 +388,7 @@ export default function AddInvestmentScreen() {
   const insets = useSafeAreaInsets();
   const { impact, notify } = useHaptic();
   const { addHolding, updateHolding, holdings } = useHoldings();
-  const { isPro, launchAccess, isLoading: subLoading, showPaywall } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
 
@@ -667,7 +667,7 @@ export default function AddInvestmentScreen() {
 
     // Free tier: max 3 investments. Skip the gate while subscription is still
     // loading (subLoading=true), or when Launch Access / Pro is active.
-    if (!isEditing && !subLoading && !isPro && !launchAccess && holdings.length >= FREE_LIMIT) {
+    if (!isEditing && !subLoading && !featuresUnlocked && holdings.length >= FREE_LIMIT) {
       showPaywall();
       return;
     }

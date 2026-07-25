@@ -1,149 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
-  Alert, Animated, Linking, Modal, PanResponder, Platform, Pressable,
-  ScrollView, StyleSheet, Text, View, ActivityIndicator,
+  Animated, Linking, Modal, PanResponder, Platform, Pressable,
+  ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
-import { useSubscription, openWebPopup, BillingPeriod } from '@/context/SubscriptionContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { useT } from '@/hooks/useTranslation';
 import { useColors } from '@/hooks/useColors';
-import { LaunchBanner } from '@/components/LaunchAccess';
 import { getApiBaseUrl } from '@/utils/api';
-
-// ─── Confirm modal ─────────────────────────────────────────────────────────────
-
-function ConfirmPurchase({
-  visible, planLabel, priceString, onConfirm, onCancel, isPurchasing,
-}: {
-  visible: boolean; planLabel: string; priceString: string;
-  onConfirm: () => void; onCancel: () => void; isPurchasing: boolean;
-}) {
-  const t = useT();
-  const colors = useColors();
-  const accent = colors.primary;
-  if (!visible) return null;
-  return (
-    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={cm.overlay}>
-        <View style={[cm.card, { backgroundColor: colors.card, borderColor: accent + '35' }]}>
-          <Text style={[cm.title, { color: colors.text }]}>{t.subConfirmTitle}</Text>
-          <Text style={[cm.msg, { color: colors.mutedForeground }]}>
-            {t.subSubscribingTo + '\n'}
-            <Text style={{ color: colors.text, fontFamily: 'Inter_700Bold' }}>{planLabel}</Text>
-            {'\n' + t.subAt + ' '}
-            <Text style={{ color: accent, fontFamily: 'Inter_700Bold' }}>{priceString}</Text>
-          </Text>
-          <Pressable
-            onPress={onConfirm}
-            disabled={isPurchasing}
-            style={[cm.confirmBtn, { backgroundColor: accent }]}
-          >
-            {isPurchasing
-              ? <ActivityIndicator size="small" color={colors.primaryForeground} />
-              : <Text style={[cm.confirmTxt, { color: colors.primaryForeground }]}>{t.subSubscribeNow}</Text>
-            }
-          </Pressable>
-          <Pressable onPress={onCancel} style={cm.cancelBtn}>
-            <Text style={[cm.cancelTxt, { color: colors.mutedForeground }]}>{t.subCancel}</Text>
-          </Pressable>
-          <Text style={[cm.legalTxt, { color: colors.mutedForeground }]}>{t.subAutoRenews}</Text>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const cm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  card: {
-    borderRadius: 28, borderWidth: 1, padding: 28,
-    width: '100%', alignItems: 'center', gap: 16,
-  },
-  title: { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: -0.5, textAlign: 'center' },
-  msg: { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 24, textAlign: 'center' },
-  confirmBtn: { width: '100%', borderRadius: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', minHeight: 54 },
-  confirmTxt: { fontSize: 16, fontFamily: 'Inter_700Bold' },
-  cancelBtn: { paddingVertical: 8 },
-  cancelTxt: { fontSize: 14, fontFamily: 'Inter_500Medium' },
-  legalTxt: { fontSize: 10, fontFamily: 'Inter_400Regular', lineHeight: 15, textAlign: 'center' },
-});
-
-// ─── Plan cards — both options shown together, tap either to select ──────────
-
-function PlanOptionCard({
-  period, selected, onPress,
-}: { period: BillingPeriod; selected: boolean; onPress: () => void }) {
-  const { offerings } = useSubscription();
-  const t = useT();
-  const colors = useColors();
-  const accent = colors.primary;
-  const product = offerings.pro;
-
-  const isAnnual = period === 'annual';
-  const price = isAnnual ? product.annualPriceString : product.priceString;
-  const perMonth = isAnnual
-    ? `≈ ${Math.round(product.annualPrice / 12).toLocaleString('en-EG')} EGP/${t.subMonth}`
-    : null;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        pc.card,
-        {
-          borderColor: selected ? accent : colors.border,
-          borderWidth: selected ? 2 : 1,
-          backgroundColor: selected ? accent + '0D' : colors.card,
-        },
-      ]}
-    >
-      {isAnnual && (
-        <View style={[pc.ribbon, { backgroundColor: accent }]}>
-          <Text style={pc.ribbonTxt}>{t.subSave33}</Text>
-        </View>
-      )}
-      <Text style={[pc.periodLabel, { color: selected ? accent : colors.mutedForeground }]}>
-        {isAnnual ? t.subAnnual : t.subMonthly}
-      </Text>
-      <Text style={[pc.price, { color: colors.text }]}>{price}</Text>
-      <Text style={[pc.priceUnit, { color: colors.mutedForeground }]}>
-        /{isAnnual ? t.subYear : t.subMonth}
-      </Text>
-      {perMonth ? (
-        <Text style={[pc.sub, { color: colors.mutedForeground }]}>{perMonth}</Text>
-      ) : (
-        <View style={pc.subSpacer} />
-      )}
-      <View style={[pc.radio, { borderColor: selected ? accent : colors.border, backgroundColor: selected ? accent : 'transparent' }]}>
-        {selected && <Feather name="check" size={12} color={colors.primaryForeground} />}
-      </View>
-    </Pressable>
-  );
-}
-
-const pc = StyleSheet.create({
-  card: {
-    flex: 1, borderRadius: 18, padding: 16, paddingTop: 18,
-    alignItems: 'flex-start', overflow: 'visible',
-  },
-  ribbon: {
-    position: 'absolute', top: -10, alignSelf: 'center',
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
-  },
-  ribbonTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', color: '#fff', letterSpacing: 0.4 },
-  periodLabel: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginBottom: 8, letterSpacing: 0.2 },
-  price: { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
-  priceUnit: { fontSize: 11, fontFamily: 'Inter_500Medium', marginTop: 1 },
-  sub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 4 },
-  subSpacer: { height: 15, marginTop: 4 },
-  radio: {
-    position: 'absolute', top: 16, end: 16,
-    width: 20, height: 20, borderRadius: 10, borderWidth: 1.5,
-    alignItems: 'center', justifyContent: 'center',
-  },
-});
 
 // ─── Feature row ──────────────────────────────────────────────────────────────
 
@@ -161,8 +27,6 @@ function FeatureRow({ icon, label }: { icon: string; label: string }) {
 }
 
 const frow = StyleSheet.create({
-  // Full-width single-column rows — a 2-column 50%-width grid left no room
-  // for the longer feature labels, forcing them to truncate with "...".
   cell: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 9 },
   icon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   label: { flex: 1, fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 16 },
@@ -223,8 +87,6 @@ const cmp = StyleSheet.create({
   labelCol: { flex: 1, justifyContent: 'center' },
   rowLabel: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   col: { width: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
-  // Wide enough for "Unlimited" (and its Arabic equivalent) on one line —
-  // it was wrapping mid-word at the old 64px width.
   colPro: { width: 92, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 4 },
   colProTop: { paddingBottom: 8 },
   colProBottom: { paddingBottom: 14 },
@@ -233,6 +95,12 @@ const cmp = StyleSheet.create({
 });
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
+//
+// Purely informational — shows the user's current plan and what Pro
+// includes. There is no purchase flow here at all: the app never processes
+// payments. Upgrading, managing, and cancelling all happen on the website
+// (investry.app) with the same account; this screen just reflects whatever
+// the backend currently reports.
 
 interface SubscriptionScreenProps {
   visible: boolean;
@@ -243,8 +111,7 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const accent = colors.primary;
-  const onAccent = colors.primaryForeground;
-  const { offerings, purchase, restore, isPurchasing, isRestoring, launchAccess } = useSubscription();
+  const { isPro } = useSubscription();
   const t = useT();
 
   const FEATURES = [
@@ -258,16 +125,10 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
     { icon: 'zap',         label: t.subSmartInsights         },
   ];
 
-  const [period, setPeriod] = useState<BillingPeriod>('annual');
-  const [showConfirm, setShowConfirm] = useState(false);
-
   const slideY = useRef(new Animated.Value(700)).current;
   const bgOpacity = useRef(new Animated.Value(0)).current;
   const dragStart = useRef(0);
 
-  // PanResponder is created once via useRef, so its callbacks close over
-  // whatever `onClose` was on the first render. Route through a ref kept
-  // current every render so a swipe-dismiss always calls the latest one.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -311,37 +172,6 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
     }
   }, [visible]);
 
-  const product = offerings.pro;
-  const currentPrice = period === 'monthly'
-    ? `${product.priceString}/${t.subMonth}`
-    : `${product.annualPriceString}/${t.subYear}`;
-
-  const handleConfirm = async () => {
-    // Must be called synchronously, before any `await`, so the popup isn't
-    // blocked by the browser (it needs to happen inside the click's
-    // original user-gesture window). No-op on native.
-    const webPopup = openWebPopup();
-    try {
-      const success = await purchase(period, webPopup);
-      setShowConfirm(false);
-      onClose();
-      if (success) {
-        Alert.alert(t.subThankYouTitle, t.subThankYouBody);
-      } else if (launchAccess) {
-        // `purchase()` short-circuits during Launch Access without calling
-        // any backend — this is the preview flow, not a failed real charge.
-        Alert.alert(t.subPurchaseUnavailableTitle, t.subPurchaseUnavailableBody);
-      }
-    } catch {
-      webPopup?.close();
-      setShowConfirm(false);
-      Alert.alert(
-        t.subPurchaseUnavailableTitle,
-        t.subPurchaseUnavailableBody,
-      );
-    }
-  };
-
   if (!visible) return null;
 
   return (
@@ -374,8 +204,6 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           bounces={false}
           contentContainerStyle={sw.scroll}
         >
-          {launchAccess && <LaunchBanner />}
-
           {/* ── Hero ────────────────────────────────────────── */}
           <View style={sw.hero}>
             <View style={sw.iconGlowWrap}>
@@ -394,12 +222,15 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
             </View>
             <Text style={[sw.heroTitle, { color: colors.text }]}>Investry Pro</Text>
             <Text style={[sw.heroSub, { color: colors.mutedForeground }]}>{t.subHeroSub}</Text>
-          </View>
 
-          {/* ── Plan cards — tap either to choose ─────────────── */}
-          <View style={sw.plans}>
-            <PlanOptionCard period="monthly" selected={period === 'monthly'} onPress={() => setPeriod('monthly')} />
-            <PlanOptionCard period="annual" selected={period === 'annual'} onPress={() => setPeriod('annual')} />
+            {/* Current plan status — always reflects the backend, never a
+                locally-set flag */}
+            <View style={[sw.planTag, { backgroundColor: isPro ? accent + '18' : colors.muted, borderColor: isPro ? accent + '35' : colors.border }]}>
+              <Feather name={isPro ? 'check-circle' : 'info'} size={13} color={isPro ? accent : colors.mutedForeground} />
+              <Text style={[sw.planTagTxt, { color: isPro ? accent : colors.mutedForeground }]}>
+                {isPro ? t.subCurrentPlanPro : t.subCurrentPlanFree}
+              </Text>
+            </View>
           </View>
 
           {/* ── Features ────────────────────────────────────── */}
@@ -415,40 +246,19 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           {/* ── Free vs Pro ─────────────────────────────────── */}
           <CompareTable />
 
-          {/* ── CTA ─────────────────────────────────────────── */}
-          {/* Always shown, even during Launch Access, so the paywall stays
-              clickable as a preview of the real subscribe flow — no charge
-              is ever attempted (see handleConfirm/purchase()). */}
-          <Pressable
-            onPress={() => setShowConfirm(true)}
-            disabled={isPurchasing}
-            style={({ pressed }) => [sw.cta, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
-          >
-            {isPurchasing ? (
-              <ActivityIndicator color={onAccent} />
-            ) : (
-              <View style={sw.ctaRow}>
-                <View>
-                  <Text style={[sw.ctaTop, { color: onAccent }]}>{t.subContinueWith} Pro</Text>
-                  <Text style={[sw.ctaBottom, { color: onAccent + 'A0' }]}>{currentPrice}</Text>
-                </View>
-                <View style={[sw.ctaArrow, { backgroundColor: onAccent + '22' }]}>
-                  <Feather name="arrow-right" size={17} color={onAccent} />
-                </View>
-              </View>
-            )}
-          </Pressable>
+          {/* ── Manage on the website ───────────────────────── */}
+          {/* Deliberately plain text, not a button or link — this app never
+              initiates a purchase or opens a checkout/billing page. Upgrading
+              and managing a subscription both happen entirely on
+              investry.app, signed in with the same account. */}
+          {!isPro && (
+            <Text style={[sw.manageNote, { color: colors.mutedForeground }]}>
+              {t.subManageOnWebsite}
+            </Text>
+          )}
 
           {/* ── Footer ──────────────────────────────────────── */}
           <View style={sw.footer}>
-            {!launchAccess && (
-              <>
-                <Pressable onPress={() => restore()} disabled={isRestoring}>
-                  <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{isRestoring ? t.subRestoring : t.subRestorePurchases}</Text>
-                </Pressable>
-                <View style={[sw.dot, { backgroundColor: colors.border }]} />
-              </>
-            )}
             <Pressable onPress={() => Linking.openURL(`${getApiBaseUrl()}/api/legal/terms`)}>
               <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{t.subTerms}</Text>
             </Pressable>
@@ -457,19 +267,8 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
               <Text style={[sw.footerTxt, { color: colors.mutedForeground }]}>{t.subPrivacy}</Text>
             </Pressable>
           </View>
-
-          <Text style={[sw.disclaimer, { color: colors.mutedForeground }]}>{t.subDisclaimer}</Text>
         </ScrollView>
       </Animated.View>
-
-      <ConfirmPurchase
-        visible={showConfirm}
-        planLabel={product.title}
-        priceString={currentPrice}
-        onConfirm={handleConfirm}
-        onCancel={() => setShowConfirm(false)}
-        isPurchasing={isPurchasing}
-      />
     </Modal>
   );
 }
@@ -484,8 +283,6 @@ const sw = StyleSheet.create({
     maxHeight: '95%',
   },
   dragZone: {
-    // Narrower than full-width and centered, so it doesn't share touch
-    // space with closeBtn (absolutely positioned in the same top strip).
     width: 160, alignSelf: 'center', alignItems: 'center',
     paddingTop: 12, paddingBottom: 10,
   },
@@ -498,7 +295,7 @@ const sw = StyleSheet.create({
     width: 30, height: 30, borderRadius: 15,
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',
   },
-  scroll: { paddingHorizontal: 20 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 12 },
 
   // Hero
   hero: { alignItems: 'center', paddingTop: 44, paddingBottom: 26, gap: 10 },
@@ -510,9 +307,12 @@ const sw = StyleSheet.create({
   },
   heroTitle: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   heroSub: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center' },
-
-  // Plans — two selectable cards side by side
-  plans: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  planTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1,
+    marginTop: 4,
+  },
+  planTagTxt: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
 
   // Features
   featureCard: {
@@ -526,25 +326,13 @@ const sw = StyleSheet.create({
   },
   featureGrid: { flexDirection: 'row', flexWrap: 'wrap' },
 
-  // CTA
-  cta: {
-    borderRadius: 20, paddingVertical: 6, paddingHorizontal: 22,
-    minHeight: 68, justifyContent: 'center', marginBottom: 18,
-  },
-  ctaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  ctaTop: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
-  ctaBottom: { fontSize: 13, fontFamily: 'Inter_500Medium', marginTop: 2 },
-  ctaArrow: {
-    width: 38, height: 38, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center',
+  manageNote: {
+    fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20,
+    textAlign: 'center', marginBottom: 20,
   },
 
   // Footer
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 },
   footerTxt: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   dot: { width: 3, height: 3, borderRadius: 1.5 },
-  disclaimer: {
-    fontSize: 10, fontFamily: 'Inter_400Regular',
-    lineHeight: 15, textAlign: 'center', marginBottom: 4, opacity: 0.7,
-  },
 });

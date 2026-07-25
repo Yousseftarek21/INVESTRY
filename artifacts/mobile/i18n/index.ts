@@ -370,26 +370,14 @@ const en = {
   dataSource: 'Live data: gold-api.com + goldprice.org',
 
   // Subscription paywall
-  subMonth: 'month',
-  subYear: 'year',
-  subMonthly: 'Monthly',
-  subAnnual: 'Annual',
-  subSave33: 'SAVE 33%',
-  subMostPopular: 'MOST POPULAR',
   subHeroSub: 'Unlock your full financial potential',
+  subCurrentPlanFree: "You're on the Free plan",
+  subCurrentPlanPro: "You're on the Pro plan",
+  subManageOnWebsite: 'Upgrade to Pro at investry.app, signed in with the same account — Pro unlocks here automatically once your subscription is active.',
   subWhatsIncluded: "WHAT'S INCLUDED",
-  subContinueWith: 'Continue with',
-  subRestorePurchases: 'Restore Purchases',
-  subRestoring: 'Restoring…',
   subTerms: 'Terms',
   subPrivacy: 'Privacy',
-  subDisclaimer: 'Subscriptions auto-renew. Cancel anytime in your App Store or Google Play settings.',
-  subConfirmTitle: 'Confirm Subscription',
-  subSubscribingTo: 'Subscribing to',
-  subAt: 'at',
-  subSubscribeNow: 'Subscribe Now',
   subCancel: 'Cancel',
-  subAutoRenews: 'Auto-renews. Cancel anytime in your App Store / Google Play settings.',
   subUnlimitedInvestments: 'Unlimited investments (free plan is capped at 3 holdings)',
   subMarketIntelligence: 'Market Intelligence',
   subPortfolioAnalytics: 'Portfolio Analytics',
@@ -407,10 +395,6 @@ const en = {
   subUpgradeTo: 'Upgrade to',
   subFromYearlyPro: 'From 399.99 EGP/year',
   subFromYearlyProPlus: 'From 559.99 EGP/year',
-  subPurchaseUnavailableTitle: 'Purchase Unavailable',
-  subPurchaseUnavailableBody: 'In-app purchases are not yet available. Please check back soon.',
-  subThankYouTitle: 'Thank you for subscribing to Pro!',
-  subThankYouBody: 'Pro features are now unlocked.',
   subSignInToUnlock: 'Sign In to Unlock',
   subSignInToUnlockDesc: 'Included free during launch — just sign in to access this feature.',
   subSignInButton: 'Sign In',
@@ -645,9 +629,6 @@ const en = {
   sharesLabel: 'shares',
 
   // LaunchAccess
-  includedDuringLaunch: 'Included During Launch',
-  launchOfferTitle: 'Launch Offer',
-  launchOfferBody: 'To celebrate our launch, all users receive complimentary access to Pro features for a limited time. Thank you for helping us build the future of investment tracking.',
 
   // Analytics — structural labels
   financialToolsTitle: 'Financial Tools',
@@ -991,9 +972,8 @@ const en = {
 
   // Settings — subscription card
   proUpgradeSub: 'Unlock analytics, all tools & unlimited investments',
-  proSignInSub: 'Sign in to unlock — included free during launch',
-  allFeaturesUnlocked: 'All features unlocked',
-  allFeaturesManage: 'All features unlocked · Tap to manage',
+  proSignInSub: 'Sign in to see your plan',
+  allFeaturesManage: 'All features unlocked · Tap to view your plan',
   proActiveLabel: 'ACTIVE',
 
   // Settings — invite friends / referrals
@@ -1407,26 +1387,14 @@ const ar: typeof en = {
   dataSource: 'مصدر البيانات: gold-api.com + goldprice.org',
 
   // Subscription paywall
-  subMonth: 'شهر',
-  subYear: 'سنة',
-  subMonthly: 'شهري',
-  subAnnual: 'سنوي',
-  subSave33: 'وفر 33%',
-  subMostPopular: 'الأكثر شيوعاً',
   subHeroSub: 'افتح إمكاناتك المالية الكاملة',
+  subCurrentPlanFree: 'أنت مشترك في الخطة المجانية',
+  subCurrentPlanPro: 'أنت مشترك في خطة Pro',
+  subManageOnWebsite: 'قم بالترقية إلى Pro عبر investry.app بنفس الحساب — ستُفتح ميزات Pro هنا تلقائياً بمجرد تفعيل اشتراكك.',
   subWhatsIncluded: 'ما يتضمنه الاشتراك',
-  subContinueWith: 'متابعة مع',
-  subRestorePurchases: 'استعادة المشتريات',
-  subRestoring: 'جارٍ الاستعادة…',
   subTerms: 'الشروط',
   subPrivacy: 'الخصوصية',
-  subDisclaimer: 'يُجدَّد تلقائياً. يمكنك الإلغاء في أي وقت من إعدادات App Store أو Google Play.',
-  subConfirmTitle: 'تأكيد الاشتراك',
-  subSubscribingTo: 'أنت تشترك في',
-  subAt: 'بسعر',
-  subSubscribeNow: 'اشترك الآن',
   subCancel: 'إلغاء',
-  subAutoRenews: 'يُجدَّد تلقائياً. يمكنك الإلغاء من إعدادات App Store / Google Play.',
   subUnlimitedInvestments: 'استثمارات غير محدودة (الخطة المجانية محدودة بـ 3 أصول)',
   subMarketIntelligence: 'ذكاء السوق',
   subPortfolioAnalytics: 'تحليلات المحفظة',
@@ -1444,10 +1412,6 @@ const ar: typeof en = {
   subUpgradeTo: 'ترقية إلى',
   subFromYearlyPro: 'من 399.99 جنيه/سنة',
   subFromYearlyProPlus: 'من 559.99 جنيه/سنة',
-  subPurchaseUnavailableTitle: 'الشراء غير متاح',
-  subPurchaseUnavailableBody: 'المشتريات داخل التطبيق غير متاحة حالياً. يرجى المحاولة لاحقاً.',
-  subThankYouTitle: 'شكراً لاشتراكك في Pro!',
-  subThankYouBody: 'تم الآن تفعيل ميزات Pro.',
   subSignInToUnlock: 'سجّل الدخول للوصول',
   subSignInToUnlockDesc: 'متاحة مجاناً خلال الإطلاق — فقط سجّل الدخول لاستخدام هذه الميزة.',
   subSignInButton: 'تسجيل الدخول',
@@ -1682,9 +1646,6 @@ const ar: typeof en = {
   sharesLabel: 'أسهم',
 
   // LaunchAccess
-  includedDuringLaunch: 'مشمول في فترة الإطلاق',
-  launchOfferTitle: 'عرض الإطلاق',
-  launchOfferBody: 'احتفالاً بإطلاق التطبيق، يحصل جميع المستخدمين على وصول مجاني لميزات Pro لفترة محدودة. شكراً لدعمكم في بناء مستقبل تتبع الاستثمار.',
 
   // Analytics — structural labels
   financialToolsTitle: 'الأدوات المالية',
@@ -2028,9 +1989,8 @@ const ar: typeof en = {
 
   // Settings — subscription card
   proUpgradeSub: 'افتح التحليلات وجميع الأدوات واستثمارات غير محدودة',
-  proSignInSub: 'سجّل دخولك للوصول — مجاني خلال فترة الإطلاق',
-  allFeaturesUnlocked: 'جميع الميزات مفتوحة',
-  allFeaturesManage: 'جميع الميزات مفتوحة · اضغط للإدارة',
+  proSignInSub: 'سجّل دخولك لعرض خطتك',
+  allFeaturesManage: 'جميع الميزات مفتوحة · اضغط لعرض خطتك',
   proActiveLabel: 'نشط',
 
   // Settings — invite friends / referrals

@@ -17,22 +17,21 @@ const ACCENT = '#C9A227';
 const BADGE = 'PRO';
 
 export function PremiumGate({ feature, description, children }: PremiumGateProps) {
-  const { isPro, launchAccess, isLoading, showPaywall } = useSubscription();
+  const { featuresUnlocked, isLoading, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
   const t = useT();
 
   // While the subscription is still loading from the API, optimistically
   // show children rather than flashing the gate. Once resolved, if the user
-  // genuinely isn't Pro the gate renders. This prevents the "must be pro"
-  // wall from appearing for a second on every app open for launch-access users.
-  if (isLoading || launchAccess || isPro) return <>{children}</>;
+  // genuinely isn't Pro (and the beta unlock-all flag isn't on) the gate
+  // renders.
+  if (isLoading || featuresUnlocked) return <>{children}</>;
 
   const accent = ACCENT;
   const badge = BADGE;
 
   // Signed-out visitors aren't missing a paid plan — they're missing an
-  // account. During Launch Access every signed-in user gets this feature
-  // for free, so prompt them to sign in instead of showing a pay prompt.
+  // account, so prompt them to sign in instead of showing a pay prompt.
   if (!isSignedIn) {
     return (
       <View style={[g.wrapper, { marginHorizontal: 20, marginVertical: 8 }]}>

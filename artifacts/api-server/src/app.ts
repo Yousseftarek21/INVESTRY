@@ -9,6 +9,7 @@ import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
+import stripeWebhookRouter from "./routes/stripeWebhook";
 
 const app: Express = express();
 
@@ -36,6 +37,11 @@ app.use(
 
 // Clerk proxy — must come before body parsers (streams raw bytes)
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+
+// Stripe webhook — also before express.json(), signature verification
+// needs the exact raw body. Only the website ever talks to Stripe directly;
+// this is just the backend's side of the sync.
+app.use("/api", stripeWebhookRouter);
 
 app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());

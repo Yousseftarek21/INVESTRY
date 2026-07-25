@@ -265,7 +265,7 @@ export default function HomeScreen() {
     egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
     return { ...rawPrices, egxPrices };
   }, [rawPrices, egxStocks]);
-  const { plan, isPro, launchAccess } = useSubscription();
+  const { plan, isPro } = useSubscription();
   const { unreadCount: unreadNotifications } = useNotificationHistory();
   const { impact } = useHaptic();
   const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, notifications } = useAppSettings();
@@ -455,7 +455,7 @@ export default function HomeScreen() {
             <Text style={[styles.greetingName, { color: colors.text }]} numberOfLines={1}>
               {firstName || t.thereGreeting}
             </Text>
-            {isPro && !launchAccess && <PremiumBadge size="sm" />}
+            {isPro && <PremiumBadge size="sm" />}
           </View>
         </View>
 

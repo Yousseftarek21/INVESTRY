@@ -24,7 +24,7 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
-import { useSubscription, openWebPopup } from '@/context/SubscriptionContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { PremiumBadge } from '@/components/PremiumBadge';
 import { exportPortfolioAsCsv, exportPortfolioAsPdf } from '@/utils/exportPortfolio';
 import { apiFetch } from '@/utils/api';
@@ -298,11 +298,11 @@ const cm = StyleSheet.create({
 // ─── Profile hero card ────────────────────────────────────────────────────────
 
 function ProfileHero({
-  initials, fullName, email, verified, holdingsCount, onPress, plan, launchAccess, imageUrl,
+  initials, fullName, email, verified, holdingsCount, onPress, plan, imageUrl,
 }: {
   initials: string; fullName: string; email: string;
   verified: boolean; holdingsCount: number; onPress: () => void;
-  plan?: 'pro' | null; launchAccess?: boolean; imageUrl?: string;
+  plan?: 'pro' | null; imageUrl?: string;
 }) {
   const colors = useColors();
   const t = useT();
@@ -342,7 +342,7 @@ function ProfileHero({
         <View style={ph.info}>
           <View style={ph.nameRow}>
             <Text style={[ph.name, { color: colors.text }]} numberOfLines={1}>{fullName}</Text>
-            {plan === 'pro' && !launchAccess && <PremiumBadge size="sm" />}
+            {plan === 'pro' && <PremiumBadge size="sm" />}
           </View>
           <Text style={[ph.email, { color: colors.mutedForeground }]} numberOfLines={1}>{email}</Text>
 
@@ -753,7 +753,7 @@ export default function SettingsScreen() {
   const { signOut } = useClerk();
   const { user } = useUser();
   const { getToken } = useAuth();
-  const { plan, isPro, launchAccess, isLoading: subLoading, showPaywall, manageSubscription } = useSubscription();
+  const { plan, isPro, isLoading: subLoading, showPaywall } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
     biometricLock, setBiometricLock, displayCurrency, setDisplayCurrency,
@@ -933,7 +933,6 @@ export default function SettingsScreen() {
               initials={initials} fullName={profileName} email={email}
               verified={verified} holdingsCount={holdings.length}
               plan={plan === 'pro' ? plan : null}
-              launchAccess={launchAccess}
               imageUrl={user.imageUrl ?? undefined}
               onPress={() => { haptic(); setEditProfileOpen(true); }}
             />
@@ -972,35 +971,13 @@ export default function SettingsScreen() {
             </View>
             <Feather name="chevron-right" size={16} color="#000" />
           </Pressable>
-        ) : launchAccess ? (
-          <Pressable
-            onPress={() => showPaywall()}
-            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: colors.primary + '40', opacity: pressed ? 0.88 : 1 }]}
-          >
-            <View style={[sc.proBannerIcon, { backgroundColor: colors.primary + '18' }]}>
-              <Feather name="star" size={18} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[sc.proBannerTitle, { color: colors.text }]}>Investry Pro</Text>
-              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>{t.allFeaturesUnlocked}</Text>
-            </View>
-            <View style={[sc.activeTag, { backgroundColor: colors.primary + '18' }]}>
-              <Text style={[sc.activeTagTxt, { color: colors.primary }]}>FREE</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-          </Pressable>
         ) : (
+          // Pro is active — tapping just opens the informational Pro sheet
+          // (current plan + benefits). Managing or cancelling a subscription
+          // happens entirely on investry.app; this app never opens a billing
+          // portal or any other payment-related page.
           <Pressable
-            onPress={() => {
-              haptic();
-              // Must be called synchronously, before any `await`, so the
-              // popup isn't blocked by the browser. No-op on native.
-              const webPopup = openWebPopup();
-              manageSubscription(webPopup).catch(() => {
-                webPopup?.close();
-                showModal('Could not open billing portal', 'Please check your internet connection and try again.');
-              });
-            }}
+            onPress={() => { haptic(); showPaywall(); }}
             style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: colors.primary + '40', opacity: pressed ? 0.88 : 1 }]}
           >
             <View style={[sc.proBannerIcon, { backgroundColor: colors.primary + '18' }]}>
