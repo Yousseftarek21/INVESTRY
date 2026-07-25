@@ -135,6 +135,12 @@ async function callOpenRouter(systemPrompt: string, messages: ChatTurn[]): Promi
     body: JSON.stringify({
       model: OPENROUTER_MODEL,
       max_tokens: 1024,
+      // gpt-oss is a reasoning model — it burns tokens on hidden chain-of-
+      // thought before it ever writes the visible reply. That's most of
+      // where the multi-second lag comes from for a quick chat answer, not
+      // network/queue time. Low effort trims that reasoning pass; the
+      // reasoning tokens aren't shown to the user anyway.
+      reasoning: { effort: "low" },
       messages: [{ role: "system", content: systemPrompt }, ...messages],
     }),
   });
