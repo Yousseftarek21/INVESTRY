@@ -373,8 +373,6 @@ const en = {
   subHeroSub: 'Unlock your full financial potential',
   subCurrentPlanFree: "You're on the Free plan",
   subCurrentPlanPro: "You're on the Pro plan",
-  subContinueOnWebsite: 'Continue on investry.app',
-  subManageOnWebsite: 'Upgrade to Pro at investry.app, signed in with the same account — Pro unlocks here automatically once your subscription is active.',
   subWhatsIncluded: "WHAT'S INCLUDED",
   subTerms: 'Terms',
   subPrivacy: 'Privacy',
@@ -983,11 +981,6 @@ const en = {
   privacyPolicyBody: "Last updated: July 2026\n\nAccount & Sign-In\nWe use Clerk to manage sign-in via email/password, Google, and Apple. Clerk processes your email address and authentication credentials on our behalf — we never see or store your password.\n\nYour Portfolio Data\nInvestment holdings and cash accounts you add are stored securely on our servers, tied to your authenticated account. This data is never shared with other users, and never sold or shared with third parties. A local copy is cached on your device for offline access. Goals and Recurring Income entries are kept only on your device and are never sent to our servers.\n\nEncryption\nAll data is transmitted between the app and our servers over encrypted (HTTPS) connections.\n\nThird-Party Market Data\nWe fetch live prices from third-party providers to display market data. These are anonymous public price lookups only — no personal information is sent to these providers.\n\nAnalytics (optional)\nAnonymized usage data only. No personally identifiable information is collected.\n\nData Deletion\nYou may request deletion of your account and all associated data at any time by contacting us below.\n\nContact\nQuestions about this policy? Email privacy@investry.app.",
 
   // Settings — subscription card
-  proUpgradeSub: 'Unlock analytics, all tools & unlimited investments',
-  proSignInSub: 'Sign in to see your plan',
-  allFeaturesManage: 'All features unlocked · Manage on investry.app',
-  manageSubscriptions: 'Manage Subscriptions',
-  proActiveLabel: 'ACTIVE',
 
   // Settings — invite friends / referrals
   inviteFriendsNav: 'Invite Friends',
@@ -1403,8 +1396,6 @@ const ar: typeof en = {
   subHeroSub: 'افتح إمكاناتك المالية الكاملة',
   subCurrentPlanFree: 'أنت مشترك في الخطة المجانية',
   subCurrentPlanPro: 'أنت مشترك في خطة Pro',
-  subContinueOnWebsite: 'المتابعة عبر investry.app',
-  subManageOnWebsite: 'قم بالترقية إلى Pro عبر investry.app بنفس الحساب — ستُفتح ميزات Pro هنا تلقائياً بمجرد تفعيل اشتراكك.',
   subWhatsIncluded: 'ما يتضمنه الاشتراك',
   subTerms: 'الشروط',
   subPrivacy: 'الخصوصية',
@@ -2013,11 +2004,6 @@ const ar: typeof en = {
   privacyPolicyBody: 'آخر تحديث: يوليو 2026\n\nالحساب وتسجيل الدخول\nنستخدم Clerk لإدارة تسجيل الدخول عبر البريد الإلكتروني/كلمة المرور، Google، وApple. تقوم Clerk بمعالجة بريدك الإلكتروني وبيانات اعتماد المصادقة نيابة عنا — نحن لا نرى أو نخزن كلمة مرورك أبداً.\n\nبيانات محفظتك\nيتم تخزين استثماراتك وحساباتك النقدية التي تضيفها بشكل آمن على خوادمنا، مرتبطة بحسابك الموثّق. لا تتم مشاركة هذه البيانات أبداً مع مستخدمين آخرين، ولا تُباع أو تُشارك أبداً مع أطراف ثالثة. يتم تخزين نسخة محلية على جهازك للوصول دون اتصال بالإنترنت. تبقى الأهداف والدخل المتكرر على جهازك فقط ولا تُرسل أبداً إلى خوادمنا.\n\nالتشفير\nيتم نقل جميع البيانات بين التطبيق وخوادمنا عبر اتصالات مشفّرة (HTTPS).\n\nبيانات السوق من أطراف ثالثة\nنحصل على الأسعار المباشرة من مزودين خارجيين لعرض بيانات السوق. هذه مجرد طلبات أسعار عامة مجهولة الهوية — لا تُرسل أي معلومات شخصية إلى هؤلاء المزودين.\n\nالتحليلات (اختياري)\nبيانات استخدام مجهولة الهوية فقط. لا يتم جمع أي معلومات تعريف شخصية.\n\nحذف البيانات\nيمكنك طلب حذف حسابك وجميع البيانات المرتبطة به في أي وقت عبر التواصل معنا أدناه.\n\nالتواصل\nأسئلة حول هذه السياسة؟ راسلنا على privacy@investry.app.',
 
   // Settings — subscription card
-  proUpgradeSub: 'افتح التحليلات وجميع الأدوات واستثمارات غير محدودة',
-  proSignInSub: 'سجّل دخولك لعرض خطتك',
-  allFeaturesManage: 'جميع الميزات مفتوحة · إدارة الاشتراك عبر investry.app',
-  manageSubscriptions: 'إدارة الاشتراكات',
-  proActiveLabel: 'نشط',
 
   // Settings — invite friends / referrals
   inviteFriendsNav: 'ادعُ أصدقاءك',

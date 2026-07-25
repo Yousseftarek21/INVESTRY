@@ -753,7 +753,7 @@ export default function SettingsScreen() {
   const { signOut } = useClerk();
   const { user } = useUser();
   const { getToken } = useAuth();
-  const { plan, isPro, isLoading: subLoading } = useSubscription();
+  const { plan } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
     biometricLock, setBiometricLock, displayCurrency, setDisplayCurrency,
@@ -945,46 +945,6 @@ export default function SettingsScreen() {
               <Text style={[sc.switchAccountTxt, { color: colors.mutedForeground }]}>{t.signOutBtn}</Text>
             </TouchableOpacity>
           </>
-        )}
-
-        {/* ── SUBSCRIPTION ─────────────────────────────────── */}
-        {!subLoading && !isPro ? (
-          <Pressable
-            onPress={() => (user ? openURL('https://investry.app/#pricing') : router.push('/(auth)/sign-in' as any))}
-            style={({ pressed }) => [
-              sc.upgradeCard,
-              { backgroundColor: colors.card, borderColor: colors.primary + '35', opacity: pressed ? 0.88 : 1 },
-            ]}
-          >
-            <View style={sc.upgradeLeft}>
-              <View style={[sc.upgradeIcon, { backgroundColor: colors.primary + '18' }]}>
-                <Feather name="star" size={18} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[sc.upgradeTitle, { color: colors.text }]}>{t.manageSubscriptions}</Text>
-                <Text style={[sc.upgradeSub, { color: colors.mutedForeground }]}>
-                  {user ? t.proUpgradeSub : t.proSignInSub}
-                </Text>
-              </View>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={() => openURL('https://investry.app')}
-            style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: colors.primary + '40', opacity: pressed ? 0.88 : 1 }]}
-          >
-            <View style={[sc.proBannerIcon, { backgroundColor: colors.primary + '18' }]}>
-              <Feather name="star" size={18} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[sc.proBannerTitle, { color: colors.text }]}>{t.manageSubscriptions}</Text>
-              <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>{t.allFeaturesManage}</Text>
-            </View>
-            <View style={[sc.activeTag, { backgroundColor: colors.primary + '18' }]}>
-              <Text style={[sc.activeTagTxt, { color: colors.primary }]}>{t.proActiveLabel}</Text>
-            </View>
-          </Pressable>
         )}
 
         {/* ── INVITE FRIENDS ────────────────────────────────── */}
@@ -1247,23 +1207,4 @@ const sc = StyleSheet.create({
   signInText: { flex: 1, gap: 3 },
   signInTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   signInSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-
-  // Subscription card (free user)
-  upgradeCard: {
-    borderRadius: 18, borderWidth: 1,
-    flexDirection: 'row', alignItems: 'center',
-    padding: 18, gap: 14,
-  },
-  upgradeLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  upgradeIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  upgradeTitle: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  upgradeSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-
-  // Subscription banner (subscribed user)
-  proBanner: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
-  proBannerIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  proBannerTitle: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  proBannerSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  activeTag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  activeTagTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
 });

@@ -100,10 +100,9 @@ const cmp = StyleSheet.create({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 //
 // Purely informational — shows the user's current plan and what Pro
-// includes. There is no purchase flow here at all: the app never processes
-// payments. Upgrading, managing, and cancelling all happen on the website
-// (investry.app) with the same account; this screen just reflects whatever
-// the backend currently reports.
+// includes. There is no purchase or account-management action anywhere in
+// this screen (or anywhere else in the app): it just reflects whatever the
+// backend currently reports for the signed-in account.
 
 interface SubscriptionScreenProps {
   visible: boolean;
@@ -249,23 +248,6 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           {/* ── Free vs Pro ─────────────────────────────────── */}
           <CompareTable />
 
-          {/* ── Continue on the website ─────────────────────── */}
-          {/* The app itself never processes a payment or opens a checkout
-              page — this just hands off to investry.app, signed in with
-              the same account, where the actual subscribe/manage flow
-              lives entirely. */}
-          <Pressable
-            onPress={() => Linking.openURL('https://investry.app/#pricing')}
-            style={({ pressed }) => [sw.cta, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
-          >
-            <Text style={[sw.ctaTxt, { color: colors.primaryForeground }]}>
-              {isPro ? t.manageSubscriptions : t.subContinueOnWebsite}
-            </Text>
-          </Pressable>
-          <Text style={[sw.manageNote, { color: colors.mutedForeground }]}>
-            {t.subManageOnWebsite}
-          </Text>
-
           {/* ── Footer ──────────────────────────────────────── */}
           <View style={sw.footer}>
             <Pressable onPress={() => Linking.openURL(`${getApiBaseUrl()}/api/legal/terms`)}>
@@ -334,17 +316,6 @@ const sw = StyleSheet.create({
     letterSpacing: 1, marginBottom: 4,
   },
   featureGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-
-  cta: {
-    borderRadius: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 10,
-  },
-  ctaTxt: { fontSize: 16, fontFamily: 'Inter_700Bold' },
-
-  manageNote: {
-    fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 19,
-    textAlign: 'center', marginBottom: 20,
-  },
 
   // Footer
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 },
