@@ -3,25 +3,33 @@ import { Router, type IRouter } from "express";
 const router: IRouter = Router();
 
 const PAGE_STYLE = `
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { color-scheme: dark; }
+    :root { color-scheme: light; }
     body {
-      background: #060D1A;
-      color: #E8EAED;
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      background: #FFFFFF;
+      color: #16130E;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       line-height: 1.65;
       max-width: 720px;
       margin: 0 auto;
       padding: 48px 24px 80px;
+      -webkit-font-smoothing: antialiased;
     }
-    h1 { color: #D4AC0D; font-size: 28px; margin-bottom: 4px; }
-    .updated { color: #9AA5B1; font-size: 13px; margin-bottom: 32px; }
-    h2 { color: #D4AC0D; font-size: 18px; margin-top: 32px; }
-    p, li { color: #C7CCD3; font-size: 15px; }
-    a { color: #D4AC0D; }
+    a.back { display: inline-block; color: #6B6355; font-size: 13px; font-weight: 600; text-decoration: none; margin-bottom: 28px; }
+    a.back:hover { color: #A9821E; }
+    h1 { font-family: 'Fraunces', Georgia, serif; color: #16130E; font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px; }
+    .updated { color: #6B6355; font-size: 13px; margin-bottom: 32px; }
+    h2 { font-family: 'Fraunces', Georgia, serif; color: #16130E; font-size: 19px; font-weight: 700; letter-spacing: -0.2px; margin-top: 36px; margin-bottom: 8px; }
+    p, li { color: #6B6355; font-size: 15px; }
+    a { color: #A9821E; }
     ul { padding-left: 20px; }
   </style>
 `;
+
+const BACK_LINK = `<a class="back" href="https://investry.app">&larr; Back to INVESTRY</a>`;
 
 router.get("/legal/privacy", (_req, res) => {
   res.set("Content-Type", "text/html").send(`<!DOCTYPE html>
@@ -29,6 +37,7 @@ router.get("/legal/privacy", (_req, res) => {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy Policy — INVESTRY</title>${PAGE_STYLE}</head>
 <body>
+  ${BACK_LINK}
   <h1>Privacy Policy</h1>
   <div class="updated">Last updated: July 2026</div>
 
@@ -61,6 +70,7 @@ router.get("/legal/terms", (_req, res) => {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Terms of Service — INVESTRY</title>${PAGE_STYLE}</head>
 <body>
+  ${BACK_LINK}
   <h1>Terms of Service</h1>
   <div class="updated">Last updated: July 2026</div>
 
