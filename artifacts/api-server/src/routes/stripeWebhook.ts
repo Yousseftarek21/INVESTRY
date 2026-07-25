@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import express from "express";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { getStripe } from "../lib/stripe";
 import { logger } from "../lib/logger";
 
 // Mounted directly in app.ts, BEFORE express.json() — Stripe's signature
@@ -12,18 +12,6 @@ import { logger } from "../lib/logger";
 // this just listens for the result and syncs it into our own DB, keyed by
 // the Clerk user ID the website's Checkout Session was created with.
 const router: IRouter = Router();
-
-// Constructed lazily, per-request — never at module load. Stripe's SDK
-// throws immediately if the key is empty, and this file is imported (so
-// its top-level code runs) unconditionally at server startup regardless of
-// whether Stripe env vars are configured yet. Constructing eagerly here
-// once took the entire API down at boot, not just this route.
-let _stripe: Stripe | null = null;
-function getStripe(): Stripe | null {
-  if (!process.env.STRIPE_SECRET_KEY) return null;
-  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-  return _stripe;
-}
 
 function billingPeriodFromPrice(price: Stripe.Price | undefined): "monthly" | "annual" {
   return price?.recurring?.interval === "year" ? "annual" : "monthly";
@@ -65,19 +53,25 @@ router.post("/stripe/webhook", express.raw({ type: "application/json" }), async 
           logger.warn({ subscriptionId: sub.id }, "Stripe subscription has no clerkUserId metadata — cannot sync");
           break;
         }
-        await db.update(usersTable).set({
-          plan: sub.status === "active" || sub.status === "trialing" ? "pro" : "free",
+        const fields = {
+          plan: (sub.status === "active" || sub.status === "trialing" ? "pro" : "free") as "pro" | "free",
           billingPeriod: billingPeriodFromPrice(sub.items.data[0]?.price),
           stripeCustomerId: typeof sub.customer === "string" ? sub.customer : sub.customer.id,
           stripeSubscriptionId: sub.id,
-        }).where(eq(usersTable.id, clerkUserId));
+        };
+        // Upsert, not update — the website may be the first place this
+        // user ever touches (e.g. they subscribed before opening the app
+        // even once), so there may be no existing row to update yet.
+        await db.insert(usersTable).values({ id: clerkUserId, ...fields })
+          .onConflictDoUpdate({ target: usersTable.id, set: fields });
         break;
       }
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
         const clerkUserId = sub.metadata?.clerkUserId;
         if (!clerkUserId) break;
-        await db.update(usersTable).set({ plan: "free" }).where(eq(usersTable.id, clerkUserId));
+        await db.insert(usersTable).values({ id: clerkUserId, plan: "free" })
+          .onConflictDoUpdate({ target: usersTable.id, set: { plan: "free" } });
         break;
       }
       default:
