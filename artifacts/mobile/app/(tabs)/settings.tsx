@@ -951,20 +951,23 @@ export default function SettingsScreen() {
         {!subLoading && !isPro ? (
           <Pressable
             onPress={() => (user ? openURL('https://investry.app/#pricing') : router.push('/(auth)/sign-in' as any))}
-            style={({ pressed }) => [sc.upgradeCard, { opacity: pressed ? 0.88 : 1 }]}
+            style={({ pressed }) => [
+              sc.upgradeCard,
+              { backgroundColor: colors.card, borderColor: colors.primary + '35', opacity: pressed ? 0.88 : 1 },
+            ]}
           >
             <View style={sc.upgradeLeft}>
-              <View style={sc.upgradeIcon}>
-                <Feather name="star" size={18} color="#000" />
+              <View style={[sc.upgradeIcon, { backgroundColor: colors.primary + '18' }]}>
+                <Feather name="star" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={sc.upgradeTitle}>{t.manageSubscriptions}</Text>
-                <Text style={sc.upgradeSub}>
+                <Text style={[sc.upgradeTitle, { color: colors.text }]}>{t.manageSubscriptions}</Text>
+                <Text style={[sc.upgradeSub, { color: colors.mutedForeground }]}>
                   {user ? t.proUpgradeSub : t.proSignInSub}
                 </Text>
               </View>
             </View>
-            <Feather name="chevron-right" size={16} color="#000" />
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
           </Pressable>
         ) : (
           <Pressable
@@ -1247,14 +1250,14 @@ const sc = StyleSheet.create({
 
   // Subscription card (free user)
   upgradeCard: {
-    borderRadius: 18, backgroundColor: '#C9A227',
+    borderRadius: 18, borderWidth: 1,
     flexDirection: 'row', alignItems: 'center',
     padding: 18, gap: 14,
   },
   upgradeLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  upgradeIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: 'rgba(0,0,0,0.15)', alignItems: 'center', justifyContent: 'center' },
-  upgradeTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#000' },
-  upgradeSub: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#000', opacity: 0.7, marginTop: 2 },
+  upgradeIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  upgradeTitle: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  upgradeSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
 
   // Subscription banner (subscribed user)
   proBanner: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },

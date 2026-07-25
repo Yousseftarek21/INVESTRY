@@ -745,14 +745,17 @@ export default function AnalyticsScreen() {
       >
         <Pressable
           onPress={() => router.push('/ai-assistant' as any)}
-          style={[s.aiAssistantCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}
+          style={[s.aiAssistantCard, { backgroundColor: '#8B5CF612', borderColor: '#8B5CF640' }]}
         >
-          <View style={[s.aiAssistantIcon, { backgroundColor: colors.primary + '18' }]}>
-            <Feather name="cpu" size={22} color={colors.primary} />
+          <View style={[s.aiAssistantIcon, { backgroundColor: '#8B5CF622' }]}>
+            <Feather name="cpu" size={22} color="#8B5CF6" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[s.sectionTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
             <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.aiAssistantDesc}</Text>
+          </View>
+          <View style={[s.aiAssistantBadge, { backgroundColor: '#8B5CF622' }]}>
+            <Text style={[s.aiAssistantBadgeTxt, { color: '#8B5CF6' }]}>AI</Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </Pressable>
@@ -1064,6 +1067,8 @@ const s = StyleSheet.create({
   sectionIconWrap: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   aiAssistantCard: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 18, borderWidth: 1, padding: 16 },
   aiAssistantIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  aiAssistantBadge: { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 },
+  aiAssistantBadgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
   sectionTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
   sectionSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
 
