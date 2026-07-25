@@ -15,6 +15,7 @@ import recurringIncomeRouter from "./recurringIncome";
 import portfolioRouter from "./portfolio";
 import priceAlertsRouter from "./priceAlerts";
 import stripeCheckoutRouter from "./stripeCheckout";
+import chatRouter from "./chat";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(recurringIncomeRouter);
 router.use(portfolioRouter);
 router.use(priceAlertsRouter);
 router.use(stripeCheckoutRouter);
+router.use(chatRouter);
 
 export default router;
