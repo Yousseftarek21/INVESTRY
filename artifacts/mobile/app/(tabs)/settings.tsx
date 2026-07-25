@@ -972,19 +972,15 @@ export default function SettingsScreen() {
             <Feather name="chevron-right" size={16} color="#000" />
           </Pressable>
         ) : (
-          // Pro is active — tapping just opens the informational Pro sheet
-          // (current plan + benefits). Managing or cancelling a subscription
-          // happens entirely on investry.app; this app never opens a billing
-          // portal or any other payment-related page.
           <Pressable
-            onPress={() => { haptic(); showPaywall(); }}
+            onPress={() => openURL('https://investry.app')}
             style={({ pressed }) => [sc.proBanner, { backgroundColor: colors.card, borderColor: colors.primary + '40', opacity: pressed ? 0.88 : 1 }]}
           >
             <View style={[sc.proBannerIcon, { backgroundColor: colors.primary + '18' }]}>
               <Feather name="star" size={18} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[sc.proBannerTitle, { color: colors.text }]}>Investry Pro</Text>
+              <Text style={[sc.proBannerTitle, { color: colors.text }]}>{t.manageSubscriptions}</Text>
               <Text style={[sc.proBannerSub, { color: colors.mutedForeground }]}>{t.allFeaturesManage}</Text>
             </View>
             <View style={[sc.activeTag, { backgroundColor: colors.primary + '18' }]}>

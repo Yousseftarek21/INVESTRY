@@ -973,7 +973,8 @@ const en = {
   // Settings — subscription card
   proUpgradeSub: 'Unlock analytics, all tools & unlimited investments',
   proSignInSub: 'Sign in to see your plan',
-  allFeaturesManage: 'All features unlocked · Tap to view your plan',
+  allFeaturesManage: 'All features unlocked · Manage on investry.app',
+  manageSubscriptions: 'Manage Subscriptions',
   proActiveLabel: 'ACTIVE',
 
   // Settings — invite friends / referrals
@@ -1990,7 +1991,8 @@ const ar: typeof en = {
   // Settings — subscription card
   proUpgradeSub: 'افتح التحليلات وجميع الأدوات واستثمارات غير محدودة',
   proSignInSub: 'سجّل دخولك لعرض خطتك',
-  allFeaturesManage: 'جميع الميزات مفتوحة · اضغط لعرض خطتك',
+  allFeaturesManage: 'جميع الميزات مفتوحة · إدارة الاشتراك عبر investry.app',
+  manageSubscriptions: 'إدارة الاشتراكات',
   proActiveLabel: 'نشط',
 
   // Settings — invite friends / referrals
