@@ -131,14 +131,26 @@
      content stops fitting comfortably well before 640px, around ~780px):
      nav links collapse into a hamburger-triggered dropdown — a floating
      rounded card inset from the header edges, not a full-bleed panel.
-     Sign In and Language move into it too (JS-reparented), so the header
-     bar itself only ever shows the logo and the hamburger. */
+     Sign In moves into it too (JS-reparented), but Language stays visible
+     in the header bar itself — switching language is a one-tap action
+     users reach for often enough that hiding it behind the hamburger
+     added friction. */
   @media (max-width: 860px) {
     header.site .wrap { padding-top: 12px; padding-bottom: 12px; padding-left: 20px; padding-right: 20px; gap: 8px; }
-    .header-actions { gap: 6px; }
+    .header-actions { gap: 4px; }
     .account-chip .email { max-width: 90px; }
 
     .menu-toggle { display: inline-flex; }
+
+    .lang-toggle, html[dir="rtl"] .lang-toggle {
+      border: none; background: none; padding: 10px 8px; gap: 0;
+      min-height: 44px; box-sizing: border-box;
+    }
+    .lang-toggle:hover { background: none; border-color: transparent; }
+    .lang-toggle svg { display: none; }
+    #langToggleLabel { display: none; }
+    .lang-toggle-label-short { display: inline; font-size: 14px; font-weight: 600; color: var(--muted); }
+    .lang-toggle:hover .lang-toggle-label-short { color: var(--accent); }
 
     .nav-links {
       display: flex; flex-direction: column; align-items: stretch; gap: 0;
@@ -169,21 +181,14 @@
     .nav-links a:first-child { border-top: none; }
 
     .mobile-nav-actions {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      border-top: 1px solid var(--border); margin-top: 2px; padding: 10px 2px;
+      display: flex; border-top: 1px solid var(--border); margin-top: 2px; padding: 12px 2px 4px;
     }
-    .mobile-nav-actions .btn-account,
-    .mobile-nav-actions .lang-toggle { min-height: 44px; box-sizing: border-box; }
-    .mobile-nav-actions .account-chip .email { max-width: 140px; }
-
-    .lang-toggle, html[dir="rtl"] .lang-toggle {
-      border: none; background: none; padding: 8px 6px; gap: 0;
+    .mobile-nav-actions #accountArea { display: flex; width: 100%; }
+    .mobile-nav-actions .btn-account {
+      width: 100%; justify-content: center; min-height: 44px; box-sizing: border-box;
     }
-    .lang-toggle:hover { background: none; border-color: transparent; }
-    .lang-toggle svg { display: none; }
-    #langToggleLabel { display: none; }
-    .lang-toggle-label-short { display: inline; font-size: 14px; font-weight: 600; color: var(--muted); }
-    .lang-toggle:hover .lang-toggle-label-short { color: var(--accent); }
+    .mobile-nav-actions .account-chip { width: 100%; justify-content: space-between; }
+    .mobile-nav-actions .account-chip .email { max-width: 160px; }
   }
 
   /* Hero — centered, stacked top to bottom. Sits close beneath the header
@@ -575,9 +580,10 @@
       <a href="#pricing" data-i18n="navPricing">Pricing</a>
       <button type="button" class="open-contact-modal" data-i18n="navContact">Get in touch</button>
       <!-- Populated by JS below 860px: placeHeaderControls() moves the
-           real #accountArea and #langToggle nodes in here (and back out
-           to .header-actions above 860px) so there's one source of truth
-           for auth/language state, never two copies to keep in sync. -->
+           real #accountArea node in here (and back out to .header-actions
+           above 860px) so there's one source of truth for auth state,
+           never two copies to keep in sync. Language stays in the header
+           at every width, so it isn't reparented. -->
       <div class="mobile-nav-actions" id="mobileNavActions"></div>
     </nav>
     <div class="header-actions">
@@ -1298,23 +1304,21 @@
     if (e.key === 'Escape') closeMenu();
   });
 
-  // Sign In and Language live in the header on desktop, but move inside the
-  // mobile dropdown below 860px — same DOM nodes either way (reparented,
-  // not duplicated), so there's exactly one source of truth for auth and
-  // language state regardless of viewport.
+  // Sign In moves inside the mobile dropdown below 860px — same DOM node
+  // either way (reparented, not duplicated), so there's exactly one source
+  // of truth for auth state regardless of viewport. Language stays put in
+  // the header bar at every width — it's a control people reach for
+  // without wanting to open the full menu first.
   (function () {
     var mq640 = window.matchMedia('(max-width: 860px)'); // keep in sync with the header/nav breakpoint above
     var headerActionsEl = document.querySelector('.header-actions');
     var mobileNavActionsEl = document.getElementById('mobileNavActions');
     var accountAreaEl = document.getElementById('accountArea');
-    var langToggleEl = document.getElementById('langToggle');
     function placeHeaderControls(mql) {
       if (mql.matches) {
-        mobileNavActionsEl.appendChild(langToggleEl);
         mobileNavActionsEl.appendChild(accountAreaEl);
       } else {
         headerActionsEl.insertBefore(accountAreaEl, headerActionsEl.firstChild);
-        headerActionsEl.insertBefore(langToggleEl, menuToggle);
       }
     }
     placeHeaderControls(mq640);
