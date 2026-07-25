@@ -76,15 +76,24 @@
     padding-top: 14px; padding-bottom: 14px;
   }
   /* Desktop only, gated by min-width so it is structurally impossible for
-     this to affect the mobile layout below — uncaps just the header's own
-     content row (not the shared .wrap used by hero/sections), so the logo
-     sits right at the left edge and Sign In/Language sit right at the
-     right edge (24px padding, same as the rest of the page) instead of
-     floating inside a centered, capped column. Nav links are untouched —
-     same gap, same position right after the logo — this only moves where
-     the whole row starts and ends. */
+     this to affect the mobile layout below. Everything the mobile layout
+     actually uses — the base flex rules on header.site .wrap, .brand,
+     .nav-links, .header-actions — is untouched; this block only adds a
+     grid override that exists exclusively at 861px and up.
+     Uncaps the header's own content row (not the shared .wrap used by
+     hero/sections) so the logo sits at the left edge and Sign In/Language
+     sit at the right edge (24px padding, same as the rest of the page),
+     and switches to grid so nav-links sits at the true center of that
+     wider row instead of bunched next to the logo with a big dead gap
+     before Sign In/Language. */
   @media (min-width: 861px) {
-    header.site .wrap { max-width: none; }
+    header.site .wrap {
+      max-width: none;
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px;
+    }
+    .brand { justify-self: start; }
+    .nav-links { justify-self: center; }
+    .header-actions { justify-self: end; margin-inline-start: 0; }
   }
   .brand { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; }
   .brand img { height: 20px; width: auto; opacity: 0.92; }
