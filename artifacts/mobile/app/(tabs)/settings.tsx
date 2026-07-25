@@ -958,12 +958,7 @@ export default function SettingsScreen() {
                 <Feather name="star" size={18} color="#000" />
               </View>
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={sc.upgradeTitle}>Investry Pro</Text>
-                  <View style={sc.proBadge}>
-                    <Text style={sc.proBadgeTxt}>FREE</Text>
-                  </View>
-                </View>
+                <Text style={sc.upgradeTitle}>Investry Pro</Text>
                 <Text style={sc.upgradeSub}>
                   {user ? t.proUpgradeSub : t.proSignInSub}
                 </Text>
@@ -1260,8 +1255,6 @@ const sc = StyleSheet.create({
   upgradeIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: 'rgba(0,0,0,0.15)', alignItems: 'center', justifyContent: 'center' },
   upgradeTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', color: '#000' },
   upgradeSub: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#000', opacity: 0.7, marginTop: 2 },
-  proBadge: { backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
-  proBadgeTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', color: '#000', letterSpacing: 0.5 },
 
   // Subscription banner (subscribed user)
   proBanner: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
