@@ -13,15 +13,26 @@ import { logger } from "../lib/logger";
 // the Clerk user ID the website's Checkout Session was created with.
 const router: IRouter = Router();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
+// Constructed lazily, per-request — never at module load. Stripe's SDK
+// throws immediately if the key is empty, and this file is imported (so
+// its top-level code runs) unconditionally at server startup regardless of
+// whether Stripe env vars are configured yet. Constructing eagerly here
+// once took the entire API down at boot, not just this route.
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe | null {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  return _stripe;
+}
 
 function billingPeriodFromPrice(price: Stripe.Price | undefined): "monthly" | "annual" {
   return price?.recurring?.interval === "year" ? "annual" : "monthly";
 }
 
 router.post("/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-  if (!process.env.STRIPE_WEBHOOK_SECRET) {
-    logger.warn("Stripe webhook received but STRIPE_WEBHOOK_SECRET is not configured");
+  const stripe = getStripe();
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) {
+    logger.warn("Stripe webhook received but Stripe env vars are not configured");
     res.status(503).json({ error: "Webhook not configured" });
     return;
   }
