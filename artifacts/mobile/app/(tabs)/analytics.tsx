@@ -737,6 +737,27 @@ export default function AnalyticsScreen() {
       </View>
       <FinancialTools />
 
+      {/* ══ SECTION: AI Financial Assistant ═══════════════════════════ */}
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      <PremiumGate
+        feature={t.aiAssistantTitle}
+        description={t.aiAssistantDesc}
+      >
+        <Pressable
+          onPress={() => router.push('/ai-assistant' as any)}
+          style={[s.aiAssistantCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}
+        >
+          <View style={[s.aiAssistantIcon, { backgroundColor: colors.primary + '18' }]}>
+            <Feather name="cpu" size={22} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
+            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.aiAssistantDesc}</Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        </Pressable>
+      </PremiumGate>
+
       {/* ══ SECTION 2: Market Intelligence ══════════════════════════ */}
       <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
       <PremiumGate
@@ -1041,6 +1062,8 @@ const s = StyleSheet.create({
   sectionDivider: { height: StyleSheet.hairlineWidth, marginHorizontal: -20 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   sectionIconWrap: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  aiAssistantCard: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 18, borderWidth: 1, padding: 16 },
+  aiAssistantIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   sectionTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
   sectionSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
 
