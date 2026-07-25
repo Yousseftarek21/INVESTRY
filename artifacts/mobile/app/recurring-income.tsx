@@ -14,9 +14,15 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 import { RecurringIncome } from '@/types';
+
+// Recurring income tracking is a Pro-only feature — Free shows the screen
+// (so an existing entry from before a downgrade is still visible) but
+// can't add a new one.
+const FREE_LIMIT = 0;
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
@@ -51,6 +57,7 @@ export default function RecurringIncomeScreen() {
     updateRecurringIncome,
     removeRecurringIncome,
   } = useRecurringIncome();
+  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -114,6 +121,10 @@ export default function RecurringIncomeScreen() {
     }
     if (!cashAccountId) {
       Alert.alert(t.depositInto, t.incomeAccountError);
+      return;
+    }
+    if (!editingId && !subLoading && !featuresUnlocked && recurringIncomes.length >= FREE_LIMIT) {
+      showPaywall();
       return;
     }
 

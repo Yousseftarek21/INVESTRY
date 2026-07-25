@@ -14,9 +14,12 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { Goal, useGoals } from '@/context/GoalsContext';
 import { useCash } from '@/context/CashContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 import { CashAccountType } from '@/types';
+
+const FREE_LIMIT = 1;
 
 const ACCOUNT_TYPE_ICONS: Record<CashAccountType, keyof typeof Feather.glyphMap> = {
   bank: 'credit-card',
@@ -48,6 +51,7 @@ export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
   const { goals, addGoal, updateGoal, removeGoal } = useGoals();
   const { cashAccounts } = useCash();
+  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -102,6 +106,10 @@ export default function GoalsScreen() {
     const saved = linkedAccount ? linkedAccount.balance : parseAmount(savedRaw);
     if (!trimmed) { Alert.alert(t.goalName, t.goalNameError); return; }
     if (target <= 0) { Alert.alert(t.targetAmount, t.goalTargetError); return; }
+    if (!editingId && !subLoading && !featuresUnlocked && goals.length >= FREE_LIMIT) {
+      showPaywall();
+      return;
+    }
     impact(Haptics.ImpactFeedbackStyle.Light);
     try {
       if (editingId) {

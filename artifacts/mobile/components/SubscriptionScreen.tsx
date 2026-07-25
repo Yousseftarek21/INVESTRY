@@ -41,6 +41,9 @@ function CompareTable() {
 
   const ROWS: { label: string; free: string | false; pro: string | true }[] = [
     { label: t.subCompareHoldings, free: '3', pro: t.subCompareUnlimited },
+    { label: t.subCompareCash, free: '1', pro: t.subCompareUnlimited },
+    { label: t.subCompareGoals, free: '1', pro: t.subCompareUnlimited },
+    { label: t.subCompareIncome, free: false, pro: true },
     { label: t.subMarketIntelligence, free: false, pro: true },
     { label: t.subPortfolioAnalytics, free: false, pro: true },
   ];
@@ -246,16 +249,22 @@ export function SubscriptionScreen({ visible, onClose }: SubscriptionScreenProps
           {/* ── Free vs Pro ─────────────────────────────────── */}
           <CompareTable />
 
-          {/* ── Manage on the website ───────────────────────── */}
-          {/* Deliberately plain text, not a button or link — this app never
-              initiates a purchase or opens a checkout/billing page. Upgrading
-              and managing a subscription both happen entirely on
-              investry.app, signed in with the same account. */}
-          {!isPro && (
-            <Text style={[sw.manageNote, { color: colors.mutedForeground }]}>
-              {t.subManageOnWebsite}
+          {/* ── Continue on the website ─────────────────────── */}
+          {/* The app itself never processes a payment or opens a checkout
+              page — this just hands off to investry.app, signed in with
+              the same account, where the actual subscribe/manage flow
+              lives entirely. */}
+          <Pressable
+            onPress={() => Linking.openURL('https://investry.app/#pricing')}
+            style={({ pressed }) => [sw.cta, { backgroundColor: accent, opacity: pressed ? 0.88 : 1 }]}
+          >
+            <Text style={[sw.ctaTxt, { color: colors.primaryForeground }]}>
+              {isPro ? t.manageSubscriptions : t.subContinueOnWebsite}
             </Text>
-          )}
+          </Pressable>
+          <Text style={[sw.manageNote, { color: colors.mutedForeground }]}>
+            {t.subManageOnWebsite}
+          </Text>
 
           {/* ── Footer ──────────────────────────────────────── */}
           <View style={sw.footer}>
@@ -326,8 +335,14 @@ const sw = StyleSheet.create({
   },
   featureGrid: { flexDirection: 'row', flexWrap: 'wrap' },
 
+  cta: {
+    borderRadius: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10,
+  },
+  ctaTxt: { fontSize: 16, fontFamily: 'Inter_700Bold' },
+
   manageNote: {
-    fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 20,
+    fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 19,
     textAlign: 'center', marginBottom: 20,
   },
 

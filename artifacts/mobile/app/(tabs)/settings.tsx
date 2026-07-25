@@ -753,7 +753,7 @@ export default function SettingsScreen() {
   const { signOut } = useClerk();
   const { user } = useUser();
   const { getToken } = useAuth();
-  const { plan, isPro, isLoading: subLoading, showPaywall } = useSubscription();
+  const { plan, isPro, isLoading: subLoading } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
     biometricLock, setBiometricLock, displayCurrency, setDisplayCurrency,
@@ -950,7 +950,7 @@ export default function SettingsScreen() {
         {/* ── SUBSCRIPTION ─────────────────────────────────── */}
         {!subLoading && !isPro ? (
           <Pressable
-            onPress={() => (user ? showPaywall() : router.push('/(auth)/sign-in' as any))}
+            onPress={() => (user ? openURL('https://investry.app/#pricing') : router.push('/(auth)/sign-in' as any))}
             style={({ pressed }) => [sc.upgradeCard, { opacity: pressed ? 0.88 : 1 }]}
           >
             <View style={sc.upgradeLeft}>

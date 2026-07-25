@@ -16,10 +16,15 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
 import { parseAmount } from '@/utils/parseAmount';
 
 type EntryType = CashAccountType | 'recurring_income';
+
+const FREE_LIMIT_CASH = 1;
+// Recurring income is a Pro-only feature — same policy as recurring-income.tsx.
+const FREE_LIMIT_INCOME = 0;
 
 const CURRENCIES_DEFAULT = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 const CURRENCIES_FOREIGN  = ['USD', 'EUR', 'GBP', 'SAR', 'AED', 'EGP'];
@@ -42,6 +47,7 @@ export default function CashAccountsScreen() {
   const insets = useSafeAreaInsets();
   const { cashAccounts, addCashAccount, updateCashAccount, removeCashAccount } = useCash();
   const { recurringIncomes, addRecurringIncome, updateRecurringIncome, removeRecurringIncome } = useRecurringIncome();
+  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
   const { impact, notify } = useHaptic();
 
   const { openAdd: openAddParam, type: typeParam } = useLocalSearchParams<{ openAdd?: string; type?: string }>();
@@ -193,6 +199,10 @@ export default function CashAccountsScreen() {
         Alert.alert(t.depositInto, t.selectAccount);
         return;
       }
+      if (!isEditingIncome && !subLoading && !featuresUnlocked && recurringIncomes.length >= FREE_LIMIT_INCOME) {
+        showPaywall();
+        return;
+      }
       const day = Math.min(Math.max(parseInt(creditDay) || 25, 1), 31);
       const income: RecurringIncome = {
         id: editingId ?? generateId(),
@@ -222,6 +232,11 @@ export default function CashAccountsScreen() {
       const parsedBalance = parseAmount(balance);
       if (!accountName.trim() || !balance.trim() || isNaN(parsedBalance)) {
         Alert.alert(t.enterAccountDetails);
+        return;
+      }
+      const isNewAccount = !(editingId && !isEditingIncome);
+      if (isNewAccount && !subLoading && !featuresUnlocked && cashAccounts.length >= FREE_LIMIT_CASH) {
+        showPaywall();
         return;
       }
       const account: CashAccount = {

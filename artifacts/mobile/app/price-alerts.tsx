@@ -17,9 +17,12 @@ import { useMarketPrices } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { buildAlertPricesDict } from '@/hooks/usePriceAlerts';
 import { usePriceAlertsContext } from '@/context/PriceAlertsContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { EGX_COMPANIES } from '@/data/egx-companies';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
+
+const FREE_LIMIT = 1;
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -42,6 +45,7 @@ export default function PriceAlertsScreen() {
   const { data: prices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const { alerts, addAlert, removeAlert, refresh } = usePriceAlertsContext();
+  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
 
   const [showForm, setShowForm] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -105,6 +109,10 @@ export default function PriceAlertsScreen() {
     if (!selectedAsset) { Alert.alert(t.selectAssetLabel, t.selectAssetError); return; }
     const target = parseAmount(targetRaw);
     if (target <= 0) { Alert.alert(t.targetPriceLabel, t.targetPriceError); return; }
+    if (!subLoading && !featuresUnlocked && alerts.length >= FREE_LIMIT) {
+      showPaywall();
+      return;
+    }
     impact(Haptics.ImpactFeedbackStyle.Light);
     try {
       await addAlert({
