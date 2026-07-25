@@ -43,10 +43,14 @@ app.use(express.urlencoded({ extended: true }));
 
 // Generic per-IP ceiling — not per-user (auth happens further down the
 // chain), just enough to stop a single client from hammering the API.
+// Sized with headroom for carrier-grade NAT (common in Egypt), where
+// several unrelated users can share one public IP: background price
+// polling alone runs ~80 requests/15min per active user, so a handful of
+// people behind the same IP need well above that before hitting a wall.
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 300,
+    limit: 1000,
     standardHeaders: true,
     legacyHeaders: false,
   }),
