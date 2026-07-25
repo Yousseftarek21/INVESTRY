@@ -958,7 +958,7 @@ export default function SettingsScreen() {
                 <Feather name="star" size={18} color="#000" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={sc.upgradeTitle}>Investry Pro</Text>
+                <Text style={sc.upgradeTitle}>{t.manageSubscriptions}</Text>
                 <Text style={sc.upgradeSub}>
                   {user ? t.proUpgradeSub : t.proSignInSub}
                 </Text>
