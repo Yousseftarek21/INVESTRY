@@ -75,6 +75,17 @@
     display: flex; align-items: center; gap: 36px;
     padding-top: 14px; padding-bottom: 14px;
   }
+  /* Desktop only, gated by min-width so it is structurally impossible for
+     this to affect the mobile layout below — uncaps just the header's own
+     content row (not the shared .wrap used by hero/sections), so the logo
+     sits right at the left edge and Sign In/Language sit right at the
+     right edge (24px padding, same as the rest of the page) instead of
+     floating inside a centered, capped column. Nav links are untouched —
+     same gap, same position right after the logo — this only moves where
+     the whole row starts and ends. */
+  @media (min-width: 861px) {
+    header.site .wrap { max-width: none; }
+  }
   .brand { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; }
   .brand img { height: 20px; width: auto; opacity: 0.92; }
   .nav-links { display: flex; align-items: center; gap: 32px; }
