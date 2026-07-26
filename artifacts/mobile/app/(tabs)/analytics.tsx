@@ -675,24 +675,12 @@ export default function AnalyticsScreen() {
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
   const healthColor = health.score >= 75 ? colors.green : health.score >= 50 ? '#F59E0B' : colors.red;
 
-  // Stable object references — this screen has several independently-polling
-  // hooks (holdings, prices, EGX market, snapshots, inflation, intraday
-  // samples) re-rendering far more often than Markets' single price hook.
-  // A fresh {top: topPad}/{x:0,y:-topPad} literal on every render risks
-  // React Native re-applying the initial scroll offset on each of those
-  // re-renders instead of only once on mount — memoizing keeps the same
-  // object identity across renders unless topPad itself actually changes.
-  const scrollContentInset = useMemo(() => ({ top: topPad }), [topPad]);
-  const scrollContentOffset = useMemo(() => ({ x: 0, y: -topPad }), [topPad]);
-
   return (
     <>
     <Stack.Screen options={{ headerShown: false }} />
     <ScrollView
       style={[s.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[s.content, { paddingTop: 16, paddingBottom: botPad + 100 }]}
-      contentInset={scrollContentInset}
-      contentOffset={scrollContentOffset}
+      contentContainerStyle={[s.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
