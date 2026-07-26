@@ -901,7 +901,9 @@ export default function SettingsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         style={[sc.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={[sc.content, { paddingTop: topPad + 16, paddingBottom: botPad + 120 }]}
+        contentContainerStyle={[sc.content, { paddingTop: 16, paddingBottom: botPad + 120 }]}
+        contentInset={{ top: topPad }}
+        contentOffset={{ x: 0, y: -topPad }}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Page header ─────────────────────────────────── */}

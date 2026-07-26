@@ -680,7 +680,9 @@ export default function AnalyticsScreen() {
     <Stack.Screen options={{ headerShown: false }} />
     <ScrollView
       style={[s.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[s.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
+      contentContainerStyle={[s.content, { paddingTop: 16, paddingBottom: botPad + 100 }]}
+      contentInset={{ top: topPad }}
+      contentOffset={{ x: 0, y: -topPad }}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
