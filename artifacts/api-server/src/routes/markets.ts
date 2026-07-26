@@ -853,8 +853,11 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
     const batch = allSymbols.slice(i, i + TV_BATCH_SIZE);
     const body = JSON.stringify({
       columns: [
-        "close", "change_abs", "change", "volume", "market_cap_basic", "52_week_high", "52_week_low",
-        "P.E", "dividends_yield_current", "sector", "earnings_per_share_basic_ttm",
+        // Verified live against TradingView's scanner (not guessed): "52_week_high"/"52_week_low"/
+        // "P.E" all silently return null for every EGX ticker — the working field names are
+        // "price_52_week_high"/"price_52_week_low"/"price_earnings_ttm".
+        "close", "change_abs", "change", "volume", "market_cap_basic", "price_52_week_high", "price_52_week_low",
+        "price_earnings_ttm", "dividends_yield_current", "sector", "earnings_per_share_basic_ttm",
         "total_revenue_yoy_growth_ttm", "after_tax_margin", "return_on_equity", "debt_to_equity",
         "price_book_ratio",
       ],
