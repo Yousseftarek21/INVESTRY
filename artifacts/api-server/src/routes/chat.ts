@@ -105,11 +105,25 @@ function summarizeCash(accounts: DecodedRow[]): string {
   return `Cash accounts:\n${lines.join("\n")}`;
 }
 
-function summarizeGoals(goals: Record<string, unknown>[]): string {
+// Mirrors artifacts/mobile/app/goals.tsx's effectiveSaved(): a goal linked to
+// a cash account tracks that account's live balance instead of its own
+// stored savedAmount, which is only a last-known snapshot from whenever the
+// goal was last saved. Reading savedAmount directly (as this used to) gave
+// the assistant a stale number whenever the account's balance had moved
+// since — falls back to the stored snapshot if the linked account is gone.
+function effectiveSaved(g: Record<string, unknown>, cash: DecodedRow[]): number {
+  const linkedId = g.linkedCashAccountId as string | undefined;
+  if (!linkedId) return Number(g.savedAmount) || 0;
+  const account = cash.find((a) => a.id === linkedId);
+  return account ? Number(account.balance) || 0 : Number(g.savedAmount) || 0;
+}
+
+function summarizeGoals(goals: Record<string, unknown>[], cash: DecodedRow[]): string {
   if (goals.length === 0) return "No savings goals set.";
-  const lines = goals.map(
-    (g) => `- ${g.name}: ${g.savedAmount}/${g.targetAmount} saved${g.deadline ? ` (deadline ${g.deadline})` : ""}`,
-  );
+  const lines = goals.map((g) => {
+    const saved = effectiveSaved(g, cash);
+    return `- ${g.name}: ${saved}/${g.targetAmount} saved${g.deadline ? ` (deadline ${g.deadline})` : ""}`;
+  });
   return `Goals:\n${lines.join("\n")}`;
 }
 
@@ -198,7 +212,7 @@ async function buildPortfolioContext(
   const holdings = holdingRows.map(
     (r) => ({ id: r.id, type: r.type, ...(decryptFromStorage(r.data) as object) }) as StoredHolding,
   );
-  const cash = cashRows.map((r) => ({ type: r.type, ...(decryptFromStorage(r.data) as object) }));
+  const cash = cashRows.map((r) => ({ id: r.id, type: r.type, ...(decryptFromStorage(r.data) as object) }));
   const goals = goalRows.map((r) => decryptFromStorage(r.data) as Record<string, unknown>);
   const alerts = alertRows.map((r) => decryptFromStorage(r.data) as Record<string, unknown>);
   const income = incomeRows.map((r) => decryptFromStorage(r.data) as Record<string, unknown>);
@@ -219,7 +233,7 @@ async function buildPortfolioContext(
       : "No portfolio value history yet.",
     summarizeHoldings(holdings, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices),
     summarizeCash(cash),
-    summarizeGoals(goals),
+    summarizeGoals(goals, cash),
     summarizePriceAlerts(alerts),
     summarizeRecurringIncome(income),
     `Egypt annual inflation rate: ${inflation.rate}% (${inflation.year}, World Bank/CAPMAS CPI data).`,
