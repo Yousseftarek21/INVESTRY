@@ -2,7 +2,7 @@
  * Settings — Investry
  * Polished account & preferences hub.
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   ActivityIndicator, Alert, Animated, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
@@ -773,6 +773,10 @@ export default function SettingsScreen() {
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
+  // Stable references so a fresh {top: topPad}/{x:0,y:-topPad} literal isn't
+  // recreated on every re-render — see the matching note in analytics.tsx.
+  const scrollContentInset = useMemo(() => ({ top: topPad }), [topPad]);
+  const scrollContentOffset = useMemo(() => ({ x: 0, y: -topPad }), [topPad]);
 
   // User data
   const firstName = user?.firstName ?? '';
@@ -902,8 +906,8 @@ export default function SettingsScreen() {
       <ScrollView
         style={[sc.container, { backgroundColor: colors.background }]}
         contentContainerStyle={[sc.content, { paddingTop: 16, paddingBottom: botPad + 120 }]}
-        contentInset={{ top: topPad }}
-        contentOffset={{ x: 0, y: -topPad }}
+        contentInset={scrollContentInset}
+        contentOffset={scrollContentOffset}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Page header ─────────────────────────────────── */}
