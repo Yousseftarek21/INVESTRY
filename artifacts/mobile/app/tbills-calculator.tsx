@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerField } from '@/components/DatePickerField';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { parseAmount } from '@/utils/parseAmount';
+import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 
 function todayISO() { return new Date().toISOString().split('T')[0]; }
@@ -149,7 +149,7 @@ export default function TBillsCalculatorScreen() {
                   <TextInput
                     style={[s.input, { color: colors.text }]}
                     value={yieldRaw}
-                    onChangeText={v => setYieldRaw(v.replace(/[^0-9.]/g, ''))}
+                    onChangeText={v => setYieldRaw(toWesternDigits(v).replace(/[^0-9.]/g, ''))}
                     placeholder="27.5"
                     placeholderTextColor={colors.mutedForeground}
                     keyboardType="decimal-pad"

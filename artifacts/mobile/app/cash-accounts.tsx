@@ -18,7 +18,7 @@ import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
-import { parseAmount } from '@/utils/parseAmount';
+import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { useMarketPrices } from '@/hooks/usePrices';
 
 type EntryType = CashAccountType | 'recurring_income';
@@ -483,7 +483,7 @@ export default function CashAccountsScreen() {
                     placeholderTextColor={colors.mutedForeground}
                     keyboardType="number-pad"
                     value={creditDay}
-                    onChangeText={v => setCreditDay(v.replace(/[^0-9]/g, '').slice(0, 2))}
+                    onChangeText={v => setCreditDay(toWesternDigits(v).replace(/[^0-9]/g, '').slice(0, 2))}
                   />
                   <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.creditDayHint}</Text>
                 </View>

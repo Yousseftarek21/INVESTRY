@@ -15,7 +15,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { parseAmount } from '@/utils/parseAmount';
+import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 import { RecurringIncome } from '@/types';
 
@@ -383,7 +383,7 @@ export default function RecurringIncomeScreen() {
                   <TextInput
                     style={[s.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
                     value={creditDayRaw}
-                    onChangeText={v => setCreditDayRaw(v.replace(/[^0-9]/g, ''))}
+                    onChangeText={v => setCreditDayRaw(toWesternDigits(v).replace(/[^0-9]/g, ''))}
                     onBlur={() => {
                       const n = parseInt(creditDayRaw, 10);
                       if (!n || n < 1) setCreditDayRaw('1');
