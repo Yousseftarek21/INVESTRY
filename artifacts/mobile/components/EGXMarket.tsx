@@ -11,6 +11,7 @@ import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data
 import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 import { RangeBar } from '@/components/RangeBar';
+import { StockFinancialsSheet } from '@/components/StockFinancialsSheet';
 
 // ─── Timezone helpers ─────────────────────────────────────────────────────────
 // Egypt observes EEST (UTC+3) Apr–Oct and EET (UTC+2) Nov–Mar (DST reintroduced 2023).
@@ -193,6 +194,7 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
   const colors = useColors();
   const t = useT();
   const [expanded, setExpanded] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const isPos = stock.changePercent >= 0;
   const changeColor = stock.change === 0 && !stock.isLive ? colors.mutedForeground
     : isPos ? colors.green : colors.red;
@@ -304,6 +306,14 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
               </Text>
             </View>
           </View>
+
+          <Pressable
+            onPress={(e) => { e.stopPropagation(); setSheetOpen(true); }}
+            style={[sc.seeAllBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
+          >
+            <Text style={[sc.seeAllTxt, { color: colors.primary }]}>{t.seeAllFinancials}</Text>
+            <Feather name="arrow-right" size={13} color={colors.primary} />
+          </Pressable>
         </View>
       )}
 
@@ -315,6 +325,8 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
           color={colors.mutedForeground}
         />
       </View>
+
+      <StockFinancialsSheet stock={stock} visible={sheetOpen} onClose={() => setSheetOpen(false)} />
     </Pressable>
   );
 }
@@ -353,6 +365,11 @@ const sc = StyleSheet.create({
   detailItem: { flex: 1, gap: 2 },
   detailLabel: { fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.5 },
   detailValue: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  seeAllBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderRadius: 10, borderWidth: 1, paddingVertical: 9, marginTop: 2,
+  },
+  seeAllTxt: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   expandRow: { alignItems: 'center', paddingVertical: 5, borderTopWidth: StyleSheet.hairlineWidth },
 });
 

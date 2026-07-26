@@ -12,6 +12,12 @@ export interface EGXStockLive extends EGXCompany {
   low52w?: number;
   pe?: number;
   dividendYield?: number;
+  epsTtm?: number;
+  revenueGrowthYoy?: number;
+  netMargin?: number;
+  roe?: number;
+  debtToEquity?: number;
+  priceToBook?: number;
   isLive: boolean;
 }
 
@@ -28,6 +34,12 @@ interface ServerEGXStock {
   low52w?: number;
   pe?: number;
   dividendYield?: number;
+  epsTtm?: number;
+  revenueGrowthYoy?: number;
+  netMargin?: number;
+  roe?: number;
+  debtToEquity?: number;
+  priceToBook?: number;
 }
 
 const YF_HEADERS = {
@@ -58,6 +70,12 @@ async function fetchFromServer(): Promise<EGXStockLive[]> {
       low52w:        s.low52w,
       pe:            s.pe,
       dividendYield: s.dividendYield,
+      epsTtm:            s.epsTtm,
+      revenueGrowthYoy:  s.revenueGrowthYoy,
+      netMargin:         s.netMargin,
+      roe:               s.roe,
+      debtToEquity:      s.debtToEquity,
+      priceToBook:       s.priceToBook,
       isLive:        true,
     };
   });
