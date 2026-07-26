@@ -175,7 +175,9 @@ function summarizeTrend(
 // of small queries plus the already-cached market data fetches) that
 // staleness isn't worth the complexity of invalidating a cache when the
 // user edits a holding mid-conversation.
-async function buildPortfolioContext(userId: string): Promise<string> {
+async function buildPortfolioContext(
+  userId: string,
+): Promise<{ context: string; egxStocks: EGXStockResponse[] }> {
   const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, inflation] =
     await Promise.all([
       db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
@@ -211,7 +213,7 @@ async function buildPortfolioContext(userId: string): Promise<string> {
     summarizeTrend(snapshotRows, latestValue, 30, "30-day change"),
   ].filter((t): t is string => t !== null);
 
-  return [
+  const context = [
     latestSnapshot
       ? `Total portfolio value (as of ${latestSnapshot.date}): ${latestSnapshot.totalValue} EGP.${trends.length ? ` ${trends.join("; ")}.` : ""}`
       : "No portfolio value history yet.",
@@ -224,6 +226,8 @@ async function buildPortfolioContext(userId: string): Promise<string> {
     summarizeEgxMovers(egxStocks),
     summarizeRealEstateMarket(),
   ].join("\n\n");
+
+  return { context, egxStocks };
 }
 
 const SYSTEM_PREAMBLE = `You are the INVESTRY AI Financial Assistant, built into the INVESTRY portfolio-tracking app. You help the user understand their own portfolio and general investing/personal-finance concepts.
@@ -231,6 +235,8 @@ const SYSTEM_PREAMBLE = `You are the INVESTRY AI Financial Assistant, built into
 INVESTRY tracks: investment holdings (gold, silver, EGX stocks, real estate, personal assets, fixed income), cash accounts, savings goals, recurring income, and custom price alerts. The data below reflects live current market values (gold/silver spot prices and EGX stock prices), not just what the user originally paid — use it to answer questions about current value and unrealized gain/loss directly, not just historical cost.
 
 Beyond the user's own data, you also have: Egypt's current annual inflation rate, today's EGX market movers (top gainers/losers across the whole exchange, not just what the user holds), and a curated Egypt-wide real estate price-per-m² guide covering dozens of areas — so you can answer general market questions (e.g. "what's the going rate in Sheikh Zayed", "is EGX up today", "how does my return compare to inflation") even about things the user doesn't personally own.
+
+You also have a lookup_egx_company tool — use it whenever asked about a specific EGX company's fundamentals (P/E, dividend yield, sector, EPS, revenue growth, margins, ROE, debt/equity, price/book) or whether it looks financially strong, even if the user doesn't own it. It covers every company on the exchange, not just what's already summarized above.
 
 Rules:
 - You are not a licensed financial advisor. Never recommend a specific trade, a specific security to buy or sell, or a specific allocation change as advice — explain tradeoffs and considerations instead, and let the user decide.
@@ -247,37 +253,128 @@ const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
-async function callGemini(systemPrompt: string, messages: ChatTurn[]): Promise<string> {
+// Only the user's own holdings are inlined into every message (small,
+// always relevant). The other ~280+ EGX companies are reachable on demand
+// through this tool instead of being dumped into context every turn, which
+// would waste most of the free tier's token budget on companies that
+// aren't relevant to a given question.
+const LOOKUP_TOOL = {
+  functionDeclarations: [
+    {
+      name: "lookup_egx_company",
+      description:
+        "Look up live price, valuation ratios (P/E, dividend yield, price/book), and fundamentals " +
+        "(sector, EPS, revenue growth, net margin, ROE, debt/equity) for any company listed on the " +
+        "Egyptian Exchange (EGX) — not just ones the user owns. Use this whenever asked about a " +
+        "specific EGX company's fundamentals or whether it looks strong.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The EGX ticker symbol or company name (or part of it) to search for.",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  ],
+};
+
+function lookupEgxCompany(query: string, stocks: EGXStockResponse[]): string {
+  const q = query.trim().toUpperCase();
+  const bySymbol = stocks.filter((s) => s.symbol.toUpperCase() === q);
+  const matches = bySymbol.length > 0
+    ? bySymbol
+    : stocks.filter((s) => s.name.toUpperCase().includes(q) || s.symbol.toUpperCase().includes(q));
+
+  if (matches.length === 0) return `No EGX company found matching "${query}".`;
+
+  return matches.slice(0, 5).map((s) => [
+    `${s.name} (${s.symbol}): price ${s.price} EGP (${s.changePercent >= 0 ? "+" : ""}${s.changePercent}% today)`,
+    s.sector ? `sector: ${s.sector}` : null,
+    s.pe != null ? `P/E: ${s.pe}` : "P/E: n/a",
+    s.dividendYield != null ? `dividend yield: ${s.dividendYield}%` : "dividend yield: n/a",
+    s.priceToBook != null ? `price/book: ${s.priceToBook}` : null,
+    s.epsTtm != null ? `EPS (TTM): ${s.epsTtm}` : null,
+    s.revenueGrowthYoy != null ? `revenue growth YoY: ${s.revenueGrowthYoy}%` : null,
+    s.netMargin != null ? `net margin: ${s.netMargin}%` : null,
+    s.roe != null ? `ROE: ${s.roe}%` : null,
+    s.debtToEquity != null ? `debt/equity: ${s.debtToEquity}` : null,
+    s.marketCap != null ? `market cap: ${s.marketCap.toLocaleString()} EGP` : null,
+    s.high52w != null && s.low52w != null ? `52-week range: ${s.low52w}–${s.high52w} EGP` : null,
+  ].filter(Boolean).join(", ")).join("\n");
+}
+
+type GeminiPart =
+  | { text: string }
+  | { functionCall: { name: string; id?: string; args: Record<string, unknown> } }
+  | { functionResponse: { name: string; id?: string; response: Record<string, unknown> } };
+type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
+
+const MAX_TOOL_ROUNDS = 3;
+
+async function callGemini(
+  systemPrompt: string,
+  messages: ChatTurn[],
+  egxStocks: EGXStockResponse[],
+): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: messages.map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        })),
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { maxOutputTokens: 1024 },
-      }),
-    },
-  );
+  const contents: GeminiContent[] = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
 
-  if (!res.ok) {
-    throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { maxOutputTokens: 1024 },
+          tools: [LOOKUP_TOOL],
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
+    };
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const functionCallPart = parts.find(
+      (p): p is Extract<GeminiPart, { functionCall: unknown }> => "functionCall" in p,
+    );
+
+    if (!functionCallPart) {
+      return parts
+        .map((p) => ("text" in p ? p.text : ""))
+        .join("")
+        .trim();
+    }
+
+    const { name, id, args } = functionCallPart.functionCall;
+    const result =
+      name === "lookup_egx_company"
+        ? lookupEgxCompany(String(args.query ?? ""), egxStocks)
+        : `Unknown tool: ${name}`;
+
+    contents.push({ role: "model", parts: [functionCallPart] });
+    contents.push({ role: "user", parts: [{ functionResponse: { name, id, response: { result } } }] });
   }
 
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+  return "I looked into a few things but couldn't finish in time — try asking again, maybe more specifically.";
 }
 
 // POST /api/chat — a single grounded turn, not a persisted conversation.
@@ -301,9 +398,9 @@ router.post("/chat", async (req, res) => {
   }
 
   try {
-    const portfolioContext = await buildPortfolioContext(userId);
+    const { context: portfolioContext, egxStocks } = await buildPortfolioContext(userId);
     const systemPrompt = `${SYSTEM_PREAMBLE}\n\nHere is the user's current portfolio:\n\n${portfolioContext}`;
-    const reply = await callGemini(systemPrompt, messages);
+    const reply = await callGemini(systemPrompt, messages, egxStocks);
     res.json({ reply: reply || "I couldn't come up with a response — try rephrasing your question." });
   } catch (err) {
     req.log.error({ err }, "POST /chat failed");

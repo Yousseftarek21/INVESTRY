@@ -53,6 +53,13 @@ export interface EGXStockResponse {
   low52w?: number;
   pe?: number;
   dividendYield?: number;
+  sector?: string;
+  epsTtm?: number;
+  revenueGrowthYoy?: number;
+  netMargin?: number;
+  roe?: number;
+  debtToEquity?: number;
+  priceToBook?: number;
 }
 
 interface HistoricalRates {
@@ -827,8 +834,14 @@ const EGX_SYMBOL_SET: Set<string>        = new Set(EGX_TICKERS.map(t => t.symbol
 // Batch size kept at 150 — TradingView accepts it in one call with no rate issues.
 const TV_BATCH_SIZE = 150;
 
-// Columns returned per ticker: [close, change_abs, change%, volume, market_cap, 52w_high, 52w_low, P/E, div_yield]
-type TVRow = [number, number, number, number | null, number | null, number | null, number | null, number | null, number | null];
+// Columns returned per ticker: [close, change_abs, change%, volume, market_cap, 52w_high, 52w_low,
+// P/E, div_yield, sector, EPS (TTM), revenue growth YoY (TTM), net margin (TTM), ROE (TTM),
+// debt/equity (MRQ), price/book (FY)]
+type TVRow = [
+  number, number, number, number | null, number | null, number | null, number | null,
+  number | null, number | null, string | null, number | null, number | null,
+  number | null, number | null, number | null, number | null,
+];
 
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   const allSymbols = EGX_TICKERS.map(t => t.symbol);
@@ -839,7 +852,12 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   for (let i = 0; i < allSymbols.length; i += TV_BATCH_SIZE) {
     const batch = allSymbols.slice(i, i + TV_BATCH_SIZE);
     const body = JSON.stringify({
-      columns: ["close", "change_abs", "change", "volume", "market_cap_basic", "52_week_high", "52_week_low", "P.E", "dividends_yield_current"],
+      columns: [
+        "close", "change_abs", "change", "volume", "market_cap_basic", "52_week_high", "52_week_low",
+        "P.E", "dividends_yield_current", "sector", "earnings_per_share_basic_ttm",
+        "total_revenue_yoy_growth_ttm", "after_tax_margin", "return_on_equity", "debt_to_equity",
+        "price_book_ratio",
+      ],
       symbols: { tickers: batch.map(s => `EGX:${s}`) },
     });
 
@@ -863,7 +881,10 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   for (const { symbol, name } of EGX_TICKERS) {
     const d = priceMap[symbol];
     if (!d) continue;
-    const [close, changeAbs, changePct, volume, marketCap, high52w, low52w, pe, divYield] = d;
+    const [
+      close, changeAbs, changePct, volume, marketCap, high52w, low52w, pe, divYield,
+      sector, epsTtm, revenueGrowthYoy, netMargin, roe, debtToEquity, priceToBook,
+    ] = d;
     if (!close) continue;                              // skip if TV returned no price
     results.push({
       symbol,
@@ -878,6 +899,13 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       low52w:        low52w ?? undefined,
       pe:            pe != null ? round2(pe) : undefined,
       dividendYield: divYield != null ? round2(divYield) : undefined,
+      sector:            sector ?? undefined,
+      epsTtm:            epsTtm != null ? round2(epsTtm) : undefined,
+      revenueGrowthYoy:  revenueGrowthYoy != null ? round2(revenueGrowthYoy) : undefined,
+      netMargin:         netMargin != null ? round2(netMargin) : undefined,
+      roe:               roe != null ? round2(roe) : undefined,
+      debtToEquity:      debtToEquity != null ? round2(debtToEquity) : undefined,
+      priceToBook:       priceToBook != null ? round2(priceToBook) : undefined,
     });
   }
   return results;
