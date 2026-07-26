@@ -362,6 +362,7 @@ const en = {
   noLinkManualEntry: 'None — enter manually',
   syncedWith: 'Synced with',
   noCashAccountsToLink: 'Add a cash account first to link one here.',
+  noEgpAccountsToLink: 'Only EGP cash accounts can be linked, since goal targets are set in EGP. Add an EGP account first, or enter progress manually.',
 
   // Export
   exportCSV: 'Export Portfolio as CSV',
@@ -1422,6 +1423,7 @@ const ar: typeof en = {
   noLinkManualEntry: 'بدون ربط — إدخال يدوي',
   syncedWith: 'متزامن مع',
   noCashAccountsToLink: 'أضف حساب نقدي أولاً لتتمكن من ربطه هنا.',
+  noEgpAccountsToLink: 'يمكن ربط حسابات الجنيه المصري فقط، لأن أهداف التوفير تُحدَّد بالجنيه المصري. أضف حساباً بالجنيه المصري أولاً، أو أدخل التقدم يدوياً.',
 
   // Export
   exportCSV: 'تصدير المحفظة كـ CSV',

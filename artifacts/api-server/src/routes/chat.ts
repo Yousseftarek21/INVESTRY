@@ -16,7 +16,7 @@ import { decryptFromStorage } from "../lib/encryption";
 import { fetchPrices, fetchStocks, type EGXStockResponse } from "./markets";
 import { computeHoldingValue, type StoredHolding } from "../lib/portfolioValue";
 import { fetchInflation } from "./inflation";
-import { RE_PRICES } from "../lib/egyptRealEstatePrices";
+import { RE_PRICES } from "@workspace/shared-data";
 
 const router: IRouter = Router();
 

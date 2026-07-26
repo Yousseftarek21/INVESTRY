@@ -51,6 +51,7 @@ export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
   const { goals, addGoal, updateGoal, removeGoal } = useGoals();
   const { cashAccounts } = useCash();
+  const egpCashAccounts = cashAccounts.filter(a => a.currency === 'EGP');
   const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
 
   const [showForm, setShowForm] = useState(false);
@@ -236,7 +237,7 @@ export default function GoalsScreen() {
 
                           <View style={s.cardNums}>
                             <Text style={[s.savedNum, { color: goalColor, flexShrink: 1 }]} numberOfLines={1}>
-                              {saved.toLocaleString('en-EG', { maximumFractionDigits: 0 })} <Text style={s.numUnit}>EGP saved</Text>
+                              {saved.toLocaleString('en-EG', { maximumFractionDigits: 0 })} <Text style={s.numUnit}>{linkedAccount?.currency ?? 'EGP'} saved</Text>
                             </Text>
                             <Text style={[s.targetNum, { color: colors.mutedForeground, flexShrink: 1 }]} numberOfLines={1}>
                               of {g.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
@@ -308,8 +309,15 @@ export default function GoalsScreen() {
                 <View style={s.field}>
                   <Text style={[s.label, { color: colors.mutedForeground }]}>{t.linkCashAccount}</Text>
                   <Text style={[s.hint, { color: colors.mutedForeground }]}>{t.linkCashAccountHint}</Text>
-                  {cashAccounts.length === 0 ? (
-                    <Text style={[s.hint, { color: colors.mutedForeground, marginTop: 4 }]}>{t.noCashAccountsToLink}</Text>
+                  {/* Only EGP accounts are linkable — the target amount is always
+                      entered in EGP (no currency picker on that field), so linking
+                      a foreign-currency account would compare mismatched units:
+                      the "saved" figure and the % progress would silently be wrong,
+                      not just mislabeled. */}
+                  {egpCashAccounts.length === 0 ? (
+                    <Text style={[s.hint, { color: colors.mutedForeground, marginTop: 4 }]}>
+                      {cashAccounts.length === 0 ? t.noCashAccountsToLink : t.noEgpAccountsToLink}
+                    </Text>
                   ) : (
                     <View style={s.accountPicker}>
                       <TouchableOpacity
@@ -325,7 +333,7 @@ export default function GoalsScreen() {
                           {linkedAccountId === null && <View style={[s.radioDot, { backgroundColor: colors.primary }]} />}
                         </View>
                       </TouchableOpacity>
-                      {cashAccounts.map(a => {
+                      {egpCashAccounts.map(a => {
                         const selected = linkedAccountId === a.id;
                         return (
                           <TouchableOpacity
