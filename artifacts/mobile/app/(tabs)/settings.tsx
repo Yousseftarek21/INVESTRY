@@ -773,6 +773,7 @@ export default function SettingsScreen() {
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
+  const scrollRef = useRef<ScrollView>(null);
 
   // User data
   const firstName = user?.firstName ?? '';
@@ -896,12 +897,24 @@ export default function SettingsScreen() {
     setConfirm(null);
   };
 
+  // Matches Analytics/Markets exactly: contentInset (not contentOffset)
+  // plus an imperative scrollTo on mount and onLayout, since the
+  // declarative contentOffset prop alone can race against this screen's
+  // initial layout. backgroundColor lives on the outer wrapping View, not
+  // on the ScrollView's own style — same structural detail Markets uses.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: -topPad, animated: false });
+  }, [topPad]);
+
   return (
-    <>
+    <View style={[sc.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
-        style={[sc.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={[sc.content, { paddingTop: topPad + 16, paddingBottom: botPad + 120 }]}
+        ref={scrollRef}
+        style={sc.container}
+        contentContainerStyle={[sc.content, { paddingTop: 16, paddingBottom: botPad + 120 }]}
+        contentInset={{ top: topPad }}
+        onLayout={() => scrollRef.current?.scrollTo({ y: -topPad, animated: false })}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Page header ─────────────────────────────────── */}
@@ -1172,13 +1185,14 @@ export default function SettingsScreen() {
         onPhotoSave={handleSavePhoto}
         onClose={() => setEditProfileOpen(false)}
       />
-    </>
+    </View>
   );
 }
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
 const sc = StyleSheet.create({
+  screen: { flex: 1 },
   container: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 26 },
 
