@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -12,16 +13,11 @@ const TTL_MS = 24 * 60 * 60 * 1000; // 24h — source only updates annually
 // no cached value exists yet.
 const FALLBACK: InflationResponse = { rate: 14.1, year: 2025 };
 
-// GET /api/inflation — Egypt's latest annual inflation rate (World Bank,
-// free/no-key API, same CPI data CAPMAS publishes). Used as the real
-// benchmark line in the portfolio performance chart, replacing what used to
-// be a hardcoded ~25%/yr guess.
-router.get("/inflation", async (req, res) => {
-  if (cache && Date.now() - cache.ts < TTL_MS) {
-    res.setHeader("X-Cache", "HIT");
-    res.json(cache.data);
-    return;
-  }
+// Shared by the route below and the AI chat context (chat.ts) — both want
+// Egypt's latest annual inflation rate, so the fetch/cache/fallback logic
+// lives in one place rather than being duplicated.
+export async function fetchInflation(): Promise<InflationResponse> {
+  if (cache && Date.now() - cache.ts < TTL_MS) return cache.data;
 
   try {
     const wbRes = await fetch(
@@ -36,12 +32,22 @@ router.get("/inflation", async (req, res) => {
 
     const data: InflationResponse = { rate: Math.round(rate * 10) / 10, year };
     cache = { data, ts: Date.now() };
-    res.setHeader("X-Cache", "MISS");
-    res.json(data);
+    return data;
   } catch (err) {
-    req.log.error({ err }, "GET /inflation failed, serving fallback");
-    res.json(cache?.data ?? FALLBACK);
+    logger.error({ err }, "fetchInflation failed, serving fallback");
+    return cache?.data ?? FALLBACK;
   }
+}
+
+// GET /api/inflation — Egypt's latest annual inflation rate (World Bank,
+// free/no-key API, same CPI data CAPMAS publishes). Used as the real
+// benchmark line in the portfolio performance chart, replacing what used to
+// be a hardcoded ~25%/yr guess.
+router.get("/inflation", async (req, res) => {
+  const wasHit = cache !== null && Date.now() - cache.ts < TTL_MS;
+  const data = await fetchInflation();
+  res.setHeader("X-Cache", wasHit ? "HIT" : "MISS");
+  res.json(data);
 });
 
 export default router;

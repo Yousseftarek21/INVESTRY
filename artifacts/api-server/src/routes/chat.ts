@@ -13,8 +13,10 @@ import {
 } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { decryptFromStorage } from "../lib/encryption";
-import { fetchPrices, fetchStocks } from "./markets";
+import { fetchPrices, fetchStocks, type EGXStockResponse } from "./markets";
 import { computeHoldingValue, type StoredHolding } from "../lib/portfolioValue";
+import { fetchInflation } from "./inflation";
+import { RE_PRICES } from "../lib/egyptRealEstatePrices";
 
 const router: IRouter = Router();
 
@@ -129,6 +131,25 @@ function summarizeRecurringIncome(entries: Record<string, unknown>[]): string {
   return `Recurring income:\n${lines.join("\n")}`;
 }
 
+// Top movers across the whole EGX, not just what the user holds — already
+// fetched for per-holding pricing above, so this is free (no extra call).
+function summarizeEgxMovers(stocks: EGXStockResponse[]): string {
+  if (stocks.length === 0) return "EGX market data unavailable right now.";
+  const sorted = [...stocks].sort((a, b) => b.changePercent - a.changePercent);
+  const gainers = sorted.slice(0, 5).map((s) => `${s.symbol} (${s.changePercent >= 0 ? "+" : ""}${s.changePercent.toFixed(1)}%)`);
+  const losers = sorted.slice(-5).reverse().map((s) => `${s.symbol} (${s.changePercent.toFixed(1)}%)`);
+  return `EGX market today (${stocks.length} stocks tracked) — top gainers: ${gainers.join(", ")}. Top losers: ${losers.join(", ")}.`;
+}
+
+// Full curated per-area dataset, not just areas the user owns property in —
+// lets the assistant answer general "what's the going rate in X" questions.
+function summarizeRealEstateMarket(): string {
+  const lines = RE_PRICES.map(
+    (a) => `${a.area}, ${a.governorate}: ~${a.avgPricePerM2.toLocaleString()} EGP/m² (${a.trend}, ${a.changePercent >= 0 ? "+" : ""}${a.changePercent}% YoY)`,
+  );
+  return `Egypt real estate price guide (EGP per m², curated averages):\n${lines.join("\n")}`;
+}
+
 // Finds the snapshot closest to `daysAgo` days before today and describes
 // the % move from it to the latest value — gives the assistant a trend to
 // talk about instead of just a single point-in-time total.
@@ -155,7 +176,7 @@ function summarizeTrend(
 // staleness isn't worth the complexity of invalidating a cache when the
 // user edits a holding mid-conversation.
 async function buildPortfolioContext(userId: string): Promise<string> {
-  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks] =
+  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, inflation] =
     await Promise.all([
       db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
       db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
@@ -169,6 +190,7 @@ async function buildPortfolioContext(userId: string): Promise<string> {
         .orderBy(asc(portfolioSnapshotsTable.date)),
       fetchPrices(),
       fetchStocks().catch(() => []),
+      fetchInflation(),
     ]);
 
   const holdings = holdingRows.map(
@@ -198,6 +220,9 @@ async function buildPortfolioContext(userId: string): Promise<string> {
     summarizeGoals(goals),
     summarizePriceAlerts(alerts),
     summarizeRecurringIncome(income),
+    `Egypt annual inflation rate: ${inflation.rate}% (${inflation.year}, World Bank/CAPMAS CPI data).`,
+    summarizeEgxMovers(egxStocks),
+    summarizeRealEstateMarket(),
   ].join("\n\n");
 }
 
@@ -205,9 +230,11 @@ const SYSTEM_PREAMBLE = `You are the INVESTRY AI Financial Assistant, built into
 
 INVESTRY tracks: investment holdings (gold, silver, EGX stocks, real estate, personal assets, fixed income), cash accounts, savings goals, recurring income, and custom price alerts. The data below reflects live current market values (gold/silver spot prices and EGX stock prices), not just what the user originally paid — use it to answer questions about current value and unrealized gain/loss directly, not just historical cost.
 
+Beyond the user's own data, you also have: Egypt's current annual inflation rate, today's EGX market movers (top gainers/losers across the whole exchange, not just what the user holds), and a curated Egypt-wide real estate price-per-m² guide covering dozens of areas — so you can answer general market questions (e.g. "what's the going rate in Sheikh Zayed", "is EGX up today", "how does my return compare to inflation") even about things the user doesn't personally own.
+
 Rules:
 - You are not a licensed financial advisor. Never recommend a specific trade, a specific security to buy or sell, or a specific allocation change as advice — explain tradeoffs and considerations instead, and let the user decide.
-- Ground your answers in the portfolio data provided below when the question relates to it. It includes live current values, so don't claim you lack live pricing — you have it for everything the user holds. Only say you lack data for things genuinely outside this snapshot (breaking news, assets the user hasn't recorded in the app, markets other than EGX/gold/silver).
+- Ground your answers in the data provided below when the question relates to it — it includes live pricing and broad market context, so don't claim you lack live data for anything covered there. Only say you lack data for things genuinely outside this snapshot (breaking news, assets/areas not covered here, markets outside EGX/gold/silver/Egypt real estate).
 - Be concise and direct — this is a mobile chat, not a report.
 - If asked for something that would cross into specific financial advice, say so plainly and explain why, then offer general education on the topic instead.`;
 
