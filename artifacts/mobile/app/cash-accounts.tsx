@@ -750,113 +750,127 @@ export default function CashAccountsScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* ── Transfer between accounts ─────────────────────────────────── */}
-      <Modal visible={showTransferModal} animationType="fade" transparent onRequestClose={() => setShowTransferModal(false)}>
-        <View style={confirmStyles.overlay}>
+      {/* ── Transfer between accounts ─────────────────────────────────────
+          Single Modal whose content switches between the form and the
+          account-picker view — two separate stacked <Modal>s here caused
+          real bugs (keyboard covering the buttons with no way back, taps
+          not registering reliably between the two native presentations). */}
+      <Modal visible={showTransferModal} animationType="fade" transparent onRequestClose={() => (transferPicker ? setTransferPicker(null) : setShowTransferModal(false))}>
+        <KeyboardAvoidingView
+          style={confirmStyles.overlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={[confirmStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[confirmStyles.title, { color: colors.text }]}>{t.transferBetweenAccounts}</Text>
-
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.transferFromLabel}</Text>
-              <TouchableOpacity
-                style={[inputStyle, styles.pickerRow]}
-                onPress={() => setTransferPicker('from')}
-                activeOpacity={0.8}
-              >
-                <Text style={{ color: transferFrom ? colors.text : colors.mutedForeground, flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
-                  {transferFrom ? `${transferFrom.accountName} (${transferFrom.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} ${transferFrom.currency})` : t.selectAccount}
-                </Text>
-                <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.transferToLabel}</Text>
-              <TouchableOpacity
-                style={[inputStyle, styles.pickerRow, !transferFrom && { opacity: 0.5 }]}
-                onPress={() => transferFrom && setTransferPicker('to')}
-                activeOpacity={0.8}
-                disabled={!transferFrom}
-              >
-                <Text style={{ color: transferTo ? colors.text : colors.mutedForeground, flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
-                  {transferTo ? `${transferTo.accountName} (${transferTo.currency})` : t.selectAccount}
-                </Text>
-                <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
-              <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.transferSameCurrencyHint}</Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.transferAmountLabel}</Text>
-              <AmountInput
-                style={inputStyle}
-                placeholder="0.00"
-                placeholderTextColor={colors.mutedForeground}
-                value={transferAmountRaw}
-                onChangeText={setTransferAmountRaw}
-              />
-            </View>
-
-            <View style={confirmStyles.row}>
-              <TouchableOpacity
-                onPress={() => setShowTransferModal(false)}
-                style={[confirmStyles.btn, { backgroundColor: colors.muted }]}
-                activeOpacity={0.75}
-              >
-                <Text style={[confirmStyles.btnTxt, { color: colors.mutedForeground }]}>{t.cancel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={submitTransfer}
-                style={[confirmStyles.btn, { backgroundColor: colors.primary }]}
-                activeOpacity={0.85}
-              >
-                <Text style={[confirmStyles.btnTxt, { color: colors.primaryForeground, fontFamily: 'Inter_600SemiBold' }]}>{t.transferAction}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Transfer — from/to account picker ─────────────────────────── */}
-      <Modal visible={!!transferPicker} animationType="slide" transparent onRequestClose={() => setTransferPicker(null)}>
-        <TouchableOpacity style={confirmStyles.overlay} activeOpacity={1} onPress={() => setTransferPicker(null)}>
-          <View style={[styles.pickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.pickerTitle, { color: colors.text }]}>{t.selectAccount}</Text>
-            {cashAccounts
-              .filter(a => transferPicker === 'from'
-                ? a.id !== transferToId
-                : a.id !== transferFromId && (!transferFrom || a.currency === transferFrom.currency))
-              .map(a => {
-                const selectedId = transferPicker === 'from' ? transferFromId : transferToId;
-                return (
-                  <TouchableOpacity
-                    key={a.id}
-                    style={[styles.pickerOption, {
-                      borderColor: colors.border,
-                      backgroundColor: selectedId === a.id ? colors.primary + '14' : 'transparent',
-                    }]}
-                    onPress={() => {
-                      if (transferPicker === 'from') {
-                        setTransferFromId(a.id);
-                        // A new "from" pick can invalidate the existing "to" if currencies no longer match.
-                        if (transferTo && transferTo.currency !== a.currency) setTransferToId(null);
-                      } else {
-                        setTransferToId(a.id);
-                      }
-                      setTransferPicker(null);
-                    }}
-                  >
-                    <Text style={[styles.pickerOptionText, { color: selectedId === a.id ? colors.primary : colors.text }]} numberOfLines={1}>
-                      {a.accountName}
-                    </Text>
-                    <Text style={[styles.accountType, { color: colors.mutedForeground }]}>
-                      {a.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
-                    </Text>
+            {transferPicker ? (
+              <>
+                <View style={styles.pickerHeader}>
+                  <TouchableOpacity onPress={() => setTransferPicker(null)} hitSlop={12}>
+                    <Feather name="chevron-left" size={20} color={colors.text} />
                   </TouchableOpacity>
-                );
-              })}
+                  <Text style={[confirmStyles.title, { marginBottom: 0 }]}>{t.selectAccount}</Text>
+                  <View style={{ width: 20 }} />
+                </View>
+                <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerScrollGap} keyboardShouldPersistTaps="handled">
+                  {cashAccounts
+                    .filter(a => transferPicker === 'from'
+                      ? a.id !== transferToId
+                      : a.id !== transferFromId && (!transferFrom || a.currency === transferFrom.currency))
+                    .map(a => {
+                      const selectedId = transferPicker === 'from' ? transferFromId : transferToId;
+                      return (
+                        <TouchableOpacity
+                          key={a.id}
+                          style={[styles.pickerOption, {
+                            borderColor: colors.border,
+                            backgroundColor: selectedId === a.id ? colors.primary + '14' : 'transparent',
+                          }]}
+                          onPress={() => {
+                            if (transferPicker === 'from') {
+                              setTransferFromId(a.id);
+                              // A new "from" pick can invalidate the existing "to" if currencies no longer match.
+                              if (transferTo && transferTo.currency !== a.currency) setTransferToId(null);
+                            } else {
+                              setTransferToId(a.id);
+                            }
+                            setTransferPicker(null);
+                          }}
+                        >
+                          <Text style={[styles.pickerOptionText, { color: selectedId === a.id ? colors.primary : colors.text }]} numberOfLines={1}>
+                            {a.accountName}
+                          </Text>
+                          <Text style={[styles.accountType, { color: colors.mutedForeground }]}>
+                            {a.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                </ScrollView>
+              </>
+            ) : (
+              <>
+                <Text style={[confirmStyles.title, { color: colors.text }]}>{t.transferBetweenAccounts}</Text>
+
+                <View style={styles.section}>
+                  <Text style={labelStyle}>{t.transferFromLabel}</Text>
+                  <TouchableOpacity
+                    style={[inputStyle, styles.pickerRow]}
+                    onPress={() => setTransferPicker('from')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ color: transferFrom ? colors.text : colors.mutedForeground, flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
+                      {transferFrom ? `${transferFrom.accountName} (${transferFrom.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} ${transferFrom.currency})` : t.selectAccount}
+                    </Text>
+                    <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={labelStyle}>{t.transferToLabel}</Text>
+                  <TouchableOpacity
+                    style={[inputStyle, styles.pickerRow, !transferFrom && { opacity: 0.5 }]}
+                    onPress={() => transferFrom && setTransferPicker('to')}
+                    activeOpacity={0.8}
+                    disabled={!transferFrom}
+                  >
+                    <Text style={{ color: transferTo ? colors.text : colors.mutedForeground, flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
+                      {transferTo ? `${transferTo.accountName} (${transferTo.currency})` : t.selectAccount}
+                    </Text>
+                    <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.transferSameCurrencyHint}</Text>
+                </View>
+
+                <View style={styles.section}>
+                  <Text style={labelStyle}>{t.transferAmountLabel}</Text>
+                  <AmountInput
+                    style={inputStyle}
+                    placeholder="0.00"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={transferAmountRaw}
+                    onChangeText={setTransferAmountRaw}
+                  />
+                </View>
+
+                <View style={confirmStyles.row}>
+                  <TouchableOpacity
+                    onPress={() => setShowTransferModal(false)}
+                    style={[confirmStyles.btn, { backgroundColor: colors.muted }]}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[confirmStyles.btnTxt, { color: colors.mutedForeground }]}>{t.cancel}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={submitTransfer}
+                    style={[confirmStyles.btn, { backgroundColor: colors.primary }]}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[confirmStyles.btnTxt, { color: colors.primaryForeground, fontFamily: 'Inter_600SemiBold' }]}>{t.transferAction}</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Delete confirmation (web) ──────────────────────────────────── */}
@@ -952,6 +966,9 @@ const styles = StyleSheet.create({
   pickerSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, gap: 8 },
   pickerTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 4 },
   pickerOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  pickerScroll: { maxHeight: 320 },
+  pickerScrollGap: { gap: 8 },
   pickerOptionText: { fontSize: 15, fontFamily: 'Inter_500Medium', flex: 1 },
   empty: {
     borderRadius: 24, padding: 40, borderWidth: 1,
