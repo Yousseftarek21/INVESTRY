@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "updates": {
-      "url": "https://u.expo.dev/02968d16-c91f-4aa0-a178-c2f13c1e33b5",
+      "url": "https://u.expo.dev/531fc79f-b55d-4644-99db-10b9cc15a93a",
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0,
@@ -83,10 +83,10 @@
     "experiments": {
       "typedRoutes": true
     },
-    "owner": "investrytest2",
+    "owner": "investrytest3",
     "extra": {
       "eas": {
-        "projectId": "02968d16-c91f-4aa0-a178-c2f13c1e33b5"
+        "projectId": "531fc79f-b55d-4644-99db-10b9cc15a93a"
       }
     }
   }
