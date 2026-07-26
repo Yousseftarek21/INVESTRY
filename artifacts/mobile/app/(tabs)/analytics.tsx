@@ -676,21 +676,19 @@ export default function AnalyticsScreen() {
   const healthColor = health.score >= 75 ? colors.green : health.score >= 50 ? '#F59E0B' : colors.red;
 
   return (
-    <>
+    <View style={[s.screen, { backgroundColor: colors.background }]}>
     <Stack.Screen options={{ headerShown: false }} />
+    {/* ── Sticky header — static, never part of the scrollable content,
+        so it can never drift or fail to "return" to place on scroll ──── */}
+    <View style={[s.stickyHeader, { paddingTop: topPad + 16, backgroundColor: colors.background }]}>
+      <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
+    </View>
     <ScrollView
-      style={[s.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[s.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
+      style={s.container}
+      contentContainerStyle={[s.content, { paddingTop: 12, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
-      {/* ── Header ─────────────────────────────────────────────────── */}
-      <View style={s.header}>
-        <View>
-          <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
-        </View>
-      </View>
-
       {/* ══ SECTION 1: Planning ═══════════════════════════════════════ */}
       <View style={s.sectionHeader}>
         <View style={[s.sectionIconWrap, { backgroundColor: '#22C55E18' }]}>
@@ -1020,17 +1018,18 @@ export default function AnalyticsScreen() {
         )}
       </PremiumGate>
     </ScrollView>
-    </>
+    </View>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  screen: { flex: 1 },
   container: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 28 },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  stickyHeader: { paddingHorizontal: 20, paddingBottom: 12 },
   eyebrow: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
   pageTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
 
