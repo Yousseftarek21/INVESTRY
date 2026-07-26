@@ -17,15 +17,23 @@ const ACCENT = '#C9A227';
 const BADGE = 'PRO';
 
 export function PremiumGate({ feature, description, children }: PremiumGateProps) {
-  const { featuresUnlocked, isLoading, showPaywall } = useSubscription();
+  const { featuresUnlocked, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
   const t = useT();
 
-  // While the subscription is still loading from the API, optimistically
-  // show children rather than flashing the gate. Once resolved, if the user
-  // genuinely isn't Pro (and the beta unlock-all flag isn't on) the gate
-  // renders.
-  if (isLoading || featuresUnlocked) return <>{children}</>;
+  // Previously optimistically showed children while isLoading, to avoid
+  // flashing the gate for Pro users. But that meant non-Pro users briefly
+  // saw the full (tall) content before it collapsed to this much shorter
+  // gate card once the subscription check resolved — on screens with
+  // several stacked PremiumGates (e.g. the Analytics tab), that shrink
+  // happened after the ScrollView had already laid out and the user could
+  // already be scrolled into what became empty space, with nothing forcing
+  // a re-layout short of a manual pull-to-refresh. Rendering the gate
+  // immediately (unless we already know the user is unlocked) trades a
+  // possible brief gate flash for Pro users — cosmetic — for never letting
+  // a mounted section's height shrink out from under an active scroll
+  // position, which is a real, confusing bug.
+  if (featuresUnlocked) return <>{children}</>;
 
   const accent = ACCENT;
   const badge = BADGE;
