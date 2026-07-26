@@ -19,6 +19,7 @@ import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
 import { parseAmount } from '@/utils/parseAmount';
+import { useMarketPrices } from '@/hooks/usePrices';
 
 type EntryType = CashAccountType | 'recurring_income';
 
@@ -45,7 +46,8 @@ export default function CashAccountsScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { cashAccounts, addCashAccount, updateCashAccount, removeCashAccount } = useCash();
+  const { cashAccounts, addCashAccount, updateCashAccount, removeCashAccount, transferBetweenAccounts } = useCash();
+  const { data: prices } = useMarketPrices();
   const { recurringIncomes, addRecurringIncome, updateRecurringIncome, removeRecurringIncome } = useRecurringIncome();
   const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
   const { impact, notify } = useHaptic();
@@ -74,6 +76,13 @@ export default function CashAccountsScreen() {
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingDeleteIsIncome, setPendingDeleteIsIncome] = useState(false);
+
+  // ── Transfer between accounts state ───────────────────────────────────────
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferFromId, setTransferFromId] = useState<string | null>(null);
+  const [transferToId, setTransferToId] = useState<string | null>(null);
+  const [transferAmountRaw, setTransferAmountRaw] = useState('');
+  const [transferPicker, setTransferPicker] = useState<'from' | 'to' | null>(null);
 
   const nameInputRef = useRef<TextInput>(null);
 
@@ -298,6 +307,33 @@ export default function CashAccountsScreen() {
     else removeCashAccount(id);
   };
 
+  // ── Transfer between accounts ─────────────────────────────────────────────
+  const transferFrom = cashAccounts.find(a => a.id === transferFromId);
+  const transferTo = cashAccounts.find(a => a.id === transferToId);
+
+  const openTransfer = () => {
+    impact();
+    setTransferFromId(null);
+    setTransferToId(null);
+    setTransferAmountRaw('');
+    setShowTransferModal(true);
+  };
+
+  const submitTransfer = async () => {
+    const amount = parseAmount(transferAmountRaw);
+    if (!transferFromId || !transferToId) {
+      Alert.alert(t.transferAction, t.transferSelectBothAccounts);
+      return;
+    }
+    if (!amount || isNaN(amount) || amount <= 0) {
+      Alert.alert(t.transferAction, t.invalidTransferAmount);
+      return;
+    }
+    impact(Haptics.ImpactFeedbackStyle.Light);
+    await transferBetweenAccounts(transferFromId, transferToId, amount);
+    setShowTransferModal(false);
+  };
+
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
@@ -306,6 +342,21 @@ export default function CashAccountsScreen() {
     acc[a.currency] = (acc[a.currency] ?? 0) + bal;
     return acc;
   }, {});
+
+  // Converted grand total across all currencies, using the same live rates
+  // shown elsewhere in the app (Home screen, markets tab) — only shown when
+  // every currency present has a resolvable rate, never a partial/guessed figure.
+  const currencyRateEGP = (currency: string): number | null => {
+    if (!prices) return null;
+    if (currency === 'EGP') return 1;
+    if (currency === 'USD') return prices.usdToEgp;
+    return prices.fxRates?.[currency] ?? null;
+  };
+  const currencyKeys = Object.keys(byCurrency);
+  const allRatesKnown = currencyKeys.length > 1 && currencyKeys.every(c => currencyRateEGP(c) !== null);
+  const combinedTotalEGP = allRatesKnown
+    ? currencyKeys.reduce((sum, c) => sum + byCurrency[c] * (currencyRateEGP(c) as number), 0)
+    : null;
 
   const hasAnyEntries = cashAccounts.length > 0 || recurringIncomes.length > 0;
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
@@ -549,7 +600,23 @@ export default function CashAccountsScreen() {
                     {total.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {cur}
                   </Text>
                 ))}
+                {combinedTotalEGP !== null && (
+                  <Text style={[styles.combinedTotal, { color: colors.mutedForeground }]} numberOfLines={1}>
+                    {t.combinedTotalLabel}: {combinedTotalEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                  </Text>
+                )}
               </View>
+            )}
+
+            {cashAccounts.length >= 2 && (
+              <TouchableOpacity
+                style={[styles.transferBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
+                onPress={openTransfer}
+                activeOpacity={0.8}
+              >
+                <Feather name="repeat" size={15} color={colors.primary} />
+                <Text style={[styles.transferBtnText, { color: colors.primary }]}>{t.transferAction}</Text>
+              </TouchableOpacity>
             )}
 
             {!hasAnyEntries ? (
@@ -683,6 +750,115 @@ export default function CashAccountsScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* ── Transfer between accounts ─────────────────────────────────── */}
+      <Modal visible={showTransferModal} animationType="fade" transparent onRequestClose={() => setShowTransferModal(false)}>
+        <View style={confirmStyles.overlay}>
+          <View style={[confirmStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[confirmStyles.title, { color: colors.text }]}>{t.transferBetweenAccounts}</Text>
+
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.transferFromLabel}</Text>
+              <TouchableOpacity
+                style={[inputStyle, styles.pickerRow]}
+                onPress={() => setTransferPicker('from')}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: transferFrom ? colors.text : colors.mutedForeground, flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
+                  {transferFrom ? `${transferFrom.accountName} (${transferFrom.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} ${transferFrom.currency})` : t.selectAccount}
+                </Text>
+                <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.transferToLabel}</Text>
+              <TouchableOpacity
+                style={[inputStyle, styles.pickerRow, !transferFrom && { opacity: 0.5 }]}
+                onPress={() => transferFrom && setTransferPicker('to')}
+                activeOpacity={0.8}
+                disabled={!transferFrom}
+              >
+                <Text style={{ color: transferTo ? colors.text : colors.mutedForeground, flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' }} numberOfLines={1}>
+                  {transferTo ? `${transferTo.accountName} (${transferTo.currency})` : t.selectAccount}
+                </Text>
+                <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.transferSameCurrencyHint}</Text>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.transferAmountLabel}</Text>
+              <AmountInput
+                style={inputStyle}
+                placeholder="0.00"
+                placeholderTextColor={colors.mutedForeground}
+                value={transferAmountRaw}
+                onChangeText={setTransferAmountRaw}
+              />
+            </View>
+
+            <View style={confirmStyles.row}>
+              <TouchableOpacity
+                onPress={() => setShowTransferModal(false)}
+                style={[confirmStyles.btn, { backgroundColor: colors.muted }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[confirmStyles.btnTxt, { color: colors.mutedForeground }]}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={submitTransfer}
+                style={[confirmStyles.btn, { backgroundColor: colors.primary }]}
+                activeOpacity={0.85}
+              >
+                <Text style={[confirmStyles.btnTxt, { color: colors.primaryForeground, fontFamily: 'Inter_600SemiBold' }]}>{t.transferAction}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Transfer — from/to account picker ─────────────────────────── */}
+      <Modal visible={!!transferPicker} animationType="slide" transparent onRequestClose={() => setTransferPicker(null)}>
+        <TouchableOpacity style={confirmStyles.overlay} activeOpacity={1} onPress={() => setTransferPicker(null)}>
+          <View style={[styles.pickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.pickerTitle, { color: colors.text }]}>{t.selectAccount}</Text>
+            {cashAccounts
+              .filter(a => transferPicker === 'from'
+                ? a.id !== transferToId
+                : a.id !== transferFromId && (!transferFrom || a.currency === transferFrom.currency))
+              .map(a => {
+                const selectedId = transferPicker === 'from' ? transferFromId : transferToId;
+                return (
+                  <TouchableOpacity
+                    key={a.id}
+                    style={[styles.pickerOption, {
+                      borderColor: colors.border,
+                      backgroundColor: selectedId === a.id ? colors.primary + '14' : 'transparent',
+                    }]}
+                    onPress={() => {
+                      if (transferPicker === 'from') {
+                        setTransferFromId(a.id);
+                        // A new "from" pick can invalidate the existing "to" if currencies no longer match.
+                        if (transferTo && transferTo.currency !== a.currency) setTransferToId(null);
+                      } else {
+                        setTransferToId(a.id);
+                      }
+                      setTransferPicker(null);
+                    }}
+                  >
+                    <Text style={[styles.pickerOptionText, { color: selectedId === a.id ? colors.primary : colors.text }]} numberOfLines={1}>
+                      {a.accountName}
+                    </Text>
+                    <Text style={[styles.accountType, { color: colors.mutedForeground }]}>
+                      {a.balance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ── Delete confirmation (web) ──────────────────────────────────── */}
       <Modal visible={!!pendingDeleteId} animationType="fade" transparent onRequestClose={() => setPendingDeleteId(null)}>
         <View style={confirmStyles.overlay}>
@@ -755,6 +931,12 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
   totalValue: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
+  combinedTotal: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 4 },
+  transferBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: 14, borderWidth: 1, paddingVertical: 12, marginBottom: 16,
+  },
+  transferBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   list: { gap: 10 },
   accountCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

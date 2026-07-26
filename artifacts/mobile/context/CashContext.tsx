@@ -17,6 +17,7 @@ interface CashContextValue {
   addCashAccount: (account: CashAccount) => Promise<void>;
   removeCashAccount: (id: string) => Promise<void>;
   updateCashAccount: (account: CashAccount) => Promise<void>;
+  transferBetweenAccounts: (fromId: string, toId: string, amount: number) => Promise<void>;
   totalCash: number;
   isLoading: boolean;
   syncError: string | null;
@@ -221,10 +222,53 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token, persist, userId]);
 
+  // ── Transfer between two of the user's own accounts ──────────────────────
+  // Moves `amount` from one account to another as a single optimistic step
+  // covering both balances together, not two independent updateCashAccount
+  // calls — if either PUT fails, both accounts roll back to their original
+  // balances, since a partial transfer (money debited from one account but
+  // never credited to the other) would be worse than the transfer simply
+  // not happening. Restricted to same-currency pairs by the caller (no FX
+  // conversion here, to avoid guessing a rate for money that's just moving
+  // between the user's own records).
+  const transferBetweenAccounts = useCallback(async (fromId: string, toId: string, amount: number) => {
+    if (!userId || amount <= 0 || fromId === toId) return;
+    const from = cashAccounts.find(a => a.id === fromId);
+    const to = cashAccounts.find(a => a.id === toId);
+    if (!from || !to) return;
+
+    const updatedFrom: CashAccount = { ...from, balance: from.balance - amount };
+    const updatedTo: CashAccount = { ...to, balance: to.balance + amount };
+
+    setCashAccounts(prev => {
+      const next = prev.map(a => a.id === fromId ? updatedFrom : a.id === toId ? updatedTo : a);
+      persist(next, userId);
+      return next;
+    });
+
+    try {
+      const t = await token();
+      if (t) {
+        const [fromRes, toRes] = await Promise.all([
+          apiFetch(`/api/cash-accounts/${fromId}`, t, { method: 'PUT', body: JSON.stringify(updatedFrom) }),
+          apiFetch(`/api/cash-accounts/${toId}`, t, { method: 'PUT', body: JSON.stringify(updatedTo) }),
+        ]);
+        if (!fromRes.ok || !toRes.ok) throw new Error('transfer failed');
+      }
+    } catch {
+      setCashAccounts(prev => {
+        const next = prev.map(a => a.id === fromId ? from : a.id === toId ? to : a);
+        persist(next, userId);
+        return next;
+      });
+      setSyncError('Could not complete transfer — please try again.');
+    }
+  }, [token, persist, userId, cashAccounts]);
+
   const totalCash = cashAccounts.reduce((sum, a) => sum + a.balance, 0);
 
   return (
-    <CashContext.Provider value={{ cashAccounts, addCashAccount, removeCashAccount, updateCashAccount, totalCash, isLoading, syncError }}>
+    <CashContext.Provider value={{ cashAccounts, addCashAccount, removeCashAccount, updateCashAccount, transferBetweenAccounts, totalCash, isLoading, syncError }}>
       {children}
     </CashContext.Provider>
   );

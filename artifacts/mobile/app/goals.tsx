@@ -135,18 +135,27 @@ export default function GoalsScreen() {
 
   const openProgress = (g: Goal) => {
     setProgressGoalId(g.id);
-    setProgressRaw(g.savedAmount > 0 ? String(g.savedAmount) : '');
+    setProgressRaw('');
     setShowProgressModal(true);
   };
 
+  // Adds to the goal's existing savedAmount rather than overwriting it — the
+  // old behavior required mentally computing (old total + new deposit)
+  // before typing anything, which is exactly the kind of manual math that
+  // produces wrong numbers. To set an absolute value instead (e.g. correcting
+  // a mistake), use Edit Goal.
   const saveProgress = async () => {
     if (!progressGoalId) return;
     const g = goals.find(x => x.id === progressGoalId);
     if (!g) return;
     const amount = parseAmount(progressRaw);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      Alert.alert(t.amountToAddLabel, t.invalidAddAmount);
+      return;
+    }
     impact(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await updateGoal({ ...g, savedAmount: amount });
+      await updateGoal({ ...g, savedAmount: g.savedAmount + amount });
       setShowProgressModal(false);
       setProgressGoalId(null);
     } catch {
@@ -382,12 +391,21 @@ export default function GoalsScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Update Progress Modal */}
+        {/* Add Savings Modal — adds to the existing total, doesn't overwrite it */}
         <Modal visible={showProgressModal} transparent animationType="fade" onRequestClose={() => setShowProgressModal(false)}>
           <View style={s.overlay}>
             <View style={[s.progressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[s.progressTitle, { color: colors.text }]}>{t.updateProgress}</Text>
-              <Text style={[s.progressSub, { color: colors.mutedForeground }]}>{t.goalSaved}</Text>
+              {progressGoalId && (() => {
+                const g = goals.find(x => x.id === progressGoalId);
+                if (!g) return null;
+                return (
+                  <Text style={[s.progressSub, { color: colors.mutedForeground, marginBottom: 4 }]}>
+                    {t.currentlySavedLabel}: {g.savedAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                  </Text>
+                );
+              })()}
+              <Text style={[s.progressSub, { color: colors.mutedForeground }]}>{t.amountToAddLabel}</Text>
               <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border, marginTop: 12 }]}>
                 <AmountInput
                   style={[s.inputFlex, { color: colors.text, fontSize: 18 }]}
