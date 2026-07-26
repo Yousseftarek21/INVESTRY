@@ -471,6 +471,7 @@ export default function AnalyticsScreen() {
   const router = useRouter();
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
@@ -675,20 +676,32 @@ export default function AnalyticsScreen() {
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
   const healthColor = health.score >= 75 ? colors.green : health.score >= 50 ? '#F59E0B' : colors.red;
 
+  // Matches Markets exactly: contentInset (not contentOffset) plus an
+  // imperative scrollTo, since contentOffset alone raced against this
+  // screen's heavier initial layout. Also — the previous version applied
+  // backgroundColor directly on the ScrollView's own style; Markets applies
+  // it to an outer wrapping View instead, which this now matches too.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: -topPad, animated: false });
+  }, [topPad]);
+
   return (
     <View style={[s.screen, { backgroundColor: colors.background }]}>
     <Stack.Screen options={{ headerShown: false }} />
-    {/* ── Sticky header — static, never part of the scrollable content,
-        so it can never drift or fail to "return" to place on scroll ──── */}
-    <View style={[s.stickyHeader, { paddingTop: topPad + 16, backgroundColor: colors.background }]}>
-      <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
-    </View>
     <ScrollView
+      ref={scrollRef}
       style={s.container}
-      contentContainerStyle={[s.content, { paddingTop: 12, paddingBottom: botPad + 100 }]}
+      contentContainerStyle={[s.content, { paddingTop: 16, paddingBottom: botPad + 100 }]}
+      contentInset={{ top: topPad }}
+      onLayout={() => scrollRef.current?.scrollTo({ y: -topPad, animated: false })}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <View style={s.header}>
+        <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
+      </View>
+
       {/* ══ SECTION 1: Planning ═══════════════════════════════════════ */}
       <View style={s.sectionHeader}>
         <View style={[s.sectionIconWrap, { backgroundColor: '#22C55E18' }]}>
@@ -1029,7 +1042,7 @@ const s = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 28 },
 
-  stickyHeader: { paddingHorizontal: 20, paddingBottom: 12 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   eyebrow: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
   pageTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
 
