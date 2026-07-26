@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  ActivityIndicator, Alert, Animated, FlatList, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
+  ActivityIndicator, Alert, Animated, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,12 +33,6 @@ import { apiFetch } from '@/utils/api';
 // constant, so this can never silently drift out of sync with reality.
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 const COPYRIGHT_YEAR = new Date().getFullYear();
-// FlatList with no real rows — shares Markets' contentInset/contentOffset
-// top-spacing technique (verified in-simulator; the same props on a plain
-// ScrollView behave differently) while all real content lives in
-// ListHeaderComponent.
-const NO_ROWS: never[] = [];
-function renderNothing() { return null; }
 
 // ─── Pulsing live dot ─────────────────────────────────────────────────────────
 
@@ -905,17 +899,13 @@ export default function SettingsScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <FlatList
+      <ScrollView
         style={[sc.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={{ paddingBottom: botPad + 120 }}
+        contentContainerStyle={[sc.content, { paddingTop: 16, paddingBottom: botPad + 120 }]}
         contentInset={{ top: topPad }}
         contentOffset={{ x: 0, y: -topPad }}
         showsVerticalScrollIndicator={false}
-        data={NO_ROWS}
-        keyExtractor={String}
-        renderItem={renderNothing}
-        ListHeaderComponent={
-        <View style={[sc.content, { paddingTop: 16 }]}>
+      >
         {/* ── Page header ─────────────────────────────────── */}
         <View style={sc.pageHeader}>
           <Text style={[sc.pageTitle, { color: colors.text }]}>{t.settings}</Text>
@@ -1141,9 +1131,7 @@ export default function SettingsScreen() {
 
         {/* ── SMART FOOTER ─────────────────────────────────── */}
         <SmartFooter />
-        </View>
-        }
-      />
+      </ScrollView>
 
       {modal && (
         <DetailModal visible title={modal.title} content={modal.content} onClose={() => setModal(null)} />

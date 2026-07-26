@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import {
-  Animated, FlatList, LayoutChangeEvent, Platform, Pressable, RefreshControl,
+  Animated, LayoutChangeEvent, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, useWindowDimensions, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,12 +50,6 @@ function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>, 
 }
 
 const ONE_DAY_MS = 86400000;
-// FlatList with no real rows — used purely so the whole screen can share
-// Markets' contentInset/contentOffset top-spacing technique (verified
-// in-simulator to behave correctly, unlike the same props on a plain
-// ScrollView) while all real content lives in ListHeaderComponent.
-const NO_ROWS: never[] = [];
-function renderNothing() { return null; }
 function computeValue(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'fixed_income') return fixedIncomeAccruedValue(h);
   if (h.type === 'real_estate') return getRECurrentValue(h);
@@ -684,18 +678,14 @@ export default function AnalyticsScreen() {
   return (
     <>
     <Stack.Screen options={{ headerShown: false }} />
-    <FlatList
+    <ScrollView
       style={[s.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: botPad + 100 }}
+      contentContainerStyle={[s.content, { paddingTop: 16, paddingBottom: botPad + 100 }]}
       contentInset={{ top: topPad }}
       contentOffset={{ x: 0, y: -topPad }}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
-      data={NO_ROWS}
-      keyExtractor={String}
-      renderItem={renderNothing}
-      ListHeaderComponent={
-      <View style={[s.content, { paddingTop: 16 }]}>
+    >
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={s.header}>
         <View>
@@ -1031,9 +1021,7 @@ export default function AnalyticsScreen() {
           </>
         )}
       </PremiumGate>
-      </View>
-      }
-    />
+    </ScrollView>
     </>
   );
 }
