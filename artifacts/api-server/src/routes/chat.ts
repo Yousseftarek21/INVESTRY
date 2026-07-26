@@ -8,9 +8,13 @@ import {
   cashAccountsTable,
   goalsTable,
   portfolioSnapshotsTable,
+  priceAlertsTable,
+  recurringIncomeTable,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { decryptFromStorage } from "../lib/encryption";
+import { fetchPrices, fetchStocks } from "./markets";
+import { computeHoldingValue, type StoredHolding } from "../lib/portfolioValue";
 
 const router: IRouter = Router();
 
@@ -37,27 +41,60 @@ router.use(
 
 type DecodedRow = { type: string } & Record<string, unknown>;
 
-function summarizeHoldings(holdings: DecodedRow[]): string {
+// Cost basis per holding type, mirrored from how each type's own "amount
+// paid" field is named — used to show unrealized gain/loss alongside the
+// live current value from computeHoldingValue. personal_asset and
+// fixed_income are deliberately excluded: their "value" is either directly
+// user-entered (no separate cost basis to compare against) or an accrual
+// toward principal, not a market gain/loss.
+function costBasisEGP(h: StoredHolding): number | null {
+  switch (h.type) {
+    case "gold":
+    case "silver":
+      return (Number(h.grams) || 0) * (Number(h.purchasePricePerGram) || 0);
+    case "stock":
+      return (Number(h.shares) || 0) * (Number(h.purchasePricePerShare) || 0);
+    case "real_estate":
+      return Number(h.purchasePrice) || 0;
+    default:
+      return null;
+  }
+}
+
+function summarizeHoldings(
+  holdings: StoredHolding[],
+  goldUsd: number,
+  silverUsd: number,
+  usdToEgp: number,
+  egxPrices: Record<string, number>,
+): string {
   if (holdings.length === 0) return "No investment holdings recorded.";
   const lines = holdings.map((h) => {
+    const currentValue = computeHoldingValue(h, goldUsd, silverUsd, usdToEgp, egxPrices);
+    const cost = costBasisEGP(h);
+    const gainLoss =
+      cost !== null && cost > 0
+        ? ` — current value ${currentValue.toFixed(0)} EGP (${currentValue >= cost ? "+" : ""}${(((currentValue - cost) / cost) * 100).toFixed(1)}% vs cost basis ${cost.toFixed(0)} EGP)`
+        : ` — current value ${currentValue.toFixed(0)} EGP`;
+
     switch (h.type) {
       case "gold":
-        return `- Gold: ${h.grams}g (${h.karat}, ${h.form}), bought at ${h.purchasePricePerGram} EGP/g`;
+        return `- Gold: ${h.grams}g (${h.karat}, ${h.form}), bought at ${h.purchasePricePerGram} EGP/g${gainLoss}`;
       case "silver":
-        return `- Silver: ${h.grams}g (${h.form}), bought at ${h.purchasePricePerGram} EGP/g`;
+        return `- Silver: ${h.grams}g (${h.form}), bought at ${h.purchasePricePerGram} EGP/g${gainLoss}`;
       case "stock":
-        return `- Stock: ${h.shares} shares of ${h.symbol} (${h.companyName}), bought at ${h.purchasePricePerShare} EGP/share`;
+        return `- Stock: ${h.shares} shares of ${h.symbol} (${h.companyName}), bought at ${h.purchasePricePerShare} EGP/share${gainLoss}`;
       case "real_estate":
-        return `- Real estate: ${h.propertyName} (${h.propertyType}) in ${h.district}, ${h.city}, ${h.governorate}, ${h.area}m², purchased for ${h.purchasePrice} EGP`;
+        return `- Real estate: ${h.propertyName} (${h.propertyType}) in ${h.district}, ${h.city}, ${h.governorate}, ${h.area}m², purchased for ${h.purchasePrice} EGP${gainLoss}`;
       case "personal_asset":
         return `- Personal asset: ${h.name} (${h.category}), current value ${h.currentValue} ${h.currency}`;
       case "fixed_income":
-        return `- Fixed income: ${h.label} at ${h.institution} (${h.subtype}), principal ${h.principal} EGP at ${h.annualRate}% annual rate, matures ${h.maturityDate}`;
+        return `- Fixed income: ${h.label} at ${h.institution} (${h.subtype}), principal ${h.principal} EGP at ${h.annualRate}% annual rate, matures ${h.maturityDate}, accrued value ${currentValue.toFixed(0)} EGP`;
       default:
-        return `- ${h.type} holding`;
+        return `- ${h.type} holding${gainLoss}`;
     }
   });
-  return `Holdings:\n${lines.join("\n")}`;
+  return `Holdings (with live current value):\n${lines.join("\n")}`;
 }
 
 function summarizeCash(accounts: DecodedRow[]): string {
@@ -74,42 +111,103 @@ function summarizeGoals(goals: Record<string, unknown>[]): string {
   return `Goals:\n${lines.join("\n")}`;
 }
 
-// Fresh on every message, not cached across turns — cheap enough (a handful
-// of small queries) that staleness isn't worth the complexity of invalidating
-// a cache when the user edits a holding mid-conversation.
-async function buildPortfolioContext(userId: string): Promise<string> {
-  const [holdingRows, cashRows, goalRows, snapshotRows] = await Promise.all([
-    db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
-    db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
-    db.select().from(goalsTable).where(eq(goalsTable.userId, userId)),
-    db
-      .select({ totalValue: portfolioSnapshotsTable.totalValue, date: portfolioSnapshotsTable.date })
-      .from(portfolioSnapshotsTable)
-      .where(eq(portfolioSnapshotsTable.userId, userId))
-      .orderBy(desc(portfolioSnapshotsTable.date))
-      .limit(1),
-  ]);
+function summarizePriceAlerts(alerts: Record<string, unknown>[]): string {
+  const active = alerts.filter((a) => !a.triggered);
+  if (active.length === 0) return "No active price alerts set.";
+  const lines = active.map(
+    (a) => `- ${a.assetLabel}: alert when price goes ${a.direction} ${a.targetPrice}`,
+  );
+  return `Active price alerts:\n${lines.join("\n")}`;
+}
 
-  const holdings = holdingRows.map((r) => ({ type: r.type, ...(decryptFromStorage(r.data) as object) }));
+function summarizeRecurringIncome(entries: Record<string, unknown>[]): string {
+  const active = entries.filter((e) => e.active);
+  if (active.length === 0) return "No recurring income entries set up.";
+  const lines = active.map(
+    (e) => `- ${e.name}: ${e.amount} ${e.currency}/month, credited on day ${e.creditDay} of each month`,
+  );
+  return `Recurring income:\n${lines.join("\n")}`;
+}
+
+// Finds the snapshot closest to `daysAgo` days before today and describes
+// the % move from it to the latest value — gives the assistant a trend to
+// talk about instead of just a single point-in-time total.
+function summarizeTrend(
+  snapshots: { date: string; totalValue: number }[],
+  latestValue: number,
+  daysAgo: number,
+  label: string,
+): string | null {
+  if (snapshots.length < 2) return null;
+  const targetTime = Date.now() - daysAgo * 86_400_000;
+  const closest = snapshots.reduce((best, s) =>
+    Math.abs(new Date(s.date).getTime() - targetTime) < Math.abs(new Date(best.date).getTime() - targetTime)
+      ? s
+      : best,
+  );
+  if (closest.totalValue <= 0) return null;
+  const pctChange = ((latestValue - closest.totalValue) / closest.totalValue) * 100;
+  return `${label}: ${pctChange >= 0 ? "+" : ""}${pctChange.toFixed(1)}% (from ${closest.totalValue.toFixed(0)} EGP on ${closest.date})`;
+}
+
+// Fresh on every message, not cached across turns — cheap enough (a handful
+// of small queries plus the already-cached market data fetches) that
+// staleness isn't worth the complexity of invalidating a cache when the
+// user edits a holding mid-conversation.
+async function buildPortfolioContext(userId: string): Promise<string> {
+  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks] =
+    await Promise.all([
+      db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
+      db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
+      db.select().from(goalsTable).where(eq(goalsTable.userId, userId)),
+      db.select().from(priceAlertsTable).where(eq(priceAlertsTable.userId, userId)),
+      db.select().from(recurringIncomeTable).where(eq(recurringIncomeTable.userId, userId)),
+      db
+        .select({ totalValue: portfolioSnapshotsTable.totalValue, date: portfolioSnapshotsTable.date })
+        .from(portfolioSnapshotsTable)
+        .where(eq(portfolioSnapshotsTable.userId, userId))
+        .orderBy(asc(portfolioSnapshotsTable.date)),
+      fetchPrices(),
+      fetchStocks().catch(() => []),
+    ]);
+
+  const holdings = holdingRows.map(
+    (r) => ({ id: r.id, type: r.type, ...(decryptFromStorage(r.data) as object) }) as StoredHolding,
+  );
   const cash = cashRows.map((r) => ({ type: r.type, ...(decryptFromStorage(r.data) as object) }));
   const goals = goalRows.map((r) => decryptFromStorage(r.data) as Record<string, unknown>);
-  const latestSnapshot = snapshotRows[0];
+  const alerts = alertRows.map((r) => decryptFromStorage(r.data) as Record<string, unknown>);
+  const income = incomeRows.map((r) => decryptFromStorage(r.data) as Record<string, unknown>);
+
+  const egxPrices: Record<string, number> = {};
+  for (const s of egxStocks) egxPrices[s.symbol] = s.price;
+
+  const latestSnapshot = snapshotRows[snapshotRows.length - 1];
+  const latestValue = latestSnapshot?.totalValue ?? 0;
+  const trends = [
+    summarizeTrend(snapshotRows, latestValue, 7, "7-day change"),
+    summarizeTrend(snapshotRows, latestValue, 30, "30-day change"),
+  ].filter((t): t is string => t !== null);
 
   return [
     latestSnapshot
-      ? `Total portfolio value (as of ${latestSnapshot.date}): ${latestSnapshot.totalValue} EGP.`
+      ? `Total portfolio value (as of ${latestSnapshot.date}): ${latestSnapshot.totalValue} EGP.${trends.length ? ` ${trends.join("; ")}.` : ""}`
       : "No portfolio value history yet.",
-    summarizeHoldings(holdings),
+    summarizeHoldings(holdings, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices),
     summarizeCash(cash),
     summarizeGoals(goals),
+    summarizePriceAlerts(alerts),
+    summarizeRecurringIncome(income),
   ].join("\n\n");
 }
 
 const SYSTEM_PREAMBLE = `You are the INVESTRY AI Financial Assistant, built into the INVESTRY portfolio-tracking app. You help the user understand their own portfolio and general investing/personal-finance concepts.
 
+INVESTRY tracks: investment holdings (gold, silver, EGX stocks, real estate, personal assets, fixed income), cash accounts, savings goals, recurring income, and custom price alerts. The data below reflects live current market values (gold/silver spot prices and EGX stock prices), not just what the user originally paid — use it to answer questions about current value and unrealized gain/loss directly, not just historical cost.
+
 Rules:
 - You are not a licensed financial advisor. Never recommend a specific trade, a specific security to buy or sell, or a specific allocation change as advice — explain tradeoffs and considerations instead, and let the user decide.
-- Ground your answers in the portfolio data provided below when the question relates to it. If asked about something not in this data (live prices, breaking news, anything outside this snapshot), say plainly that you don't have that live data rather than guessing.
+- Ground your answers in the portfolio data provided below when the question relates to it. It includes live current values, so don't claim you lack live pricing — you have it for everything the user holds. Only say you lack data for things genuinely outside this snapshot (breaking news, assets the user hasn't recorded in the app, markets other than EGX/gold/silver).
 - Be concise and direct — this is a mobile chat, not a report.
 - If asked for something that would cross into specific financial advice, say so plainly and explain why, then offer general education on the topic instead.`;
 

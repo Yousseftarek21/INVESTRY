@@ -9,7 +9,7 @@ export type GoldKarat = "24k" | "22k" | "21k" | "18k";
 
 // Mirrors artifacts/mobile/types/index.ts's Holding union — only the fields
 // actually needed for valuation are read here, everything else is opaque.
-interface StoredHolding {
+export interface StoredHolding {
   id: string;
   type: string;
   [key: string]: unknown;
@@ -49,7 +49,7 @@ function personalAssetValueEGP(h: StoredHolding, usdToEgp: number): number {
   return h.currency === "USD" ? v * usdToEgp : v;
 }
 
-function computeHoldingValue(
+export function computeHoldingValue(
   h: StoredHolding,
   goldUsd: number,
   silverUsd: number,
