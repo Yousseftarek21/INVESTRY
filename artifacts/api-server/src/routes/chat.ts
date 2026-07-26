@@ -113,44 +113,46 @@ Rules:
 - Be concise and direct — this is a mobile chat, not a report.
 - If asked for something that would cross into specific financial advice, say so plainly and explain why, then offer general education on the topic instead.`;
 
-// OpenRouter's free tier — no billing setup required, but capped at 50
-// requests/day *across the whole app* (not per user) until $10+ in credit
-// has ever been added to the account, then 1000/day. If the assistant
-// starts erroring for everyone around the same time each day, this daily
-// cap is almost certainly why.
-const OPENROUTER_MODEL = "openai/gpt-oss-20b:free";
+// Gemini's free tier is scoped to our own API key/project — unlike
+// OpenRouter's shared ":free" pool, other apps' traffic can't exhaust it
+// out from under us. gemini-3.5-flash-lite is Google's fastest, cheapest
+// tier and isn't a reasoning model, so there's no hidden chain-of-thought
+// tax on latency.
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
-async function callOpenRouter(systemPrompt: string, messages: ChatTurn[]): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY not configured");
+async function callGemini(systemPrompt: string, messages: ChatTurn[]): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: messages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { maxOutputTokens: 1024 },
+      }),
     },
-    body: JSON.stringify({
-      model: OPENROUTER_MODEL,
-      max_tokens: 1024,
-      // gpt-oss is a reasoning model — it burns tokens on hidden chain-of-
-      // thought before it ever writes the visible reply. That's most of
-      // where the multi-second lag comes from for a quick chat answer, not
-      // network/queue time. Low effort trims that reasoning pass; the
-      // reasoning tokens aren't shown to the user anyway.
-      reasoning: { effort: "low" },
-      messages: [{ role: "system", content: systemPrompt }, ...messages],
-    }),
-  });
+  );
 
   if (!res.ok) {
-    throw new Error(`OpenRouter ${res.status}: ${await res.text()}`);
+    throw new Error(`Gemini ${res.status}: ${await res.text()}`);
   }
 
-  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content?.trim() ?? "";
+  const data = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
 }
 
 // POST /api/chat — a single grounded turn, not a persisted conversation.
@@ -160,7 +162,7 @@ router.post("/chat", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  if (!process.env.OPENROUTER_API_KEY) { res.status(503).json({ error: "AI Assistant is not available right now" }); return; }
+  if (!process.env.GEMINI_API_KEY) { res.status(503).json({ error: "AI Assistant is not available right now" }); return; }
 
   const [user] = await db.select({ plan: usersTable.plan }).from(usersTable).where(eq(usersTable.id, userId));
   const isPro = user?.plan === "pro" || process.env.BETA_UNLOCK_ALL === "true";
@@ -176,7 +178,7 @@ router.post("/chat", async (req, res) => {
   try {
     const portfolioContext = await buildPortfolioContext(userId);
     const systemPrompt = `${SYSTEM_PREAMBLE}\n\nHere is the user's current portfolio:\n\n${portfolioContext}`;
-    const reply = await callOpenRouter(systemPrompt, messages);
+    const reply = await callGemini(systemPrompt, messages);
     res.json({ reply: reply || "I couldn't come up with a response — try rephrasing your question." });
   } catch (err) {
     req.log.error({ err }, "POST /chat failed");
