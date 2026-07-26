@@ -471,7 +471,6 @@ export default function AnalyticsScreen() {
   const router = useRouter();
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
@@ -676,25 +675,12 @@ export default function AnalyticsScreen() {
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
   const healthColor = health.score >= 75 ? colors.green : health.score >= 50 ? '#F59E0B' : colors.red;
 
-  // Analytics has far more content and more async data sources than Markets'
-  // Metals tab, so its initial layout pass is heavier — the declarative
-  // contentOffset prop only applies once at mount and can race against a
-  // slow/incomplete layout, leaving the scroll position wrong. Setting it
-  // imperatively after the first layout pass is the reliable fix for that
-  // race, rather than trusting contentOffset to land correctly on its own.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ y: -topPad, animated: false });
-  }, [topPad]);
-
   return (
     <>
     <Stack.Screen options={{ headerShown: false }} />
     <ScrollView
-      ref={scrollRef}
       style={[s.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={[s.content, { paddingTop: 16, paddingBottom: botPad + 100 }]}
-      contentInset={{ top: topPad }}
-      onLayout={() => scrollRef.current?.scrollTo({ y: -topPad, animated: false })}
+      contentContainerStyle={[s.content, { paddingTop: topPad + 16, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
