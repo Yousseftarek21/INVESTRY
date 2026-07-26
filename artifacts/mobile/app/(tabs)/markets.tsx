@@ -205,8 +205,13 @@ function MetalHeroCard({
   );
 }
 const mh = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row' },
-  accent: { width: 4, alignSelf: 'stretch', borderTopLeftRadius: 15, borderBottomLeftRadius: 15 },
+  // overflow: 'hidden' clips the accent bar's square corners into the card's
+  // own radius — matches CurrencyHeroCard's approach. The previous manual
+  // borderTopLeftRadius/borderBottomLeftRadius (15) didn't quite match the
+  // card's own radius (16) plus its 1px border, leaving a visible seam at
+  // the top/bottom-left corners that the currency hero card didn't have.
+  card: { borderRadius: 16, borderWidth: 1, flexDirection: 'row', overflow: 'hidden' },
+  accent: { width: 4, alignSelf: 'stretch' },
   body: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, gap: 4 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
