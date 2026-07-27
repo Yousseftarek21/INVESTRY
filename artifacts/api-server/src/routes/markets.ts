@@ -1,4 +1,6 @@
 import { Router, type IRouter } from "express";
+import { lt, desc } from "drizzle-orm";
+import { db, marketCloseSnapshotsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -541,8 +543,12 @@ async function safeJson<T>(res: Response | null, label?: string): Promise<T | nu
 
 function round2(n: number) { return Math.round(n * 100) / 100; }
 
+// "Yesterday" relative to Cairo's calendar day, not UTC's — using UTC here
+// meant that for the first ~2 hours of each Cairo day (until UTC's own date
+// rolls over), this pointed at the day *before* Cairo's real yesterday.
 function yesterdayDate(): string {
-  const d = new Date();
+  const todayCairo = cairoDateString(); // "YYYY-MM-DD", already Africa/Cairo-correct
+  const d = new Date(`${todayCairo}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
 }
@@ -726,33 +732,50 @@ function isMetalsMarketOpen(now: Date): boolean {
 // today's EGP price vs. yesterday's EGP price — the same numbers this API
 // displays in Markets, diffed against themselves. Reconstructing that change
 // from a separate USD move and a separate historical FX lookup (below, kept
-// only as a same-day-deploy bootstrap fallback) leaves room for the two
-// sources to disagree on timing; this in-memory log removes that entirely by
-// remembering our own last-computed EGP price for each Cairo calendar day and
-// comparing directly against it.
-
-interface MarketCloseSnapshot { goldEgp24k: number; silverEgp: number; usdToEgp: number; }
-const closeSnapshots = new Map<string, MarketCloseSnapshot>();
+// only as a bootstrap fallback for a brand-new deployment with no history
+// yet) leaves room for the two sources to disagree on timing.
+//
+// This used to be an in-memory Map, which seemed fine but silently broke:
+// any server restart (a redeploy, or the host recycling an idle instance)
+// wipes it, forcing the USD+FX fallback — which itself reads "yesterday"
+// using UTC day boundaries, not Cairo's, so right after Cairo midnight it
+// actually fetches a rate from *two* Cairo-days ago. The result: a change%
+// that doesn't reset at the start of a new day the way every other market
+// does, staying anchored to a stale reference until the fallback's own
+// source happens to update. Persisting to the database instead means a
+// restart can never lose the real previous close.
 
 function cairoDateString(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
 }
 
-// Keeps "today"'s entry continuously updated to the latest live price (so
-// whatever was last written before the Cairo day rolls over becomes that
-// day's fixed close), returns the most recent *prior* day's close if one is
-// on record, and prunes anything older than that so the map stays tiny.
-function recordAndGetPrevClose(today: string, current: MarketCloseSnapshot): MarketCloseSnapshot | null {
-  closeSnapshots.set(today, current);
+interface MarketCloseSnapshot { goldEgp24k: number; silverEgp: number; usdToEgp: number; }
 
-  let prevDate: string | null = null;
-  for (const d of closeSnapshots.keys()) {
-    if (d < today && (!prevDate || d > prevDate)) prevDate = d;
+// Keeps "today"'s row continuously updated to the latest live price (so
+// whatever was last written before the Cairo day rolls over becomes that
+// day's fixed close in the database), and returns the most recent *prior*
+// day's close if one is on record.
+async function recordAndGetPrevClose(today: string, current: MarketCloseSnapshot): Promise<MarketCloseSnapshot | null> {
+  try {
+    await db
+      .insert(marketCloseSnapshotsTable)
+      .values({ date: today, goldEgp24k: current.goldEgp24k, silverEgp: current.silverEgp, usdToEgp: current.usdToEgp })
+      .onConflictDoUpdate({
+        target: marketCloseSnapshotsTable.date,
+        set: { goldEgp24k: current.goldEgp24k, silverEgp: current.silverEgp, usdToEgp: current.usdToEgp, updatedAt: new Date() },
+      });
+
+    const [prev] = await db
+      .select({ goldEgp24k: marketCloseSnapshotsTable.goldEgp24k, silverEgp: marketCloseSnapshotsTable.silverEgp, usdToEgp: marketCloseSnapshotsTable.usdToEgp })
+      .from(marketCloseSnapshotsTable)
+      .where(lt(marketCloseSnapshotsTable.date, today))
+      .orderBy(desc(marketCloseSnapshotsTable.date))
+      .limit(1);
+    return prev ?? null;
+  } catch (err) {
+    logger.warn({ err }, "recordAndGetPrevClose: DB read/write failed, falling back to USD+FX reconstruction");
+    return null;
   }
-  for (const d of [...closeSnapshots.keys()]) {
-    if (d < today && d !== prevDate) closeSnapshots.delete(d);
-  }
-  return prevDate ? closeSnapshots.get(prevDate)! : null;
 }
 
 // ─── Assemble prices ──────────────────────────────────────────────────────────
@@ -783,11 +806,11 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   const usdToEgpDisplay  = Math.round(usdToEgp * 10000) / 10000;
 
   // The authoritative reference for "today's change" is this same EGP price,
-  // diffed directly against what this endpoint itself displayed as yesterday's
-  // close — see recordAndGetPrevClose above. The USD+FX reconstruction below
-  // only covers the gap right after a deploy, before any prior-day close has
-  // been recorded in this process's memory yet.
-  const prevClose = recordAndGetPrevClose(cairoDateString(), {
+  // diffed directly against what this endpoint itself displayed as
+  // yesterday's close — see recordAndGetPrevClose above, now backed by the
+  // database so a restart can't lose it. The USD+FX reconstruction below
+  // only covers a brand-new deployment with no history in the table yet.
+  const prevClose = await recordAndGetPrevClose(cairoDateString(), {
     goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
   });
 
