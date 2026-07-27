@@ -23,7 +23,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.investry.app",
-      "buildNumber": "53",
+      "buildNumber": "54",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -77,6 +77,12 @@
           "ios": {
             "deploymentTarget": "17.0"
           }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "INVESTRY needs access to your photo library so you can choose a picture from it to use as your profile photo."
         }
       ]
     ],

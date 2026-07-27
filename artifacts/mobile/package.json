@@ -61,8 +61,9 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "@workspace/shared-data": "workspace:*",
+    "@clerk/react": "6.11.3",
     "@react-native-community/datetimepicker": "^9.1.0",
+    "@workspace/shared-data": "workspace:*",
     "expo-apple-authentication": "~8.0.8",
     "expo-build-properties": "^57.0.3",
     "expo-file-system": "~19.0.23",

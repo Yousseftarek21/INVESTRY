@@ -6,11 +6,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { useSignIn, useSSO, useClerk } from '@clerk/expo';
-import { useSignInWithApple } from '@clerk/expo/apple';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useAppleAuthWithName } from '@/hooks/useAppleAuthWithName';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -30,9 +30,10 @@ export default function SignInScreen() {
   const insets = useSafeAreaInsets();
 
   const { signIn, errors, fetchStatus } = useSignIn();
-  const { setActive } = useClerk();
+  const clerk = useClerk();
+  const { setActive } = clerk;
   const { startSSOFlow } = useSSO();
-  const { startAppleAuthenticationFlow } = useSignInWithApple();
+  const { startAppleAuthenticationFlow } = useAppleAuthWithName();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -159,9 +160,19 @@ export default function SignInScreen() {
     setGlobalError('');
     setAppleLoading(true);
     try {
-      const { createdSessionId, setActive: setAppleActive } = await startAppleAuthenticationFlow();
+      const { createdSessionId, setActive: setAppleActive, appleFullName } = await startAppleAuthenticationFlow();
       if (createdSessionId && setAppleActive) {
         await setAppleActive({ session: createdSessionId, navigate: finalizeNavigate });
+        // Apple only returns the name on the very first authorization ever —
+        // persist it now (if Clerk doesn't already have one) so the user is
+        // never asked to type it in afterward, matching what Sign in with
+        // Apple's Authentication Services already gave us.
+        if (appleFullName && clerk.user && !clerk.user.firstName && !clerk.user.lastName) {
+          clerk.user.update({
+            firstName: appleFullName.givenName ?? undefined,
+            lastName: appleFullName.familyName ?? undefined,
+          }).catch(() => {});
+        }
       } else {
         setGlobalError('Apple sign-in did not complete. Please try again.');
       }
@@ -173,7 +184,7 @@ export default function SignInScreen() {
     } finally {
       setAppleLoading(false);
     }
-  }, [startAppleAuthenticationFlow]);
+  }, [startAppleAuthenticationFlow, clerk]);
 
   if (resetMode !== 'none') {
     return (
