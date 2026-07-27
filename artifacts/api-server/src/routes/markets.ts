@@ -771,35 +771,33 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   const silverEgpPerGram = round2((silverUsd * usdToEgp) / TROY_OZ);
   const usdToEgpDisplay  = Math.round(usdToEgp * 10000) / 10000;
 
-  // The ONLY trustworthy reference for "today's change" is this same EGP
-  // price, diffed directly against what this endpoint itself displayed as
-  // yesterday's close — see recordAndGetPrevClose above, backed by the
-  // database so a restart can't lose it.
-  //
-  // There used to be a fallback here that reconstructed "yesterday" from a
-  // separate USD price plus a third-party daily FX snapshot (fawazahmed0 /
-  // open.er-api.com). That's been removed entirely: both of those sources
-  // turned out to publish a "daily" rate that can sit frozen for well over
-  // 24 hours with no way to tell from the response how stale it actually is
-  // (open.er-api.com's own timestamp was ~24h old when this was caught) —
-  // so the "change" it produced wasn't really "since yesterday," it was
-  // "since whenever that free API last happened to refresh," which could be
-  // days off. A fabricated-looking number from an unreliable source is
-  // worse than no number. Until this endpoint has recorded at least one
-  // real prior day itself, change% is honestly 0 rather than guessed.
-  const prevClose = await recordAndGetPrevClose(cairoDateString(), {
-    goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
-  });
-
+  // Gold/silver's own previous close comes straight from TradingView on
+  // every request — real, live, resets with TradingView's own session, no
+  // fabrication and no dependency on this endpoint's own recorded history.
+  // This is deliberately back to matching TradingView's own % change
+  // directly, same reference point a user would see checking the metal
+  // itself there.
   const goldChange    = metals && metalsOpen ? round2(goldUsd   - metals.xauPrevClose) : 0;
-  const goldChangePct = prevClose && prevClose.goldEgp24k > 0
-    ? round2(((price24k - prevClose.goldEgp24k) / prevClose.goldEgp24k) * 100)
+  const goldChangePct = metals && metalsOpen && metals.xauPrevClose > 0
+    ? round2((goldChange / metals.xauPrevClose) * 100)
     : 0;
 
   const silverChange    = metals && metalsOpen ? round2(silverUsd - metals.xagPrevClose) : 0;
-  const silverChangePct = prevClose && prevClose.silverEgp > 0
-    ? round2(((silverEgpPerGram - prevClose.silverEgp) / prevClose.silverEgp) * 100)
+  const silverChangePct = metals && metalsOpen && metals.xagPrevClose > 0
+    ? round2((silverChange / metals.xagPrevClose) * 100)
     : 0;
+
+  // USD/EGP has no equivalent reliable "own previous close" the way
+  // TradingView gives metals — Wise (the live-rate source) doesn't expose
+  // one, and the free daily-snapshot APIs previously used to reconstruct it
+  // turned out to be unreliably stale (see the removed fetchUsdToEgpPrevClose
+  // — a response with no way to tell it was ~24h+ old). So this one alone is
+  // anchored to this endpoint's own recorded history instead, and honestly
+  // shows 0% until that history exists (see recordAndGetPrevClose above,
+  // backed by the database so a restart can't lose it).
+  const prevClose = await recordAndGetPrevClose(cairoDateString(), {
+    goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
+  });
 
   const usdToEgpChangePercent = prevClose && prevClose.usdToEgp > 0
     ? round2(((usdToEgpDisplay - prevClose.usdToEgp) / prevClose.usdToEgp) * 100)
