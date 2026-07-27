@@ -721,6 +721,40 @@ function isMetalsMarketOpen(now: Date): boolean {
   return true;
 }
 
+// ─── Daily EGP close snapshot ─────────────────────────────────────────────────
+// For an EGP-held investment, "today's change" should mean exactly one thing:
+// today's EGP price vs. yesterday's EGP price — the same numbers this API
+// displays in Markets, diffed against themselves. Reconstructing that change
+// from a separate USD move and a separate historical FX lookup (below, kept
+// only as a same-day-deploy bootstrap fallback) leaves room for the two
+// sources to disagree on timing; this in-memory log removes that entirely by
+// remembering our own last-computed EGP price for each Cairo calendar day and
+// comparing directly against it.
+
+interface MarketCloseSnapshot { goldEgp24k: number; silverEgp: number; usdToEgp: number; }
+const closeSnapshots = new Map<string, MarketCloseSnapshot>();
+
+function cairoDateString(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
+}
+
+// Keeps "today"'s entry continuously updated to the latest live price (so
+// whatever was last written before the Cairo day rolls over becomes that
+// day's fixed close), returns the most recent *prior* day's close if one is
+// on record, and prunes anything older than that so the map stays tiny.
+function recordAndGetPrevClose(today: string, current: MarketCloseSnapshot): MarketCloseSnapshot | null {
+  closeSnapshots.set(today, current);
+
+  let prevDate: string | null = null;
+  for (const d of closeSnapshots.keys()) {
+    if (d < today && (!prevDate || d > prevDate)) prevDate = d;
+  }
+  for (const d of [...closeSnapshots.keys()]) {
+    if (d < today && d !== prevDate) closeSnapshots.delete(d);
+  }
+  return prevDate ? closeSnapshots.get(prevDate)! : null;
+}
+
 // ─── Assemble prices ──────────────────────────────────────────────────────────
 
 export async function fetchPrices(): Promise<MarketPricesResponse> {
@@ -738,26 +772,6 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   const silverUsd = metals?.xag ?? FALLBACK_SILVER;
   const metalsOpen = isMetalsMarketOpen(new Date());
 
-  // Gold/silver are priced in USD but held and displayed in EGP, so "today's
-  // change" has to be computed on the EGP-converted price — not the raw USD
-  // spot — otherwise a USD gain and an opposite FX move can cancel out in
-  // EGP while the badge still shows the USD-only gain as if it reached the
-  // user's holdings. Fall back to the USD-basis % if yesterday's FX rate
-  // couldn't be fetched, matching the previous (imprecise) behavior.
-  const goldChange    = metals && metalsOpen ? round2(goldUsd   - metals.xauPrevClose) : 0;
-  const goldChangePct = metals && metalsOpen && metals.xauPrevClose > 0
-    ? (usdToEgpPrevClose
-        ? round2((((goldUsd * usdToEgp) - (metals.xauPrevClose * usdToEgpPrevClose)) / (metals.xauPrevClose * usdToEgpPrevClose)) * 100)
-        : round2((goldChange / metals.xauPrevClose) * 100))
-    : 0;
-
-  const silverChange    = metals && metalsOpen ? round2(silverUsd - metals.xagPrevClose) : 0;
-  const silverChangePct = metals && metalsOpen && metals.xagPrevClose > 0
-    ? (usdToEgpPrevClose
-        ? round2((((silverUsd * usdToEgp) - (metals.xagPrevClose * usdToEgpPrevClose)) / (metals.xagPrevClose * usdToEgpPrevClose)) * 100)
-        : round2((silverChange / metals.xagPrevClose) * 100))
-    : 0;
-
   const price24k = round2((goldUsd * usdToEgp) / TROY_OZ);
   const goldEgpPerGram: Record<string, number> = {
     "24k": price24k,
@@ -767,8 +781,38 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   };
   const silverEgpPerGram = round2((silverUsd * usdToEgp) / TROY_OZ);
   const usdToEgpDisplay  = Math.round(usdToEgp * 10000) / 10000;
-  const usdToEgpChangePercent = usdToEgpPrevClose && usdToEgpPrevClose > 0
-    ? round2(((usdToEgp - usdToEgpPrevClose) / usdToEgpPrevClose) * 100) : 0;
+
+  // The authoritative reference for "today's change" is this same EGP price,
+  // diffed directly against what this endpoint itself displayed as yesterday's
+  // close — see recordAndGetPrevClose above. The USD+FX reconstruction below
+  // only covers the gap right after a deploy, before any prior-day close has
+  // been recorded in this process's memory yet.
+  const prevClose = recordAndGetPrevClose(cairoDateString(), {
+    goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
+  });
+
+  const goldChange    = metals && metalsOpen ? round2(goldUsd   - metals.xauPrevClose) : 0;
+  const goldChangePct = prevClose && prevClose.goldEgp24k > 0
+    ? round2(((price24k - prevClose.goldEgp24k) / prevClose.goldEgp24k) * 100)
+    : (metals && metalsOpen && metals.xauPrevClose > 0
+        ? (usdToEgpPrevClose
+            ? round2((((goldUsd * usdToEgp) - (metals.xauPrevClose * usdToEgpPrevClose)) / (metals.xauPrevClose * usdToEgpPrevClose)) * 100)
+            : round2((goldChange / metals.xauPrevClose) * 100))
+        : 0);
+
+  const silverChange    = metals && metalsOpen ? round2(silverUsd - metals.xagPrevClose) : 0;
+  const silverChangePct = prevClose && prevClose.silverEgp > 0
+    ? round2(((silverEgpPerGram - prevClose.silverEgp) / prevClose.silverEgp) * 100)
+    : (metals && metalsOpen && metals.xagPrevClose > 0
+        ? (usdToEgpPrevClose
+            ? round2((((silverUsd * usdToEgp) - (metals.xagPrevClose * usdToEgpPrevClose)) / (metals.xagPrevClose * usdToEgpPrevClose)) * 100)
+            : round2((silverChange / metals.xagPrevClose) * 100))
+        : 0);
+
+  const usdToEgpChangePercent = prevClose && prevClose.usdToEgp > 0
+    ? round2(((usdToEgpDisplay - prevClose.usdToEgp) / prevClose.usdToEgp) * 100)
+    : (usdToEgpPrevClose && usdToEgpPrevClose > 0
+        ? round2(((usdToEgp - usdToEgpPrevClose) / usdToEgpPrevClose) * 100) : 0);
 
   return {
     goldUsd:             round2(goldUsd),
