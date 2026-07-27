@@ -335,8 +335,8 @@ const en = {
   tbillsEmptyHint: 'Fill in the details above to see your results',
   tbillsDisclaimer: 'For informational purposes only. Results are estimates based on simple annual discount calculation before brokerage fees.',
 
-  // Sharia Screening
-  shariahScreening: 'Sharia Screening',
+  // Shariah Screening
+  shariahScreening: 'Shariah Screening',
   shariahScreeningDesc: 'Check if an EGX stock is halal',
   shariahCompliant: 'Compliant',
   shariahNonCompliant: 'Not Compliant',
@@ -1408,7 +1408,7 @@ const ar: typeof en = {
   tbillsEmptyHint: 'أدخل التفاصيل أعلاه لعرض النتائج',
   tbillsDisclaimer: 'للإرشاد فقط. النتائج تقديرية بناءً على الخصم السنوي البسيط قبل رسوم الوساطة.',
 
-  // Sharia Screening
+  // Shariah Screening
   shariahScreening: 'الفحص الشرعي',
   shariahScreeningDesc: 'تحقق إذا كان سهم البورصة المصرية حلال',
   shariahCompliant: 'متوافق',

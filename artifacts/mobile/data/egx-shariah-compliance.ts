@@ -1,4 +1,4 @@
-// Sharia (Islamic finance) compliance screening for EGX-listed stocks.
+// Shariah (Islamic finance) compliance screening for EGX-listed stocks.
 //
 // Verdicts are derived in two layers, in order:
 //  1. VERIFIED_COMPLIANT — tickers confirmed against real, citable sources:
@@ -66,7 +66,7 @@ const PURIFICATION_NOTE =
   "Even compliant stocks can carry a small amount of incidental non-permissible income (e.g. bank interest on idle cash), generally accepted up to about 5% of revenue. The common guidance is to purify by donating that same percentage of your dividends to charity — check the company's own disclosures for its exact ratio where available.";
 
 const AVOID_GUIDANCE =
-  "This fails Sharia screening by business activity, not by a borderline ratio — mainstream guidance is to avoid new positions. If you already hold shares, guidance is to divest and purify any dividends already received by donating them in full to charity.";
+  "This fails Shariah screening by business activity, not by a borderline ratio — mainstream guidance is to avoid new positions. If you already hold shares, guidance is to divest and purify any dividends already received by donating them in full to charity.";
 
 const UNSCREENED_GUIDANCE =
   "Not part of the official EGX Shariah-compliant index and not one of the categorical exclusions (conventional banking/insurance/financial services). A real verdict needs the company's debt, cash, and receivables ratios plus its revenue breakdown — data this app doesn't have. Verify independently (e.g. with a dedicated Islamic-screening service) before investing for religious purposes.";
