@@ -84,6 +84,12 @@
         {
           "photosPermission": "INVESTRY needs access to your photo library so you can choose a picture from it to use as your profile photo."
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "INVESTRY uses Face ID to unlock the app, so only you can view your portfolio and financial information."
+        }
       ]
     ],
     "experiments": {
