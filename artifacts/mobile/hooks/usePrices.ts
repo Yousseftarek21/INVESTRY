@@ -73,8 +73,16 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
       for (const item of d?.data ?? []) byS[item.s] = item.d;
       const gold = byS['TVC:GOLD'];
       const silver = byS['TVC:SILVER'];
-      if (gold?.[0] > 0)   { goldUsd = gold[0];     goldChangePercent = gold[2];   }
-      if (silver?.[0] > 0) { silverUsd = silver[0]; silverChangePercent = silver[2]; }
+      // gold[2]/silver[2] are TradingView's raw USD change% — deliberately not
+      // used here. Gold/silver are held and valued in EGP, and this fallback
+      // (only hit when our own API server is unreachable) has no historical
+      // USD/EGP rate to convert that % onto an EGP basis, so a "today change"
+      // derived from the raw USD leg alone can show a gain on a day the EGP
+      // value actually fell (the exact bug fixed server-side in markets.ts).
+      // Leaving it at 0 here is honest about what we don't know, rather than
+      // showing a number that looks plausible but can be wrong.
+      if (gold?.[0] > 0)   goldUsd   = gold[0];
+      if (silver?.[0] > 0) silverUsd = silver[0];
     }
   } catch { /* use fallback */ }
 

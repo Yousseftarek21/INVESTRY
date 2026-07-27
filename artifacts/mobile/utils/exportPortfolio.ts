@@ -166,7 +166,13 @@ export function buildPortfolioHtml(
   const totalValue = rows.reduce((s, r) => s + r.value, 0);
   const totalGain = totalValue - totalCost;
   const totalGainPct = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
-  const cashTotal = cashAccounts.reduce((s, a) => s + (a.currency === 'EGP' ? a.balance : a.balance * (prices?.usdToEgp ?? 1)), 0);
+  const cashTotal = cashAccounts.reduce((s, a) => {
+    if (a.currency === 'EGP') return s + a.balance;
+    if (a.currency === 'USD' && prices?.usdToEgp) return s + a.balance * prices.usdToEgp;
+    const fxRate = prices?.fxRates?.[a.currency];
+    if (fxRate) return s + a.balance * fxRate;
+    return s + a.balance;
+  }, 0);
   const generatedAt = (opts.generatedAt ?? new Date()).toLocaleString('en-EG');
   const gainColor = totalGain >= 0 ? '#00976E' : '#E03030';
 
