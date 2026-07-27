@@ -445,7 +445,7 @@ function PlanningToolCard({
   const onPressOut = () => Animated.spring(scale, { toValue: 1,    useNativeDriver: Platform.OS !== 'web' }).start();
 
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
+    <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
       <Pressable
         onPress={onPress}
         onPressIn={onPressIn}
@@ -456,8 +456,8 @@ function PlanningToolCard({
         <View style={[s.planningToolIcon, { backgroundColor: color + '1A' }]}>
           <Feather name={icon} size={22} color={color} />
         </View>
-        <Text style={[s.planningToolLabel, { color: colors.text }]} numberOfLines={1}>{label}</Text>
-        <Text style={[s.planningToolSub, { color: colors.mutedForeground }]} numberOfLines={1}>{sub}</Text>
+        <Text style={[s.planningToolLabel, { color: colors.text }]}>{label}</Text>
+        <Text style={[s.planningToolSub, { color: colors.mutedForeground }]}>{sub}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -712,12 +712,7 @@ export default function AnalyticsScreen() {
           <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Set targets & calculate returns</Text>
         </View>
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={s.planningScroll}
-        contentContainerStyle={s.planningScrollContent}
-      >
+      <View style={s.planningRow}>
         <PlanningToolCard
           icon="target" color={colors.primary}
           label={t.goals}
@@ -736,7 +731,7 @@ export default function AnalyticsScreen() {
           sub={t.shariahScreeningDesc}
           onPress={() => router.push('/sharia-screening' as any)}
         />
-      </ScrollView>
+      </View>
 
       {/* ══ SECTION 2: Financial Tools ════════════════════════════════ */}
       <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
@@ -1115,16 +1110,15 @@ const s = StyleSheet.create({
   toolsBadgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.8 },
 
   // Planning tool cards (ToolCard-matched style)
-  planningScroll:         { marginHorizontal: -20 },
-  planningScrollContent:  { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
+  planningRow: { flexDirection: 'row', gap: 10 },
   planningToolCard: {
-    width: 110,
+    flex: 1,
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
     paddingTop: 18,
     paddingBottom: 14,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
     gap: 8,
   },
