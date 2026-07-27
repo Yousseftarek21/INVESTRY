@@ -636,6 +636,28 @@ async function fetchUsdToEgp(): Promise<number> {
   return FALLBACK_EGP;
 }
 
+// ─── USD → EGP exchange rate, as of yesterday ──────────────────────────────────
+// Needed to compute gold/silver's EGP-denominated change: the raw USD spot
+// move and the FX move are independent and can partly cancel out, so a
+// change% derived from USD alone can show a gain while the EGP price (which
+// is what the app displays and what portfolios are valued in) actually fell.
+
+async function fetchUsdToEgpPrevClose(): Promise<number | null> {
+  const date = yesterdayDate();
+
+  const fawaz1 = await safeJson<Fawaz0Response>(
+    await safeFetch(`https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${date}/v1/currencies/usd.json`)
+  );
+  if (fawaz1?.usd?.egp && fawaz1.usd.egp > 0) return fawaz1.usd.egp;
+
+  const fawaz2 = await safeJson<Fawaz0Response>(
+    await safeFetch(`https://${date}.currency-api.pages.dev/v1/currencies/usd.json`)
+  );
+  if (fawaz2?.usd?.egp && fawaz2.usd.egp > 0) return fawaz2.usd.egp;
+
+  return null;
+}
+
 // ─── FX cross rates via Wise (same source as USD/EGP) ────────────────────────
 // Primary: Wise live mid-market rates for each currency pair directly vs EGP.
 // Fallback: open.er-api.com cross-rates for any pair Wise doesn't return.
@@ -704,9 +726,10 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   // All three run in parallel — TradingView scanner is ~100-200 ms, no key needed.
   // fetchFxCrossRates uses FALLBACK_EGP only for its ER-API cross-rate fallback;
   // Wise fetches each pair directly so it doesn't need usdToEgp at fetch time.
-  const [metals, usdToEgp, fxRates] = await Promise.all([
+  const [metals, usdToEgp, usdToEgpPrevClose, fxRates] = await Promise.all([
     fetchMetalsViaTradingView(),
     fetchUsdToEgp(),
+    fetchUsdToEgpPrevClose(),
     fetchFxCrossRates(FALLBACK_EGP),
   ]);
 
@@ -714,13 +737,25 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   const silverUsd = metals?.xag ?? FALLBACK_SILVER;
   const metalsOpen = isMetalsMarketOpen(new Date());
 
+  // Gold/silver are priced in USD but held and displayed in EGP, so "today's
+  // change" has to be computed on the EGP-converted price — not the raw USD
+  // spot — otherwise a USD gain and an opposite FX move can cancel out in
+  // EGP while the badge still shows the USD-only gain as if it reached the
+  // user's holdings. Fall back to the USD-basis % if yesterday's FX rate
+  // couldn't be fetched, matching the previous (imprecise) behavior.
   const goldChange    = metals && metalsOpen ? round2(goldUsd   - metals.xauPrevClose) : 0;
   const goldChangePct = metals && metalsOpen && metals.xauPrevClose > 0
-    ? round2((goldChange / metals.xauPrevClose) * 100) : 0;
+    ? (usdToEgpPrevClose
+        ? round2((((goldUsd * usdToEgp) - (metals.xauPrevClose * usdToEgpPrevClose)) / (metals.xauPrevClose * usdToEgpPrevClose)) * 100)
+        : round2((goldChange / metals.xauPrevClose) * 100))
+    : 0;
 
   const silverChange    = metals && metalsOpen ? round2(silverUsd - metals.xagPrevClose) : 0;
   const silverChangePct = metals && metalsOpen && metals.xagPrevClose > 0
-    ? round2((silverChange / metals.xagPrevClose) * 100) : 0;
+    ? (usdToEgpPrevClose
+        ? round2((((silverUsd * usdToEgp) - (metals.xagPrevClose * usdToEgpPrevClose)) / (metals.xagPrevClose * usdToEgpPrevClose)) * 100)
+        : round2((silverChange / metals.xagPrevClose) * 100))
+    : 0;
 
   const price24k = round2((goldUsd * usdToEgp) / TROY_OZ);
   const goldEgpPerGram: Record<string, number> = {
