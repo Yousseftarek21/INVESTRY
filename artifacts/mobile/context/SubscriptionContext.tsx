@@ -13,7 +13,7 @@
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '../utils/api';
@@ -194,12 +194,22 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const isPro = plan === 'pro';
 
+  // The iOS build has no In-App Purchase — Apple's Guideline 3.1.1 forbids
+  // gating paid content behind a subscription that can only be bought
+  // elsewhere (this app's Pro plan is Stripe-only, sold on investry.app).
+  // Rather than build IAP, iOS just doesn't gate anything: every feature is
+  // unlocked for every iOS user, full stop. `isPro`/`plan` still reflect the
+  // real backend entitlement for badge/display purposes — only
+  // `featuresUnlocked` (what every gate/limit check actually reads) is
+  // forced true here.
+  const featuresUnlocked = Platform.OS === 'ios' ? true : (isPro || betaUnlockAll);
+
   return (
     <SubscriptionContext.Provider value={{
       plan, billingPeriod,
       isSubscribed: isPro,
       isPro,
-      featuresUnlocked: isPro || betaUnlockAll,
+      featuresUnlocked,
       isLoading,
       refresh,
       showPaywall,
