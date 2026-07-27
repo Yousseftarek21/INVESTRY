@@ -107,6 +107,7 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
       goldUsd:            data.goldUsd            ?? FALLBACK.goldUsd,
       silverUsd:          data.silverUsd          ?? FALLBACK.silverUsd,
       usdToEgp:           data.usdToEgp           ?? FALLBACK.usdToEgp,
+      usdToEgpChangePercent: data.usdToEgpChangePercent ?? 0,
       goldChange:         data.goldChange          ?? 0,
       goldChangePercent:  data.goldChangePercent   ?? 0,
       silverChange:       data.silverChange        ?? 0,

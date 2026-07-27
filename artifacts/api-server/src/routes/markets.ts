@@ -29,6 +29,7 @@ export interface MarketPricesResponse {
   goldUsd: number;
   silverUsd: number;
   usdToEgp: number;
+  usdToEgpChangePercent: number;
   goldChange: number;
   goldChangePercent: number;
   silverChange: number;
@@ -766,11 +767,14 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   };
   const silverEgpPerGram = round2((silverUsd * usdToEgp) / TROY_OZ);
   const usdToEgpDisplay  = Math.round(usdToEgp * 10000) / 10000;
+  const usdToEgpChangePercent = usdToEgpPrevClose && usdToEgpPrevClose > 0
+    ? round2(((usdToEgp - usdToEgpPrevClose) / usdToEgpPrevClose) * 100) : 0;
 
   return {
     goldUsd:             round2(goldUsd),
     silverUsd:           round2(silverUsd),
     usdToEgp:            usdToEgpDisplay,
+    usdToEgpChangePercent,
     goldChange,
     goldChangePercent:   goldChangePct,
     silverChange,

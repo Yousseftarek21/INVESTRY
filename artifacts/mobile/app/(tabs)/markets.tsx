@@ -318,7 +318,7 @@ const sl = StyleSheet.create({
 
 // ─── Currency hero card ────────────────────────────────────────────────────────
 
-function CurrencyHeroCard({ rate }: { rate: number }) {
+function CurrencyHeroCard({ rate, changePercent }: { rate: number; changePercent?: number }) {
   const colors = useColors();
   const t = useT();
   const opacity = useRef(new Animated.Value(1)).current;
@@ -344,9 +344,12 @@ function CurrencyHeroCard({ rate }: { rate: number }) {
               <Text style={[ch.pair, { color: colors.mutedForeground }]}>USD / EGP</Text>
             </View>
           </View>
-          <View style={[ch.livePill, { backgroundColor: colors.green + '18' }]}>
-            <Animated.View style={[ch.liveDot, { backgroundColor: colors.green, opacity }]} />
-            <Text style={[ch.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
+          <View style={ch.rightGroup}>
+            {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
+            <View style={[ch.livePill, { backgroundColor: colors.green + '18' }]}>
+              <Animated.View style={[ch.liveDot, { backgroundColor: colors.green, opacity }]} />
+              <Text style={[ch.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
+            </View>
           </View>
         </View>
         {/* Rate */}
@@ -378,6 +381,7 @@ const ch = StyleSheet.create({
   nameGroup: { gap: 1 },
   name: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   pair: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  rightGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   livePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   liveDot: { width: 5, height: 5, borderRadius: 3 },
   liveTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.6 },
@@ -706,7 +710,7 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
   return (
     <View style={tab.group}>
       {/* USD hero */}
-      <CurrencyHeroCard rate={usd} />
+      <CurrencyHeroCard rate={usd} changePercent={prices?.usdToEgpChangePercent} />
 
       {/* All currencies table */}
       <View style={tab.section}>

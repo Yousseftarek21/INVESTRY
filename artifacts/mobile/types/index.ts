@@ -154,6 +154,7 @@ export interface MarketPrices {
   goldUsd: number;
   silverUsd: number;
   usdToEgp: number;
+  usdToEgpChangePercent?: number;
   goldChange: number;
   goldChangePercent: number;
   silverChange: number;
