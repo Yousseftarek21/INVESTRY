@@ -1,14 +1,11 @@
 // Shariah (Islamic finance) compliance screening for EGX-listed stocks.
 //
 // Verdicts are derived in two layers, in order:
-//  1. VERIFIED_COMPLIANT — tickers confirmed against real, citable sources:
-//     the Egyptian Exchange's own EGX33 Shariah-Compliant Index constituent
-//     list (egx.com.eg), cross-referenced against foudalens.com's EGX
-//     Shariah screener and investing.com's index-components page. Every
-//     entry here was matched by *ticker*, not fuzzy name-matching (an
-//     earlier pass caught OCDI being mislabeled "Orascom Development Egypt"
-//     instead of its real identity, SODIC — a reminder that name-only
-//     matching between sources is unsafe for this).
+//  1. VERIFIED_COMPLIANT — tickers confirmed as constituents of the Egyptian
+//     Exchange's own official EGX33 Shariah-Compliant Index (egx.com.eg),
+//     matched by *ticker*, not fuzzy name-matching (an earlier pass caught
+//     OCDI being mislabeled "Orascom Development Egypt" instead of its real
+//     identity, SODIC — a reminder that name-only matching is unsafe here).
 //  2. Business-activity screening — categorical exclusions that don't
 //     require financial statements at all: conventional (interest-based)
 //     banks and insurers, and conventional financial-services companies
@@ -38,17 +35,16 @@ export interface ShariaCompliance {
   source?: string;
 }
 
-const SOURCE_EGX33 = "EGX33 Shariah-Compliant Index (egx.com.eg), cross-checked against foudalens.com and investing.com";
+const SOURCE_EGX33 = "Egyptian Exchange (EGX) — official EGX33 Shariah-Compliant Index";
 
 // Tickers verified (by ticker, not name) as constituents of the official
 // EGX33 Shariah-Compliant Index. Islamic banks are handled separately below
 // via their `industry` tag rather than listed here.
-// CLHO (Cleopatra Hospital) was a constituent in the foudalens/investing.com
-// snapshots this list was originally built from, but the official EGX
-// semi-annual rebalance (effective 2026-02-01) removed it from EGX33
-// Shariah — no reason was published, so it's left unscreened rather than
-// marked non-compliant on a guess. CIRA was added in that same rebalance
-// and is included below.
+// CLHO (Cleopatra Hospital) was a constituent in this list's earlier
+// snapshot, but the official EGX semi-annual rebalance (effective
+// 2026-02-01) removed it from EGX33 Shariah — no reason was published, so
+// it's left unscreened rather than marked non-compliant on a guess. CIRA
+// was added in that same rebalance and is included below.
 const VERIFIED_COMPLIANT = new Set([
   'TMGH', 'PHDC', 'MASR', 'OCDI', 'ORHD', 'ORWE', 'MTIE', 'ORAS', 'ATQA',
   'MCQE', 'EGAL', 'ABUK', 'SKPC', 'MFPC', 'AMOC', 'EGAS', 'ARCC', 'LCSW',
