@@ -621,8 +621,8 @@ export default function CashAccountsScreen() {
 
             {!hasAnyEntries ? (
               <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={[styles.emptyIconWrap, { backgroundColor: colors.primary + '14' }]}>
-                  <BanknoteIcon size={30} color={colors.primary} />
+                <View style={[styles.emptyIconWrap, { backgroundColor: colors.green + '14' }]}>
+                  <BanknoteIcon size={30} color={colors.green} />
                 </View>
                 <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noCashAccounts}</Text>
                 <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAddCash}</Text>
@@ -641,11 +641,11 @@ export default function CashAccountsScreen() {
                 {cashAccounts.map(a => (
                   <SwipeToDelete key={a.id} onDelete={() => handleDelete(a.id, false)}>
                     <View style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                      <View style={[styles.accountIconWrap, { backgroundColor: colors.primary + '16' }]}>
+                      <View style={[styles.accountIconWrap, { backgroundColor: colors.green + '16' }]}>
                         {a.type === 'cash_home' ? (
-                          <BanknoteIcon size={18} color={colors.primary} />
+                          <BanknoteIcon size={18} color={colors.green} />
                         ) : (
-                          <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.primary} />
+                          <Feather name={TYPE_ICONS[a.type]} size={18} color={colors.green} />
                         )}
                       </View>
                       <View style={styles.accountInfo}>
@@ -681,8 +681,8 @@ export default function CashAccountsScreen() {
                 {recurringIncomes.map(r => (
                   <SwipeToDelete key={r.id} onDelete={() => handleDelete(r.id, true)}>
                     <View style={[styles.accountCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                      <View style={[styles.accountIconWrap, { backgroundColor: colors.primary + '16' }]}>
-                        <Feather name="repeat" size={18} color={colors.primary} />
+                      <View style={[styles.accountIconWrap, { backgroundColor: '#8B5CF616' }]}>
+                        <Feather name="repeat" size={18} color="#8B5CF6" />
                       </View>
                       <View style={styles.accountInfo}>
                         <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{r.name}</Text>
