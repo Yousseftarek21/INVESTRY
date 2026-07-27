@@ -719,7 +719,7 @@ export default function AnalyticsScreen() {
         contentContainerStyle={s.planningScrollContent}
       >
         <PlanningToolCard
-          icon="target" color="#22C55E"
+          icon="target" color={colors.primary}
           label={t.goals}
           sub="Set a financial target"
           onPress={() => router.push('/goals' as any)}
