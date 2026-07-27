@@ -420,23 +420,23 @@ export default function CashAccountsScreen() {
                       >
                         <TouchableOpacity
                           style={[styles.typeCard, {
-                            borderColor: active ? colors.primary : colors.border,
-                            backgroundColor: active ? colors.primary + '18' : colors.card,
+                            borderColor: active ? colors.green : colors.border,
+                            backgroundColor: active ? colors.green + '18' : colors.card,
                           }]}
                           onPress={() => selectType(ct.key)}
                           activeOpacity={0.85}
                         >
                           {active && (
-                            <View style={[styles.checkmark, { backgroundColor: colors.primary }]}>
-                              <Feather name="check" size={9} color={colors.primaryForeground} />
+                            <View style={[styles.checkmark, { backgroundColor: colors.green }]}>
+                              <Feather name="check" size={9} color="#fff" />
                             </View>
                           )}
                           {ct.key === 'cash_home' ? (
-                            <BanknoteIcon size={20} color={active ? colors.primary : colors.mutedForeground} />
+                            <BanknoteIcon size={20} color={active ? colors.green : colors.mutedForeground} />
                           ) : (
-                            <Feather name={TYPE_ICONS[ct.key]} size={20} color={active ? colors.primary : colors.mutedForeground} />
+                            <Feather name={TYPE_ICONS[ct.key]} size={20} color={active ? colors.green : colors.mutedForeground} />
                           )}
-                          <Text style={[styles.typeLabel, { color: active ? colors.primary : colors.text }]}>{ct.label}</Text>
+                          <Text style={[styles.typeLabel, { color: active ? colors.green : colors.text }]}>{ct.label}</Text>
                         </TouchableOpacity>
                       </Animated.View>
                     );
