@@ -692,12 +692,12 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
 
   return (
     <View style={tab.group}>
-      {/* USD hero */}
-      <CurrencyHeroCard rate={usd} changePercent={prices?.usdToEgpChangePercent} />
-
-      {/* All currencies table */}
+      {/* Title above the hero, then hero, then table — matching Gold/Silver's
+          title → hero → table order (this used to have the hero above the
+          title, the only tab where the order was flipped). */}
       <View style={tab.section}>
         <SLabel icon="dollar-sign" title={t.exchangeRatesVsEGP} />
+        <CurrencyHeroCard rate={usd} changePercent={prices?.usdToEgpChangePercent} />
         <TableCard>
           <CurrencyRow flag="🇪🇺" name={t.currencyEUR} pair="EUR / EGP" rate={eur}  unit={`${t.currencyUnitEGP} EUR`} />
           <CurrencyRow flag="🇬🇧" name={t.currencyGBP} pair="GBP / EGP" rate={gbp}  unit={`${t.currencyUnitEGP} GBP`} />
