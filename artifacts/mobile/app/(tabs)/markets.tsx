@@ -321,21 +321,14 @@ const sl = StyleSheet.create({
 function CurrencyHeroCard({ rate, changePercent }: { rate: number; changePercent?: number }) {
   const colors = useColors();
   const t = useT();
-  const opacity = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.3, duration: 900, useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(opacity, { toValue: 1,   duration: 900, useNativeDriver: Platform.OS !== 'web' }),
-      ])
-    ).start();
-  }, []);
 
   return (
     <View style={[ch.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[ch.accent, { backgroundColor: '#4A9EFF' }]} />
       <View style={ch.body}>
-        {/* Top: flag + name/pair | live badge */}
+        {/* Top: flag + name/pair | change badge. The page header above already
+            shows a single "LIVE" indicator — a second one here (as this card
+            used to have) was a redundant duplicate, not a second signal. */}
         <View style={ch.topRow}>
           <View style={ch.flagRow}>
             <Text style={ch.flag}>🇺🇸</Text>
@@ -344,13 +337,7 @@ function CurrencyHeroCard({ rate, changePercent }: { rate: number; changePercent
               <Text style={[ch.pair, { color: colors.mutedForeground }]}>USD / EGP</Text>
             </View>
           </View>
-          <View style={ch.rightGroup}>
-            {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
-            <View style={[ch.livePill, { backgroundColor: colors.green + '18' }]}>
-              <Animated.View style={[ch.liveDot, { backgroundColor: colors.green, opacity }]} />
-              <Text style={[ch.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
-            </View>
-          </View>
+          {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
         </View>
         {/* Rate */}
         <View style={ch.rateRow}>
@@ -381,10 +368,6 @@ const ch = StyleSheet.create({
   nameGroup: { gap: 1 },
   name: { fontSize: 13, fontFamily: 'Inter_700Bold' },
   pair: { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  rightGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  livePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  liveDot: { width: 5, height: 5, borderRadius: 3 },
-  liveTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.6 },
   rateRow: { flexDirection: 'row', alignItems: 'flex-end' },
   rate: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   rateUnit: { fontSize: 12, fontFamily: 'Inter_400Regular', paddingBottom: 3 },
