@@ -543,17 +543,6 @@ async function safeJson<T>(res: Response | null, label?: string): Promise<T | nu
 
 function round2(n: number) { return Math.round(n * 100) / 100; }
 
-// "Yesterday" relative to Cairo's calendar day, not UTC's — using UTC here
-// meant that for the first ~2 hours of each Cairo day (until UTC's own date
-// rolls over), this pointed at the day *before* Cairo's real yesterday.
-function yesterdayDate(): string {
-  const todayCairo = cairoDateString(); // "YYYY-MM-DD", already Africa/Cairo-correct
-  const d = new Date(`${todayCairo}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
-
-
 // ─── Metals via TradingView CFD scanner (TVC:GOLD / TVC:SILVER) ──────────────
 // Free, no API key, same source as TradingView charts. Returns USD/oz spot.
 // change_abs = today_close - prev_close  →  prevClose = close - change_abs
@@ -641,28 +630,6 @@ async function fetchUsdToEgp(): Promise<number> {
   if (er?.rates?.EGP && er.rates.EGP > 0) return er.rates.EGP;
 
   return FALLBACK_EGP;
-}
-
-// ─── USD → EGP exchange rate, as of yesterday ──────────────────────────────────
-// Needed to compute gold/silver's EGP-denominated change: the raw USD spot
-// move and the FX move are independent and can partly cancel out, so a
-// change% derived from USD alone can show a gain while the EGP price (which
-// is what the app displays and what portfolios are valued in) actually fell.
-
-async function fetchUsdToEgpPrevClose(): Promise<number | null> {
-  const date = yesterdayDate();
-
-  const fawaz1 = await safeJson<Fawaz0Response>(
-    await safeFetch(`https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${date}/v1/currencies/usd.json`)
-  );
-  if (fawaz1?.usd?.egp && fawaz1.usd.egp > 0) return fawaz1.usd.egp;
-
-  const fawaz2 = await safeJson<Fawaz0Response>(
-    await safeFetch(`https://${date}.currency-api.pages.dev/v1/currencies/usd.json`)
-  );
-  if (fawaz2?.usd?.egp && fawaz2.usd.egp > 0) return fawaz2.usd.egp;
-
-  return null;
 }
 
 // ─── FX cross rates via Wise (same source as USD/EGP) ────────────────────────
@@ -781,13 +748,12 @@ async function recordAndGetPrevClose(today: string, current: MarketCloseSnapshot
 // ─── Assemble prices ──────────────────────────────────────────────────────────
 
 export async function fetchPrices(): Promise<MarketPricesResponse> {
-  // All three run in parallel — TradingView scanner is ~100-200 ms, no key needed.
+  // All run in parallel — TradingView scanner is ~100-200 ms, no key needed.
   // fetchFxCrossRates uses FALLBACK_EGP only for its ER-API cross-rate fallback;
   // Wise fetches each pair directly so it doesn't need usdToEgp at fetch time.
-  const [metals, usdToEgp, usdToEgpPrevClose, fxRates] = await Promise.all([
+  const [metals, usdToEgp, fxRates] = await Promise.all([
     fetchMetalsViaTradingView(),
     fetchUsdToEgp(),
-    fetchUsdToEgpPrevClose(),
     fetchFxCrossRates(FALLBACK_EGP),
   ]);
 
@@ -805,11 +771,22 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   const silverEgpPerGram = round2((silverUsd * usdToEgp) / TROY_OZ);
   const usdToEgpDisplay  = Math.round(usdToEgp * 10000) / 10000;
 
-  // The authoritative reference for "today's change" is this same EGP price,
-  // diffed directly against what this endpoint itself displayed as
-  // yesterday's close — see recordAndGetPrevClose above, now backed by the
-  // database so a restart can't lose it. The USD+FX reconstruction below
-  // only covers a brand-new deployment with no history in the table yet.
+  // The ONLY trustworthy reference for "today's change" is this same EGP
+  // price, diffed directly against what this endpoint itself displayed as
+  // yesterday's close — see recordAndGetPrevClose above, backed by the
+  // database so a restart can't lose it.
+  //
+  // There used to be a fallback here that reconstructed "yesterday" from a
+  // separate USD price plus a third-party daily FX snapshot (fawazahmed0 /
+  // open.er-api.com). That's been removed entirely: both of those sources
+  // turned out to publish a "daily" rate that can sit frozen for well over
+  // 24 hours with no way to tell from the response how stale it actually is
+  // (open.er-api.com's own timestamp was ~24h old when this was caught) —
+  // so the "change" it produced wasn't really "since yesterday," it was
+  // "since whenever that free API last happened to refresh," which could be
+  // days off. A fabricated-looking number from an unreliable source is
+  // worse than no number. Until this endpoint has recorded at least one
+  // real prior day itself, change% is honestly 0 rather than guessed.
   const prevClose = await recordAndGetPrevClose(cairoDateString(), {
     goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
   });
@@ -817,25 +794,16 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   const goldChange    = metals && metalsOpen ? round2(goldUsd   - metals.xauPrevClose) : 0;
   const goldChangePct = prevClose && prevClose.goldEgp24k > 0
     ? round2(((price24k - prevClose.goldEgp24k) / prevClose.goldEgp24k) * 100)
-    : (metals && metalsOpen && metals.xauPrevClose > 0
-        ? (usdToEgpPrevClose
-            ? round2((((goldUsd * usdToEgp) - (metals.xauPrevClose * usdToEgpPrevClose)) / (metals.xauPrevClose * usdToEgpPrevClose)) * 100)
-            : round2((goldChange / metals.xauPrevClose) * 100))
-        : 0);
+    : 0;
 
   const silverChange    = metals && metalsOpen ? round2(silverUsd - metals.xagPrevClose) : 0;
   const silverChangePct = prevClose && prevClose.silverEgp > 0
     ? round2(((silverEgpPerGram - prevClose.silverEgp) / prevClose.silverEgp) * 100)
-    : (metals && metalsOpen && metals.xagPrevClose > 0
-        ? (usdToEgpPrevClose
-            ? round2((((silverUsd * usdToEgp) - (metals.xagPrevClose * usdToEgpPrevClose)) / (metals.xagPrevClose * usdToEgpPrevClose)) * 100)
-            : round2((silverChange / metals.xagPrevClose) * 100))
-        : 0);
+    : 0;
 
   const usdToEgpChangePercent = prevClose && prevClose.usdToEgp > 0
     ? round2(((usdToEgpDisplay - prevClose.usdToEgp) / prevClose.usdToEgp) * 100)
-    : (usdToEgpPrevClose && usdToEgpPrevClose > 0
-        ? round2(((usdToEgp - usdToEgpPrevClose) / usdToEgpPrevClose) * 100) : 0);
+    : 0;
 
   return {
     goldUsd:             round2(goldUsd),
