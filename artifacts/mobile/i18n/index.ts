@@ -335,6 +335,18 @@ const en = {
   tbillsEmptyHint: 'Fill in the details above to see your results',
   tbillsDisclaimer: 'For informational purposes only. Results are estimates based on simple annual discount calculation before brokerage fees.',
 
+  // Sharia Screening
+  shariahScreening: 'Sharia Screening',
+  shariahScreeningDesc: 'Check if an EGX stock is halal',
+  shariahCompliant: 'Compliant',
+  shariahNonCompliant: 'Not Compliant',
+  shariahUnscreened: 'Not Officially Screened',
+  shariahReasonLabel: 'Why',
+  shariahGuidanceLabel: 'What should you do',
+  shariahSourceLabel: 'Source',
+  shariahChangeStock: 'Check another stock',
+  shariahDisclaimer: 'This is an informational screening tool, not a religious ruling (fatwa). Compliance verdicts follow common Islamic-finance screening conventions and may differ from a specific scholar or institution’s view — verify independently before making investment decisions on this basis.',
+
   // Financial Goals
   goals: 'Financial Goals',
   planningGrowthTools: 'Planning & Growth Tools',
@@ -1395,6 +1407,18 @@ const ar: typeof en = {
   effectiveNetYield: 'معدل العائد الفعلي السنوي',
   tbillsEmptyHint: 'أدخل التفاصيل أعلاه لعرض النتائج',
   tbillsDisclaimer: 'للإرشاد فقط. النتائج تقديرية بناءً على الخصم السنوي البسيط قبل رسوم الوساطة.',
+
+  // Sharia Screening
+  shariahScreening: 'الفحص الشرعي',
+  shariahScreeningDesc: 'تحقق إذا كان سهم البورصة المصرية حلال',
+  shariahCompliant: 'متوافق',
+  shariahNonCompliant: 'غير متوافق',
+  shariahUnscreened: 'غير مفحوص رسميًا',
+  shariahReasonLabel: 'لماذا',
+  shariahGuidanceLabel: 'ماذا يجب أن تفعل',
+  shariahSourceLabel: 'المصدر',
+  shariahChangeStock: 'تحقق من سهم آخر',
+  shariahDisclaimer: 'هذه أداة معلوماتية للفحص وليست فتوى دينية. تتبع الأحكام معايير الفحص الشرعي الشائعة في التمويل الإسلامي وقد تختلف عن رأي عالم أو جهة معينة — تحقق بشكل مستقل قبل اتخاذ قرارات استثمارية بناءً عليها.',
 
   // Financial Goals
   goals: 'الأهداف المالية',

@@ -730,6 +730,12 @@ export default function AnalyticsScreen() {
           sub="Egypt T-Bills estimator"
           onPress={() => router.push('/tbills-calculator' as any)}
         />
+        <PlanningToolCard
+          icon="check-circle" color={colors.green}
+          label={t.shariahScreening}
+          sub={t.shariahScreeningDesc}
+          onPress={() => router.push('/sharia-screening' as any)}
+        />
       </ScrollView>
 
       {/* ══ SECTION 2: Financial Tools ════════════════════════════════ */}
