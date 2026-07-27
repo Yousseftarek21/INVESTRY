@@ -10,6 +10,24 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { EGX_COMPANIES, EGXCompany } from '@/data/egx-companies';
 import { getShariaCompliance, ShariaCompliance } from '@/data/egx-shariah-compliance';
+import type { Translations } from '@/i18n';
+
+const REASON_KEY_MAP: Record<ShariaCompliance['reasonKey'], keyof Translations> = {
+  islamicBank:       'shariahReasonIslamicBank',
+  egx33:             'shariahReasonEgx33',
+  unreliableTag:     'shariahReasonUnreliableTag',
+  bank:              'shariahReasonBank',
+  insurance:         'shariahReasonInsurance',
+  tobacco:           'shariahReasonTobacco',
+  financial:         'shariahReasonFinancial',
+  genericUnscreened: 'shariahReasonGenericUnscreened',
+};
+
+const GUIDANCE_KEY_MAP: Record<ShariaCompliance['guidanceKey'], keyof Translations> = {
+  purification: 'shariahGuidancePurification',
+  avoid:        'shariahGuidanceAvoid',
+  unscreened:   'shariahGuidanceUnscreened',
+};
 
 function VerdictBadge({ verdict }: { verdict: ShariaCompliance['verdict'] }) {
   const colors = useColors();
@@ -105,6 +123,7 @@ export default function ShariaScreeningScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[s.stockName, { color: colors.text }]} numberOfLines={2}>{selected.nameEn}</Text>
+                    <Text style={[s.stockNameAr, { color: colors.mutedForeground }]} numberOfLines={1}>{selected.nameAr}</Text>
                     <Text style={[s.stockMeta, { color: colors.mutedForeground }]}>{selected.ticker} · {selected.sector}</Text>
                   </View>
                 </View>
@@ -112,13 +131,13 @@ export default function ShariaScreeningScreen() {
                 <VerdictBadge verdict={compliance.verdict} />
 
                 <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <InfoBlock icon="info" title={t.shariahReasonLabel} body={compliance.reason} />
+                  <InfoBlock icon="info" title={t.shariahReasonLabel} body={t[REASON_KEY_MAP[compliance.reasonKey]] as string} />
                   <View style={[s.divider, { backgroundColor: colors.border }]} />
-                  <InfoBlock icon="compass" title={t.shariahGuidanceLabel} body={compliance.guidance} />
-                  {compliance.source && (
+                  <InfoBlock icon="compass" title={t.shariahGuidanceLabel} body={t[GUIDANCE_KEY_MAP[compliance.guidanceKey]] as string} />
+                  {compliance.hasSource && (
                     <>
                       <View style={[s.divider, { backgroundColor: colors.border }]} />
-                      <InfoBlock icon="link" title={t.shariahSourceLabel} body={compliance.source} />
+                      <InfoBlock icon="link" title={t.shariahSourceLabel} body={t.shariahSourceEgx33} />
                     </>
                   )}
                 </View>
@@ -181,6 +200,7 @@ export default function ShariaScreeningScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[s.rowTicker, { color: colors.text }]}>{item.ticker}</Text>
                       <Text style={[s.rowName, { color: colors.mutedForeground }]} numberOfLines={1}>{item.nameEn}</Text>
+                      <Text style={[s.rowNameAr, { color: colors.mutedForeground }]} numberOfLines={1}>{item.nameAr}</Text>
                     </View>
                     <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                   </TouchableOpacity>
@@ -209,13 +229,15 @@ const s = StyleSheet.create({
   rowBorder: { borderBottomWidth: StyleSheet.hairlineWidth },
   rowTicker: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   rowName:   { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  rowNameAr: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 
   avatar:     { width: 44, height: 44, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
 
-  stockRow:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  stockName: { fontSize: 16, fontFamily: 'Inter_600SemiBold', lineHeight: 21 },
-  stockMeta: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  stockRow:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stockName:   { fontSize: 16, fontFamily: 'Inter_600SemiBold', lineHeight: 21 },
+  stockNameAr: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  stockMeta:   { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
 
   card:    { borderRadius: 18, borderWidth: 1, padding: 18, gap: 14 },
   divider: { height: StyleSheet.hairlineWidth },

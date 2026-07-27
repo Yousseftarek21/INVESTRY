@@ -21,21 +21,31 @@
 // app uses. Rather than guess, those get an honest "not officially
 // screened" status instead of a fabricated verdict.
 //
+// This file only decides *which* reason/guidance applies (as translation
+// keys) — the actual displayed sentences live in i18n/index.ts alongside
+// every other piece of user-facing text in the app, so Arabic gets the
+// same real translations as English instead of falling back to English
+// prose baked into this data file.
+//
 // Last verified: 2026-07-27.
 
 import { EGX_COMPANIES } from './egx-companies';
 
 export type ShariaVerdict = 'compliant' | 'non_compliant' | 'unscreened';
 
+export type ShariaReasonKey =
+  | 'islamicBank' | 'egx33' | 'unreliableTag'
+  | 'bank' | 'insurance' | 'tobacco' | 'financial' | 'genericUnscreened';
+
+export type ShariaGuidanceKey = 'purification' | 'avoid' | 'unscreened';
+
 export interface ShariaCompliance {
   ticker: string;
   verdict: ShariaVerdict;
-  reason: string;
-  guidance: string;
-  source?: string;
+  reasonKey: ShariaReasonKey;
+  guidanceKey: ShariaGuidanceKey;
+  hasSource: boolean;
 }
-
-const SOURCE_EGX33 = "Egyptian Exchange (EGX) — official EGX33 Shariah-Compliant Index";
 
 // Tickers verified (by ticker, not name) as constituents of the official
 // EGX33 Shariah-Compliant Index. Islamic banks are handled separately below
@@ -58,79 +68,36 @@ const VERIFIED_COMPLIANT = new Set([
 // engineering consultancy) — left unscreened rather than guessed either way.
 const SECTOR_TAG_UNRELIABLE = new Set(['DAPH']);
 
-const PURIFICATION_NOTE =
-  "Even compliant stocks can carry a small amount of incidental non-permissible income (e.g. bank interest on idle cash), generally accepted up to about 5% of revenue. The common guidance is to purify by donating that same percentage of your dividends to charity — check the company's own disclosures for its exact ratio where available.";
-
-const AVOID_GUIDANCE =
-  "This fails Shariah screening by business activity, not by a borderline ratio — mainstream guidance is to avoid new positions. If you already hold shares, guidance is to divest and purify any dividends already received by donating them in full to charity.";
-
-const UNSCREENED_GUIDANCE =
-  "Not part of the official EGX Shariah-compliant index and not one of the categorical exclusions (conventional banking/insurance/financial services). A real verdict needs the company's debt, cash, and receivables ratios plus its revenue breakdown — data this app doesn't have. Verify independently (e.g. with a dedicated Islamic-screening service) before investing for religious purposes.";
-
 function classify(ticker: string, sector: string, industry: string): ShariaCompliance {
   if (industry === 'Islamic Banking') {
-    return {
-      ticker, verdict: 'compliant',
-      reason: 'Islamic bank — operates on profit-sharing/Murabaha principles, not interest.',
-      guidance: PURIFICATION_NOTE,
-      source: SOURCE_EGX33,
-    };
+    return { ticker, verdict: 'compliant', reasonKey: 'islamicBank', guidanceKey: 'purification', hasSource: true };
   }
 
   if (VERIFIED_COMPLIANT.has(ticker)) {
-    return {
-      ticker, verdict: 'compliant',
-      reason: 'Constituent of the official EGX33 Shariah-Compliant Index.',
-      guidance: PURIFICATION_NOTE,
-      source: SOURCE_EGX33,
-    };
+    return { ticker, verdict: 'compliant', reasonKey: 'egx33', guidanceKey: 'purification', hasSource: true };
   }
 
   if (SECTOR_TAG_UNRELIABLE.has(ticker)) {
-    return {
-      ticker, verdict: 'unscreened',
-      reason: "Not on the official compliant index, and this company's business doesn't clearly match its listed sector — not confident enough to categorize either way.",
-      guidance: UNSCREENED_GUIDANCE,
-    };
+    return { ticker, verdict: 'unscreened', reasonKey: 'unreliableTag', guidanceKey: 'unscreened', hasSource: false };
   }
 
   if (industry === 'Banks') {
-    return {
-      ticker, verdict: 'non_compliant',
-      reason: 'Conventional interest-based bank.',
-      guidance: AVOID_GUIDANCE,
-    };
+    return { ticker, verdict: 'non_compliant', reasonKey: 'bank', guidanceKey: 'avoid', hasSource: false };
   }
 
   if (sector === 'Insurance') {
-    return {
-      ticker, verdict: 'non_compliant',
-      reason: 'Conventional insurance — involves interest-based reserve investment and excessive uncertainty (gharar), both excluded under mainstream Islamic finance guidance.',
-      guidance: AVOID_GUIDANCE,
-    };
+    return { ticker, verdict: 'non_compliant', reasonKey: 'insurance', guidanceKey: 'avoid', hasSource: false };
   }
 
   if (industry === 'Tobacco') {
-    return {
-      ticker, verdict: 'non_compliant',
-      reason: 'Tobacco/cigarette manufacturing — a health-harming product excluded under mainstream Islamic guidance.',
-      guidance: AVOID_GUIDANCE,
-    };
+    return { ticker, verdict: 'non_compliant', reasonKey: 'tobacco', guidanceKey: 'avoid', hasSource: false };
   }
 
   if (sector === 'Financial Services') {
-    return {
-      ticker, verdict: 'non_compliant',
-      reason: 'Conventional financial-services company (investment banking, brokerage, leasing, factoring, or consumer finance) — these earn their core revenue from interest-based lending or fees on interest-based products, excluded by business activity regardless of financial ratios.',
-      guidance: AVOID_GUIDANCE,
-    };
+    return { ticker, verdict: 'non_compliant', reasonKey: 'financial', guidanceKey: 'avoid', hasSource: false };
   }
 
-  return {
-    ticker, verdict: 'unscreened',
-    reason: 'Not part of the official EGX Shariah-compliant index, and not a conventional bank/insurer/financial-services company.',
-    guidance: UNSCREENED_GUIDANCE,
-  };
+  return { ticker, verdict: 'unscreened', reasonKey: 'genericUnscreened', guidanceKey: 'unscreened', hasSource: false };
 }
 
 export const EGX_SHARIA_COMPLIANCE: Record<string, ShariaCompliance> = Object.fromEntries(
