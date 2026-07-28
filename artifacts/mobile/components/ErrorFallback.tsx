@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { reloadAppAsync } from "expo";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -33,13 +32,16 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
-  const handleRestart = async () => {
-    try {
-      await reloadAppAsync();
-    } catch (restartError) {
-      console.error("Failed to restart app:", restartError);
-      resetError();
-    }
+  // Deliberately NOT calling reloadAppAsync() here. A full JS-bundle reload
+  // re-executes RootLayout from scratch while Clerk's native SDK may still be
+  // mid-teardown from whatever crashed — ClerkProvider then re-mounts against
+  // a not-fully-reset native Clerk client, which is what was producing
+  // "useSignIn can only be used within <ClerkProvider />" on the very next
+  // screen. The ClerkProvider/ClerkLoaded tree above this ErrorBoundary is
+  // untouched by an error in its children, so just clearing the boundary and
+  // letting that already-initialized tree re-render is both simpler and safe.
+  const handleRestart = () => {
+    resetError();
   };
 
   const handleSignOut = async () => {
@@ -47,10 +49,10 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
     try {
       await signOut();
     } catch {
-    }
-    try {
-      await reloadAppAsync();
-    } catch {
+    } finally {
+      // (tabs)/_layout.tsx already redirects to /(auth)/welcome once
+      // isSignedIn is false, so no explicit navigation is needed here.
+      setSigningOut(false);
       resetError();
     }
   };
