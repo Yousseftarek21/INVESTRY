@@ -1,9 +1,19 @@
-// Same lower-level resources Clerk's own useSignInWithApple (@clerk/expo/apple)
-// uses internally — the newer signal-based useSignIn()/useSignUp() exported
-// from the '@clerk/expo' root don't expose `setActive`/`.create()` in the
-// shape this flow needs (that comes from useClerk() instead), so this
-// mirrors Clerk's own implementation choice rather than inventing a new one.
-import { useSignIn, useSignUp } from '@clerk/react/legacy';
+// Reads the SignIn/SignUp resources off the Clerk instance from useClerk()
+// rather than importing useSignIn/useSignUp from '@clerk/react/legacy'.
+//
+// That legacy import was a cross-package hop: <ClerkProvider> is rendered from
+// '@clerk/expo', but the legacy hooks read the React context owned by
+// '@clerk/shared/react' as resolved by '@clerk/react'. When those two packages
+// resolved to different copies of @clerk/shared, the contexts didn't match and
+// the hook threw "useSignIn can only be used within the <ClerkProvider />
+// component" — on every render of the sign-in AND sign-up screens, making both
+// completely unreachable (builds 53 and 54).
+//
+// useClerk() comes from '@clerk/expo' — the same package that renders the
+// provider — so it can never disagree with it, no matter how the dependency
+// tree resolves. clerk.client exposes the identical SignIn/SignUp resources the
+// legacy hooks wrap, so the flow below is unchanged.
+import { useClerk } from '@clerk/expo';
 
 export type StartAppleAuthParams = { unsafeMetadata?: Record<string, unknown> };
 
@@ -12,11 +22,13 @@ export interface AppleFullName {
   familyName: string | null;
 }
 
+type ClerkInstance = ReturnType<typeof useClerk>;
+
 export interface StartAppleAuthResult {
   createdSessionId: string | null;
-  setActive: ReturnType<typeof useSignIn>['setActive'];
-  signIn: ReturnType<typeof useSignIn>['signIn'];
-  signUp: ReturnType<typeof useSignUp>['signUp'];
+  setActive: ClerkInstance['setActive'];
+  signIn: ClerkInstance['client'] extends infer C ? (C extends { signIn: infer S } ? S : undefined) : undefined;
+  signUp: ClerkInstance['client'] extends infer C ? (C extends { signUp: infer S } ? S : undefined) : undefined;
   appleFullName: AppleFullName | null;
 }
 
@@ -33,10 +45,13 @@ export interface StartAppleAuthResult {
 // captures and returns that name so the caller can persist it via
 // `user.update()` right after activating the session.
 export function useAppleAuthWithName() {
-  const { signIn, setActive } = useSignIn();
-  const { signUp } = useSignUp();
+  const clerk = useClerk();
 
   async function startAppleAuthenticationFlow(params?: StartAppleAuthParams): Promise<StartAppleAuthResult> {
+    const setActive = clerk.setActive;
+    const signIn = clerk.client?.signIn as StartAppleAuthResult['signIn'];
+    const signUp = clerk.client?.signUp as StartAppleAuthResult['signUp'];
+
     const [AppleAuthentication, Crypto] = await Promise.all([
       import('expo-apple-authentication'),
       import('expo-crypto'),
