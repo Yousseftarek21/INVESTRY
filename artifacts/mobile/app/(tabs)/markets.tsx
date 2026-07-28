@@ -318,7 +318,7 @@ const sl = StyleSheet.create({
 
 // ─── Currency hero card ────────────────────────────────────────────────────────
 
-function CurrencyHeroCard({ rate, changePercent }: { rate: number; changePercent?: number }) {
+function CurrencyHeroCard({ rate }: { rate: number }) {
   const colors = useColors();
   const t = useT();
 
@@ -326,9 +326,12 @@ function CurrencyHeroCard({ rate, changePercent }: { rate: number; changePercent
     <View style={[ch.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[ch.accent, { backgroundColor: '#4A9EFF' }]} />
       <View style={ch.body}>
-        {/* Top: flag + name/pair | change badge. The page header above already
-            shows a single "LIVE" indicator — a second one here (as this card
-            used to have) was a redundant duplicate, not a second signal. */}
+        {/* Top: flag + name/pair. The page header above already shows a
+            single "LIVE" indicator — a second one here (as this card used
+            to have) was a redundant duplicate, not a second signal. No
+            change% badge: there's no reliable same-day reference for
+            USD/EGP the way TradingView gives gold/silver, so it's not
+            shown here rather than shown wrong. */}
         <View style={ch.topRow}>
           <View style={ch.flagRow}>
             <Text style={ch.flag}>🇺🇸</Text>
@@ -337,7 +340,6 @@ function CurrencyHeroCard({ rate, changePercent }: { rate: number; changePercent
               <Text style={[ch.pair, { color: colors.mutedForeground }]}>USD / EGP</Text>
             </View>
           </View>
-          {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
         </View>
         {/* Rate */}
         <View style={ch.rateRow}>
@@ -697,7 +699,7 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
           title, the only tab where the order was flipped). */}
       <View style={tab.section}>
         <SLabel icon="dollar-sign" title={t.exchangeRatesVsEGP} />
-        <CurrencyHeroCard rate={usd} changePercent={prices?.usdToEgpChangePercent} />
+        <CurrencyHeroCard rate={usd} />
         <TableCard>
           <CurrencyRow flag="🇪🇺" name={t.currencyEUR} pair="EUR / EGP" rate={eur}  unit={`${t.currencyUnitEGP} EUR`} />
           <CurrencyRow flag="🇬🇧" name={t.currencyGBP} pair="GBP / EGP" rate={gbp}  unit={`${t.currencyUnitEGP} GBP`} />
