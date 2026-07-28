@@ -5,7 +5,31 @@ import { Language } from '@/i18n';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type WeightUnit = 'g' | 'oz';
-export type DisplayCurrency = 'EGP' | 'USD' | 'EUR' | 'AED';
+export type DisplayCurrency =
+  | 'EGP' | 'USD' | 'EUR' | 'AED'
+  | 'GBP' | 'SAR' | 'QAR' | 'KWD' | 'CHF' | 'CNY' | 'TRY';
+
+/** Every currency the app holds a live EGP rate for (see MarketPrices.fxRates).
+ * EGP is the base and USD comes from usdToEgp; the rest come from fxRates. */
+export const ALL_DISPLAY_CURRENCIES: DisplayCurrency[] =
+  ['EGP', 'USD', 'EUR', 'AED', 'GBP', 'SAR', 'QAR', 'KWD', 'CHF', 'CNY', 'TRY'];
+
+/** What the hero's currency switcher shows until the user picks their own —
+ * the four it has always offered, so nothing changes for existing users. */
+export const DEFAULT_VISIBLE_CURRENCIES: DisplayCurrency[] = ['EGP', 'USD', 'EUR', 'AED'];
+
+function sanitizeVisibleCurrencies(raw: unknown): DisplayCurrency[] | null {
+  if (!Array.isArray(raw)) return null;
+  const seen = new Set<DisplayCurrency>();
+  for (const c of raw) {
+    if (typeof c === 'string' && (ALL_DISPLAY_CURRENCIES as string[]).includes(c)) {
+      seen.add(c as DisplayCurrency);
+    }
+  }
+  if (seen.size === 0) return null; // an empty switcher would strand the user
+  // Keep the canonical order so the strip doesn't reshuffle between launches.
+  return ALL_DISPLAY_CURRENCIES.filter(c => seen.has(c));
+}
 
 interface NotificationPrefs {
   priceAlerts: boolean;
@@ -24,6 +48,8 @@ interface AppSettingsValue {
   crashReportsEnabled: boolean;
   hideValues: boolean;
   displayCurrency: DisplayCurrency;
+  /** Which currencies the hero's switcher offers. Never empty. */
+  visibleCurrencies: DisplayCurrency[];
   notifications: NotificationPrefs;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setLanguage: (lang: Language) => Promise<void>;
@@ -33,6 +59,7 @@ interface AppSettingsValue {
   setCrashReportsEnabled: (val: boolean) => Promise<void>;
   setHideValues: (val: boolean) => Promise<void>;
   setDisplayCurrency: (c: DisplayCurrency) => Promise<void>;
+  setVisibleCurrencies: (list: DisplayCurrency[]) => Promise<void>;
   setNotification: (key: keyof NotificationPrefs, val: boolean) => Promise<void>;
   biometricLock: boolean;
   setBiometricLock: (val: boolean) => Promise<void>;
@@ -48,6 +75,7 @@ const K = {
   crashReports: '@invstry_crash_reports',
   hideValues: '@invstry_hide_values',
   dispCurrency: '@invstry_disp_currency',
+  visibleCurrencies: '@invstry_visible_currencies',
   notif: '@invstry_notif',
   biometric: '@invstry_biometric',
 };
@@ -71,6 +99,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   const [crashReportsEnabled, setCrashReportsState] = useState(true);
   const [hideValues, setHideValuesState] = useState(false);
   const [displayCurrency, setDisplayCurrencyState] = useState<DisplayCurrency>('EGP');
+  const [visibleCurrencies, setVisibleCurrenciesState] = useState<DisplayCurrency[]>(DEFAULT_VISIBLE_CURRENCIES);
   const [notifications, setNotificationsState] = useState<NotificationPrefs>(DEFAULT_NOTIF);
   const [biometricLock, setBiometricLockState] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -78,7 +107,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     (async () => {
       try {
-        const [t, l, w, h, a, c, hv, dc, n, bio] = await Promise.all([
+        const [t, l, w, h, a, c, hv, dc, n, bio, vc] = await Promise.all([
           AsyncStorage.getItem(K.theme),
           AsyncStorage.getItem(K.lang),
           AsyncStorage.getItem(K.weight),
@@ -89,6 +118,7 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
           AsyncStorage.getItem(K.dispCurrency),
           AsyncStorage.getItem(K.notif),
           AsyncStorage.getItem(K.biometric),
+          AsyncStorage.getItem(K.visibleCurrencies),
         ]);
         if (t === 'light' || t === 'dark' || t === 'system') setThemeModeState(t);
         if (l === 'en' || l === 'ar') {
@@ -101,7 +131,17 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
         if (a !== null) setAnalyticsState(a === 'true');
         if (c !== null) setCrashReportsState(c === 'true');
         if (hv !== null) setHideValuesState(hv === 'true');
-        if (dc === 'EGP' || dc === 'USD' || dc === 'EUR' || dc === 'AED') setDisplayCurrencyState(dc);
+        const storedVisible = vc ? sanitizeVisibleCurrencies(JSON.parse(vc)) : null;
+        const visible = storedVisible ?? DEFAULT_VISIBLE_CURRENCIES;
+        setVisibleCurrenciesState(visible);
+        // Only honour a saved currency that is still one the user can switch
+        // back to, otherwise they'd be stuck viewing a currency the switcher
+        // no longer offers.
+        if (dc && (ALL_DISPLAY_CURRENCIES as string[]).includes(dc) && visible.includes(dc as DisplayCurrency)) {
+          setDisplayCurrencyState(dc as DisplayCurrency);
+        } else {
+          setDisplayCurrencyState(visible[0]);
+        }
         if (bio !== null) setBiometricLockState(bio === 'true');
         if (n) {
           try { setNotificationsState({ ...DEFAULT_NOTIF, ...JSON.parse(n) }); } catch { /* use defaults */ }
@@ -159,6 +199,19 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     await AsyncStorage.setItem(K.dispCurrency, c);
   }, []);
 
+  // Removing the currency currently on screen would leave the hero showing
+  // something the switcher can't return to, so fall back to the first one left.
+  const setVisibleCurrencies = useCallback(async (list: DisplayCurrency[]) => {
+    const next = sanitizeVisibleCurrencies(list) ?? DEFAULT_VISIBLE_CURRENCIES;
+    setVisibleCurrenciesState(next);
+    await AsyncStorage.setItem(K.visibleCurrencies, JSON.stringify(next));
+    setDisplayCurrencyState(prev => {
+      if (next.includes(prev)) return prev;
+      AsyncStorage.setItem(K.dispCurrency, next[0]).catch(() => {});
+      return next[0];
+    });
+  }, []);
+
   const setNotification = useCallback(async (key: keyof NotificationPrefs, val: boolean) => {
     setNotificationsState(prev => {
       const next = { ...prev, [key]: val };
@@ -175,9 +228,9 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
   return (
     <AppSettingsContext.Provider value={{
       themeMode, language, resolvedTheme,
-      weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, hideValues, displayCurrency, notifications,
+      weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, hideValues, displayCurrency, visibleCurrencies, notifications,
       setThemeMode, setLanguage, setWeightUnit,
-      setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setHideValues, setDisplayCurrency, setNotification,
+      setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setHideValues, setDisplayCurrency, setVisibleCurrencies, setNotification,
       biometricLock, setBiometricLock,
       isLoaded,
     }}>

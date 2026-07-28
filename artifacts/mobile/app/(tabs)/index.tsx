@@ -308,16 +308,25 @@ export default function HomeScreen() {
   const { plan, isPro } = useSubscription();
   const { unreadCount: unreadNotifications } = useNotificationHistory();
   const { impact } = useHaptic();
-  const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, notifications } = useAppSettings();
+  const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, visibleCurrencies, notifications } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
 
   // ── Display-currency conversion ────────────────────────────────────────────
-  const DISP_CURRENCIES: DisplayCurrency[] = ['EGP', 'USD', 'EUR', 'AED'];
-  const fxRate = useMemo(() => ({
+  // Which currencies the switcher offers is a user preference now (Profile →
+  // Display currencies); this only renders what they picked.
+  const DISP_CURRENCIES: DisplayCurrency[] = visibleCurrencies;
+  const fxRate = useMemo<Record<DisplayCurrency, number>>(() => ({
     EGP: 1,
     USD: prices?.usdToEgp ?? 51,
     EUR: prices?.fxRates?.EUR ?? 55.5,
     AED: prices?.fxRates?.AED ?? 13.9,
+    GBP: prices?.fxRates?.GBP ?? 65.0,
+    SAR: prices?.fxRates?.SAR ?? 13.6,
+    QAR: prices?.fxRates?.QAR ?? 14.0,
+    KWD: prices?.fxRates?.KWD ?? 166.0,
+    CHF: prices?.fxRates?.CHF ?? 57.5,
+    CNY: prices?.fxRates?.CNY ?? 7.05,
+    TRY: prices?.fxRates?.TRY ?? 1.55,
   }), [prices]);
   const toDisp = useCallback((egp: number) => egp / fxRate[displayCurrency], [fxRate, displayCurrency]);
 
@@ -948,19 +957,26 @@ const styles = StyleSheet.create({
   cashIconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   cashInfo: { flex: 1, gap: 2 },
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  cashValue: { fontSize: 18, fontFamily: 'Inter_600SemiBold' },
+  cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
   heroValueRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', alignSelf: 'stretch' },
-  heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -2, flexShrink: 1, textAlign: 'center' },
+  // tabular-nums keeps every digit the same width. The value is an animated
+  // counter, so proportional digits made the number visibly shimmy as it
+  // tweened — 1s are narrow, 0s wide — and the whole line re-centred on each
+  // frame. -1.6 rather than -2: at 46px the tighter tracking was starting to
+  // close up the gap around the thousands separators.
+  heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -1.6, flexShrink: 1, textAlign: 'center', fontVariant: ['tabular-nums'] },
   currencyPill:       { borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 5 },
   currencyPillText:   { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
-  currencyTabStrip:   { flexDirection: 'row', gap: 6, justifyContent: 'center', marginTop: 2, marginBottom: 2 },
+  // Wraps because the switcher is user-configurable now and can hold up to 11
+  // currencies; a plain row clipped everything past the fourth.
+  currencyTabStrip:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 4, marginBottom: 2, paddingHorizontal: 4 },
   currencyTab:        { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 7 },
   currencyTabText:    { fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
-  netWorthTxt:    { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  netWorthTxt:    { fontSize: 11.5, fontFamily: 'Inter_500Medium', fontVariant: ['tabular-nums'] },
 
   iStrip:         { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: -24, paddingHorizontal: 24 },
   iCell:          { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 4 },
@@ -974,9 +990,9 @@ const styles = StyleSheet.create({
   plChip:         { flex: 1, gap: 5, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 10 },
   plTop:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
   plLabel:        { flex: 1, fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  plValue:        { fontSize: 13, fontFamily: 'Inter_700Bold', flexShrink: 1 },
+  plValue:        { fontSize: 13.5, fontFamily: 'Inter_700Bold', flexShrink: 1, letterSpacing: -0.2, fontVariant: ['tabular-nums'] },
   plBadge:        { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
-  plBadgeText:    { fontSize: 9, fontFamily: 'Inter_700Bold' },
+  plBadgeText:    { fontSize: 9.5, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
   chartWrap:  { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
   timeRow:    { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 10 },

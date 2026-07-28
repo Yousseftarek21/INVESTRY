@@ -19,7 +19,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
-import { useAppSettings, ThemeMode, WeightUnit, DisplayCurrency } from '@/context/AppSettingsContext';
+import { useAppSettings, ThemeMode, WeightUnit, DisplayCurrency, ALL_DISPLAY_CURRENCIES } from '@/context/AppSettingsContext';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices } from '@/hooks/usePrices';
@@ -193,15 +193,23 @@ function DetailModal({ visible, title, content, onClose }: {
 
 // ─── Display currency picker ────────────────────────────────────────────────
 
-const DISPLAY_CURRENCIES: DisplayCurrency[] = ['EGP', 'USD', 'EUR', 'AED'];
-
-function CurrencyPickerModal({ visible, value, onSelect, onClose }: {
+function CurrencyPickerModal({ visible, value, onSelect, onClose, shown, onToggleShown }: {
   visible: boolean; value: DisplayCurrency; onSelect: (c: DisplayCurrency) => void; onClose: () => void;
+  shown: DisplayCurrency[]; onToggleShown: (list: DisplayCurrency[]) => void;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const t = useT();
   if (!visible) return null;
+
+  // The switcher must always offer something, so the last remaining currency
+  // can't be turned off — its chip just stops responding rather than
+  // disappearing, which would be more confusing than an inert control.
+  const toggle = (c: DisplayCurrency) => {
+    const on = shown.includes(c);
+    if (on && shown.length === 1) return;
+    onToggleShown(on ? shown.filter(x => x !== c) : [...shown, c]);
+  };
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={mo.backdrop} onPress={onClose} />
@@ -213,8 +221,10 @@ function CurrencyPickerModal({ visible, value, onSelect, onClose }: {
             <Feather name="x" size={16} color={colors.mutedForeground} />
           </TouchableOpacity>
         </View>
-        <View style={{ padding: 12 }}>
-          {DISPLAY_CURRENCIES.map(c => {
+        <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ padding: 12, paddingBottom: 4 }}>
+          {/* Active currency — only the ones the switcher currently offers, so
+              this list and the portfolio card can never disagree. */}
+          {shown.map(c => {
             const active = c === value;
             return (
               <TouchableOpacity
@@ -228,7 +238,38 @@ function CurrencyPickerModal({ visible, value, onSelect, onClose }: {
               </TouchableOpacity>
             );
           })}
-        </View>
+
+          <View style={[cp.divider, { backgroundColor: colors.border }]} />
+
+          <Text style={[cp.sectionLabel, { color: colors.text }]}>{t.currencySwitcherLabel}</Text>
+          <Text style={[cp.sectionHint, { color: colors.mutedForeground }]}>{t.currencySwitcherHint}</Text>
+
+          <View style={cp.chipWrap}>
+            {ALL_DISPLAY_CURRENCIES.map(c => {
+              const on = shown.includes(c);
+              const locked = on && shown.length === 1;
+              return (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => toggle(c)}
+                  disabled={locked}
+                  activeOpacity={0.7}
+                  style={[
+                    cp.chip,
+                    {
+                      backgroundColor: on ? colors.primary : colors.muted + '50',
+                      borderColor: on ? colors.primary : colors.border,
+                      opacity: locked ? 0.55 : 1,
+                    },
+                  ]}
+                >
+                  {on && <Feather name="check" size={12} color={colors.primaryForeground} style={{ marginRight: 5 }} />}
+                  <Text style={[cp.chipText, { color: on ? colors.primaryForeground : colors.mutedForeground }]}>{c}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -236,6 +277,12 @@ function CurrencyPickerModal({ visible, value, onSelect, onClose }: {
 const cp = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 15, borderRadius: 14 },
   label: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: 14, marginHorizontal: 2 },
+  sectionLabel: { fontSize: 14, fontFamily: 'Inter_600SemiBold', paddingHorizontal: 2 },
+  sectionHint: { fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 18, paddingHorizontal: 2, marginTop: 4, marginBottom: 12 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
+  chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 13, paddingVertical: 9 },
+  chipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
 });
 
 // ─── Confirm modal (replaces Alert.alert on web) ────────────────────────────
@@ -757,6 +804,7 @@ export default function SettingsScreen() {
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
     biometricLock, setBiometricLock, displayCurrency, setDisplayCurrency,
+    visibleCurrencies, setVisibleCurrencies,
     setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
   } = useAppSettings();
   const { holdings, removeHolding } = useHoldings();
@@ -1151,6 +1199,8 @@ export default function SettingsScreen() {
         visible={currencyPickerOpen}
         value={displayCurrency}
         onSelect={setDisplayCurrency}
+        shown={visibleCurrencies}
+        onToggleShown={setVisibleCurrencies}
         onClose={() => setCurrencyPickerOpen(false)}
       />
       {confirm && (
