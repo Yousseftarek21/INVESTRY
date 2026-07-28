@@ -340,10 +340,14 @@ export default function HomeScreen() {
       totalCost += c;
       if (h.type === 'gold') {
         goldV += v; goldGrams += h.grams;
-        todayGold += v * ((prices?.goldChangePercent ?? 0) / 100);
+        // goldChangePercent is the metal's raw USD move (matches the Markets
+        // tab's own display) — goldChangePercentEgp compounds that with
+        // today's FX move, which is what a holding valued in EGP (`v`)
+        // actually needs, or it can show a gain on a day the EGP value fell.
+        todayGold += v * ((prices?.goldChangePercentEgp ?? 0) / 100);
       } else if (h.type === 'silver') {
         silverV += v; silverGrams += h.grams;
-        todaySilver += v * ((prices?.silverChangePercent ?? 0) / 100);
+        todaySilver += v * ((prices?.silverChangePercentEgp ?? 0) / 100);
       } else if (h.type === 'stock') {
         stockV += v; stockCount++;
         const changePercent = egxChangeByTicker[h.symbol] ?? 0;
@@ -363,7 +367,11 @@ export default function HomeScreen() {
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
     const todayGain = todayGold + todaySilver + todayStock + todayFI;
-    const todayPct = totalValue > 0 ? (todayGain / totalValue) * 100 : 0;
+    // Divide by the start-of-day value, not today's end value — otherwise a
+    // day's move is measured against a base that already includes that same
+    // move, understating gains and overstating the magnitude of losses.
+    const startOfDayValueForPct = totalValue - todayGain;
+    const todayPct = startOfDayValueForPct > 0 ? (todayGain / startOfDayValueForPct) * 100 : 0;
 
     return {
       totalValue, totalCost, gain, gainPct, todayGain, todayPct,

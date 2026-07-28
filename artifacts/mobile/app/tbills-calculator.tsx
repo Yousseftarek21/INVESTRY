@@ -12,7 +12,10 @@ import { useT } from '@/hooks/useTranslation';
 import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 
-function todayISO() { return new Date().toISOString().split('T')[0]; }
+// Africa/Cairo, not UTC — using UTC understated daysElapsed/accruedToday by
+// a full day for the ~2-3 hours after Cairo midnight before UTC's own date
+// rolls over (Egypt has no DST, so this is a fixed +2h offset, always).
+function todayISO() { return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' }); }
 
 function addMonths(isoDate: string, months: number): string {
   const d = new Date(isoDate);

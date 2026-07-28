@@ -505,10 +505,13 @@ export default function AnalyticsScreen() {
       totalCost += c;
       if (h.type === 'gold') {
         goldV += v; goldCost += c; totalGoldGrams += h.grams;
-        todayGold += v * ((prices?.goldChangePercent ?? 0) / 100);
+        // goldChangePercent is the metal's raw USD move; goldChangePercentEgp
+        // compounds it with today's FX move, which is what a holding valued
+        // in EGP (`v`) actually needs — see markets.ts for why.
+        todayGold += v * ((prices?.goldChangePercentEgp ?? 0) / 100);
       } else if (h.type === 'silver') {
         silverV += v; silverCost += c; totalSilverGrams += h.grams;
-        todaySilver += v * ((prices?.silverChangePercent ?? 0) / 100);
+        todaySilver += v * ((prices?.silverChangePercentEgp ?? 0) / 100);
       }
       else if (h.type === 'stock') {
         stockV += v; stockCount++;
@@ -632,8 +635,8 @@ export default function AnalyticsScreen() {
     if (sm.metalPct < 0.1 && sm.totalValue > 0) {
       items.push({ icon: 'shield', color: '#A47FCA', text: t.insightLowMetals });
     }
-    if ((prices?.goldChangePercent ?? 0) > 1) {
-      items.push({ icon: 'trending-up', color: colors.primary, text: t.insightGoldUp((prices?.goldChangePercent ?? 0).toFixed(2)) });
+    if ((prices?.goldChangePercentEgp ?? 0) > 1) {
+      items.push({ icon: 'trending-up', color: colors.primary, text: t.insightGoldUp((prices?.goldChangePercentEgp ?? 0).toFixed(2)) });
     }
     return items.slice(0, 4);
   }, [holdings, performers, typeCount, sm, prices, colors]);
@@ -663,10 +666,10 @@ export default function AnalyticsScreen() {
     } else if (sm.gainPct < -5) {
       items.push({ icon: 'trending-down', color: colors.red, text: t.insightPortfolioDown(Math.abs(sm.gainPct).toFixed(1)) });
     }
-    if (prices?.goldChangePercent && Math.abs(prices.goldChangePercent) > 0.5) {
-      items.push({ icon: 'zap', color: '#F59E0B', text: prices.goldChangePercent > 0
-        ? t.insightGoldMovedUp(Math.abs(prices.goldChangePercent).toFixed(2))
-        : t.insightGoldMovedDown(Math.abs(prices.goldChangePercent).toFixed(2)) });
+    if (prices?.goldChangePercentEgp && Math.abs(prices.goldChangePercentEgp) > 0.5) {
+      items.push({ icon: 'zap', color: '#F59E0B', text: prices.goldChangePercentEgp > 0
+        ? t.insightGoldMovedUp(Math.abs(prices.goldChangePercentEgp).toFixed(2))
+        : t.insightGoldMovedDown(Math.abs(prices.goldChangePercentEgp).toFixed(2)) });
     }
     return items.slice(0, 4);
   }, [holdings, sm, prices, colors]);

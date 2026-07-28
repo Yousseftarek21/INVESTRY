@@ -543,15 +543,26 @@ export default function CashAccountsScreen() {
                   <View style={styles.chips}>
                     {currencies.map(c => {
                       const active = currency === c;
+                      // Locked once an existing cash account is being edited
+                      // (not created, not a recurring-income entry): a
+                      // linked Goal's saved-% and any recurring income that
+                      // credits this account both assume the account's
+                      // balance stays in the currency it was created with —
+                      // changing it afterward would silently misread the
+                      // stored face value in the new currency (e.g. a
+                      // 50,000 balance meant as EGP suddenly read as USD).
+                      const locked = !!editingId && !isEditingIncome;
                       return (
                         <TouchableOpacity
                           key={c}
                           style={[styles.chip, {
                             borderColor: active ? colors.primary : colors.border,
                             backgroundColor: active ? colors.primary + '10' : colors.card,
+                            opacity: locked && !active ? 0.4 : 1,
                           }]}
-                          onPress={() => setCurrency(c)}
-                          activeOpacity={0.8}
+                          onPress={() => { if (!locked) setCurrency(c); }}
+                          disabled={locked}
+                          activeOpacity={locked ? 1 : 0.8}
                         >
                           <Text style={styles.chipFlag}>{CURRENCY_FLAGS[c]}</Text>
                           <Text style={[styles.chipText, { color: active ? colors.primary : colors.text }]}>{c}</Text>
@@ -559,6 +570,9 @@ export default function CashAccountsScreen() {
                       );
                     })}
                   </View>
+                  {!!editingId && !isEditingIncome && (
+                    <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.accountCurrencyLockedHint}</Text>
+                  )}
                 </View>
 
                 {/* ── Date Added ──────────────────────────────────── */}
