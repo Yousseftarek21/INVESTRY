@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
+import { useAppSettings } from '@/context/AppSettingsContext';
 import { apiFetch } from '@/utils/api';
 
 interface ChatMessage {
@@ -29,6 +30,7 @@ export default function AIAssistantScreen() {
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
   const { getToken } = useAuth();
+  const { language } = useAppSettings();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -56,7 +58,7 @@ export default function AIAssistantScreen() {
       if (!token) throw new Error('no-token');
       const res = await apiFetch('/api/chat', token, {
         method: 'POST',
-        body: JSON.stringify({ messages: nextMessages }),
+        body: JSON.stringify({ messages: nextMessages, language }),
       });
       if (!res.ok) throw new Error(`status-${res.status}`);
       const data = (await res.json()) as { reply: string };

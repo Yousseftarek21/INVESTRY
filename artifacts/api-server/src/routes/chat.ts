@@ -404,16 +404,25 @@ router.post("/chat", async (req, res) => {
   const isPro = user?.plan === "pro" || process.env.BETA_UNLOCK_ALL === "true";
   if (!isPro) { res.status(403).json({ error: "AI Assistant is a Pro feature" }); return; }
 
-  const body = req.body as { messages?: ChatTurn[] };
+  const body = req.body as { messages?: ChatTurn[]; language?: string };
   const messages = body.messages;
   if (!Array.isArray(messages) || messages.length === 0 || messages[messages.length - 1]?.role !== "user") {
     res.status(400).json({ error: "messages must be a non-empty array ending with a user message" });
     return;
   }
 
+  // The app's own current language setting (same one every label/button in
+  // the UI already uses) — not previously sent at all, so the assistant had
+  // no explicit signal to go on beyond guessing from the user's own message
+  // text, and SYSTEM_PREAMBLE itself is English, which biased replies
+  // toward English even for Arabic-set users. Explicit beats implicit here.
+  const languageInstruction = body.language === "ar"
+    ? "\n\nThe app's current language is Arabic. Always reply in Arabic (Modern Standard or Egyptian colloquial as natural), regardless of what language the user's message itself is written in."
+    : "\n\nThe app's current language is English. Always reply in English, regardless of what language the user's message itself is written in.";
+
   try {
     const { context: portfolioContext, egxStocks } = await buildPortfolioContext(userId);
-    const systemPrompt = `${SYSTEM_PREAMBLE}\n\nHere is the user's current portfolio:\n\n${portfolioContext}`;
+    const systemPrompt = `${SYSTEM_PREAMBLE}${languageInstruction}\n\nHere is the user's current portfolio:\n\n${portfolioContext}`;
     const reply = await callGemini(systemPrompt, messages, egxStocks);
     res.json({ reply: reply || "I couldn't come up with a response — try rephrasing your question." });
   } catch (err) {
