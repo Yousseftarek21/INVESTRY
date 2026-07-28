@@ -14,6 +14,7 @@ import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
+import { NoNetworkState } from '@/components/NoNetworkState';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -279,7 +280,7 @@ export default function HomeScreen() {
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
   const { cashAccounts } = useCash();
-  const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, refetch } = useMarketPrices();
+  const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
     if (!rawPrices) return rawPrices;
@@ -528,10 +529,14 @@ export default function HomeScreen() {
           style={styles.heroAccent}
         />
 
-        {/* Show pulsing skeleton until real prices AND holdings have both
-            loaded — PortfolioHeroValue only mounts once heroReady is true,
-            so its counter never sees a placeholder-derived starting value. */}
-        {!heroReady ? (
+        {/* Real network failure (no server, no direct fallback either) takes
+            priority over the loading skeleton — never show a total computed
+            from fabricated prices. Skeleton covers the ordinary "still
+            loading, will probably succeed shortly" case; PortfolioHeroValue
+            only mounts once heroReady is true either way. */}
+        {pricesErrored ? (
+          <NoNetworkState onRetry={refetch} retrying={pricesLoading} />
+        ) : !heroReady ? (
           <HeroSkeleton />
         ) : (
         <View style={styles.heroBody}>

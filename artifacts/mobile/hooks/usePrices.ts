@@ -48,6 +48,15 @@ const EGX_FALLBACK: EGXStock[] = [
 
 // ─── Direct client-side fallback (used if API server unreachable) ─────────────
 
+// Throws (rather than quietly returning FALLBACK's hardcoded numbers) when
+// it can't get a real gold price from anywhere — that specifically means
+// this device has no usable connection at all (our own server AND this
+// direct, CORS-open fallback both failed), not just "our server is down."
+// Silently substituting a fake ~$4018 gold price used to make the whole
+// portfolio total compute and display as if it were real live data, with
+// nothing telling the user it wasn't — the same "confident-looking wrong
+// number" problem fixed everywhere else, just reachable here via total
+// network loss instead of a currency-mixing bug.
 async function fetchMarketPricesDirect(): Promise<MarketPrices> {
   // TradingView CFD scanner — free, no key, same source the server uses
   const [tvRes, erRes] = await Promise.allSettled([
@@ -62,43 +71,41 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
     fetch('https://open.er-api.com/v6/latest/USD'),
   ]);
 
-  let goldUsd = FALLBACK.goldUsd;
-  let silverUsd = FALLBACK.silverUsd;
-  let goldChangePercent = 0;
-  let silverChangePercent = 0;
+  let goldUsd: number | null = null;
+  let silverUsd: number | null = null;
+
+  if (tvRes.status === 'fulfilled' && tvRes.value.ok) {
+    const d = await tvRes.value.json() as { data?: Array<{ s: string; d: [number, number, number] }> };
+    const byS: Record<string, [number, number, number]> = {};
+    for (const item of d?.data ?? []) byS[item.s] = item.d;
+    const gold = byS['TVC:GOLD'];
+    const silver = byS['TVC:SILVER'];
+    if (gold?.[0] > 0)   goldUsd   = gold[0];
+    if (silver?.[0] > 0) silverUsd = silver[0];
+  }
+
+  if (goldUsd === null) {
+    throw new Error('No network — could not reach TradingView or our own API server.');
+  }
+
   let usdToEgp = FALLBACK.usdToEgp;
-
-  try {
-    if (tvRes.status === 'fulfilled' && tvRes.value.ok) {
-      const d = await tvRes.value.json() as { data?: Array<{ s: string; d: [number, number, number] }> };
-      const byS: Record<string, [number, number, number]> = {};
-      for (const item of d?.data ?? []) byS[item.s] = item.d;
-      const gold = byS['TVC:GOLD'];
-      const silver = byS['TVC:SILVER'];
-      // gold[2]/silver[2] are TradingView's raw USD change% — deliberately not
-      // used here. Gold/silver are held and valued in EGP, and this fallback
-      // (only hit when our own API server is unreachable) has no historical
-      // USD/EGP rate to convert that % onto an EGP basis, so a "today change"
-      // derived from the raw USD leg alone can show a gain on a day the EGP
-      // value actually fell (the exact bug fixed server-side in markets.ts).
-      // Leaving it at 0 here is honest about what we don't know, rather than
-      // showing a number that looks plausible but can be wrong.
-      if (gold?.[0] > 0)   goldUsd   = gold[0];
-      if (silver?.[0] > 0) silverUsd = silver[0];
-    }
-  } catch { /* use fallback */ }
-
-  try {
-    if (erRes.status === 'fulfilled' && erRes.value.ok) {
-      const d = await erRes.value.json();
-      if (d?.rates?.EGP > 0) usdToEgp = d.rates.EGP;
-    }
-  } catch { /* use fallback */ }
+  if (erRes.status === 'fulfilled' && erRes.value.ok) {
+    const d = await erRes.value.json();
+    if (d?.rates?.EGP > 0) usdToEgp = d.rates.EGP;
+  }
 
   return {
-    goldUsd, silverUsd, usdToEgp,
-    goldChange: 0, goldChangePercent, goldChangePercentEgp: 0,
-    silverChange: 0, silverChangePercent, silverChangePercentEgp: 0,
+    goldUsd,
+    silverUsd: silverUsd ?? FALLBACK.silverUsd,
+    usdToEgp,
+    // gold[2]/silver[2] would be TradingView's raw USD change% — deliberately
+    // not used here. Gold/silver are held and valued in EGP, and this
+    // fallback has no historical USD/EGP rate to convert that % onto an EGP
+    // basis, so leaving it at 0 is honest about what we don't know, rather
+    // than showing a number that looks plausible but can be wrong (the exact
+    // bug fixed server-side in markets.ts).
+    goldChange: 0, goldChangePercent: 0, goldChangePercentEgp: 0,
+    silverChange: 0, silverChangePercent: 0, silverChangePercentEgp: 0,
     lastUpdated: new Date(),
     fxRates: FALLBACK.fxRates,
   };
