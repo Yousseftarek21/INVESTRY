@@ -139,12 +139,13 @@ function useShimmer() {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0, duration: 800, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 900, useNativeDriver: true }),
       ])
     ).start();
   }, []);
-  return anim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] });
+  // Narrow, high-floor range — a gentle breath rather than a hard blink.
+  return anim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.9] });
 }
 
 function SkeletonBox({ w, h, radius = 8, style }: { w: number | string; h: number; radius?: number; style?: object }) {
@@ -154,27 +155,35 @@ function SkeletonBox({ w, h, radius = 8, style }: { w: number | string; h: numbe
   );
 }
 
+// Only the *numbers* are unknown while prices load — the card's labels and
+// structure are not. Rendering the real heading and keeping the placeholders
+// faint (rather than blanking the whole card out with heavy grey blocks)
+// makes the wait read as the hero filling in, instead of a different screen.
 function HeroSkeleton() {
   const colors = useColors();
-  const bg = colors.muted + 'CC';
+  const t = useT();
+  const bg = colors.muted + '55';
+  const bgFaint = colors.muted + '33';
   return (
-    <View style={[heroSkSt.body, { gap: 16 }]}>
-      <SkeletonBox w={140} h={11} radius={6} style={{ backgroundColor: bg, alignSelf: 'center' }} />
-      <SkeletonBox w={200} h={48} radius={10} style={{ backgroundColor: bg, alignSelf: 'center' }} />
+    <View style={[heroSkSt.body, { gap: 14 }]}>
+      <Text style={[styles.heroLabel, { color: colors.mutedForeground, textAlign: 'center' }]}>
+        {t.totalPortfolioValue}
+      </Text>
+      <SkeletonBox w={186} h={38} radius={10} style={{ backgroundColor: bg, alignSelf: 'center' }} />
       <View style={[heroSkSt.strip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
         {[0, 1, 2].map(i => (
           <View key={i} style={heroSkSt.stripCell}>
-            <SkeletonBox w={50} h={9} radius={5} style={{ backgroundColor: bg }} />
-            <SkeletonBox w={70} h={14} radius={6} style={{ backgroundColor: bg }} />
+            <SkeletonBox w={42} h={8} radius={4} style={{ backgroundColor: bgFaint }} />
+            <SkeletonBox w={62} h={12} radius={5} style={{ backgroundColor: bg }} />
           </View>
         ))}
       </View>
       <View style={heroSkSt.plRow}>
         <View style={heroSkSt.plCell}>
-          <SkeletonBox w="100%" h={56} radius={12} style={{ backgroundColor: bg }} />
+          <SkeletonBox w="100%" h={48} radius={12} style={{ backgroundColor: bgFaint }} />
         </View>
         <View style={heroSkSt.plCell}>
-          <SkeletonBox w="100%" h={56} radius={12} style={{ backgroundColor: bg }} />
+          <SkeletonBox w="100%" h={48} radius={12} style={{ backgroundColor: bgFaint }} />
         </View>
       </View>
     </View>

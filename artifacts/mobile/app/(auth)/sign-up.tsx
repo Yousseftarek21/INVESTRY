@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { useSignUp, useSSO, useClerk } from '@clerk/expo';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useAppleAuthWithName } from '@/hooks/useAppleAuthWithName';
@@ -286,7 +286,9 @@ export default function SignUpScreen() {
               {appleLoading
                 ? <ActivityIndicator color={colors.background} />
                 : <>
-                    <Text style={[styles.appleGlyph, { color: colors.background }]}></Text>
+                    {/* See sign-in.tsx — the U+F8FF character this used to
+                        rely on had been stripped, leaving no logo at all. */}
+                    <FontAwesome name="apple" size={19} color={colors.background} style={styles.appleGlyph} />
                     <Text style={[styles.socialBtnText, { color: colors.background }]}>{t.continueWithApple}</Text>
                   </>
               }
@@ -431,7 +433,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   googleG: { fontSize: 18, fontFamily: 'Inter_700Bold', color: '#4285F4' },
-  appleGlyph: { fontSize: 19, marginTop: -2 },
+  appleGlyph: { marginTop: -2 },
   socialBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

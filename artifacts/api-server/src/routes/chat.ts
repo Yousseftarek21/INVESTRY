@@ -411,14 +411,22 @@ router.post("/chat", async (req, res) => {
     return;
   }
 
-  // The app's own current language setting (same one every label/button in
-  // the UI already uses) — not previously sent at all, so the assistant had
-  // no explicit signal to go on beyond guessing from the user's own message
-  // text, and SYSTEM_PREAMBLE itself is English, which biased replies
-  // toward English even for Arabic-set users. Explicit beats implicit here.
-  const languageInstruction = body.language === "ar"
-    ? "\n\nThe app's current language is Arabic. Always reply in Arabic (Modern Standard or Egyptian colloquial as natural), regardless of what language the user's message itself is written in."
-    : "\n\nThe app's current language is English. Always reply in English, regardless of what language the user's message itself is written in.";
+  // What the user actually typed decides the reply language; the app's own
+  // language setting is only the tie-breaker.
+  //
+  // An earlier version of this pinned the reply to the app setting "regardless
+  // of what language the user's message itself is written in" — which meant an
+  // English-configured app answered Arabic questions in English, the exact
+  // complaint this replaces. SYSTEM_PREAMBLE is written in English, so without
+  // any instruction the model drifts to English too; the setting still has to
+  // be sent, just not allowed to override the user.
+  const appLanguageName = body.language === "ar" ? "Arabic" : "English";
+  const languageInstruction =
+    "\n\nLANGUAGE: Reply in the same language the user wrote their latest message in. " +
+    "If they write in Arabic, reply in Arabic — Egyptian colloquial or Modern Standard, whichever reads more naturally for the question. " +
+    "If they write in English, reply in English. " +
+    `Only when the message is too short or ambiguous to tell (a bare number, a ticker symbol, "ok"), reply in ${appLanguageName}, which is the app's current language. ` +
+    "Never answer in a different language from the one the user just used.";
 
   try {
     const { context: portfolioContext, egxStocks } = await buildPortfolioContext(userId);

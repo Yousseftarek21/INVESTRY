@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { useSignIn, useSSO, useClerk } from '@clerk/expo';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useAppleAuthWithName } from '@/hooks/useAppleAuthWithName';
@@ -336,10 +336,14 @@ export default function SignInScreen() {
               {appleLoading
                 ? <ActivityIndicator color={colors.background} />
                 : <>
-                    {/* U+F8FF — renders as the real Apple logo glyph in iOS's
-                        system font. Must NOT take the custom Inter font
-                        family below, which has no glyph at this codepoint. */}
-                    <Text style={[styles.appleGlyph, { color: colors.background }]}></Text>
+                    {/* Drawn from FontAwesome's bundled font rather than the
+                        U+F8FF private-use codepoint this used to rely on.
+                        That bare character survives only if every tool in the
+                        chain preserves it byte-for-byte — it had silently been
+                        stripped from this file, leaving an empty <Text> and a
+                        button with no logo at all. An icon font can't be lost
+                        that way. */}
+                    <FontAwesome name="apple" size={19} color={colors.background} style={styles.appleGlyph} />
                     <Text style={[styles.socialBtnText, { color: colors.background }]}>{t.continueWithApple}</Text>
                   </>
               }
@@ -465,7 +469,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   googleG: { fontSize: 18, fontFamily: 'Inter_700Bold', color: '#4285F4' },
-  appleGlyph: { fontSize: 19, marginTop: -2 },
+  appleGlyph: { marginTop: -2 },
   socialBtnText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
