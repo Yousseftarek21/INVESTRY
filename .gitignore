@@ -41,6 +41,15 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Secrets — never commit real credentials (Clerk secret keys, DATABASE_URL,
+# DATA_ENCRYPTION_KEY, API keys). Committed secrets stay in git history even
+# after being deleted in a later commit, so the only real fix is rotating the
+# key. .env.example is allowed through so the required variable *names* can
+# still be documented in the repo.
+.env
+.env.*
+!.env.example
+
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
