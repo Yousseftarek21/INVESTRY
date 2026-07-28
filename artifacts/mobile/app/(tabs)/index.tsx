@@ -20,6 +20,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -255,11 +256,19 @@ function LiveChip({ lastUpdated }: { lastUpdated: Date | null }) {
     ? lastUpdated.toLocaleTimeString('en-EG', { hour: '2-digit', minute: '2-digit' })
     : null;
 
+  // On a cold open the hero now renders from prices cached on disk, which are
+  // real but may be minutes old. Claiming "LIVE" over them would be the same
+  // dishonesty as the old fabricated-total flash, just relocated — so the dot
+  // goes grey and stops pulsing until a fresh fetch lands, which is usually
+  // well under a second. The timestamp below already says which it is.
+  const fresh = pricesAreFresh(lastUpdated);
+  const tint = fresh ? colors.green : colors.mutedForeground;
+
   return (
     <View style={chipSt.col}>
-      <View style={[chipSt.pill, { backgroundColor: colors.green + '14', borderColor: colors.green + '30' }]}>
-        <Animated.View style={[chipSt.dot, { backgroundColor: colors.green, opacity }]} />
-        <Text style={[chipSt.label, { color: colors.green }]}>{t.liveLabel}</Text>
+      <View style={[chipSt.pill, { backgroundColor: tint + '14', borderColor: tint + '30' }]}>
+        <Animated.View style={[chipSt.dot, { backgroundColor: tint, opacity: fresh ? opacity : 0.5 }]} />
+        <Text style={[chipSt.label, { color: tint }]}>{t.liveLabel}</Text>
       </View>
       {timeStr && (
         <Text style={[chipSt.time, { color: colors.mutedForeground }]}>

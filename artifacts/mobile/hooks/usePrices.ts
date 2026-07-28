@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, QueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { EGXStock, MarketPrices } from '@/types';
 import { getApiBaseUrl } from '@/utils/api';
+import { loadCachedPrices, saveCachedPrices } from '@/utils/pricesCache';
 
 export const TROY_OZ_TO_GRAMS = 31.1035;
 
@@ -200,10 +202,44 @@ async function fetchEGXStocks(): Promise<EGXStock[]> {
 
 // ─── React Query hooks ────────────────────────────────────────────────────────
 
+export const MARKET_PRICES_KEY = ['market-prices'] as const;
+
+// Seeds the query cache with the last prices we actually fetched, so the hero
+// can render a true total on the very first frame instead of waiting on the
+// network. Called once during startup (while the splash is still up), so it
+// has landed long before any tab mounts.
+//
+// setQueryData — not placeholderData — because this IS real data: it clears
+// isPlaceholderData, which is what the hero gates on. FALLBACK stays as
+// placeholderData purely so non-hero consumers never see undefined; on a true
+// first launch there's no cache, isPlaceholderData stays true, and the hero
+// correctly shows its skeleton rather than a fabricated number.
+export async function hydratePricesFromCache(queryClient: QueryClient): Promise<void> {
+  if (queryClient.getQueryState(MARKET_PRICES_KEY)?.dataUpdatedAt) return; // a real fetch already won
+  const cached = await loadCachedPrices();
+  if (!cached) return;
+  if (queryClient.getQueryState(MARKET_PRICES_KEY)?.dataUpdatedAt) return; // ...or won while we read
+  queryClient.setQueryData(MARKET_PRICES_KEY, cached);
+}
+
 export function useMarketPrices() {
+  const queryClient = useQueryClient();
+
+  // Belt and braces: if a screen mounts before startup hydration finished
+  // (deep link, fast resume), pull the cache in here too. No-ops once real
+  // data exists.
+  useEffect(() => { void hydratePricesFromCache(queryClient); }, [queryClient]);
+
   return useQuery({
-    queryKey: ['market-prices'],
-    queryFn: fetchMarketPrices,
+    queryKey: MARKET_PRICES_KEY,
+    queryFn: async () => {
+      const prices = await fetchMarketPrices();
+      // Fire-and-forget: only genuinely fetched prices are ever cached.
+      // fetchMarketPricesDirect throws when there's no usable connection, so
+      // a failed fetch can't overwrite good cached data with fallbacks.
+      void saveCachedPrices(prices);
+      return prices;
+    },
     staleTime: 30_000,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
