@@ -34,8 +34,10 @@ export interface MarketPricesResponse {
   usdToEgpChangePercent: number;
   goldChange: number;
   goldChangePercent: number;
+  goldChangePercentEgp: number;
   silverChange: number;
   silverChangePercent: number;
+  silverChangePercentEgp: number;
   goldEgpPerGram: Record<string, number>;
   silverEgpPerGram: number;
   fxRates: Record<string, number>;
@@ -748,14 +750,18 @@ async function recordAndGetPrevClose(today: string, current: MarketCloseSnapshot
 // ─── Assemble prices ──────────────────────────────────────────────────────────
 
 export async function fetchPrices(): Promise<MarketPricesResponse> {
-  // All run in parallel — TradingView scanner is ~100-200 ms, no key needed.
-  // fetchFxCrossRates uses FALLBACK_EGP only for its ER-API cross-rate fallback;
-  // Wise fetches each pair directly so it doesn't need usdToEgp at fetch time.
-  const [metals, usdToEgp, fxRates] = await Promise.all([
+  // Metals + the USD/EGP rate run in parallel — TradingView scanner is
+  // ~100-200 ms, no key needed. fetchFxCrossRates needs the real usdToEgp
+  // for its ER-API cross-rate fallback (any pair Wise fails to return), so
+  // it has to wait for that instead of running alongside it — it used to
+  // fire with a hardcoded ~51.0 constant instead, which meant any pair that
+  // hit that fallback got a cross-rate off by however far usdToEgp had
+  // actually drifted from 51.0.
+  const [metals, usdToEgp] = await Promise.all([
     fetchMetalsViaTradingView(),
     fetchUsdToEgp(),
-    fetchFxCrossRates(FALLBACK_EGP),
   ]);
+  const fxRates = await fetchFxCrossRates(usdToEgp);
 
   const goldUsd   = metals?.xau ?? FALLBACK_GOLD;
   const silverUsd = metals?.xag ?? FALLBACK_SILVER;
@@ -803,6 +809,22 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
     ? round2(((usdToEgpDisplay - prevClose.usdToEgp) / prevClose.usdToEgp) * 100)
     : 0;
 
+  // goldChangePercent/silverChangePercent above are deliberately raw-USD
+  // (matching TradingView's own display, per explicit product decision) —
+  // but a portfolio holding is valued in EGP, so applying that raw-USD %
+  // straight to an EGP value silently drops the FX leg (the original
+  // "gold shows +1.25% while the portfolio actually fell" bug, just
+  // reachable again from this angle). These two fields compound the metal's
+  // own USD move with today's USD/EGP move to give the metal's *real*
+  // EGP-denominated change — this is what portfolio "today's gain" math
+  // should read, never goldChangePercent/silverChangePercent directly.
+  const goldChangePercentEgp = round2(
+    ((1 + goldChangePct / 100) * (1 + usdToEgpChangePercent / 100) - 1) * 100
+  );
+  const silverChangePercentEgp = round2(
+    ((1 + silverChangePct / 100) * (1 + usdToEgpChangePercent / 100) - 1) * 100
+  );
+
   return {
     goldUsd:             round2(goldUsd),
     silverUsd:           round2(silverUsd),
@@ -810,8 +832,10 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
     usdToEgpChangePercent,
     goldChange,
     goldChangePercent:   goldChangePct,
+    goldChangePercentEgp,
     silverChange,
     silverChangePercent: silverChangePct,
+    silverChangePercentEgp,
     goldEgpPerGram,
     silverEgpPerGram,
     fxRates,

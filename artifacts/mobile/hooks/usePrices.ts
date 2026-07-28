@@ -14,8 +14,10 @@ const FALLBACK: MarketPrices = {
   usdToEgp: 51.0,
   goldChange: 0,
   goldChangePercent: 0,
+  goldChangePercentEgp: 0,
   silverChange: 0,
   silverChangePercent: 0,
+  silverChangePercentEgp: 0,
   lastUpdated: new Date(),
   fxRates: {
     EUR: 55.5, GBP: 65.0, TRY: 1.55, CNY: 7.05,
@@ -95,8 +97,8 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
 
   return {
     goldUsd, silverUsd, usdToEgp,
-    goldChange: 0, goldChangePercent,
-    silverChange: 0, silverChangePercent,
+    goldChange: 0, goldChangePercent, goldChangePercentEgp: 0,
+    silverChange: 0, silverChangePercent, silverChangePercentEgp: 0,
     lastUpdated: new Date(),
     fxRates: FALLBACK.fxRates,
   };
@@ -118,8 +120,10 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
       usdToEgpChangePercent: data.usdToEgpChangePercent ?? 0,
       goldChange:         data.goldChange          ?? 0,
       goldChangePercent:  data.goldChangePercent   ?? 0,
+      goldChangePercentEgp: data.goldChangePercentEgp ?? 0,
       silverChange:       data.silverChange        ?? 0,
       silverChangePercent: data.silverChangePercent ?? 0,
+      silverChangePercentEgp: data.silverChangePercentEgp ?? 0,
       lastUpdated: data.lastUpdated ? new Date(data.lastUpdated) : new Date(),
       fxRates: data.fxRates ?? FALLBACK.fxRates,
     };

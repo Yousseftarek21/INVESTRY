@@ -157,8 +157,14 @@ export interface MarketPrices {
   usdToEgpChangePercent?: number;
   goldChange: number;
   goldChangePercent: number;
+  /** Gold's real EGP-denominated change (USD move compounded with today's FX
+   * move) — use this, not goldChangePercent (raw USD), for any calculation
+   * against an EGP-valued holding. */
+  goldChangePercentEgp?: number;
   silverChange: number;
   silverChangePercent: number;
+  /** Silver's equivalent of goldChangePercentEgp. */
+  silverChangePercentEgp?: number;
   lastUpdated: Date;
   egxPrices?: Record<string, number>;
   fxRates?: Record<string, number>;
