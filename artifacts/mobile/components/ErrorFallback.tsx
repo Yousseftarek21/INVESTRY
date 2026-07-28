@@ -121,16 +121,6 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           {t.errorFallbackMessage}
         </Text>
 
-        {/* Temporarily shown in all builds (not just __DEV__) while tracking
-            down a hard-to-reproduce crash — screenshot this text if you hit
-            this screen. Remove once the crash is confirmed gone. */}
-        <Text
-          style={[styles.message, { color: colors.red, fontSize: 12, fontFamily: monoFont }]}
-          selectable
-        >
-          {error.message}
-        </Text>
-
         <Pressable
           onPress={handleRestart}
           style={({ pressed }) => [
