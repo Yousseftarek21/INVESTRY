@@ -13,6 +13,7 @@ const IS_WEB = Platform.OS === "web";
 import { useAppSettings } from "@/context/AppSettingsContext";
 import { useColors } from "@/hooks/useColors";
 import { useT } from "@/hooks/useTranslation";
+import { NoNetworkOverlay } from "@/components/NoNetworkOverlay";
 
 function LoadingScreen() {
   const colors = useColors();
@@ -198,8 +199,13 @@ export default function TabLayout() {
   // On web preview, skip auth gate — show tabs directly
   if (!isSignedIn && !IS_WEB) return <Redirect href={"/(auth)/welcome" as any} />;
 
-  if (shouldUseNativeTabs()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
+  // NoNetworkOverlay sits here rather than in the root layout so it covers
+  // every tab while remaining impossible to render over the auth screens —
+  // both early returns above have already run by this point.
+  return (
+    <>
+      {shouldUseNativeTabs() ? <NativeTabLayout /> : <ClassicTabLayout />}
+      <NoNetworkOverlay />
+    </>
+  );
 }
