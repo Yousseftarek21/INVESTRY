@@ -34,7 +34,7 @@ import { SubscriptionScreen } from "@/components/SubscriptionScreen";
 import { useNotifications } from "@/hooks/useNotifications";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { getApiBaseUrl } from "@/utils/api";
-import { hydratePricesFromCache } from "@/hooks/usePrices";
+import { hydratePricesFromCache, prefetchMarketPrices } from "@/hooks/usePrices";
 import * as Updates from "expo-updates";
 
 SplashScreen.preventAutoHideAsync();
@@ -68,12 +68,21 @@ const tokenCache: TokenCache = Platform.OS === "web" ? webTokenCache : nativeTok
 
 const queryClient = new QueryClient();
 
-// Seed the last real market prices from disk at module load — before React
-// renders anything — so the Home hero can show a true portfolio total on its
-// first frame instead of a placeholder. The read takes a few ms and the splash
-// stays up for ~1.6s, so it always lands first. Deliberately not a component:
-// it touches nothing in the render tree, including the auth screens.
+// Both run at module load — before React renders anything — so the Home hero
+// shows a true portfolio total on its first frame instead of a placeholder.
+// Deliberately not components: they touch nothing in the render tree,
+// including the auth screens.
+//
+//  - hydrate: seeds the last prices from disk (a few ms) — covers every launch
+//    after the first.
+//  - prefetch: starts the network request now rather than when a tab mounts,
+//    so the ~1.6s splash covers the ~570ms round trip — this is what makes a
+//    FIRST launch real too, when there is no cache yet.
+//
+// Ordering is safe either way: hydratePricesFromCache refuses to overwrite
+// data once a real fetch has landed.
 void hydratePricesFromCache(queryClient);
+prefetchMarketPrices(queryClient);
 
 interface ClerkConfig {
   publishableKey: string;

@@ -204,6 +204,33 @@ async function fetchEGXStocks(): Promise<EGXStock[]> {
 
 export const MARKET_PRICES_KEY = ['market-prices'] as const;
 
+async function fetchAndCacheMarketPrices(): Promise<MarketPrices> {
+  const prices = await fetchMarketPrices();
+  // Fire-and-forget: only genuinely fetched prices are ever cached.
+  // fetchMarketPricesDirect throws when there's no usable connection, so a
+  // failed fetch can't overwrite good cached data with fallbacks.
+  void saveCachedPrices(prices);
+  return prices;
+}
+
+// Starts the price request at app launch instead of waiting for a tab to
+// mount and call useMarketPrices().
+//
+// This is what makes the hero real on a FIRST launch, when there's no cache to
+// hydrate from. /api/markets/prices takes no auth header, so it can run
+// immediately — before Clerk initialises, before any screen exists — and the
+// splash then covers the round trip. Observed server latency is ~570ms against
+// a ~1600ms splash, so prices are normally already in the cache by the time the
+// hero first renders. If the network is slower than the splash the skeleton
+// still shows; it just degrades instead of showing an invented number.
+export function prefetchMarketPrices(queryClient: QueryClient): void {
+  void queryClient.prefetchQuery({
+    queryKey: MARKET_PRICES_KEY,
+    queryFn: fetchAndCacheMarketPrices,
+    staleTime: 30_000,
+  });
+}
+
 // Seeds the query cache with the last prices we actually fetched, so the hero
 // can render a true total on the very first frame instead of waiting on the
 // network. Called once during startup (while the splash is still up), so it
@@ -232,14 +259,7 @@ export function useMarketPrices() {
 
   return useQuery({
     queryKey: MARKET_PRICES_KEY,
-    queryFn: async () => {
-      const prices = await fetchMarketPrices();
-      // Fire-and-forget: only genuinely fetched prices are ever cached.
-      // fetchMarketPricesDirect throws when there's no usable connection, so
-      // a failed fetch can't overwrite good cached data with fallbacks.
-      void saveCachedPrices(prices);
-      return prices;
-    },
+    queryFn: fetchAndCacheMarketPrices,
     staleTime: 30_000,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
