@@ -110,6 +110,28 @@ function useCounterDisplay(target: number): string {
   return text;
 }
 
+// Mounted only once real prices/holdings have actually loaded (the parent
+// renders HeroSkeleton in its place until then) so useCounterDisplay's
+// internal state initializes directly with the true first value instead of
+// a placeholder-derived one, and the 700ms tween never plays on that first
+// reveal. Every value change after that (refresh, a live price tick) still
+// animates normally; only this initial wrong-number-then-animate moment is
+// what's being avoided.
+function PortfolioHeroValue({ value, hidden }: { value: number; hidden: boolean }) {
+  const colors = useColors();
+  const displayValue = useCounterDisplay(value);
+  return (
+    <Text
+      style={[styles.heroValue, { color: colors.text }]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.5}
+    >
+      {hidden ? '••••••' : displayValue}
+    </Text>
+  );
+}
+
 // ─── Skeleton shimmer ─────────────────────────────────────────────────────────
 
 function useShimmer() {
@@ -399,13 +421,15 @@ export default function HomeScreen() {
     return [startOfDayValue, ...middle, summary.totalValue];
   }, [rawTodaySamples, startOfDayValue, summary.totalValue]);
 
-  const displayValue = useCounterDisplay(toDisp(summary.totalValue));
-
   const isGain = summary.gain >= 0;
   const isTodayGain = summary.todayGain >= 0;
   const gainColor = isGain ? colors.green : colors.red;
   const todayColor = isTodayGain ? colors.green : colors.red;
   const hasHoldings = holdings.length > 0;
+  // Real prices AND holdings both loaded — only once this is true does the
+  // hero mount PortfolioHeroValue (see its own comment for why the mount
+  // timing, not just a visual swap, is what avoids the wrong-number flash).
+  const heroReady = !pricesArePlaceholder && !(holdingsLoading && holdings.length === 0);
 
   const topHoldings = useMemo(() => {
     const withValue = holdings.map(h => ({ h, v: computeValue(h, prices) }));
@@ -504,8 +528,10 @@ export default function HomeScreen() {
           style={styles.heroAccent}
         />
 
-        {/* Show pulsing skeleton while prices haven't arrived yet */}
-        {pricesLoading && !rawPrices ? (
+        {/* Show pulsing skeleton until real prices AND holdings have both
+            loaded — PortfolioHeroValue only mounts once heroReady is true,
+            so its counter never sees a placeholder-derived starting value. */}
+        {!heroReady ? (
           <HeroSkeleton />
         ) : (
         <View style={styles.heroBody}>
@@ -525,14 +551,7 @@ export default function HomeScreen() {
               accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
               style={{ flexShrink: 1 }}
             >
-              <Text
-                style={[styles.heroValue, { color: colors.text }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.5}
-              >
-                {hideValues ? '••••••' : displayValue}
-              </Text>
+              <PortfolioHeroValue value={toDisp(summary.totalValue)} hidden={hideValues} />
             </TouchableOpacity>
             <Pressable
               onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
