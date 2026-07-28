@@ -818,20 +818,24 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   // one, and the free daily-snapshot APIs previously used to reconstruct it
   // turned out to be unreliably stale (see the removed fetchUsdToEgpPrevClose
   // — a response with no way to tell it was ~24h+ old). So this one alone is
-  // anchored to this endpoint's own recorded history instead.
-  const { prevClose, todayOpen } = await recordAndGetPrevClose(cairoDateString(), {
+  // anchored to this endpoint's own recorded history instead, and honestly
+  // shows 0% until a real prior-day close exists.
+  //
+  // A same-day "opening value" fallback was tried and reverted: by the time
+  // that tracking could be added, the real early-morning rate was already
+  // gone (only a continuously-overwritten "current" value existed, no true
+  // open snapshot), so the backfilled "open" was actually just "whatever
+  // the rate happened to be a few minutes before this code shipped" — a
+  // fake reference producing a technically-real but meaningless tiny number
+  // that didn't reflect the actual overnight move. Same principle as
+  // removing the third-party fallback: a plausible-looking wrong number is
+  // worse than an honest 0.
+  const { prevClose } = await recordAndGetPrevClose(cairoDateString(), {
     goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
   });
 
-  // Prefer real yesterday-vs-today; if that doesn't exist yet (a brand new
-  // day, or the first day this table has any data at all), fall back to
-  // today's own recorded opening value so there's still a real, live-moving
-  // number instead of a flat 0% for the rest of the day.
-  const usdToEgpRef = (prevClose && prevClose.usdToEgp > 0) ? prevClose.usdToEgp
-    : (todayOpen && todayOpen.usdToEgp > 0) ? todayOpen.usdToEgp
-    : null;
-  const usdToEgpChangePercent = usdToEgpRef
-    ? round2(((usdToEgpDisplay - usdToEgpRef) / usdToEgpRef) * 100)
+  const usdToEgpChangePercent = prevClose && prevClose.usdToEgp > 0
+    ? round2(((usdToEgpDisplay - prevClose.usdToEgp) / prevClose.usdToEgp) * 100)
     : 0;
 
   // goldChangePercent/silverChangePercent above are deliberately raw-USD
