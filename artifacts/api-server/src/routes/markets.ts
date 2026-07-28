@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { lt, desc } from "drizzle-orm";
+import { lt, desc, eq } from "drizzle-orm";
 import { db, marketCloseSnapshotsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
@@ -722,14 +722,28 @@ interface MarketCloseSnapshot { goldEgp24k: number; silverEgp: number; usdToEgp:
 
 // Keeps "today"'s row continuously updated to the latest live price (so
 // whatever was last written before the Cairo day rolls over becomes that
-// day's fixed close in the database), and returns the most recent *prior*
-// day's close if one is on record.
-async function recordAndGetPrevClose(today: string, current: MarketCloseSnapshot): Promise<MarketCloseSnapshot | null> {
+// day's fixed close in the database), and returns:
+//  - prevClose: the most recent *prior* day's close, if one is on record —
+//    the real, correct "today vs. yesterday" reference.
+//  - todayOpen: whatever today's own first-ever recorded value was — used
+//    only when prevClose doesn't exist yet (a brand new day, or the first
+//    day this table has any data at all), so there's still something real
+//    to show movement against instead of a flat 0% until the next midnight.
+async function recordAndGetPrevClose(
+  today: string,
+  current: MarketCloseSnapshot
+): Promise<{ prevClose: MarketCloseSnapshot | null; todayOpen: MarketCloseSnapshot | null }> {
   try {
     await db
       .insert(marketCloseSnapshotsTable)
-      .values({ date: today, goldEgp24k: current.goldEgp24k, silverEgp: current.silverEgp, usdToEgp: current.usdToEgp })
+      .values({
+        date: today,
+        openGoldEgp24k: current.goldEgp24k, openSilverEgp: current.silverEgp, openUsdToEgp: current.usdToEgp,
+        goldEgp24k: current.goldEgp24k, silverEgp: current.silverEgp, usdToEgp: current.usdToEgp,
+      })
       .onConflictDoUpdate({
+        // Only the "close" columns update on repeat writes the same day —
+        // open* is set once at insert and never touched again.
         target: marketCloseSnapshotsTable.date,
         set: { goldEgp24k: current.goldEgp24k, silverEgp: current.silverEgp, usdToEgp: current.usdToEgp, updatedAt: new Date() },
       });
@@ -740,10 +754,16 @@ async function recordAndGetPrevClose(today: string, current: MarketCloseSnapshot
       .where(lt(marketCloseSnapshotsTable.date, today))
       .orderBy(desc(marketCloseSnapshotsTable.date))
       .limit(1);
-    return prev ?? null;
+
+    const [open] = await db
+      .select({ goldEgp24k: marketCloseSnapshotsTable.openGoldEgp24k, silverEgp: marketCloseSnapshotsTable.openSilverEgp, usdToEgp: marketCloseSnapshotsTable.openUsdToEgp })
+      .from(marketCloseSnapshotsTable)
+      .where(eq(marketCloseSnapshotsTable.date, today));
+
+    return { prevClose: prev ?? null, todayOpen: open ?? null };
   } catch (err) {
     logger.warn({ err }, "recordAndGetPrevClose: DB read/write failed, falling back to USD+FX reconstruction");
-    return null;
+    return { prevClose: null, todayOpen: null };
   }
 }
 
@@ -798,15 +818,20 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   // one, and the free daily-snapshot APIs previously used to reconstruct it
   // turned out to be unreliably stale (see the removed fetchUsdToEgpPrevClose
   // — a response with no way to tell it was ~24h+ old). So this one alone is
-  // anchored to this endpoint's own recorded history instead, and honestly
-  // shows 0% until that history exists (see recordAndGetPrevClose above,
-  // backed by the database so a restart can't lose it).
-  const prevClose = await recordAndGetPrevClose(cairoDateString(), {
+  // anchored to this endpoint's own recorded history instead.
+  const { prevClose, todayOpen } = await recordAndGetPrevClose(cairoDateString(), {
     goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
   });
 
-  const usdToEgpChangePercent = prevClose && prevClose.usdToEgp > 0
-    ? round2(((usdToEgpDisplay - prevClose.usdToEgp) / prevClose.usdToEgp) * 100)
+  // Prefer real yesterday-vs-today; if that doesn't exist yet (a brand new
+  // day, or the first day this table has any data at all), fall back to
+  // today's own recorded opening value so there's still a real, live-moving
+  // number instead of a flat 0% for the rest of the day.
+  const usdToEgpRef = (prevClose && prevClose.usdToEgp > 0) ? prevClose.usdToEgp
+    : (todayOpen && todayOpen.usdToEgp > 0) ? todayOpen.usdToEgp
+    : null;
+  const usdToEgpChangePercent = usdToEgpRef
+    ? round2(((usdToEgpDisplay - usdToEgpRef) / usdToEgpRef) * 100)
     : 0;
 
   // goldChangePercent/silverChangePercent above are deliberately raw-USD
