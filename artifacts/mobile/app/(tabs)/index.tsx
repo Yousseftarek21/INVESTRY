@@ -449,6 +449,12 @@ export default function HomeScreen() {
   // timing, not just a visual swap, is what avoids the wrong-number flash).
   const heroReady = !pricesArePlaceholder && !(holdingsLoading && holdings.length === 0);
 
+  // Deliberately stricter than heroReady. Cached prices are enough to show a
+  // true total (a spot price doesn't expire), but not today's move — those
+  // deltas are relative to today's open and are zeroed on rehydration, so
+  // rendering them would assert a flat day and then correct itself.
+  const todaysChangeKnown = !pricesArePlaceholder && !prices?.fromCache;
+
   const topHoldings = useMemo(() => {
     const withValue = holdings.map(h => ({ h, v: computeValue(h, prices) }));
     withValue.sort((a, b) => b.v - a.v);
@@ -666,11 +672,16 @@ export default function HomeScreen() {
           {/* P/L row */}
           {summary.totalCost > 0 && (
             <View style={styles.plRow}>
-              {pricesArePlaceholder ? (
-                // Real prices haven't arrived yet — show a neutral loading
-                // state instead of a colored "+0.00%" built from placeholder
-                // data, which used to flash as a fake reading before the
-                // real number replaced it a moment later.
+              {!todaysChangeKnown ? (
+                // Today's move isn't known yet — show a neutral loading state
+                // rather than a coloured "+0.00%", which reads as "flat today"
+                // and then visibly corrects itself once the real figure lands.
+                //
+                // Two ways to get here: placeholder data (nothing fetched
+                // yet), or prices rehydrated from the on-disk cache, whose
+                // *Change fields describe an earlier moment and are zeroed on
+                // load. The total above still renders from those cached spot
+                // prices — a spot price stays valid, a daily delta does not.
                 <View style={[styles.plChip, { backgroundColor: colors.muted + '40', borderColor: colors.border }]}>
                   <View style={styles.plTop}>
                     <ActivityIndicator size="small" color={colors.mutedForeground} />

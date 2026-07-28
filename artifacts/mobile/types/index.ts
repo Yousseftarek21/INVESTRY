@@ -168,6 +168,16 @@ export interface MarketPrices {
   lastUpdated: Date;
   egxPrices?: Record<string, number>;
   fxRates?: Record<string, number>;
+  /** Set only on prices rehydrated from the on-disk cache at launch.
+   *
+   * Spot values (goldUsd, usdToEgp, fxRates) stay meaningful indefinitely —
+   * the last real price is still the best price we know. Every *Change field
+   * above does not: those measure the move since today's open, so a cached
+   * copy describes some earlier moment and is simply wrong later. They're
+   * zeroed on rehydration, and this flag tells the UI those zeros mean
+   * "not known yet" rather than "flat today", so it can show a loading state
+   * instead of a confident +0.00%. */
+  fromCache?: boolean;
 }
 
 export interface EGXStock {

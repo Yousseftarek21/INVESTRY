@@ -625,6 +625,13 @@ const cs = StyleSheet.create({
 function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['data'] }) {
   const colors = useColors();
   const t = useT();
+  // Prices rehydrated from the launch cache carry real spot values but no
+  // usable daily move — those deltas are relative to today's open and get
+  // zeroed on load. Passing undefined hides the change badge entirely until a
+  // real fetch lands, rather than briefly asserting a flat 0.00%.
+  const goldChangePct   = prices?.fromCache ? undefined : prices?.goldChangePercent;
+  const silverChangePct = prices?.fromCache ? undefined : prices?.silverChangePercent;
+
   const gold24 = prices ? Math.round(goldPricePerGram(prices, '24k')) : 0;
   const gold22 = prices ? Math.round(goldPricePerGram(prices, '22k')) : 0;
   const gold21 = prices ? Math.round(goldPricePerGram(prices, '21k')) : 0;
@@ -647,7 +654,7 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
           price={gold24}
           usdPrice={prices?.goldUsd}
           troyEgp={goldOz}
-          changePercent={prices?.goldChangePercent}
+          changePercent={goldChangePct}
         />
         <TableCard>
           <MetalRow metalType="gold" accentColor={colors.primary} label={t.gold22K}   sublabel={t.gold22KSub}    price={gold22} />
@@ -667,11 +674,11 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
           price={silver999}
           usdPrice={prices?.silverUsd}
           troyEgp={silverOz}
-          changePercent={prices?.silverChangePercent}
+          changePercent={silverChangePct}
         />
         <TableCard>
           <MetalRow metalType="silver" accentColor={colors.silverColor} label={t.silver925Label} sublabel={t.silver925Sub}    price={silver925} />
-          <MetalRow metalType="silver" accentColor={colors.silverColor} label={t.silverTroyOz}   sublabel={t.silverTroyOzSub} price={silverOz} unit="EGP" changePercent={prices?.silverChangePercent} isLast bold />
+          <MetalRow metalType="silver" accentColor={colors.silverColor} label={t.silverTroyOz}   sublabel={t.silverTroyOzSub} price={silverOz} unit="EGP" changePercent={silverChangePct} isLast bold />
         </TableCard>
       </View>
     </View>
