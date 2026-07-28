@@ -14,6 +14,7 @@ import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
+import { NoNetworkState } from '@/components/NoNetworkState';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -528,12 +529,14 @@ export default function HomeScreen() {
           style={styles.heroAccent}
         />
 
-        {/* Real network failure is handled by the app-wide NoNetworkOverlay
-            (see app/_layout.tsx) — never show a total computed from
-            fabricated prices, but no need for a second, tab-local copy here.
-            Skeleton covers the ordinary "still loading" case; PortfolioHeroValue
+        {/* Real network failure (no server, no direct fallback either) takes
+            priority over the loading skeleton — never show a total computed
+            from fabricated prices. Skeleton covers the ordinary "still
+            loading, will probably succeed shortly" case; PortfolioHeroValue
             only mounts once heroReady is true either way. */}
-        {pricesErrored ? null : !heroReady ? (
+        {pricesErrored ? (
+          <NoNetworkState onRetry={refetch} retrying={pricesLoading} />
+        ) : !heroReady ? (
           <HeroSkeleton />
         ) : (
         <View style={styles.heroBody}>
