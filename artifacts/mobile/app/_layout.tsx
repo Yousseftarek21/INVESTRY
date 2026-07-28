@@ -22,6 +22,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CustomSplash } from "@/components/CustomSplash";
 import { NoNetworkScreen } from "@/components/NoNetworkScreen";
+import { NoNetworkOverlay } from "@/components/NoNetworkOverlay";
+import { useMarketPrices } from "@/hooks/usePrices";
 import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
 import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
@@ -189,6 +191,7 @@ function StatusBarManager() {
 
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
   const [paywallVisible, setPaywallVisible] = React.useState(false);
+  const { isError: pricesErrored, isLoading: pricesLoading, refetch: refetchPrices } = useMarketPrices();
 
   React.useEffect(() => {
     _registerPaywallCallback(() => {
@@ -205,6 +208,7 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
         visible={paywallVisible}
         onClose={() => setPaywallVisible(false)}
       />
+      {pricesErrored && <NoNetworkOverlay onRetry={refetchPrices} retrying={pricesLoading} />}
     </>
   );
 }

@@ -22,7 +22,6 @@ import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
-import { NoNetworkState } from '@/components/NoNetworkState';
 import { PerfChart } from '@/components/PerfChart';
 import { AllocationBar, AllocationSegment } from '@/components/AllocationBar';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -474,7 +473,7 @@ export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const { holdings, isLoading: holdingsLoading } = useHoldings();
-  const { data: rawPrices, isLoading: pricesLoading, isError: pricesErrored, refetch } = useMarketPrices();
+  const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
     if (!rawPrices) return rawPrices;
@@ -705,16 +704,6 @@ export default function AnalyticsScreen() {
       <View style={s.header}>
         <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
       </View>
-
-      {/* No usable connection at all (not just our server) — never show
-          any of the price-derived sections below built from fabricated
-          fallback numbers; this replaces them until a real response
-          comes back (React Query keeps retrying on its own interval). */}
-      {pricesErrored && (
-        <View style={{ borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, marginBottom: 4 }}>
-          <NoNetworkState onRetry={refetch} retrying={pricesLoading} />
-        </View>
-      )}
 
       {/* ══ SECTION 1: Planning ═══════════════════════════════════════ */}
       <View style={s.sectionHeader}>
