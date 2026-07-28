@@ -257,7 +257,7 @@ export default function HomeScreen() {
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
   const { cashAccounts } = useCash();
-  const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
+  const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
     if (!rawPrices) return rawPrices;
@@ -626,20 +626,34 @@ export default function HomeScreen() {
           {/* P/L row */}
           {summary.totalCost > 0 && (
             <View style={styles.plRow}>
-              <View style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}>
-                <View style={styles.plTop}>
-                  <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
-                  <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
-                  <View style={[styles.plBadge, { backgroundColor: todayColor + '1A' }]}>
-                    <Text style={[styles.plBadgeText, { color: todayColor }]}>
-                      {`${isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
-                    </Text>
+              {pricesArePlaceholder ? (
+                // Real prices haven't arrived yet — show a neutral loading
+                // state instead of a colored "+0.00%" built from placeholder
+                // data, which used to flash as a fake reading before the
+                // real number replaced it a moment later.
+                <View style={[styles.plChip, { backgroundColor: colors.muted + '40', borderColor: colors.border }]}>
+                  <View style={styles.plTop}>
+                    <ActivityIndicator size="small" color={colors.mutedForeground} />
+                    <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
                   </View>
+                  <Text style={[styles.plValue, { color: colors.mutedForeground }]}>···</Text>
                 </View>
-                <Text style={[styles.plValue, { color: todayColor }]}>
-                  {hideValues ? '••••' : `${isTodayGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.todayGain)))} ${displayCurrency}`}
-                </Text>
-              </View>
+              ) : (
+                <View style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}>
+                  <View style={styles.plTop}>
+                    <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
+                    <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
+                    <View style={[styles.plBadge, { backgroundColor: todayColor + '1A' }]}>
+                      <Text style={[styles.plBadgeText, { color: todayColor }]}>
+                        {`${isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.plValue, { color: todayColor }]}>
+                    {hideValues ? '••••' : `${isTodayGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.todayGain)))} ${displayCurrency}`}
+                  </Text>
+                </View>
+              )}
 
               <View style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}>
                 <View style={styles.plTop}>
