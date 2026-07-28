@@ -158,6 +158,19 @@ overrides:
   "@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-win32-x64": "-"
+  # @clerk/shared/react holds Clerk's React context. @clerk/expo depends on
+  # "@clerk/shared": "^4.23.0" and resolved to 4.23.0, while @clerk/react
+  # (pulled in directly by artifacts/mobile) resolved to 4.25.8. Two copies
+  # meant <ClerkProvider> (rendered from @clerk/expo) published into 4.23.0's
+  # context while useSignIn from '@clerk/react/legacy' — used by
+  # artifacts/mobile/hooks/useAppleAuthWithName.ts, which the sign-in screen
+  # calls on every render — read 4.25.8's empty one, throwing "useSignIn can
+  # only be used within the <ClerkProvider /> component" and making sign-in
+  # completely unreachable. 4.25.8 satisfies @clerk/expo's ^4.23.0 range, so
+  # pinning it collapses both to a single instance. Scoped to @clerk/expo so
+  # the api-server's own @clerk/backend tree is left alone.
+  "@clerk/expo>@clerk/shared": "4.25.8"
+
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.28.1"
