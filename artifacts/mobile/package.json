@@ -60,7 +60,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "@clerk/react": "6.11.3",
+    "@clerk/react": "6.12.8",
     "@react-native-community/datetimepicker": "^9.1.0",
     "@workspace/shared-data": "workspace:*",
     "expo-apple-authentication": "~8.0.8",
