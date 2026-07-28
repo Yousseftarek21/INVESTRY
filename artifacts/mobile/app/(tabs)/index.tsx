@@ -133,6 +133,16 @@ function PortfolioHeroValue({ value, hidden }: { value: number; hidden: boolean 
   );
 }
 
+// The hero's heading reads as a small caps eyebrow rather than a sentence —
+// it sits above a 46px figure, so the contrast in scale is what gives the card
+// its hierarchy. Latin only: Arabic is a cursive script, where letter-spacing
+// pulls apart letters that are meant to join and uppercase means nothing.
+function heroEyebrow(language: string) {
+  return language === 'ar'
+    ? null
+    : { textTransform: 'uppercase' as const, letterSpacing: 1.15, fontSize: 10 };
+}
+
 // ─── Skeleton shimmer ─────────────────────────────────────────────────────────
 
 function useShimmer() {
@@ -163,11 +173,12 @@ function SkeletonBox({ w, h, radius = 8, style }: { w: number | string; h: numbe
 function HeroSkeleton() {
   const colors = useColors();
   const t = useT();
+  const { language } = useAppSettings();
   const bg = colors.muted + '55';
   const bgFaint = colors.muted + '33';
   return (
     <View style={[heroSkSt.body, { gap: 14 }]}>
-      <Text style={[styles.heroLabel, { color: colors.mutedForeground, textAlign: 'center' }]}>
+      <Text style={[styles.heroLabel, heroEyebrow(language), { color: colors.mutedForeground, textAlign: 'center' }]}>
         {t.totalPortfolioValue}
       </Text>
       <SkeletonBox w={186} h={38} radius={10} style={{ backgroundColor: bg, alignSelf: 'center' }} />
@@ -308,7 +319,7 @@ export default function HomeScreen() {
   const { plan, isPro } = useSubscription();
   const { unreadCount: unreadNotifications } = useNotificationHistory();
   const { impact } = useHaptic();
-  const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, visibleCurrencies, notifications } = useAppSettings();
+  const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, visibleCurrencies, notifications, language } = useAppSettings();
   const isLoading = pricesLoading || holdingsLoading;
 
   // ── Display-currency conversion ────────────────────────────────────────────
@@ -573,7 +584,7 @@ export default function HomeScreen() {
         <View style={styles.heroBody}>
           {/* Label */}
           <View style={styles.heroLabelRow}>
-            <Text style={[styles.heroLabel, { color: colors.mutedForeground, textAlign: 'center' }]}>
+            <Text style={[styles.heroLabel, heroEyebrow(language), { color: colors.mutedForeground, textAlign: 'center' }]}>
               {t.totalPortfolioValue}
             </Text>
           </View>
@@ -960,15 +971,15 @@ const styles = StyleSheet.create({
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  heroLabel:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
-  heroValueRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', alignSelf: 'stretch' },
+  heroLabel:      { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
+  heroValueRow:   { flexDirection: 'row', alignItems: 'center', gap: 9, justifyContent: 'center', alignSelf: 'stretch', marginTop: -4 },
   // tabular-nums keeps every digit the same width. The value is an animated
   // counter, so proportional digits made the number visibly shimmy as it
   // tweened — 1s are narrow, 0s wide — and the whole line re-centred on each
   // frame. -1.6 rather than -2: at 46px the tighter tracking was starting to
   // close up the gap around the thousands separators.
   heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -1.6, flexShrink: 1, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  currencyPill:       { borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 5 },
+  currencyPill:       { borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 11, paddingVertical: 6 },
   currencyPillText:   { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
   // Wraps because the switcher is user-configurable now and can hold up to 11
   // currencies; a plain row clipped everything past the fourth.
