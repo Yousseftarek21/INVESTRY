@@ -603,33 +603,83 @@ interface WiseRateResponse { source: string; target: string; value: number; time
 interface Fawaz0Response { date: string; usd: { egp: number } }
 interface ErApiResponse  { rates: { EGP: number } }
 
+
+// ─── Wise short-term memo ─────────────────────────────────────────────────────
+//
+// Wise is the only *live* rate in the chain; every other source below it is a
+// once-a-day figure. When Wise fails — it throttles datacenter IPs and the
+// 9s timeout trips from time to time — the chain silently dropped to
+// fawazahmed0, whose USD/EGP is a single daily value (50.50684863 on
+// 2026-07-29). It does not move for the rest of the day, so a brief Wise
+// outage showed as the app being frozen for hours while wise.com plainly
+// read 50.67.
+//
+// A Wise quote from a few minutes ago is far closer to the truth than a
+// figure fixed at midnight, so keep the last good one and prefer it over the
+// daily sources. The daily sources remain as the last resort, for a Wise
+// outage longer than this window or a cold start that never reached Wise.
+const WISE_MEMO_TTL_MS = 20 * 60_000;
+const _wiseMemo = new Map<string, { value: number; at: number }>();
+
+function rememberWise(key: string, value: number): number {
+  _wiseMemo.set(key, { value, at: Date.now() });
+  return value;
+}
+
+function recentWise(key: string): { value: number; ageMs: number } | null {
+  const m = _wiseMemo.get(key);
+  if (!m) return null;
+  const ageMs = Date.now() - m.at;
+  return ageMs <= WISE_MEMO_TTL_MS ? { value: m.value, ageMs } : null;
+}
+
 async function fetchUsdToEgp(): Promise<number> {
   // 1. Wise real-time mid-market rate (updates every few seconds)
   const wise = await safeJson<WiseRateResponse>(
     await safeFetch("https://wise.com/rates/live?source=USD&target=EGP")
   );
   if (wise?.value && wise.value > 0) {
-    logger.info({ rate: wise.value, ts: wise.time }, "USD/EGP from Wise");
-    return wise.value;
+    logger.info({ rate: wise.value, ts: wise.time, source: "wise" }, "USD/EGP from Wise");
+    return rememberWise("USD", wise.value);
+  }
+
+  // Wise unreachable — a recent Wise quote still beats a daily figure.
+  const memo = recentWise("USD");
+  if (memo) {
+    logger.warn({ rate: memo.value, ageMs: memo.ageMs, source: "wise-memo" },
+      "USD/EGP: Wise unreachable, reusing recent Wise rate rather than a daily source");
+    return memo.value;
   }
 
   // 2. fawazahmed0 via jsDelivr CDN (daily, highly accurate)
   const fawaz1 = await safeJson<Fawaz0Response>(
     await safeFetch("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json")
   );
-  if (fawaz1?.usd?.egp && fawaz1.usd.egp > 0) return fawaz1.usd.egp;
+  if (fawaz1?.usd?.egp && fawaz1.usd.egp > 0) {
+    logger.warn({ rate: fawaz1.usd.egp, source: "fawazahmed0-jsdelivr" },
+      "USD/EGP: falling back to a DAILY rate — this will not move until tomorrow");
+    return fawaz1.usd.egp;
+  }
 
   // 3. fawazahmed0 via Cloudflare Pages CDN (alternate)
   const fawaz2 = await safeJson<Fawaz0Response>(
     await safeFetch("https://latest.currency-api.pages.dev/v1/currencies/usd.json")
   );
-  if (fawaz2?.usd?.egp && fawaz2.usd.egp > 0) return fawaz2.usd.egp;
+  if (fawaz2?.usd?.egp && fawaz2.usd.egp > 0) {
+    logger.warn({ rate: fawaz2.usd.egp, source: "fawazahmed0-pages" },
+      "USD/EGP: falling back to a DAILY rate — this will not move until tomorrow");
+    return fawaz2.usd.egp;
+  }
 
   // 4. open.er-api.com (daily)
   const er = await safeJson<ErApiResponse>(
     await safeFetch("https://open.er-api.com/v6/latest/USD")
   );
-  if (er?.rates?.EGP && er.rates.EGP > 0) return er.rates.EGP;
+  if (er?.rates?.EGP && er.rates.EGP > 0) {
+    logger.warn({ rate: er.rates.EGP, source: "open.er-api" },
+      "USD/EGP: falling back to a DAILY rate — this will not move until tomorrow");
+    return er.rates.EGP;
+  }
 
   return FALLBACK_EGP;
 }
@@ -659,9 +709,18 @@ async function fetchFxCrossRates(usdToEgp: number): Promise<Record<string, numbe
   for (const r of settled) {
     if (r.status === 'fulfilled' && r.value.value && r.value.value > 0) {
       out[r.value.sym] = Math.round(r.value.value * 10000) / 10000;
-      logger.info({ sym: r.value.sym, rate: r.value.value }, `FX from Wise`);
-    } else {
-      if (r.status === 'fulfilled') missing.push(r.value.sym);
+      rememberWise(r.value.sym, r.value.value);
+      logger.info({ sym: r.value.sym, rate: r.value.value, source: "wise" }, `FX from Wise`);
+    } else if (r.status === 'fulfilled') {
+      // Same reasoning as USD/EGP: a recent Wise cross rate beats a daily one.
+      const memo = recentWise(r.value.sym);
+      if (memo) {
+        out[r.value.sym] = Math.round(memo.value * 10000) / 10000;
+        logger.warn({ sym: r.value.sym, rate: memo.value, ageMs: memo.ageMs, source: "wise-memo" },
+          "FX: Wise unreachable, reusing recent Wise rate");
+      } else {
+        missing.push(r.value.sym);
+      }
     }
   }
 
