@@ -471,7 +471,7 @@ export default function HomeScreen() {
   // true total (a spot price doesn't expire), but not today's move — those
   // deltas are relative to today's open and are zeroed on rehydration, so
   // rendering them would assert a flat day and then correct itself.
-  const todaysChangeKnown = !pricesArePlaceholder && !prices?.fromCache;
+  const todaysChangeKnown = !pricesArePlaceholder && !prices?.changesUnknown;
 
   const topHoldings = useMemo(() => {
     const withValue = holdings.map(h => ({ h, v: computeValue(h, prices) }));

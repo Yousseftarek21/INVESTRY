@@ -168,16 +168,23 @@ export interface MarketPrices {
   lastUpdated: Date;
   egxPrices?: Record<string, number>;
   fxRates?: Record<string, number>;
-  /** Set only on prices rehydrated from the on-disk cache at launch.
+  /** Set whenever the *Change fields above are placeholders rather than a
+   * real measurement of today's move.
    *
    * Spot values (goldUsd, usdToEgp, fxRates) stay meaningful indefinitely —
    * the last real price is still the best price we know. Every *Change field
    * above does not: those measure the move since today's open, so a cached
-   * copy describes some earlier moment and is simply wrong later. They're
-   * zeroed on rehydration, and this flag tells the UI those zeros mean
-   * "not known yet" rather than "flat today", so it can show a loading state
-   * instead of a confident +0.00%. */
-  fromCache?: boolean;
+   * copy describes some earlier moment and is simply wrong later.
+   *
+   * Three paths produce zeroed deltas and all of them set this:
+   *   - prices rehydrated from the on-disk launch cache
+   *   - the direct TradingView fallback, which has no historical FX rate to
+   *     put a change on an EGP basis and so deliberately reports none
+   *   - a server response that omits the fields entirely
+   *
+   * Without the flag a plain 0 reads as "flat today" and renders a confident
+   * green +0.00%. This lets the UI say "not known yet" instead. */
+  changesUnknown?: boolean;
 }
 
 export interface EGXStock {

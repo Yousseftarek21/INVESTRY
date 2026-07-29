@@ -635,8 +635,8 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
   // usable daily move — those deltas are relative to today's open and get
   // zeroed on load. Passing undefined hides the change badge entirely until a
   // real fetch lands, rather than briefly asserting a flat 0.00%.
-  const goldChangePct   = prices?.fromCache ? undefined : prices?.goldChangePercent;
-  const silverChangePct = prices?.fromCache ? undefined : prices?.silverChangePercent;
+  const goldChangePct   = prices?.changesUnknown ? undefined : prices?.goldChangePercent;
+  const silverChangePct = prices?.changesUnknown ? undefined : prices?.silverChangePercent;
 
   const gold24 = prices ? Math.round(goldPricePerGram(prices, '24k')) : 0;
   const gold22 = prices ? Math.round(goldPricePerGram(prices, '22k')) : 0;

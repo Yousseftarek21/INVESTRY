@@ -108,6 +108,9 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
     // bug fixed server-side in markets.ts).
     goldChange: 0, goldChangePercent: 0, goldChangePercentEgp: 0,
     silverChange: 0, silverChangePercent: 0, silverChangePercentEgp: 0,
+    // Those zeros mean "we don't know", not "flat today" — without this the
+    // Today tile renders a confident green +0.00% off this fallback.
+    changesUnknown: true,
     lastUpdated: new Date(),
     fxRates: FALLBACK.fxRates,
   };
@@ -133,6 +136,9 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
       silverChange:       data.silverChange        ?? 0,
       silverChangePercent: data.silverChangePercent ?? 0,
       silverChangePercentEgp: data.silverChangePercentEgp ?? 0,
+      // A response that omits the change fields is telling us it has no
+      // reading, which is not the same as a reading of zero.
+      changesUnknown: data.goldChangePercentEgp === undefined && data.goldChangePercent === undefined,
       lastUpdated: data.lastUpdated ? new Date(data.lastUpdated) : new Date(),
       fxRates: data.fxRates ?? FALLBACK.fxRates,
     };

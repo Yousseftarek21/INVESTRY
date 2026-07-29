@@ -42,7 +42,7 @@ export async function loadCachedPrices(): Promise<MarketPrices | null> {
     // The *Change fields are deliberately dropped. They measure the move since
     // today's open, so a cached copy describes an earlier moment — reusing it
     // would show yesterday's move as today's. Zeroing alone isn't enough
-    // either, since a plain 0 reads as "flat today"; fromCache marks these as
+    // either, since a plain 0 reads as "flat today"; changesUnknown marks these as
     // unknown so the UI can show a loading state until a real fetch lands.
     const revived: MarketPrices = {
       ...parsed,
@@ -54,7 +54,7 @@ export async function loadCachedPrices(): Promise<MarketPrices | null> {
       silverChangePercent: 0,
       silverChangePercentEgp: 0,
       usdToEgpChangePercent: 0,
-      fromCache: true,
+      changesUnknown: true,
     };
 
     // A cache written by an older build could be missing fields added since.
