@@ -33,7 +33,7 @@ import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { useNotifications } from "@/hooks/useNotifications";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { getApiBaseUrl } from "@/utils/api";
-import { hydratePricesFromCache, prefetchMarketPrices } from "@/hooks/usePrices";
+import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled } from "@/hooks/usePrices";
 import * as Updates from "expo-updates";
 
 SplashScreen.preventAutoHideAsync();
@@ -44,6 +44,12 @@ const splashStartTime = Date.now();
 // drawing cleanly before hide, while cutting the old 2.5s floor down
 // noticeably for a snappier feel on fast loads.
 const MIN_SPLASH_DURATION_MS = Platform.OS === 'web' ? 0 : 1600;
+
+// Hard ceiling on how long the splash may wait for launch data before
+// revealing anyway. Observed price latency is ~570ms against a 1600ms splash,
+// so this headroom is normally unused — it exists purely so a bad network
+// can never turn a loading state into a stuck screen.
+const SPLASH_DATA_CAP_MS = Platform.OS === 'web' ? 0 : 3000;
 
 const webTokenCache: TokenCache = {
   getToken: (key: string) => Promise.resolve(localStorage.getItem(key)),
@@ -318,7 +324,19 @@ export default function RootLayout() {
     _hideSplash = () => {
       const elapsed = Date.now() - splashStartTime;
       const remaining = Math.max(0, MIN_SPLASH_DURATION_MS - elapsed);
-      setTimeout(() => setShowCustomSplash(false), remaining);
+      setTimeout(async () => {
+        // Hold the reveal until the launch price fetch has landed, so the hero
+        // is complete the moment it appears — total AND today's change — rather
+        // than showing a dash that fills in a beat later while the user is
+        // already looking at it. Clerk is usually ready before prices are, so
+        // without this the card can paint mid-flight.
+        //
+        // Capped against splash start, not from here, so this can only ever
+        // extend the splash to SPLASH_DATA_CAP_MS total. A slow or offline
+        // device reveals on time with the dash instead of being stranded.
+        await whenMarketPricesSettled(SPLASH_DATA_CAP_MS - (Date.now() - splashStartTime));
+        setShowCustomSplash(false);
+      }, remaining);
     };
     _onClerkReady = () => {
       clerkReadyRef.current = true;

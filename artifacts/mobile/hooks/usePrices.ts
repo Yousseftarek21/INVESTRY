@@ -223,12 +223,34 @@ async function fetchAndCacheMarketPrices(): Promise<MarketPrices> {
 // a ~1600ms splash, so prices are normally already in the cache by the time the
 // hero first renders. If the network is slower than the splash the skeleton
 // still shows; it just degrades instead of showing an invented number.
+let _pricesSettled: Promise<void> | null = null;
+
 export function prefetchMarketPrices(queryClient: QueryClient): void {
-  void queryClient.prefetchQuery({
+  // prefetchQuery resolves on failure as well as success, so a dead network
+  // settles this promise rather than leaving it pending forever.
+  _pricesSettled = queryClient.prefetchQuery({
     queryKey: MARKET_PRICES_KEY,
     queryFn: fetchAndCacheMarketPrices,
     staleTime: 30_000,
   });
+}
+
+/**
+ * Resolves once the launch price fetch has settled, or after `timeoutMs` —
+ * whichever comes first.
+ *
+ * Used to hold the splash until the hero has live data, so nothing has to
+ * fill in after the user is already looking at the card. The timeout is the
+ * important half: a slow or offline device must never be stuck staring at a
+ * splash screen, so this always resolves and the app reveals regardless.
+ */
+export function whenMarketPricesSettled(timeoutMs: number): Promise<void> {
+  if (!_pricesSettled) return Promise.resolve();
+  if (timeoutMs <= 0) return Promise.resolve();
+  return Promise.race([
+    _pricesSettled.catch(() => undefined),
+    new Promise<void>(resolve => setTimeout(resolve, timeoutMs)),
+  ]);
 }
 
 // Seeds the query cache with the last prices we actually fetched, so the hero
