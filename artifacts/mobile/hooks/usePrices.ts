@@ -118,8 +118,11 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
 
 // ─── Primary fetchers (via our API server — no CORS, server-side aggregation) ─
 
-async function fetchMarketPrices(): Promise<MarketPrices> {
-  try {
+/** Throws if our own API server can't be reached — the caller decides what
+ * to do about it. Kept separate from the fallback so only genuine server
+ * data is ever written to the on-disk cache. */
+async function fetchMarketPricesFromServer(): Promise<MarketPrices> {
+  {
     const res = await fetch(`${API_BASE}/markets/prices`, {
       headers: { Accept: 'application/json' },
     });
@@ -144,9 +147,6 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
       lastUpdated: data.lastUpdated ? new Date(data.lastUpdated) : new Date(),
       fxRates: data.fxRates ?? FALLBACK.fxRates,
     };
-  } catch {
-    // API server unreachable — fall through to direct CORS-open sources
-    return fetchMarketPricesDirect();
   }
 }
 
@@ -213,12 +213,25 @@ async function fetchEGXStocks(): Promise<EGXStock[]> {
 export const MARKET_PRICES_KEY = ['market-prices'] as const;
 
 async function fetchAndCacheMarketPrices(): Promise<MarketPrices> {
-  const prices = await fetchMarketPrices();
-  // Fire-and-forget: only genuinely fetched prices are ever cached.
-  // fetchMarketPricesDirect throws when there's no usable connection, so a
-  // failed fetch can't overwrite good cached data with fallbacks.
-  void saveCachedPrices(prices);
-  return prices;
+  try {
+    const prices = await fetchMarketPricesFromServer();
+    // Cache ONLY real server responses.
+    //
+    // This used to cache whatever fetchMarketPrices returned, including the
+    // direct TradingView fallback — whose fxRates are the hardcoded FALLBACK
+    // constants (EUR 55.5, GBP 65.0, KWD 166.0). A single momentary blip
+    // reaching our API server therefore persisted those fabricated rates to
+    // disk, and every cold open afterwards showed them on the Currencies tab
+    // until a fresh fetch landed. Against live Wise rates (EUR 57.48, GBP
+    // 67.72, KWD 164.59) that is plainly wrong, and it looked like the app
+    // had simply stopped updating.
+    void saveCachedPrices(prices);
+    return prices;
+  } catch {
+    // Server unreachable — serve the direct sources for this render, but
+    // never write them to the cache.
+    return fetchMarketPricesDirect();
+  }
 }
 
 // Starts the price request at app launch instead of waiting for a tab to

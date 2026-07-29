@@ -18,7 +18,12 @@ import { MarketPrices } from '@/types';
  *
  * Not keyed per user — market prices are global, unlike holdings.
  */
-const CACHE_KEY = 'market-prices-cache-v1';
+// v2 discards every cache written by v1. Those could contain the direct
+// fallback's hardcoded fxRates (EUR 55.5, GBP 65.0, KWD 166.0) rather than
+// real Wise rates, persisted by a since-fixed bug that cached fallback data.
+// A device holding one would otherwise keep showing those wrong rates on
+// every cold open. Dropping the key costs one fetch and fixes it outright.
+const CACHE_KEY = 'market-prices-cache-v2';
 
 /** Anything older than this is shown as a timestamp rather than as "LIVE". */
 export const PRICES_FRESH_MS = 2 * 60_000;

@@ -756,12 +756,19 @@ export default function HomeScreen() {
                   if (w > 0) setSparkWidth(w);
                 }}
               >
+                {/* todayValues: startOfDayValue is totalValue - todayGain,
+                    so when the deltas aren't known todayGain is 0 and both
+                    endpoints collapse onto the same number — the 1D curve
+                    draws perfectly flat, then jumps to its real shape once
+                    live prices land. An empty series lets PerfChart show its
+                    own "building" placeholder instead, matching how the Today
+                    tile waits rather than asserting a flat day. */}
                 <PerfChart
                   period={timeFilter}
                   width={sparkWidth}
                   height={78}
                   snapshots={snapshots}
-                  todayValues={todaySamples}
+                  todayValues={todaysChangeKnown ? todaySamples : []}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
                 />
               </View>
