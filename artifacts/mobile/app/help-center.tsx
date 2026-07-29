@@ -109,12 +109,6 @@ export default function HelpCenterScreen() {
       ],
     },
     {
-      icon: 'star', color: '#C9A227', title: t.helpCatSubscription,
-      items: [
-        { q: t.helpFreeVsProQ, a: t.helpFreeVsProA },
-      ],
-    },
-    {
       icon: 'shield', color: '#4A9EFF', title: t.helpCatPrivacy,
       items: [
         { q: t.helpDataSyncQ, a: t.helpDataSyncA },

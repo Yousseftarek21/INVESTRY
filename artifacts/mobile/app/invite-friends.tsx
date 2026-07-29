@@ -149,12 +149,6 @@ export default function InviteFriendsScreen() {
               </View>
             </View>
 
-            {info.proCreditExpiresAt && (
-              <Text style={[s.creditNote, { color: colors.mutedForeground }]}>
-                {t.referralProCreditUntil} {new Date(info.proCreditExpiresAt).toLocaleDateString()}
-              </Text>
-            )}
-
             {/* Redeem a friend's code */}
             {!info.hasRedeemed && (
               <View style={[s.redeemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
