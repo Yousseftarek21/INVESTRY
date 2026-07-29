@@ -136,8 +136,10 @@ async function fetchMarketPrices(): Promise<MarketPrices> {
       silverChange:       data.silverChange        ?? 0,
       silverChangePercent: data.silverChangePercent ?? 0,
       silverChangePercentEgp: data.silverChangePercentEgp ?? 0,
-      // A response that omits the change fields is telling us it has no
-      // reading, which is not the same as a reading of zero.
+      // Only treat the deltas as unknown when the server sends no reading at
+      // all. A 0 from the server is taken at face value — when the metals
+      // market is closed the day genuinely has no move yet, and 0.00% is the
+      // correct thing to show rather than a placeholder.
       changesUnknown: data.goldChangePercentEgp === undefined && data.goldChangePercent === undefined,
       lastUpdated: data.lastUpdated ? new Date(data.lastUpdated) : new Date(),
       fxRates: data.fxRates ?? FALLBACK.fxRates,
