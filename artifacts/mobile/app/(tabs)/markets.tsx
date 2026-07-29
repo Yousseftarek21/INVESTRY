@@ -10,6 +10,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { pricesAreFresh } from '@/utils/pricesCache';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
 import { RE_PRICES, LAST_UPDATED, REAreaPrice } from '@/data/egypt-real-estate-prices';
@@ -43,7 +44,7 @@ function TabIcon({ spec, size, color }: { spec: TabIconSpec; size: number; color
 
 // ─── Live dot ──────────────────────────────────────────────────────────────────
 
-function LiveDot() {
+function LiveDot({ fresh }: { fresh: boolean }) {
   const colors = useColors();
   const t = useT();
   const opacity = useRef(new Animated.Value(1)).current;
@@ -55,10 +56,15 @@ function LiveDot() {
       ])
     ).start();
   }, []);
+  // Matches the Overview tab: prices rehydrated from the launch cache are real
+  // but can be minutes old, and calling that "LIVE" with a pulsing green dot
+  // would be a claim the data doesn't support. Goes grey and stops pulsing
+  // until a fresh fetch lands — normally well under a second.
+  const tint = fresh ? colors.green : colors.mutedForeground;
   return (
     <View style={ldSt.row}>
-      <Animated.View style={[ldSt.dot, { backgroundColor: colors.green, opacity }]} />
-      <Text style={[ldSt.text, { color: colors.green }]}>{t.liveLabel}</Text>
+      <Animated.View style={[ldSt.dot, { backgroundColor: tint, opacity: fresh ? opacity : 0.5 }]} />
+      <Text style={[ldSt.text, { color: tint }]}>{t.liveLabel}</Text>
     </View>
   );
 }
@@ -809,7 +815,7 @@ export default function MarketsScreen() {
             <View style={{ gap: 16, paddingTop: 16 }}>
               <View style={s.header}>
                 <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
-                <LiveDot />
+                <LiveDot fresh={pricesAreFresh(prices?.lastUpdated)} />
               </View>
               <TabBar active={activeTab} onChange={handleTabChange} />
             </View>
@@ -828,7 +834,7 @@ export default function MarketsScreen() {
           <View style={{ gap: 16 }}>
             <View style={s.header}>
               <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
-              <LiveDot />
+              <LiveDot fresh={pricesAreFresh(prices?.lastUpdated)} />
             </View>
             <TabBar active={activeTab} onChange={handleTabChange} />
           </View>

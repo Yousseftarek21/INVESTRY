@@ -14,6 +14,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -800,8 +801,10 @@ export default function AnalyticsScreen() {
             <Text style={[s.mktPrice, { color: colors.text }]}>
               {prices?.usdToEgp ? prices.usdToEgp.toFixed(2) : '—'}
             </Text>
-            <View style={[s.mktBadge, { backgroundColor: '#4A9EFF18' }]}>
-              <Text style={[s.mktBadgeTxt, { color: '#4A9EFF' }]}>{t.liveLabel}</Text>
+            {/* Same rule as Overview and Markets — don't badge cached prices
+                as LIVE just because they're real. */}
+            <View style={[s.mktBadge, { backgroundColor: (pricesAreFresh(prices?.lastUpdated) ? '#4A9EFF' : colors.mutedForeground) + '18' }]}>
+              <Text style={[s.mktBadgeTxt, { color: pricesAreFresh(prices?.lastUpdated) ? '#4A9EFF' : colors.mutedForeground }]}>{t.liveLabel}</Text>
             </View>
           </View>
 
