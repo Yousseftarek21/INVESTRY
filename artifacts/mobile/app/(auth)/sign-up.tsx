@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { FieldPlaceholder } from '@/components/FieldPlaceholder';
 import { useAppleAuthWithName } from '@/hooks/useAppleAuthWithName';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -342,15 +343,17 @@ export default function SignUpScreen() {
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.passwordLabel}</Text>
             <View style={[styles.inputWrap, { borderColor: errors.fields.password ? colors.red : colors.border, backgroundColor: colors.card }]}>
               <Feather name="lock" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { color: colors.text }]}
-                placeholder="Min 8 chars, uppercase, number, symbol"
-                placeholderTextColor={colors.mutedForeground}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPass}
-                autoComplete="new-password"
-              />
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholderTextColor={colors.mutedForeground}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPass}
+                  autoComplete="new-password"
+                />
+                <FieldPlaceholder text={t.passwordRulesPlaceholder} visible={password.length === 0} color={colors.mutedForeground} />
+              </View>
               <Pressable onPress={() => setShowPass(v => !v)} style={styles.eyeBtn}>
                 <Feather name={showPass ? 'eye' : 'eye-off'} size={16} color={colors.mutedForeground} />
               </Pressable>

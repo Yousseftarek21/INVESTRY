@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { FieldPlaceholder } from '@/components/FieldPlaceholder';
 import { useAppleAuthWithName } from '@/hooks/useAppleAuthWithName';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -242,15 +243,17 @@ export default function SignInScreen() {
                   <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.newPasswordLabel}</Text>
                   <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
                     <Feather name="lock" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      placeholder={t.newPasswordPlaceholder}
-                      placeholderTextColor={colors.mutedForeground}
-                      value={newPassword}
-                      onChangeText={setNewPassword}
-                      secureTextEntry={!showNewPass}
-                      autoComplete="new-password"
-                    />
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <TextInput
+                        style={[styles.input, { color: colors.text }]}
+                        placeholderTextColor={colors.mutedForeground}
+                        value={newPassword}
+                        onChangeText={setNewPassword}
+                        secureTextEntry={!showNewPass}
+                        autoComplete="new-password"
+                      />
+                      <FieldPlaceholder text={t.newPasswordPlaceholder} visible={newPassword.length === 0} color={colors.mutedForeground} />
+                    </View>
                     <Pressable onPress={() => setShowNewPass(v => !v)} style={styles.eyeBtn}>
                       <Feather name={showNewPass ? 'eye' : 'eye-off'} size={16} color={colors.mutedForeground} />
                     </Pressable>
@@ -398,15 +401,17 @@ export default function SignInScreen() {
             <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.passwordLabel}</Text>
             <View style={[styles.inputWrap, { borderColor: errors.fields.password ? colors.red : colors.border, backgroundColor: colors.card }]}>
               <Feather name="lock" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, { color: colors.text }]}
-                placeholder={t.passwordPlaceholder}
-                placeholderTextColor={colors.mutedForeground}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPass}
-                autoComplete="password"
-              />
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholderTextColor={colors.mutedForeground}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPass}
+                  autoComplete="password"
+                />
+                <FieldPlaceholder text={t.passwordPlaceholder} visible={password.length === 0} color={colors.mutedForeground} />
+              </View>
               <Pressable
                 onPress={() => setShowPass(v => !v)}
                 style={[styles.eyeBtn, { opacity: password.length > 0 ? 1 : 0 }]}
