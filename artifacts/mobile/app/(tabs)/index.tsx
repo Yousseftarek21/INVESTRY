@@ -699,12 +699,18 @@ export default function HomeScreen() {
                 // *Change fields describe an earlier moment and are zeroed on
                 // load. The total above still renders from those cached spot
                 // prices — a spot price stays valid, a daily delta does not.
-                <View style={[styles.plChip, { backgroundColor: colors.muted + '40', borderColor: colors.border }]}>
+                //
+                // Deliberately not a spinner. This resolves in roughly half a
+                // second, and an ActivityIndicator pulled the eye straight to
+                // the one tile that wasn't ready at the moment every other
+                // number had already appeared. A dimmed dash says "not yet"
+                // without competing for attention.
+                <View style={[styles.plChip, { backgroundColor: colors.muted + '22', borderColor: colors.border }]}>
                   <View style={styles.plTop}>
-                    <ActivityIndicator size="small" color={colors.mutedForeground} />
+                    <Feather name="clock" size={10} color={colors.mutedForeground + '99'} />
                     <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
                   </View>
-                  <Text style={[styles.plValue, { color: colors.mutedForeground }]}>···</Text>
+                  <Text style={[styles.plValue, { color: colors.mutedForeground + '88' }]}>—</Text>
                 </View>
               ) : (
                 <View style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}>
