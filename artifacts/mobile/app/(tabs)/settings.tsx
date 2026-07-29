@@ -25,7 +25,6 @@ import { useCash } from '@/context/CashContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { PremiumBadge } from '@/components/PremiumBadge';
 import { exportPortfolioAsCsv, exportPortfolioAsPdf } from '@/utils/exportPortfolio';
 import { apiFetch } from '@/utils/api';
 
@@ -345,11 +344,11 @@ const cm = StyleSheet.create({
 // ─── Profile hero card ────────────────────────────────────────────────────────
 
 function ProfileHero({
-  initials, fullName, email, verified, holdingsCount, onPress, plan, imageUrl,
+  initials, fullName, email, verified, holdingsCount, onPress, imageUrl,
 }: {
   initials: string; fullName: string; email: string;
   verified: boolean; holdingsCount: number; onPress: () => void;
-  plan?: 'pro' | null; imageUrl?: string;
+  imageUrl?: string;
 }) {
   const colors = useColors();
   const t = useT();
@@ -389,7 +388,6 @@ function ProfileHero({
         <View style={ph.info}>
           <View style={ph.nameRow}>
             <Text style={[ph.name, { color: colors.text }]} numberOfLines={1}>{fullName}</Text>
-            {plan === 'pro' && <PremiumBadge size="sm" />}
           </View>
           <Text style={[ph.email, { color: colors.mutedForeground }]} numberOfLines={1}>{email}</Text>
 
@@ -800,7 +798,6 @@ export default function SettingsScreen() {
   const { signOut } = useClerk();
   const { user } = useUser();
   const { getToken } = useAuth();
-  const { plan } = useSubscription();
   const {
     themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
     biometricLock, setBiometricLock, displayCurrency, setDisplayCurrency,
@@ -993,7 +990,6 @@ export default function SettingsScreen() {
             <ProfileHero
               initials={initials} fullName={profileName} email={email}
               verified={verified} holdingsCount={holdings.length}
-              plan={plan === 'pro' ? plan : null}
               imageUrl={user.imageUrl ?? undefined}
               onPress={() => { haptic(); setEditProfileOpen(true); }}
             />

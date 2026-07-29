@@ -22,23 +22,27 @@ export type Plan = 'free' | 'pro';
 export type BillingPeriod = 'monthly' | 'annual';
 
 export interface SubscriptionContextValue {
-  plan: Plan;
-  billingPeriod: BillingPeriod;
-  isSubscribed: boolean;
-  isPro: boolean;
   /**
-   * Whether feature *gates* should be bypassed right now — true if the user
-   * is genuinely Pro, OR the backend's temporary beta flag is on. Use this
-   * for PremiumGate/holding-limit checks. Never use this for anything that
-   * displays plan/badge status (that must stay tied to `isPro` alone) — the
-   * whole point of the beta flag is that free users keep seeing "Free"
-   * while everything still works.
+   * Always true. The app presents no paid tier and gates nothing.
+   *
+   * App Review rejected build 54 under Guideline 3.1.1: the app displayed a
+   * Pro plan — a "You're on the Pro plan" status, a Free-vs-Pro comparison,
+   * and PRO badges — while the plan itself was only purchasable on
+   * investry.app. An earlier attempt at this fixed only half the problem, by
+   * unlocking every feature but deliberately keeping plan/isPro live "for
+   * badge/display purposes". Apple objects to *presenting* paid content
+   * bought elsewhere, not merely to gating it, so the badges were enough to
+   * fail review a second time.
+   *
+   * plan / isPro / isSubscribed are therefore no longer exposed at all —
+   * nothing in the UI can render a tier that can't be bought in the app.
+   * Reinstating any of them requires shipping StoreKit In-App Purchase first.
    */
   featuresUnlocked: boolean;
   isLoading: boolean;
   /** Manually re-check entitlement against the backend (e.g. pull-to-refresh). */
   refresh: () => Promise<void>;
-  /** Opens the informational "About Pro" sheet — never a purchase flow. */
+  /** No-op. Kept so the (now unreachable) gate call sites still compile. */
   showPaywall: () => void;
 }
 
@@ -192,23 +196,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     _paywallCallback?.();
   }, []);
 
-  const isPro = plan === 'pro';
-
-  // The iOS build has no In-App Purchase — Apple's Guideline 3.1.1 forbids
-  // gating paid content behind a subscription that can only be bought
-  // elsewhere (this app's Pro plan is Stripe-only, sold on investry.app).
-  // Rather than build IAP, iOS just doesn't gate anything: every feature is
-  // unlocked for every iOS user, full stop. `isPro`/`plan` still reflect the
-  // real backend entitlement for badge/display purposes — only
-  // `featuresUnlocked` (what every gate/limit check actually reads) is
-  // forced true here.
-  const featuresUnlocked = Platform.OS === 'ios' ? true : (isPro || betaUnlockAll);
+  // Unconditional on every platform, not just iOS. No platform build has an
+  // in-app purchase path, so a Pro tier is unbuyable everywhere — and Google
+  // Play's payments policy takes the same view Apple does. One behaviour is
+  // also one thing to reason about.
+  const featuresUnlocked = true;
 
   return (
     <SubscriptionContext.Provider value={{
-      plan, billingPeriod,
-      isSubscribed: isPro,
-      isPro,
       featuresUnlocked,
       isLoading,
       refresh,

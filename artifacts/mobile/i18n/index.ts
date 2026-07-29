@@ -437,7 +437,7 @@ const en = {
   subFromYearlyPro: 'From 399.99 EGP/year',
   subFromYearlyProPlus: 'From 559.99 EGP/year',
   subSignInToUnlock: 'Sign In to Unlock',
-  subSignInToUnlockDesc: 'Included free during launch — just sign in to access this feature.',
+  subSignInToUnlockDesc: 'Sign in to access this feature.',
   subSignInButton: 'Sign In',
 
   // Footer
@@ -1527,7 +1527,7 @@ const ar: typeof en = {
   subFromYearlyPro: 'من 399.99 جنيه/سنة',
   subFromYearlyProPlus: 'من 559.99 جنيه/سنة',
   subSignInToUnlock: 'سجّل الدخول للوصول',
-  subSignInToUnlockDesc: 'متاحة مجاناً خلال الإطلاق — فقط سجّل الدخول لاستخدام هذه الميزة.',
+  subSignInToUnlockDesc: 'سجّل الدخول للوصول إلى هذه الميزة.',
   subSignInButton: 'تسجيل الدخول',
 
   // Footer

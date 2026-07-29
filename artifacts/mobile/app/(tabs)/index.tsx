@@ -27,7 +27,6 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { useAppSettings, DisplayCurrency } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
-import { PremiumBadge } from '@/components/PremiumBadge';
 import { Holding, MarketPrices } from '@/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -316,7 +315,6 @@ export default function HomeScreen() {
     egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
     return { ...rawPrices, egxPrices };
   }, [rawPrices, egxStocks]);
-  const { plan, isPro } = useSubscription();
   const { unreadCount: unreadNotifications } = useNotificationHistory();
   const { impact } = useHaptic();
   const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, visibleCurrencies, notifications, language } = useAppSettings();
@@ -531,7 +529,6 @@ export default function HomeScreen() {
             <Text style={[styles.greetingName, { color: colors.text }]} numberOfLines={1}>
               {firstName || t.thereGreeting}
             </Text>
-            {isPro && <PremiumBadge size="sm" />}
           </View>
         </View>
 

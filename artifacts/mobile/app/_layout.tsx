@@ -29,8 +29,7 @@ import { GoalsProvider } from "@/context/GoalsContext";
 import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { BiometricGate } from "@/components/BiometricGate";
-import { SubscriptionProvider, _registerPaywallCallback } from "@/context/SubscriptionContext";
-import { SubscriptionScreen } from "@/components/SubscriptionScreen";
+import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { useNotifications } from "@/hooks/useNotifications";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { getApiBaseUrl } from "@/utils/api";
@@ -205,23 +204,13 @@ function StatusBarManager() {
 }
 
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
-  const [paywallVisible, setPaywallVisible] = React.useState(false);
 
-  React.useEffect(() => {
-    _registerPaywallCallback(() => {
-      setPaywallVisible(true);
-    });
-  }, []);
 
   return (
     <>
       <StatusBarManager />
       <NotificationsInitializer />
       {children}
-      <SubscriptionScreen
-        visible={paywallVisible}
-        onClose={() => setPaywallVisible(false)}
-      />
     </>
   );
 }
