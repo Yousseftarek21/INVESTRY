@@ -35,6 +35,42 @@ function egxHoursInET(): string {
   return edt ? '04:00–08:30 EDT' : '03:00–07:30 EST';
 }
 
+// ─── Section switcher: Equity Funds | EGX Stocks ──────────────────────────────
+
+function EGXSectionTabs({
+  active, onChange,
+}: { active: 'stocks' | 'funds'; onChange: (s: 'stocks' | 'funds') => void }) {
+  const colors = useColors();
+  const t = useT();
+  const tabs: Array<{ key: 'funds' | 'stocks'; label: string }> = [
+    { key: 'funds',  label: t.egxSectionFunds },
+    { key: 'stocks', label: t.egxSectionStocks },
+  ];
+  return (
+    <View style={[est.wrap, { backgroundColor: colors.muted + '60' }]}>
+      {tabs.map(tab => {
+        const isActive = tab.key === active;
+        return (
+          <Pressable
+            key={tab.key}
+            onPress={() => onChange(tab.key)}
+            style={[est.pill, isActive && { backgroundColor: colors.card }]}
+          >
+            <Text style={[est.label, { color: isActive ? colors.text : colors.mutedForeground }]}>
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+const est = StyleSheet.create({
+  wrap: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 3 },
+  pill: { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: 'center' },
+  label: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+});
+
 // ─── Market Status Banner ─────────────────────────────────────────────────────
 
 function MarketStatusBanner() {
@@ -447,6 +483,7 @@ export function EGXMarket({
   const insets = useSafeAreaInsets();
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
   const { data: allStocks = [], isLoading } = useEGXMarket();
+  const [section, setSection] = useState<'stocks' | 'funds'>('stocks');
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');
   const sectorCounts = useMemo(() => getSectorCounts(), []);
@@ -491,6 +528,7 @@ export function EGXMarket({
 
   // ── Flatten all items into a single array for FlatList virtualization ──────
   const listData = useMemo((): ListItem[] => {
+    if (section === 'funds') return [];
     if (isLoading && allStocks.every(s => !s.isLive)) {
       return [1, 2, 3, 4, 5, 6].map(id => ({ kind: 'skeleton' as const, id }));
     }
@@ -515,7 +553,7 @@ export function EGXMarket({
       isLast: i === displayed.length - 1,
       isSectorEnd: false,
     }));
-  }, [isLoading, allStocks, grouped, displayed]);
+  }, [section, isLoading, allStocks, grouped, displayed]);
 
   const keyExtractor = useCallback((item: ListItem, index: number): string => {
     if (item.kind === 'skeleton') return `skel-${item.id}`;
@@ -540,32 +578,50 @@ export function EGXMarket({
     <View style={{ gap: 20 }}>
       {topHeader}
       <View style={em.listHeaderWrap}>
-        <MarketStatusBanner />
-        <SearchBar value={query} onChange={handleQuery} />
-        <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
-        <View style={em.resultRow}>
-          <Text style={[em.resultTxt, { color: colors.mutedForeground }]}>
-            {displayed.length} {displayed.length === 1 ? t.companyLabel : t.companiesLabel}
-            {resultSuffix}
-          </Text>
-          {hasLive ? (
-            <View style={[em.livePill, { backgroundColor: colors.green + '18' }]}>
-              <View style={[em.liveDot, { backgroundColor: colors.green }]} />
-              <Text style={[em.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
+        <EGXSectionTabs active={section} onChange={setSection} />
+        {section === 'stocks' && (
+          <>
+            <MarketStatusBanner />
+            <SearchBar value={query} onChange={handleQuery} />
+            <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
+            <View style={em.resultRow}>
+              <Text style={[em.resultTxt, { color: colors.mutedForeground }]}>
+                {displayed.length} {displayed.length === 1 ? t.companyLabel : t.companiesLabel}
+                {resultSuffix}
+              </Text>
+              {hasLive ? (
+                <View style={[em.livePill, { backgroundColor: colors.green + '18' }]}>
+                  <View style={[em.liveDot, { backgroundColor: colors.green }]} />
+                  <Text style={[em.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
+                </View>
+              ) : (
+                <View style={[em.livePill, { backgroundColor: colors.muted }]}>
+                  <Text style={[em.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
+                </View>
+              )}
             </View>
-          ) : (
-            <View style={[em.livePill, { backgroundColor: colors.muted }]}>
-              <Text style={[em.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
-            </View>
-          )}
-        </View>
+          </>
+        )}
       </View>
     </View>
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [topHeader, query, sector, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
+  ), [topHeader, section, query, sector, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
 
-  const ListEmpty = useMemo(() => (
-    !isLoading && displayed.length === 0 ? (
+  const ListEmpty = useMemo(() => {
+    if (section === 'funds') {
+      return (
+        <View style={[em.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="pie-chart" size={28} color={colors.mutedForeground} />
+          <Text style={[em.emptyTxt, { color: colors.mutedForeground }]}>
+            {t.egxFundsComingSoonTitle}
+          </Text>
+          <Text style={[em.emptySub, { color: colors.mutedForeground }]}>
+            {t.egxFundsComingSoonDesc}
+          </Text>
+        </View>
+      );
+    }
+    return !isLoading && displayed.length === 0 ? (
       <View style={[em.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Feather name="search" size={28} color={colors.mutedForeground} />
         <Text style={[em.emptyTxt, { color: colors.mutedForeground }]}>
@@ -575,16 +631,16 @@ export function EGXMarket({
           {t.egxSearchTip}
         </Text>
       </View>
-    ) : null
-  ), [isLoading, displayed.length, query, colors.card, colors.border, colors.mutedForeground]);
+    ) : null;
+  }, [section, isLoading, displayed.length, query, colors.card, colors.border, colors.mutedForeground, t]);
 
   const ListFooter = useMemo(() => (
-    !hasLive ? (
+    section === 'stocks' && !hasLive ? (
       <Text style={[em.webNote, { color: colors.mutedForeground }]}>
         {t.liveRequiresExpo}{'\n'}{t.webPreviewNote}
       </Text>
     ) : null
-  ), [hasLive, colors.mutedForeground]);
+  ), [section, hasLive, colors.mutedForeground]);
 
   return (
     <FlatList

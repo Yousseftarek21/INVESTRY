@@ -554,6 +554,10 @@ const en = {
   silverTroyOzSub: '31.10 g · XAG/EGP',
   // Currencies
   exchangeRatesVsEGP: 'EXCHANGE RATES vs. EGP',
+  egxSectionStocks: 'EGX Stocks',
+  egxSectionFunds: 'Equity Funds',
+  egxFundsComingSoonTitle: 'Equity funds are not tracked yet',
+  egxFundsComingSoonDesc: 'Egyptian mutual and equity funds are priced by daily NAV, not exchange trading, so they need a different data source than stocks. This section is reserved for that once it\'s added.',
   currencyUSD: 'US Dollar',
   currencyEUR: 'Euro',
   currencyGBP: 'British Pound',
@@ -1645,6 +1649,10 @@ const ar: typeof en = {
   silverTroyOzSub: '31.10 غ · XAG/EGP',
   // Currencies
   exchangeRatesVsEGP: 'أسعار الصرف مقابل الجنيه',
+  egxSectionStocks: 'أسهم البورصة',
+  egxSectionFunds: 'صناديق الأسهم',
+  egxFundsComingSoonTitle: 'صناديق الأسهم غير متاحة بعد',
+  egxFundsComingSoonDesc: 'صناديق الاستثمار المصرية تُسعَّر بصافي قيمة الأصول اليومي وليس بالتداول في البورصة، لذا تحتاج مصدر بيانات مختلفًا عن الأسهم. هذا القسم محجوز لذلك عند إضافته.',
   currencyUSD: 'الدولار الأمريكي',
   currencyEUR: 'اليورو',
   currencyGBP: 'الجنيه الإسترليني',
