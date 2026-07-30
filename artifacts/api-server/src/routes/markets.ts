@@ -382,6 +382,10 @@ const EGX_TICKERS = [
 ];
 
 // ─── Global stock ticker list — 8 symbols, fits Twelve Data free tier (8 credits/min) ───
+// `yahoo` is a historical field name — Yahoo Finance is no longer used anywhere
+// (2026-07-30); it's kept only because Twelve Data and Stooq both index by this
+// same plain ticker string, so renaming it would touch both without changing
+// behaviour. GLOBAL_EXCHANGE below is what the TradingView fetcher uses.
 
 const GLOBAL_TICKERS = [
   { yahoo: "SPY",   symbol: "SPY",   name: "S&P 500 (SPDR ETF)"       },
@@ -393,6 +397,13 @@ const GLOBAL_TICKERS = [
   { yahoo: "AMZN",  symbol: "AMZN",  name: "Amazon.com Inc."          },
   { yahoo: "TSLA",  symbol: "TSLA",  name: "Tesla Inc."               },
 ];
+
+// Verified live against TradingView's scanner (not guessed) — all 8 resolved
+// on 2026-07-30. SPY is an AMEX-listed ETF; the rest are NASDAQ.
+const GLOBAL_EXCHANGE: Record<string, string> = {
+  SPY: "AMEX", QQQ: "NASDAQ", AAPL: "NASDAQ", MSFT: "NASDAQ",
+  NVDA: "NASDAQ", GOOGL: "NASDAQ", AMZN: "NASDAQ", TSLA: "NASDAQ",
+};
 
 const TROY_OZ = 31.1034768;  // exact grams per troy ounce
 const PURITY: Record<string, number> = {
@@ -406,100 +417,12 @@ const FALLBACK_GOLD   = 4018;
 const FALLBACK_SILVER = 58.5;
 const FALLBACK_EGP    = 51.0;
 
-// Yahoo Finance spark endpoint
-const YF_SPARK_BASE = "https://query1.finance.yahoo.com/v7/finance/spark";
-
+// Generic browser identity, reused by Stooq's fetches — the only remaining caller.
 const BASE_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
   "Accept": "application/json",
   "Accept-Language": "en-US,en;q=0.9",
 };
-
-// ─── Yahoo Finance Session (crumb + cookie) ────────────────────────────────────
-// Yahoo Finance rate-limits unauthenticated API calls from shared IPs.
-// Establishing a session cookie (from fc.yahoo.com) + crumb bypasses this.
-
-interface YFSession { crumb: string; cookie: string; expiresAt: number }
-let _yfSession: YFSession | null = null;
-
-async function getYFSession(): Promise<YFSession | null> {
-  if (_yfSession && Date.now() < _yfSession.expiresAt) return _yfSession;
-
-  try {
-    // Step 1 — fc.yahoo.com issues the A3 session cookie via a redirect response.
-    // Use redirect:'manual' so we can read Set-Cookie before it's consumed.
-    const ctrl1 = new AbortController();
-    const t1 = setTimeout(() => ctrl1.abort(), 8000);
-    const fcRes = await fetch("https://fc.yahoo.com/", {
-      redirect: "manual",
-      headers: {
-        "User-Agent": BASE_HEADERS["User-Agent"],
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      signal: ctrl1.signal,
-    });
-    clearTimeout(t1);
-
-    // Collect Set-Cookie headers (Node 18+ Headers.getSetCookie() returns string[])
-    const rawCookies: string[] =
-      typeof (fcRes.headers as any).getSetCookie === "function"
-        ? (fcRes.headers as any).getSetCookie()
-        : [(fcRes.headers.get("set-cookie") ?? "")];
-
-    let cookie = "";
-    for (const rc of rawCookies) {
-      const m = rc.match(/\b(A3=[^;]+)/);
-      if (m) { cookie = m[1]; break; }
-    }
-    if (!cookie) {
-      for (const rc of rawCookies) {
-        const m = rc.match(/\b(A1=[^;]+)/);
-        if (m) { cookie = m[1]; break; }
-      }
-    }
-    if (!cookie) {
-      logger.warn("YF session: no A3/A1 cookie from fc.yahoo.com");
-      return null;
-    }
-
-    // Step 2 — exchange cookie for a crumb
-    const ctrl2 = new AbortController();
-    const t2 = setTimeout(() => ctrl2.abort(), 8000);
-    const crumbRes = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
-      headers: { ...BASE_HEADERS, Cookie: cookie },
-      signal: ctrl2.signal,
-    });
-    clearTimeout(t2);
-
-    if (!crumbRes.ok) {
-      logger.warn({ status: crumbRes.status }, "YF session: getcrumb failed");
-      return null;
-    }
-    const crumb = (await crumbRes.text()).trim();
-    if (!crumb || crumb.length > 30 || crumb.includes("<")) {
-      logger.warn("YF session: invalid crumb received");
-      return null;
-    }
-
-    _yfSession = { crumb, cookie, expiresAt: Date.now() + 20 * 60_000 }; // 20 min TTL
-    logger.info({ crumbLen: crumb.length }, "YF session established");
-    return _yfSession;
-  } catch (err) {
-    logger.warn({ err: err instanceof Error ? err.message : err }, "YF session: setup failed");
-    return null;
-  }
-}
-
-/** Build authenticated YF headers (with cookie + crumb appended to URL). */
-function yfAuthHeaders(session: YFSession | null): Record<string, string> {
-  const h: Record<string, string> = { ...BASE_HEADERS };
-  if (session?.cookie) h["Cookie"] = session.cookie;
-  return h;
-}
-function yfCrumbParam(session: YFSession | null): string {
-  return session ? `&crumb=${encodeURIComponent(session.crumb)}` : "";
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -921,81 +844,6 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   };
 }
 
-// ─── EGX Stocks via Yahoo Finance Spark endpoint ──────────────────────────────
-
-interface SparkMeta {
-  currency: string;
-  symbol: string;
-  regularMarketPrice?: number;
-  previousClose?: number;
-  chartPreviousClose?: number;
-}
-
-interface SparkResponse {
-  spark: {
-    result: Array<{
-      symbol: string;
-      response: Array<{
-        meta: SparkMeta;
-        indicators: {
-          quote: Array<{ close: (number | null)[] }>;
-        };
-      }>;
-    }> | null;
-  };
-}
-
-/** Fetch live quotes for a list of Yahoo tickers via the free spark endpoint, in batches of 10. */
-async function fetchTickersViaSpark(
-  tickers: { yahoo: string; symbol: string; name: string }[],
-  logLabel: string
-): Promise<EGXStockResponse[]> {
-  const session = await getYFSession();
-  const batches: { yahoo: string; symbol: string; name: string }[][] = [];
-  for (let i = 0; i < tickers.length; i += 10) batches.push(tickers.slice(i, i + 10));
-
-  const responses = await Promise.all(
-    batches.map(async batch =>
-      safeJson<SparkResponse>(
-        await safeFetch(
-          `${YF_SPARK_BASE}?symbols=${encodeURIComponent(batch.map(t => t.yahoo).join(","))}&range=5d&interval=1d${yfCrumbParam(session)}`,
-          { headers: yfAuthHeaders(session) }
-        )
-      )
-    )
-  );
-
-  const allResults = responses.flatMap(r => r?.spark?.result ?? []);
-
-  if (allResults.length === 0) {
-    logger.warn(`${logLabel}: Yahoo Finance spark returned no data`);
-    return [];
-  }
-
-  const byTicker = new Map(allResults.map(r => [r.symbol, r]));
-
-  return tickers.map(t => {
-    const r = byTicker.get(t.yahoo);
-    if (!r) return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
-
-    const resp = r.response?.[0];
-    if (!resp) return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
-
-    const meta = resp.meta;
-    const closes = (resp.indicators?.quote?.[0]?.close ?? []).filter((c): c is number => c !== null && c > 0);
-
-    const price = round2(meta.regularMarketPrice ?? closes[closes.length - 1] ?? 0);
-    const prevClose = round2(
-      meta.previousClose ?? meta.chartPreviousClose ?? closes[closes.length - 2] ?? 0
-    );
-
-    const change = prevClose > 0 ? round2(price - prevClose) : 0;
-    const changePercent = prevClose > 0 ? round2((change / prevClose) * 100) : 0;
-
-    return { symbol: t.symbol, name: t.name, price, previousClose: prevClose, change, changePercent };
-  });
-}
-
 // ─── EGX via TradingView Egypt scanner ────────────────────────────────────────
 // No filter — fetches ALL 292 EGX stocks in one request.
 // columns: [close, change_abs, change%, volume]
@@ -1087,46 +935,44 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
   return results;
 }
 
+// TradingView only. Yahoo Finance is removed by explicit product decision
+// (2026-07-30) — the same policy already applied to FX (see fetchUsdToEgp):
+// one trusted provider, no other source silently standing in for it. There
+// is no fallback tier left; if TradingView's Egypt scanner fails, EGX prices
+// come back empty rather than from a different, unvetted source.
 export async function fetchStocks(): Promise<EGXStockResponse[]> {
-  // 1. TradingView Egypt scanner — single request, correct prices, works from server
-  try {
-    const tvData = await fetchEGXViaTradingView();
-    if (tvData.some(s => s.price > 0)) {
-      logger.info({ count: tvData.length }, "EGX stocks via TradingView scanner");
-      return tvData;
-    }
-  } catch (err) {
-    logger.warn({ err }, "EGX: TradingView scanner failed");
-  }
-
-  // 2. YF spark fallback (all tickers)
-  return fetchTickersViaSpark(EGX_TICKERS, "EGX stocks");
+  const tvData = await fetchEGXViaTradingView();
+  logger.info({ count: tvData.length }, "EGX stocks via TradingView scanner");
+  return tvData;
 }
 
-/** Fetch US stock quotes via Yahoo Finance v7/finance/quote (authenticated with crumb+cookie). */
-async function fetchGlobalStocksViaQuote(): Promise<EGXStockResponse[]> {
-  const session = await getYFSession();
-  const symbols = GLOBAL_TICKERS.map(t => t.yahoo).join(",");
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&lang=en-US&region=US${yfCrumbParam(session)}`;
-  const res = await safeFetch(url, { headers: yfAuthHeaders(session) });
-  const data = await safeJson<{ quoteResponse: { result: any[] } }>(res, "Global stocks quote");
-  const results: any[] = data?.quoteResponse?.result ?? [];
-  if (results.length === 0) {
-    logger.warn("Global stocks: Yahoo Finance quote returned no data");
+/** Fetch US stock quotes via TradingView's America scanner. */
+async function fetchGlobalStocksViaTradingView(): Promise<EGXStockResponse[]> {
+  const tickers = GLOBAL_TICKERS.map(t => `${GLOBAL_EXCHANGE[t.symbol]}:${t.symbol}`);
+  const res = await safeFetch("https://scanner.tradingview.com/america/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
+    body: JSON.stringify({ symbols: { tickers }, columns: ["close", "change_abs", "change"] }),
+  });
+  const data = await safeJson<{ data: Array<{ s: string; d: [number, number, number] }> }>(
+    res, "Global stocks TradingView"
+  );
+  const rows = data?.data ?? [];
+  if (rows.length === 0) {
+    logger.warn("Global stocks: TradingView scanner returned no data");
     return [];
   }
-  const byTicker = new Map<string, any>(results.map((r: any) => [r.symbol as string, r]));
+  const bySymbol = new Map(rows.map(r => [r.s.split(":")[1], r.d]));
   return GLOBAL_TICKERS.map(t => {
-    const r = byTicker.get(t.yahoo);
-    if (!r?.regularMarketPrice) {
+    const d = bySymbol.get(t.symbol);
+    if (!d || !(d[0] > 0)) {
       return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
     }
+    const [close, changeAbs, changePct] = d;
     return {
       symbol: t.symbol, name: t.name,
-      price:         round2(r.regularMarketPrice),
-      previousClose: round2(r.regularMarketPreviousClose ?? 0),
-      change:        round2(r.regularMarketChange ?? 0),
-      changePercent: round2(r.regularMarketChangePercent ?? 0),
+      price: round2(close), previousClose: round2(close - changeAbs),
+      change: round2(changeAbs), changePercent: round2(changePct),
     };
   });
 }
@@ -1221,22 +1067,20 @@ async function fetchGlobalStocks(): Promise<EGXStockResponse[]> {
     logger.warn({ err }, "Global stocks: Twelve Data failed");
   }
 
-  // 2. YF quote with crumb/cookie
+  // 2. TradingView — same provider already trusted for gold, silver and EGX.
+  //    Replaces the Yahoo Finance quote/spark tiers removed here (2026-07-30):
+  //    no other provider silently stands in when Twelve Data is unavailable.
   try {
-    const data = await fetchGlobalStocksViaQuote();
+    const data = await fetchGlobalStocksViaTradingView();
     if (data.some(s => s.price > 0)) {
-      logger.info("Global stocks via YF quote");
+      logger.info("Global stocks via TradingView");
       return data;
     }
-  } catch { /* fall through */ }
+  } catch (err) {
+    logger.warn({ err }, "Global stocks: TradingView failed");
+  }
 
-  // 3. YF spark
-  try {
-    const data = await fetchTickersViaSpark(GLOBAL_TICKERS, "Global stocks spark");
-    if (data.some(s => s.price > 0)) return data;
-  } catch { /* fall through */ }
-
-  // 4. Stooq — independent provider, not IP-blocked by YF
+  // 3. Stooq — independent provider, free, no key
   try {
     const data = await fetchGlobalStocksViaStooq();
     if (data.length > 0) return data;
@@ -1278,25 +1122,40 @@ function sampledDates(totalDays: number, count: number): string[] {
   return result;
 }
 
-// Map our chart ranges to Yahoo Finance range/interval params for GC=F (Gold Futures)
-const YF_GOLD_RANGES: Record<string, { yfRange: string; yfInterval: string }> = {
-  '1W':  { yfRange: '5d',  yfInterval: '1d'  },
-  '1M':  { yfRange: '1mo', yfInterval: '1d'  },
-  '3M':  { yfRange: '3mo', yfInterval: '1wk' },
-  '1Y':  { yfRange: '1y',  yfInterval: '1wk' },
-  'ALL': { yfRange: '5y',  yfInterval: '1mo' },
+// Map our chart ranges to Twelve Data's interval/outputsize params for XAU/USD.
+// Twelve Data, not Yahoo (2026-07-30) — the same provider already used for
+// Global Stocks, reusing the same TWELVE_DATA_API_KEY rather than adding a
+// new dependency for this one chart feature.
+const TD_GOLD_RANGES: Record<string, { interval: string; outputsize: number }> = {
+  '1W':  { interval: '1day',   outputsize: 7   },
+  '1M':  { interval: '1day',   outputsize: 30  },
+  '3M':  { interval: '1week',  outputsize: 13  },
+  '1Y':  { interval: '1week',  outputsize: 52  },
+  'ALL': { interval: '1month', outputsize: 60  },
 };
 
-async function fetchGoldClosesFromYF(range: string): Promise<number[]> {
-  const yf = YF_GOLD_RANGES[range];
-  if (!yf) return [];
-  const session = await getYFSession();
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=${yf.yfRange}&interval=${yf.yfInterval}`;
-  const res = await safeFetch(url, { headers: yfAuthHeaders(session) });
-  if (!res?.ok) return [];
-  const data = await res.json() as { chart?: { result?: Array<{ indicators?: { quote?: Array<{ close?: (number | null)[] }> } }> } };
-  const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
-  return closes.filter((c): c is number => c !== null && c > 0);
+async function fetchGoldClosesFromTwelveData(range: string): Promise<number[]> {
+  const cfg = TD_GOLD_RANGES[range];
+  if (!cfg) return [];
+  const apiKey = process.env.TWELVE_DATA_API_KEY;
+  if (!apiKey) { logger.warn("TWELVE_DATA_API_KEY not set — gold history unavailable"); return []; }
+
+  const url = `https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${cfg.interval}&outputsize=${cfg.outputsize}&apikey=${apiKey}`;
+  const res = await safeFetch(url, { headers: { Accept: "application/json" } });
+  if (!res?.ok) { logger.warn({ status: res?.status }, "Twelve Data gold history: non-OK response"); return []; }
+
+  const data = await res.json() as { status?: string; code?: number; values?: Array<{ close: string }> };
+  if (data?.status === "error" || data?.code) {
+    logger.warn({ code: data?.code, message: (data as any)?.message }, "Twelve Data gold history: API error");
+    return [];
+  }
+
+  // Twelve Data returns values most-recent-first; the chart wants chronological order.
+  const closes = (data?.values ?? [])
+    .map(v => parseFloat(v.close))
+    .filter(c => !isNaN(c) && c > 0)
+    .reverse();
+  return closes;
 }
 
 async function buildGoldHistory(range: string): Promise<number[]> {
@@ -1325,7 +1184,7 @@ async function buildGoldHistory(range: string): Promise<number[]> {
   const cfg = HISTORY_CFG[range];
   if (!cfg) return [];
 
-  const closes = await fetchGoldClosesFromYF(range);
+  const closes = await fetchGoldClosesFromTwelveData(range);
   const valid = closes;
   if (valid.length < 2) return [];
 
