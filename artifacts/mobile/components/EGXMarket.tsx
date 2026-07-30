@@ -36,27 +36,43 @@ function egxHoursInET(): string {
 }
 
 // ─── Section switcher: Equity Funds | EGX Stocks ──────────────────────────────
+// Two outlined, tappable cards rather than a compact segmented control — this
+// splits two genuinely different sections (one has no data yet), so each
+// option gets enough visual weight to actually be seen and chosen, not just
+// a subtle toggle easy to miss above the stock list.
 
 function EGXSectionTabs({
   active, onChange,
 }: { active: 'stocks' | 'funds'; onChange: (s: 'stocks' | 'funds') => void }) {
   const colors = useColors();
   const t = useT();
-  const tabs: Array<{ key: 'funds' | 'stocks'; label: string }> = [
-    { key: 'funds',  label: t.egxSectionFunds },
-    { key: 'stocks', label: t.egxSectionStocks },
+  const tabs: Array<{ key: 'funds' | 'stocks'; label: string; icon: keyof typeof Feather.glyphMap }> = [
+    { key: 'funds',  label: t.egxSectionFunds,  icon: 'pie-chart'    },
+    { key: 'stocks', label: t.egxSectionStocks, icon: 'bar-chart-2'  },
   ];
   return (
-    <View style={[est.wrap, { backgroundColor: colors.muted + '60' }]}>
+    <View style={est.row}>
       {tabs.map(tab => {
         const isActive = tab.key === active;
         return (
           <Pressable
             key={tab.key}
             onPress={() => onChange(tab.key)}
-            style={[est.pill, isActive && { backgroundColor: colors.card }]}
+            style={[
+              est.card,
+              {
+                backgroundColor: isActive ? colors.primary + '14' : colors.card,
+                borderColor: isActive ? colors.primary : colors.border,
+              },
+            ]}
           >
-            <Text style={[est.label, { color: isActive ? colors.text : colors.mutedForeground }]}>
+            <View style={[est.iconWrap, { backgroundColor: (isActive ? colors.primary : colors.mutedForeground) + '18' }]}>
+              <Feather name={tab.icon} size={16} color={isActive ? colors.primary : colors.mutedForeground} />
+            </View>
+            <Text
+              style={[est.label, { color: isActive ? colors.primary : colors.text }]}
+              numberOfLines={1}
+            >
               {tab.label}
             </Text>
           </Pressable>
@@ -66,9 +82,13 @@ function EGXSectionTabs({
   );
 }
 const est = StyleSheet.create({
-  wrap: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 3 },
-  pill: { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: 'center' },
-  label: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  row: { flexDirection: 'row', gap: 10 },
+  card: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9,
+    paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1.5,
+  },
+  iconWrap: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  label: { flexShrink: 1, fontSize: 13.5, fontFamily: 'Inter_600SemiBold' },
 });
 
 // ─── Market Status Banner ─────────────────────────────────────────────────────
