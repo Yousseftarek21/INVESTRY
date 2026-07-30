@@ -59,9 +59,13 @@ const EGX_FALLBACK: EGXStock[] = [
 // nothing telling the user it wasn't — the same "confident-looking wrong
 // number" problem fixed everywhere else, just reachable here via total
 // network loss instead of a currency-mixing bug.
+// USD/EGP here is Wise, and only Wise — same rule as the server
+// (markets.ts). This runs directly from the user's own phone rather than
+// Render's datacenter, so it isn't subject to whatever intermittently blocks
+// Wise from Render; if anything it's the more reliable of the two paths.
 async function fetchMarketPricesDirect(): Promise<MarketPrices> {
   // TradingView CFD scanner — free, no key, same source the server uses
-  const [tvRes, erRes] = await Promise.allSettled([
+  const [tvRes, wiseRes] = await Promise.allSettled([
     fetch('https://scanner.tradingview.com/global/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Origin': 'https://www.tradingview.com' },
@@ -70,7 +74,7 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
         columns: ['close', 'change_abs', 'change'],
       }),
     }),
-    fetch('https://open.er-api.com/v6/latest/USD'),
+    fetch('https://wise.com/rates/live?source=USD&target=EGP'),
   ]);
 
   let goldUsd: number | null = null;
@@ -91,9 +95,9 @@ async function fetchMarketPricesDirect(): Promise<MarketPrices> {
   }
 
   let usdToEgp = FALLBACK.usdToEgp;
-  if (erRes.status === 'fulfilled' && erRes.value.ok) {
-    const d = await erRes.value.json();
-    if (d?.rates?.EGP > 0) usdToEgp = d.rates.EGP;
+  if (wiseRes.status === 'fulfilled' && wiseRes.value.ok) {
+    const d = await wiseRes.value.json() as { value?: number };
+    if (d?.value && d.value > 0) usdToEgp = d.value;
   }
 
   return {
