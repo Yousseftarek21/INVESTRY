@@ -397,103 +397,25 @@ const umb = StyleSheet.create({
 
 // ─── Main GlobalStocksMarket Component ────────────────────────────────────────
 
+// Only 8 tickers across 2 categories are wired up right now (see
+// data/global-stocks.ts) — too sparse to present as a finished section next
+// to EGX's 281 companies. Hidden behind this notice until real sector
+// coverage is built out; useGlobalStocks/GLOBAL_COMPANIES are untouched so
+// turning it back on later is a one-line change, not a rebuild.
 export function GlobalStocksMarket() {
   const colors = useColors();
   const t = useT();
-  const { data: allStocks = [], isLoading } = useGlobalStocks();
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<GlobalCategory>('All');
-  const counts = useMemo(() => getCategoryCounts(), []);
-
-  const handleQuery = useCallback((t: string) => {
-    setQuery(t);
-    if (t.length > 0) setCategory('All');
-  }, []);
-
-  const handleCategory = useCallback((c: GlobalCategory) => {
-    setCategory(c);
-    setQuery('');
-  }, []);
-
-  const displayed = useMemo(() => {
-    if (query.trim()) {
-      const matchedSet = new Set(searchGlobalCompanies(GLOBAL_COMPANIES, query).map(c => c.ticker));
-      return allStocks.filter(s => matchedSet.has(s.ticker));
-    }
-    if (category !== 'All') return allStocks.filter(s => s.category === category);
-    return allStocks;
-  }, [allStocks, query, category]);
-
-  const grouped = useMemo(() => {
-    if (query.trim() || category !== 'All') return null;
-    const map = new Map<string, GlobalStockLive[]>();
-    for (const s of displayed) {
-      if (!map.has(s.category)) map.set(s.category, []);
-      map.get(s.category)!.push(s);
-    }
-    return map;
-  }, [displayed, query, category]);
-
-  const hasLive = allStocks.some(s => s.isLive);
-
   return (
     <View style={gm.wrap}>
-      <USMarketStatusBanner />
-
-      <SearchBar value={query} onChange={handleQuery} />
-
-      <CategoryPills active={category} onChange={handleCategory} counts={counts} />
-
-      <View style={gm.resultRow}>
-        <Text style={[gm.resultTxt, { color: colors.mutedForeground }]}>
-          {displayed.length} {displayed.length === 1 ? t.tickerLabel : t.tickersLabel}
-          {query ? ` ${t.matchingLabel} "${query}"` : category !== 'All' ? ` ${t.inLabel} ${category}` : ` ${t.trackedLabel}`}
+      <View style={[gm.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Feather name="trending-up" size={28} color={colors.mutedForeground} />
+        <Text style={[gm.emptyTxt, { color: colors.mutedForeground }]}>
+          {t.globalStocksBetaTitle}
         </Text>
-        {hasLive ? (
-          <View style={[gm.livePill, { backgroundColor: colors.green + '18' }]}>
-            <View style={[gm.liveDot, { backgroundColor: colors.green }]} />
-            <Text style={[gm.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
-          </View>
-        ) : (
-          <View style={[gm.livePill, { backgroundColor: colors.muted }]}>
-            <Text style={[gm.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
-          </View>
-        )}
+        <Text style={[gm.emptySub, { color: colors.mutedForeground }]}>
+          {t.globalStocksBetaDesc}
+        </Text>
       </View>
-
-      {isLoading && allStocks.every(s => !s.isLive) ? (
-        <LoadingSkeleton />
-      ) : grouped ? (
-        <View style={{ gap: 20 }}>
-          {Array.from(grouped.entries()).map(([cat, stocks]) => (
-            <CategoryGroup key={cat} category={cat} stocks={stocks} />
-          ))}
-        </View>
-      ) : (
-        <View style={{ gap: 0 }}>
-          {displayed.map((s, i) => (
-            <StockCard key={s.ticker} stock={s} isLast={i === displayed.length - 1} />
-          ))}
-          {displayed.length === 0 && (
-            <View style={[gm.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="search" size={28} color={colors.mutedForeground} />
-              <Text style={[gm.emptyTxt, { color: colors.mutedForeground }]}>
-                {t.noTickersFound} "{query}"
-              </Text>
-              <Text style={[gm.emptySub, { color: colors.mutedForeground }]}>
-                {t.globalSearchTip}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      {!hasLive && (
-        <Text style={[gm.webNote, { color: colors.mutedForeground }]}>
-          {t.liveRequiresExpo}{'\n'}
-          {t.webPreviewNote}
-        </Text>
-      )}
     </View>
   );
 }
