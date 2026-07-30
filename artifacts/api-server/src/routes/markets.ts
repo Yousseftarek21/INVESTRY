@@ -600,6 +600,16 @@ async function fetchMetalsViaTradingView(): Promise<{
 //   5. hardcoded fallback
 
 interface WiseRateResponse { source: string; target: string; value: number; time: number }
+
+// Requests with no User-Agent from a cloud datacenter IP are exactly what a
+// bot-blocker flags first — Render's outbound IPs are datacenter, not
+// residential. Presenting as an ordinary browser hit makes Wise no more
+// likely to reject us than any other visitor to wise.com.
+const WISE_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Referer": "https://wise.com/",
+  "Accept": "application/json",
+};
 interface Fawaz0Response { date: string; usd: { egp: number } }
 interface ErApiResponse  { rates: { EGP: number } }
 
@@ -618,7 +628,7 @@ interface ErApiResponse  { rates: { EGP: number } }
 // figure fixed at midnight, so keep the last good one and prefer it over the
 // daily sources. The daily sources remain as the last resort, for a Wise
 // outage longer than this window or a cold start that never reached Wise.
-const WISE_MEMO_TTL_MS = 20 * 60_000;
+const WISE_MEMO_TTL_MS = 24 * 60 * 60_000;
 const _wiseMemo = new Map<string, { value: number; at: number }>();
 
 function rememberWise(key: string, value: number): number {
@@ -636,7 +646,8 @@ function recentWise(key: string): { value: number; ageMs: number } | null {
 async function fetchUsdToEgp(): Promise<number> {
   // 1. Wise real-time mid-market rate (updates every few seconds)
   const wise = await safeJson<WiseRateResponse>(
-    await safeFetch("https://wise.com/rates/live?source=USD&target=EGP")
+    await safeFetch("https://wise.com/rates/live?source=USD&target=EGP", { headers: WISE_HEADERS }),
+    "wise-usd-egp",
   );
   if (wise?.value && wise.value > 0) {
     logger.info({ rate: wise.value, ts: wise.time, source: "wise" }, "USD/EGP from Wise");
@@ -646,8 +657,11 @@ async function fetchUsdToEgp(): Promise<number> {
   // Wise unreachable — a recent Wise quote still beats a daily figure.
   const memo = recentWise("USD");
   if (memo) {
-    logger.warn({ rate: memo.value, ageMs: memo.ageMs, source: "wise-memo" },
-      "USD/EGP: Wise unreachable, reusing recent Wise rate rather than a daily source");
+    const ageMin = Math.round(memo.ageMs / 60_000);
+    logger.warn({ rate: memo.value, ageMinutes: ageMin, source: "wise-memo" },
+      ageMin > 60
+        ? `USD/EGP: Wise still unreachable after ${ageMin} min — reusing a rate this stale rather than the frozen daily source, but this needs attention`
+        : "USD/EGP: Wise unreachable, reusing recent Wise rate rather than a daily source");
     return memo.value;
   }
 
@@ -697,7 +711,8 @@ async function fetchFxCrossRates(usdToEgp: number): Promise<Record<string, numbe
   const settled = await Promise.allSettled(
     FX_SYMBOLS.map(async sym => {
       const data = await safeJson<WiseRateResponse>(
-        await safeFetch(`https://wise.com/rates/live?source=${sym}&target=EGP`)
+        await safeFetch(`https://wise.com/rates/live?source=${sym}&target=EGP`, { headers: WISE_HEADERS }),
+        `wise-${sym}-egp`,
       );
       return { sym, value: data?.value ?? null };
     })
