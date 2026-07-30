@@ -592,12 +592,13 @@ async function fetchMetalsViaTradingView(): Promise<{
 }
 
 // ─── USD → EGP exchange rate ───────────────────────────────────────────────────
-// CommodityPriceAPI has no FX pairs, so we fetch the mid-market rate from:
-//   1. Wise   — real-time mid-market (same as XE / Google Finance)
-//   2. fawazahmed0 (jsdelivr CDN)  — daily, no key
-//   3. fawazahmed0 (CF pages CDN)  — daily, no key (alternate CDN)
-//   4. open.er-api.com             — daily, no key (last resort)
-//   5. hardcoded fallback
+// CommodityPriceAPI has no FX pairs, so this comes from Wise's mid-market
+// rate — and ONLY Wise, by explicit product decision (2026-07-30). Earlier
+// versions fell through to fawazahmed0 and open.er-api.com, both once-a-day
+// figures, on any Wise failure; that produced a rate frozen since midnight
+// while still labelled as today's. There is no other-provider fallback left:
+// when Wise is unreachable the app shows a remembered Wise reading, however
+// old, rather than a different source's number.
 
 interface WiseRateResponse { source: string; target: string; value: number; time: number }
 
@@ -610,9 +611,6 @@ const WISE_HEADERS = {
   "Referer": "https://wise.com/",
   "Accept": "application/json",
 };
-interface Fawaz0Response { date: string; usd: { egp: number } }
-interface ErApiResponse  { rates: { EGP: number } }
-
 
 // ─── Wise short-term memo ─────────────────────────────────────────────────────
 //
@@ -643,112 +641,88 @@ function recentWise(key: string): { value: number; ageMs: number } | null {
   return ageMs <= WISE_MEMO_TTL_MS ? { value: m.value, ageMs } : null;
 }
 
+// USD/EGP now comes from Wise, and ONLY Wise — by explicit product decision.
+// The previous chain fell through to fawazahmed0 (a once-a-day figure) and
+// then open.er-api.com whenever Wise failed even briefly. Both are gone: no
+// other provider's number is ever shown as if it were today's rate. When
+// Wise is unreachable, the fallback is Wise itself — a recently remembered
+// Wise reading — not a different source with a different number.
 async function fetchUsdToEgp(): Promise<number> {
-  // 1. Wise real-time mid-market rate (updates every few seconds)
-  const wise = await safeJson<WiseRateResponse>(
-    await safeFetch("https://wise.com/rates/live?source=USD&target=EGP", { headers: WISE_HEADERS }),
-    "wise-usd-egp",
-  );
-  if (wise?.value && wise.value > 0) {
-    logger.info({ rate: wise.value, ts: wise.time, source: "wise" }, "USD/EGP from Wise");
-    return rememberWise("USD", wise.value);
+  async function tryWise(): Promise<number | null> {
+    const wise = await safeJson<WiseRateResponse>(
+      await safeFetch("https://wise.com/rates/live?source=USD&target=EGP", { headers: WISE_HEADERS }),
+      "wise-usd-egp",
+    );
+    return wise?.value && wise.value > 0 ? wise.value : null;
   }
 
-  // Wise unreachable — a recent Wise quote still beats a daily figure.
+  // One immediate retry — a single dropped request or a transient edge-node
+  // hiccup shouldn't be enough to fall back to a stale memo.
+  const rate = (await tryWise()) ?? (await tryWise());
+  if (rate !== null) {
+    logger.info({ rate, source: "wise" }, "USD/EGP from Wise");
+    return rememberWise("USD", rate);
+  }
+
+  // Wise unreachable on both attempts — reuse the last rate Wise itself gave
+  // us, however old, rather than ever substituting another provider's number.
   const memo = recentWise("USD");
   if (memo) {
     const ageMin = Math.round(memo.ageMs / 60_000);
     logger.warn({ rate: memo.value, ageMinutes: ageMin, source: "wise-memo" },
       ageMin > 60
-        ? `USD/EGP: Wise still unreachable after ${ageMin} min — reusing a rate this stale rather than the frozen daily source, but this needs attention`
-        : "USD/EGP: Wise unreachable, reusing recent Wise rate rather than a daily source");
+        ? `USD/EGP: Wise still unreachable after ${ageMin} min — reusing this stale Wise rate, no other source will be substituted, but this needs attention`
+        : "USD/EGP: Wise unreachable, reusing the last rate Wise gave us");
     return memo.value;
   }
 
-  // 2. fawazahmed0 via jsDelivr CDN (daily, highly accurate)
-  const fawaz1 = await safeJson<Fawaz0Response>(
-    await safeFetch("https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json")
-  );
-  if (fawaz1?.usd?.egp && fawaz1.usd.egp > 0) {
-    logger.warn({ rate: fawaz1.usd.egp, source: "fawazahmed0-jsdelivr" },
-      "USD/EGP: falling back to a DAILY rate — this will not move until tomorrow");
-    return fawaz1.usd.egp;
-  }
-
-  // 3. fawazahmed0 via Cloudflare Pages CDN (alternate)
-  const fawaz2 = await safeJson<Fawaz0Response>(
-    await safeFetch("https://latest.currency-api.pages.dev/v1/currencies/usd.json")
-  );
-  if (fawaz2?.usd?.egp && fawaz2.usd.egp > 0) {
-    logger.warn({ rate: fawaz2.usd.egp, source: "fawazahmed0-pages" },
-      "USD/EGP: falling back to a DAILY rate — this will not move until tomorrow");
-    return fawaz2.usd.egp;
-  }
-
-  // 4. open.er-api.com (daily)
-  const er = await safeJson<ErApiResponse>(
-    await safeFetch("https://open.er-api.com/v6/latest/USD")
-  );
-  if (er?.rates?.EGP && er.rates.EGP > 0) {
-    logger.warn({ rate: er.rates.EGP, source: "open.er-api" },
-      "USD/EGP: falling back to a DAILY rate — this will not move until tomorrow");
-    return er.rates.EGP;
-  }
-
+  // No Wise reading has ever succeeded (a brand new deploy that has never
+  // once reached Wise). There's truly nothing to fall back to yet.
+  logger.error("USD/EGP: Wise has never succeeded on this instance — using the hardcoded constant until it does");
   return FALLBACK_EGP;
 }
 
 // ─── FX cross rates via Wise (same source as USD/EGP) ────────────────────────
-// Primary: Wise live mid-market rates for each currency pair directly vs EGP.
-// Fallback: open.er-api.com cross-rates for any pair Wise doesn't return.
+// Wise live mid-market rate for each pair directly vs EGP — only Wise.
 
 const FX_SYMBOLS = ['EUR', 'GBP', 'TRY', 'CNY', 'CHF', 'QAR', 'SAR', 'AED', 'KWD'] as const;
 
-interface ErApiFullResponse { rates: Record<string, number> }
+// Same rule as USD/EGP: Wise only. No pair is ever filled in from
+// open.er-api.com. A pair with no Wise reading and no memo is simply left out
+// of the returned object — every caller already treats a missing rate as
+// "unknown" (`fx.EUR ?? 0` and friends), which is honest; a computed number
+// from a different provider, silently standing in for Wise, is not.
+async function fetchFxCrossRates(_usdToEgp: number): Promise<Record<string, number>> {
+  async function tryWiseFor(sym: string): Promise<number | null> {
+    const data = await safeJson<WiseRateResponse>(
+      await safeFetch(`https://wise.com/rates/live?source=${sym}&target=EGP`, { headers: WISE_HEADERS }),
+      `wise-${sym}-egp`,
+    );
+    return data?.value && data.value > 0 ? data.value : null;
+  }
 
-async function fetchFxCrossRates(usdToEgp: number): Promise<Record<string, number>> {
-  // Fetch all pairs from Wise in parallel — same endpoint used for USD/EGP
   const settled = await Promise.allSettled(
-    FX_SYMBOLS.map(async sym => {
-      const data = await safeJson<WiseRateResponse>(
-        await safeFetch(`https://wise.com/rates/live?source=${sym}&target=EGP`, { headers: WISE_HEADERS }),
-        `wise-${sym}-egp`,
-      );
-      return { sym, value: data?.value ?? null };
-    })
+    FX_SYMBOLS.map(async sym => ({ sym, value: (await tryWiseFor(sym)) ?? (await tryWiseFor(sym)) }))
   );
 
   const out: Record<string, number> = {};
-  const missing: string[] = [];
 
   for (const r of settled) {
-    if (r.status === 'fulfilled' && r.value.value && r.value.value > 0) {
-      out[r.value.sym] = Math.round(r.value.value * 10000) / 10000;
-      rememberWise(r.value.sym, r.value.value);
-      logger.info({ sym: r.value.sym, rate: r.value.value, source: "wise" }, `FX from Wise`);
-    } else if (r.status === 'fulfilled') {
-      // Same reasoning as USD/EGP: a recent Wise cross rate beats a daily one.
-      const memo = recentWise(r.value.sym);
-      if (memo) {
-        out[r.value.sym] = Math.round(memo.value * 10000) / 10000;
-        logger.warn({ sym: r.value.sym, rate: memo.value, ageMs: memo.ageMs, source: "wise-memo" },
-          "FX: Wise unreachable, reusing recent Wise rate");
-      } else {
-        missing.push(r.value.sym);
-      }
+    if (r.status !== 'fulfilled') continue;
+    const { sym, value } = r.value;
+    if (value !== null) {
+      out[sym] = Math.round(value * 10000) / 10000;
+      rememberWise(sym, value);
+      logger.info({ sym, rate: value, source: "wise" }, `FX from Wise`);
+      continue;
     }
-  }
-
-  // Fallback to open.er-api.com for any pair Wise didn't return
-  if (missing.length > 0) {
-    logger.warn({ missing }, "FX Wise fallback to open.er-api.com for some pairs");
-    const er = await safeJson<ErApiFullResponse>(
-      await safeFetch("https://open.er-api.com/v6/latest/USD")
-    );
-    const raw = er?.rates ?? {};
-    for (const sym of missing) {
-      const r = raw[sym];
-      if (r && r > 0) out[sym] = Math.round((usdToEgp / r) * 10000) / 10000;
+    const memo = recentWise(sym);
+    if (memo) {
+      out[sym] = Math.round(memo.value * 10000) / 10000;
+      logger.warn({ sym, rate: memo.value, ageMs: memo.ageMs, source: "wise-memo" },
+        "FX: Wise unreachable, reusing the last rate Wise gave us");
+    } else {
+      logger.error({ sym }, "FX: Wise has never succeeded for this pair on this instance — omitting it");
     }
   }
 
