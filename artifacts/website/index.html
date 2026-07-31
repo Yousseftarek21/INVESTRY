@@ -808,7 +808,15 @@
         <div class="price-card pro">
           <span class="pro-badge">⭐ <span data-i18n="mostPopular">Most Popular</span></span>
           <p class="price-plan">Pro</p>
-          <div class="price-period-toggle">
+          <!-- Pro is free for everyone during launch (PRO_FREE_DURING_LAUNCH
+               in the script below) — the real EGP price only matters once
+               billing turns back on, so the monthly/annual toggle is hidden
+               and proAmount/proUnit are overwritten with "Free" text instead
+               of removing them, so the existing JS keeps working untouched.
+               To restore real pricing: delete this comment + the
+               style="display:none" below, and set PRO_FREE_DURING_LAUNCH =
+               false. -->
+          <div class="price-period-toggle" style="display:none;">
             <button type="button" id="periodMonthly" class="active" data-i18n="periodMonthly">Monthly</button>
             <button type="button" id="periodAnnual" data-i18n="periodAnnual">Annual · Save 33%</button>
           </div>
@@ -831,11 +839,7 @@
 
       <p class="price-status-note" id="pricingStatusNote"></p>
       <p class="trust-line">
-        <span data-i18n="trustStripe">🔒 Secure payments powered by Stripe</span>
-        <span class="sep">·</span>
-        <span data-i18n="trustCancel">Cancel anytime</span>
-        <span class="sep">·</span>
-        <span data-i18n="trustFees">No hidden fees</span>
+        <span data-i18n="trustStripe">🎉 Free for everyone during launch — no card required</span>
       </p>
     </div>
   </section>
@@ -1061,9 +1065,7 @@
       planProF7d: "Never miss a move that matters to you.",
       planProF8t: "Recurring Income Tracking",
       planProF8d: "Salary, dividends, and rent — tracked automatically.",
-      trustStripe: "🔒 Secure payments powered by Stripe",
-      trustCancel: "Cancel anytime",
-      trustFees: "No hidden fees",
+      trustStripe: "🎉 Free for everyone during launch — no card required",
       whyProTitle: "Why investors choose Pro",
       whyProSub: "Six reasons serious investors don't stay on Free for long.",
       whyPro1t: "Advanced Analytics", whyPro1d: "Professional portfolio insights, not just totals.",
@@ -1090,7 +1092,7 @@
       comparePriority: "Priority",
       faqTitle: "FAQs",
       faq1q: "How do subscriptions work?",
-      faq1a: "Pro is billed monthly or annually through Stripe, on this website. Your subscription applies to your account and unlocks Pro instantly in the app too.",
+      faq1a: "Pro is free for everyone right now, during launch — no card, no billing. Once paid plans resume, Pro will be billed monthly or annually through Stripe on this website, and apply instantly to your account in the app too.",
       faq2q: "Can I cancel anytime?",
       faq2a: "Yes. Manage or cancel your subscription anytime from this page — no calls, no forms, no waiting.",
       faq3q: "Will my data stay safe?",
@@ -1099,7 +1101,10 @@
       faq4a: "Yes, anytime from the billing portal — your next invoice is prorated automatically.",
       faq5q: "What happens if my subscription expires?",
       faq5a: "You're moved back to the Free plan automatically. Nothing you've already entered is ever deleted.",
-      subscribeBtn: "Unlock Pro",
+      subscribeBtn: "Get Pro Free",
+      proFreeAmount: "Free",
+      proFreeUnit: "during launch — no card required",
+      proFreeNote: "Pro is free for everyone right now — download the app and sign in to get started, no payment needed.",
       manageBillingBtn: "Manage billing",
       currentPlanPro: "You're on the Pro plan",
       signInToSubscribe: "Sign in to subscribe",
@@ -1181,9 +1186,7 @@
       planProF7d: "متفوتش أي تحرك سعر مهم بالنسبالك.",
       planProF8t: "تتبع الدخل المتكرر",
       planProF8d: "المرتب، والتوزيعات، والإيجار — بيتابعوا تلقائيًا.",
-      trustStripe: "🔒 مدفوعات آمنة عن طريق Stripe",
-      trustCancel: "ألغِ في أي وقت",
-      trustFees: "من غير رسوم مخفية",
+      trustStripe: "🎉 مجاني للجميع طول فترة الإطلاق — من غير كارت",
       whyProTitle: "ليه المستثمرين بيختاروا Pro",
       whyProSub: "ست أسباب ليه المستثمر الجاد ملوش لفة كتير على الخطة المجانية.",
       whyPro1t: "تحليلات متقدمة", whyPro1d: "رؤى احترافية للمحفظة، مش مجرد أرقام إجمالية.",
@@ -1210,7 +1213,7 @@
       comparePriority: "أولوية",
       faqTitle: "الأسئلة الشائعة",
       faq1q: "الاشتراكات بتشتغل إزاي؟",
-      faq1a: "خطة Pro بتتحاسب شهريًا أو سنويًا عن طريق Stripe، من على الموقع ده. اشتراكك بيتفعل على حسابك، وبيفتح Pro فورًا في التطبيق كمان.",
+      faq1a: "دلوقتي، Pro مجاني للجميع طول فترة الإطلاق — من غير كارت ولا حساب. لما الاشتراك المدفوع يرجع تاني، هيتحاسب شهريًا أو سنويًا عن طريق Stripe من على الموقع ده، ويتفعل فورًا على حسابك في التطبيق كمان.",
       faq2q: "أقدر ألغي في أي وقت؟",
       faq2a: "أيوه. تقدر تدير أو تلغي اشتراكك في أي وقت من الصفحة دي — من غير مكالمات أو استمارات أو انتظار.",
       faq3q: "بياناتي هتفضل آمنة؟",
@@ -1219,7 +1222,10 @@
       faq4a: "أيوه، في أي وقت من بوابة الفوترة — الفاتورة الجاية بتتحسب تلقائيًا حسب الفرق.",
       faq5q: "لو الاشتراك خلص هيحصل إيه؟",
       faq5a: "هترجع للخطة المجانية تلقائيًا. أي حاجة سجلتها قبل كده متتحذفش خالص.",
-      subscribeBtn: "فعّل Pro",
+      subscribeBtn: "فعّل Pro مجانًا",
+      proFreeAmount: "مجاني",
+      proFreeUnit: "طول فترة الإطلاق — من غير كارت",
+      proFreeNote: "خطة Pro مجانية للجميع دلوقتي — حمّل التطبيق وسجّل دخول عشان تبدأ، من غير أي دفع.",
       manageBillingBtn: "إدارة الفوترة",
       currentPlanPro: "أنت مشترك في خطة Pro",
       signInToSubscribe: "سجّل الدخول للاشتراك",
@@ -1410,6 +1416,12 @@
   var selectedPeriod = 'monthly';
   var PRICES = { monthly: '49.99 EGP', annual: '399.99 EGP' };
 
+  // Pro is free for everyone right now (matches the mobile app, which
+  // currently unlocks every feature for every user). While this is true,
+  // the CTA must never reach Stripe — flip to false once real billing
+  // resumes, which also un-hides the period toggle removed above.
+  var PRO_FREE_DURING_LAUNCH = true;
+
   function currentLang() {
     return translations[document.documentElement.lang] ? document.documentElement.lang : 'en';
   }
@@ -1442,6 +1454,12 @@
 
   function updatePeriodDisplay() {
     var t = translations[currentLang()];
+    if (PRO_FREE_DURING_LAUNCH) {
+      proAmount.textContent = t.proFreeAmount;
+      proUnit.textContent = t.proFreeUnit;
+      proSavingsNote.style.display = 'none';
+      return;
+    }
     periodMonthlyBtn.classList.toggle('active', selectedPeriod === 'monthly');
     periodAnnualBtn.classList.toggle('active', selectedPeriod === 'annual');
     proAmount.textContent = PRICES[selectedPeriod];
@@ -1463,6 +1481,13 @@
   function renderPricingState() {
     var t = translations[currentLang()];
     pricingStatusNote.textContent = '';
+
+    if (PRO_FREE_DURING_LAUNCH) {
+      proCta.textContent = t.subscribeBtn;
+      pricingStatusNote.textContent = t.proFreeNote;
+      proCta.disabled = false;
+      return;
+    }
 
     if (!window.Clerk || !window.Clerk.user) {
       proCta.textContent = t.subscribeBtn;
@@ -1487,6 +1512,10 @@
     var t = translations[currentLang()];
     if (!window.Clerk || !window.Clerk.user) {
       window.Clerk.openSignIn({ afterSignInUrl: window.location.href, afterSignUpUrl: window.location.href });
+      return;
+    }
+    if (PRO_FREE_DURING_LAUNCH) {
+      pricingStatusNote.textContent = t.proFreeNote;
       return;
     }
     proCta.disabled = true;
