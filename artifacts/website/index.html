@@ -242,19 +242,22 @@
   }
   .cta-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 40px; }
   .btn-store {
-    display: inline-flex; align-items: center; gap: 10px;
+    display: inline-flex; align-items: center; gap: 12px;
     background: var(--text); color: #fff;
-    padding: 15px 24px; border-radius: 12px;
-    font-family: 'Inter', sans-serif;
-    font-weight: 600; font-size: 15px; text-decoration: none;
+    padding: 10px 20px; border-radius: 12px;
+    text-decoration: none;
     transition: opacity 0.15s ease;
   }
-  html[dir="rtl"] .btn-store { font-family: 'Cairo', sans-serif; }
   .btn-store:hover { opacity: 0.85; }
-  .btn-store.disabled {
-    opacity: 1; cursor: default; pointer-events: none;
-    background: var(--card); color: var(--muted); border: 1px solid var(--border);
+  .btn-store-text { display: flex; flex-direction: column; line-height: 1.2; }
+  .btn-store-caption {
+    font-family: 'Inter', sans-serif; font-weight: 400; font-size: 11px;
+    letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.75);
   }
+  .btn-store-title {
+    font-family: 'Inter', sans-serif; font-weight: 600; font-size: 21px; color: #fff;
+  }
+  html[dir="rtl"] .btn-store-caption, html[dir="rtl"] .btn-store-title { font-family: 'Cairo', sans-serif; }
   .btn-ghost {
     display: inline-flex; align-items: center; gap: 8px;
     color: var(--text); border-bottom: 1.5px solid var(--accent);
@@ -627,12 +630,13 @@
       <h1 class="headline" data-i18n-html="headline">Track All Investments.<br><span class="accent">One Portfolio</span></h1>
       <p class="sub" data-i18n="sub">Gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.</p>
       <div class="cta-row">
-        <!-- App Store link isn't live yet (app hasn't cleared review) — swap
-             back to <a class="btn-store" href="https://apps.apple.com/app/id6787447052"> once it's actually published. -->
-        <span class="btn-store disabled" aria-disabled="true">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.94-.07 1.85-.62 2.83-.71 1.44-.11 2.51.47 3.24 1.43-2.94 1.76-2.35 5.62.32 6.71-.5 1.29-1.15 2.58-2.47 3.74zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.32-2.12 4.05-3.74 4.25z"/></svg>
-          <span data-i18n="comingSoon">Coming soon to the App Store</span>
-        </span>
+        <a class="btn-store" href="https://apps.apple.com/app/id6787447052" target="_blank" rel="noopener">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.94-.07 1.85-.62 2.83-.71 1.44-.11 2.51.47 3.24 1.43-2.94 1.76-2.35 5.62.32 6.71-.5 1.29-1.15 2.58-2.47 3.74zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.32-2.12 4.05-3.74 4.25z"/></svg>
+          <span class="btn-store-text">
+            <span class="btn-store-caption" data-i18n="storeCaption">Download on the</span>
+            <span class="btn-store-title" data-i18n="storeTitle">App Store</span>
+          </span>
+        </a>
         <a class="btn-ghost" href="#features"><span data-i18n="seeIncluded">See what's included</span> <span class="arrow">→</span></a>
       </div>
     </div>
@@ -964,12 +968,13 @@
   <section class="final-cta wrap">
     <h2 data-i18n="finalCta">Know your real net worth.</h2>
     <div class="cta-row">
-      <!-- App Store link isn't live yet (app hasn't cleared review) — swap
-           back to <a class="btn-store" href="https://apps.apple.com/app/id6787447052"> once it's actually published. -->
-      <span class="btn-store disabled" aria-disabled="true">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.94-.07 1.85-.62 2.83-.71 1.44-.11 2.51.47 3.24 1.43-2.94 1.76-2.35 5.62.32 6.71-.5 1.29-1.15 2.58-2.47 3.74zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.32-2.12 4.05-3.74 4.25z"/></svg>
-        <span data-i18n="comingSoon">Coming soon to the App Store</span>
-      </span>
+      <a class="btn-store" href="https://apps.apple.com/app/id6787447052" target="_blank" rel="noopener">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.94-.07 1.85-.62 2.83-.71 1.44-.11 2.51.47 3.24 1.43-2.94 1.76-2.35 5.62.32 6.71-.5 1.29-1.15 2.58-2.47 3.74zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.32-2.12 4.05-3.74 4.25z"/></svg>
+        <span class="btn-store-text">
+          <span class="btn-store-caption" data-i18n="storeCaption">Download on the</span>
+          <span class="btn-store-title" data-i18n="storeTitle">App Store</span>
+        </span>
+      </a>
     </div>
   </section>
 
@@ -1104,7 +1109,8 @@
       eyebrow: "Starting in Egypt, expanding across the region",
       headline: 'Track All Investments.<br><span class="accent">One Portfolio</span>',
       sub: "Gold, silver, EGX stocks, real estate, fixed income and cash — your entire portfolio, tracked together, priced live.",
-      comingSoon: "Coming soon to the App Store",
+      storeCaption: "Download on the",
+      storeTitle: "App Store",
       seeIncluded: "See what's included",
       totalValue: "Total Portfolio Value",
       assetRealEstate: "Real Estate", assetGold: "Gold", assetStocks: "EGX Stocks",
@@ -1223,7 +1229,8 @@
       eyebrow: "بنبدأ في مصر، وبنتوسع في المنطقة",
       headline: 'تابع كل استثماراتك.<br><span class="accent">في محفظة واحدة</span>',
       sub: "الذهب والفضة، وأسهم البورصة المصرية، والعقارات، والشهادات، والكاش — محفظتك بالكامل، في مكان واحد، بأسعار حية.",
-      comingSoon: "قريبًا على App Store",
+      storeCaption: "حمّله الآن من",
+      storeTitle: "App Store",
       seeIncluded: "شوف اللي جوه",
       totalValue: "إجمالي قيمة المحفظة",
       assetRealEstate: "عقارات", assetGold: "ذهب", assetStocks: "أسهم البورصة",
