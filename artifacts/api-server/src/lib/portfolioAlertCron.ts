@@ -3,6 +3,7 @@ import { db, usersTable, portfolioSnapshotsTable } from "@workspace/db";
 import { computeUserPortfolioValue } from "./portfolioValue";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
+import { cairoDateString } from "./cairoDate";
 
 // Checked every 30 minutes throughout the day — each check compares
 // today's live value against yesterday's close and may push again if the
@@ -15,11 +16,6 @@ const CHANGE_THRESHOLD_PCT = 1;
 // formula change comparing against a snapshot taken under the old formula)
 // rather than an actual move, so it's safer to skip the push than mislead.
 const SANITY_MAX_PCT = 20;
-
-function cairoDateString(): string {
-  // en-CA gives YYYY-MM-DD directly.
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
-}
 
 function generateId(): string {
   return `snap_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;

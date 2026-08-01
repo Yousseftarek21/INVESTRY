@@ -105,3 +105,48 @@ export async function computeUserPortfolioValue(userId: string): Promise<number>
     return sum + computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
   }, 0);
 }
+
+export type AllocationClass = "gold" | "silver" | "stock" | "realEstate" | "personalAsset" | "fixedIncome";
+
+/**
+ * Same value universe as computeUserPortfolioValue (cash excluded), but
+ * bucketed by asset class instead of summed into one scalar — the input
+ * portfolioDriftCron needs to compare each class's live share of the
+ * portfolio against the user's stored targets. Mirrors the bucketing in
+ * artifacts/mobile/app/(tabs)/analytics.tsx's `sm` useMemo exactly, so a
+ * class's server-computed % matches what the user sees on their own
+ * Analytics screen.
+ */
+export async function computeUserPortfolioAllocation(
+  userId: string,
+): Promise<{ totalValue: number; byClass: Record<AllocationClass, number> }> {
+  const [holdingRows, prices, egxStocks] = await Promise.all([
+    db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
+    fetchPrices(),
+    fetchStocks().catch(() => []),
+  ]);
+
+  const egxPrices: Record<string, number> = {};
+  for (const s of egxStocks) egxPrices[s.symbol] = s.price;
+
+  const byClass: Record<AllocationClass, number> = {
+    gold: 0, silver: 0, stock: 0, realEstate: 0, personalAsset: 0, fixedIncome: 0,
+  };
+  let totalValue = 0;
+
+  for (const row of holdingRows) {
+    const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
+    const value = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
+    totalValue += value;
+    switch (holding.type) {
+      case "gold": byClass.gold += value; break;
+      case "silver": byClass.silver += value; break;
+      case "stock": byClass.stock += value; break;
+      case "real_estate": byClass.realEstate += value; break;
+      case "personal_asset": byClass.personalAsset += value; break;
+      case "fixed_income": byClass.fixedIncome += value; break;
+    }
+  }
+
+  return { totalValue, byClass };
+}

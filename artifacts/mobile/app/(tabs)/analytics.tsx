@@ -19,6 +19,8 @@ import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useInflationRate } from '@/hooks/useInflationRate';
+import { usePortfolioBenchmark } from '@/hooks/usePortfolioBenchmark';
+import { usePortfolioTargets, AllocationClass } from '@/hooks/usePortfolioTargets';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
@@ -226,6 +228,48 @@ const pod = StyleSheet.create({
   val: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   badge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
   badgeTxt: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+});
+
+// ─── Drift row (Rebalancing card) ──────────────────────────────────────────────
+
+function DriftRow({ label, icon, color, currentPct, targetPct }: {
+  label: string; icon: React.ReactNode; color: string; currentPct: number; targetPct: number;
+}) {
+  const colors = useColors();
+  const t = useT();
+  const drift = currentPct - targetPct;
+  const isOff = Math.abs(drift) >= 10;
+  const badgeColor = isOff ? colors.red : colors.green;
+  return (
+    <View style={dr.row}>
+      <View style={[dr.iconBox, { backgroundColor: color + '1A' }]}>{icon}</View>
+      <View style={dr.body}>
+        <Text style={[dr.label, { color: colors.text }]}>{label}</Text>
+        <Text style={[dr.sub, { color: colors.mutedForeground }]}>
+          {currentPct.toFixed(0)}% · target {targetPct.toFixed(0)}%
+        </Text>
+      </View>
+      <View style={[dr.badge, { backgroundColor: badgeColor + '18' }]}>
+        <Text style={[dr.badgeTxt, { color: badgeColor }]}>
+          {isOff ? t.rebalancingDrifted(Math.abs(drift).toFixed(0)) : t.rebalancingOnTrack}
+        </Text>
+      </View>
+    </View>
+  );
+}
+const dr = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 9 },
+  iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  body: { flex: 1, minWidth: 0, gap: 1 },
+  label: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  sub: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  badgeTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  emptyCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 16, borderWidth: 1, padding: 14,
+  },
+  emptyTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 });
 
 // ─── Insight cards (bordered left accent) ─────────────────────────────────────
@@ -547,6 +591,8 @@ export default function AnalyticsScreen() {
 
   const { snapshots } = usePortfolioSnapshots(sm.totalValue);
   const { data: inflation } = useInflationRate();
+  const { data: benchmark } = usePortfolioBenchmark();
+  const { configured: targetsConfigured, targets } = usePortfolioTargets();
   const startOfDayValue = sm.totalValue - sm.todayGain;
   const rawTodaySamples = useIntradaySamples(sm.totalValue, startOfDayValue);
   // Keep the chart's start/end always freshly consistent with the "Today"
@@ -611,6 +657,32 @@ export default function AnalyticsScreen() {
       icon: { lib: 'mci' as const, name: 'bank-transfer' },
     },
   ], [sm, colors, t]);
+
+  // ── Rebalancing / drift ──────────────────────────────────────────────────────
+  const driftRows = useMemo(() => {
+    if (!targetsConfigured || sm.totalValue <= 0) return [];
+    const classValue: Record<AllocationClass, number> = {
+      gold: sm.goldV, silver: sm.silverV, stock: sm.stockV,
+      realEstate: sm.reV, personalAsset: sm.paV, fixedIncome: sm.fiV,
+    };
+    const meta: Record<AllocationClass, { label: string; color: string; icon: React.ReactNode }> = {
+      gold: { label: t.gold, color: colors.primary, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.primary} /> },
+      silver: { label: t.silver, color: colors.silverColor, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.silverColor} /> },
+      stock: { label: t.egxStocksAllocLabel, color: '#4A9EFF', icon: <Feather name="bar-chart-2" size={16} color="#4A9EFF" /> },
+      realEstate: { label: t.realEstate, color: '#A47FCA', icon: <MaterialCommunityIcons name="home-city" size={16} color="#A47FCA" /> },
+      personalAsset: { label: t.personalAssetsAllocLabel, color: '#E08E45', icon: <MaterialCommunityIcons name="tag-multiple" size={16} color="#E08E45" /> },
+      fixedIncome: { label: t.fixedIncome, color: '#22C55E', icon: <MaterialCommunityIcons name="bank-transfer" size={16} color="#22C55E" /> },
+    };
+    return (Object.keys(targets) as AllocationClass[])
+      .filter(k => targets[k] !== undefined)
+      .map(k => ({
+        key: k,
+        ...meta[k],
+        currentPct: (classValue[k] / sm.totalValue) * 100,
+        targetPct: targets[k] as number,
+      }))
+      .sort((a, b) => Math.abs(b.currentPct - b.targetPct) - Math.abs(a.currentPct - a.targetPct));
+  }, [targetsConfigured, targets, sm, colors, t]);
 
   // ── Insights ──────────────────────────────────────────────────────────────────
   const insights = useMemo(() => {
@@ -963,11 +1035,69 @@ export default function AnalyticsScreen() {
               )}
             </View>
 
+            {/* ── Community comparison ─────────────────────────────────── */}
+            {benchmark?.available && (
+              <View style={s.section}>
+                <SLabel
+                  icon="users"
+                  title={t.communityComparisonLabel}
+                  sub={t.communityComparisonSub(String(benchmark.sampleSize))}
+                />
+                <InsightCard
+                  icon={(benchmark.userPctChange ?? 0) >= (benchmark.averagePctChange ?? 0) ? 'trending-up' : 'trending-down'}
+                  color={(benchmark.userPctChange ?? 0) >= (benchmark.averagePctChange ?? 0) ? colors.green : '#F59E0B'}
+                  text={
+                    (benchmark.userPctChange ?? 0) >= (benchmark.averagePctChange ?? 0)
+                      ? t.benchmarkBeating(
+                          `${(benchmark.userPctChange ?? 0) >= 0 ? '+' : ''}${(benchmark.userPctChange ?? 0).toFixed(1)}`,
+                          (benchmark.averagePctChange ?? 0).toFixed(1),
+                        )
+                      : t.benchmarkLagging(
+                          `${(benchmark.userPctChange ?? 0) >= 0 ? '+' : ''}${(benchmark.userPctChange ?? 0).toFixed(1)}`,
+                          (benchmark.averagePctChange ?? 0).toFixed(1),
+                        )
+                  }
+                />
+              </View>
+            )}
+
             {/* ── Allocation bars ──────────────────────────────────────── */}
             {sm.totalValue > 0 && (
               <View style={s.section}>
                 <SLabel icon="pie-chart" title={t.assetAllocationLabel} sub={`${allocSegs.filter(seg => seg.value > 0).length} ${t.classesCount}`} />
                 <AllocationBar segments={allocSegs} />
+              </View>
+            )}
+
+            {/* ── Rebalancing ──────────────────────────────────────────── */}
+            {sm.totalValue > 0 && (
+              <View style={s.section}>
+                <SLabel
+                  icon="target"
+                  title={t.rebalancingLabel}
+                  sub={targetsConfigured ? t.rebalancingSub(String(driftRows.length)) : undefined}
+                />
+                {!targetsConfigured ? (
+                  <Pressable
+                    style={[dr.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => { impact(); router.push('/target-allocation' as any); }}
+                  >
+                    <View style={[dr.iconBox, { backgroundColor: colors.primary + '1A' }]}>
+                      <Feather name="target" size={16} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={[dr.emptyTitle, { color: colors.text }]}>{t.rebalancingEmptyTitle}</Text>
+                      <Text style={[dr.sub, { color: colors.mutedForeground }]}>{t.rebalancingEmptyHint}</Text>
+                    </View>
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                  </Pressable>
+                ) : (
+                  <View style={[s.performersList, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14 }]}>
+                    {driftRows.map(r => (
+                      <DriftRow key={r.key} label={r.label} icon={r.icon} color={r.color} currentPct={r.currentPct} targetPct={r.targetPct} />
+                    ))}
+                  </View>
+                )}
               </View>
             )}
 

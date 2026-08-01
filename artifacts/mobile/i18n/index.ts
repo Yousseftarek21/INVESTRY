@@ -945,6 +945,36 @@ const en = {
   weeklyReportDesc: 'End-of-week performance recap',
   managePriceAlerts: 'Manage Price Alerts',
   managePriceAlertsDesc: 'Create and view your active alerts',
+  rebalancingAlertsLabel: 'Rebalancing Alerts',
+  rebalancingAlertsDesc: 'Set targets & get drift alerts',
+
+  // Target Allocation screen
+  targetAllocationTitle: 'Target Allocation',
+  targetAllocationHint: "Set a target % for each asset class. We'll alert you if a class drifts more than 10 percentage points from its target.",
+  targetSumLabel: (sum: string) => `Total: ${sum}%` as string,
+  targetSumWarning: 'Targets should add up to 100% or less',
+  driftAlertsToggleLabel: 'Alert me on drift',
+  driftAlertsToggleDesc: 'Push notification when a class drifts past target',
+  saveTargets: 'Save Targets',
+  targetsSaved: 'Targets saved',
+  targetsSaveFailed: 'Failed to save targets — try again',
+  targetsLoadFailed: 'Failed to load your targets',
+
+  // Analytics — Community comparison
+  communityComparisonLabel: 'Community Comparison',
+  communityComparisonSub: (sampleSize: string) => `vs ${sampleSize} other investors` as string,
+  benchmarkBeating: (userPct: string, avgPct: string) => `You're up ${userPct}% this month — the average Investry user is up ${avgPct}%` as string,
+  benchmarkLagging: (userPct: string, avgPct: string) => `You're ${userPct}% this month — the average Investry user is up ${avgPct}%` as string,
+  benchmarkUnavailable: 'Check back once more investors have a month of history — this needs real data from other accounts, not an estimate.',
+
+  // Analytics — Rebalancing
+  rebalancingLabel: 'Rebalancing',
+  rebalancingSub: (count: string) => `${count} class${count !== '1' ? 'es' : ''} tracked` as string,
+  rebalancingEmptyTitle: 'No targets set',
+  rebalancingEmptyHint: 'Set target allocations to get alerted when your portfolio drifts.',
+  rebalancingEmptyBtn: 'Set Targets',
+  rebalancingOnTrack: 'On track',
+  rebalancingDrifted: (pp: string) => `${pp}pp off target` as string,
 
   // Price Alerts screen
   addPriceAlert: 'Add Alert',
@@ -2042,6 +2072,36 @@ const ar: typeof en = {
   weeklyReportDesc: 'ملخص الأداء في نهاية الأسبوع',
   managePriceAlerts: 'إدارة تنبيهات الأسعار',
   managePriceAlertsDesc: 'أنشئ وشاهد تنبيهاتك النشطة',
+  rebalancingAlertsLabel: 'تنبيهات إعادة التوازن',
+  rebalancingAlertsDesc: 'حدد أهدافك واحصل على تنبيهات الانحراف',
+
+  // Target Allocation screen
+  targetAllocationTitle: 'التوزيع المستهدف',
+  targetAllocationHint: 'حدد نسبة مستهدفة لكل فئة أصول. سننبهك إذا انحرفت أي فئة أكثر من 10 نقاط مئوية عن هدفها.',
+  targetSumLabel: (sum: string) => `الإجمالي: ${sum}%` as string,
+  targetSumWarning: 'يجب ألا يتجاوز مجموع الأهداف 100%',
+  driftAlertsToggleLabel: 'نبهني عند الانحراف',
+  driftAlertsToggleDesc: 'إشعار عند انحراف فئة عن هدفها',
+  saveTargets: 'حفظ الأهداف',
+  targetsSaved: 'تم حفظ الأهداف',
+  targetsSaveFailed: 'فشل حفظ الأهداف — حاول مرة أخرى',
+  targetsLoadFailed: 'فشل تحميل أهدافك',
+
+  // Analytics — Community comparison
+  communityComparisonLabel: 'مقارنة المجتمع',
+  communityComparisonSub: (sampleSize: string) => `مقابل ${sampleSize} مستثمر آخر` as string,
+  benchmarkBeating: (userPct: string, avgPct: string) => `أنت مرتفع ${userPct}% هذا الشهر — متوسط مستخدمي إنفستري مرتفع ${avgPct}%` as string,
+  benchmarkLagging: (userPct: string, avgPct: string) => `أنت عند ${userPct}% هذا الشهر — متوسط مستخدمي إنفستري مرتفع ${avgPct}%` as string,
+  benchmarkUnavailable: 'تحقق لاحقًا عندما يكون لدى مستثمرين آخرين سجل شهر كامل — هذا يحتاج بيانات حقيقية من حسابات أخرى وليس تقديرًا.',
+
+  // Analytics — Rebalancing
+  rebalancingLabel: 'إعادة التوازن',
+  rebalancingSub: (count: string) => `${count} فئة متابَعة` as string,
+  rebalancingEmptyTitle: 'لا توجد أهداف محددة',
+  rebalancingEmptyHint: 'حدد توزيعًا مستهدفًا لتنبيهك عند انحراف محفظتك.',
+  rebalancingEmptyBtn: 'تحديد الأهداف',
+  rebalancingOnTrack: 'على المسار الصحيح',
+  rebalancingDrifted: (pp: string) => `${pp} نقطة عن الهدف` as string,
 
   // Price Alerts screen
   addPriceAlert: 'إضافة تنبيه',
