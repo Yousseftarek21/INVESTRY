@@ -517,22 +517,24 @@ async function fetchMetalsViaTradingView(): Promise<{
 }
 
 // ─── USD → EGP exchange rate ───────────────────────────────────────────────────
-// CommodityPriceAPI has no FX pairs, so this comes from Wise's mid-market
-// rate — and ONLY Wise, by explicit product decision (2026-07-30). Earlier
-// versions fell through to fawazahmed0 and open.er-api.com, both once-a-day
-// figures, on any Wise failure; that produced a rate frozen since midnight
-// while still labelled as today's. There is no other-provider fallback left:
-// when Wise is unreachable the app shows a remembered Wise reading, however
-// old, rather than a different source's number.
+// CIB Egypt's own posted rate is the primary source (explicit product
+// decision, 2026-08-02, superseding the 2026-07-30 "Wise only" call) — it's
+// a real Egyptian bank's rate, which is what most users actually mean by
+// "the dollar rate," and unlike Wise it doesn't go stale over the weekend
+// (Egypt's banking week runs Sun-Thu; Wise's EGP feed tracks the global FX
+// week, closed Sat/Sun UTC, so it just repeats Friday's close all day
+// Sunday — reachable and "correct" by its own clock, just not
+// representative of Egypt's actual rate that day).
 //
-// One deliberate, narrow exception (2026-08-02): Wise's EGP feed tracks the
-// global FX week (closed Sat/Sun UTC), so it simply repeats Friday's close
-// all day Sunday — not a failure, Wise is reachable and "correct" by its own
-// clock, just not representative of Egypt's actual rate that day. Egypt's
-// banking week runs Sun-Thu, so CIB Egypt publishes a live rate on Sundays.
-// fetchCibRates() below is used ONLY on Cairo-Sundays, and only ever as a
-// same-day live reading — never a stale memo of its own — so this can't
-// reintroduce the frozen-number problem the 2026-07-30 decision fixed.
+// Wise remains the fallback for whenever CIB is unreachable (it sits behind
+// Incapsula bot-protection — see fetchCibRates() below — so this happens
+// occasionally, not hypothetically). On every day except Sunday, Wise's own
+// number is live and accurate, so a CIB miss falls straight through to it.
+// On a Sunday specifically, a CIB miss instead prefers the last remembered
+// rate over Wise's known-stale weekend number — see the Sunday branch in
+// fetchUsdToEgp() below. Only if nothing has ever succeeded does the app
+// fall back to a hardcoded constant (FALLBACK_EGP) — never a third
+// provider's number standing in unannounced.
 
 interface WiseRateResponse { source: string; target: string; value: number; time: number }
 
@@ -558,13 +560,14 @@ interface CibRatesResponse { rates: { currencyID: string; buyRate: number; sellR
 // a few seconds apart were enough to get blocked). A bank's own posted rate
 // also has no reason to be re-checked every 30s the way a live market quote
 // does. This cache does double duty: it keeps CIB's actual request rate low
-// enough to stay under Incapsula's radar, and it's the reason the Sunday
-// figure doesn't need a fresh network round-trip on every price refresh.
+// enough to stay under Incapsula's radar, and it's the reason the primary
+// FX figure doesn't need a fresh network round-trip on every price refresh.
 const cibRatesCache = makeCache<Record<string, number>>(5 * 60_000);
 
-// CIB Egypt's public currency-converter API (no key required) — used only
-// as the Sunday override above. Returns the bank's own buy/sell rates per
-// currency; we take the midpoint as the closest equivalent to Wise's single
+// CIB Egypt's public currency-converter API (no key required) — the primary
+// FX source, tried before Wise on every request (see the policy comment
+// above fetchUsdToEgp). Returns the bank's own buy/sell rates per currency;
+// we take the midpoint as the closest equivalent to Wise's single
 // mid-market figure everywhere else in this file.
 async function fetchCibRates(): Promise<Record<string, number> | null> {
   const cached = cibRatesCache.get();
@@ -613,33 +616,33 @@ function recentWise(key: string): { value: number; ageMs: number } | null {
   return ageMs <= WISE_MEMO_TTL_MS ? { value: m.value, ageMs } : null;
 }
 
-// USD/EGP now comes from Wise, and ONLY Wise — by explicit product decision.
-// The previous chain fell through to fawazahmed0 (a once-a-day figure) and
-// then open.er-api.com whenever Wise failed even briefly. Both are gone: no
-// other provider's number is ever shown as if it were today's rate. When
-// Wise is unreachable, the fallback is Wise itself — a recently remembered
-// Wise reading — not a different source with a different number.
+// USD/EGP now comes from CIB Egypt first, every day — explicit product
+// decision (2026-08-02, superseding the earlier "Wise only" call). CIB is
+// a real Egyptian bank's own posted rate, which is what most users actually
+// care about; Wise remains the fallback for whenever CIB is unavailable
+// (rate-limited by Incapsula, network error, etc.), not a second primary
+// source silently standing in for it.
 async function fetchUsdToEgp(): Promise<number> {
-  // Sunday-only: see the comment above this section for why. A CIB miss
-  // prefers the last remembered rate (almost always CIB's own last good
-  // reading, since a success just wrote it) over falling through to Wise —
-  // that fallback used to jump straight to Wise's frozen, different number
-  // on any CIB hiccup, which visibly bounced the displayed rate up and down
-  // as Incapsula intermittently blocked the request. Only a Sunday with no
-  // successful CIB read yet (or no memo at all) reaches the Wise chain.
+  const cib = await fetchCibRates();
+  const usd = cib?.USD;
+  if (usd && usd > 0) {
+    logger.info({ rate: usd, source: "cib" }, "USD/EGP from CIB");
+    return rememberWise("USD", usd);
+  }
+
+  // CIB unavailable this cycle. Sunday is the one day Wise is known to be
+  // structurally stale (it tracks the global FX week, closed Sat/Sun UTC,
+  // so it just repeats Friday's close all day) rather than actually broken
+  // — falling through to it there would swap in a number that's wrong, not
+  // just different, so on Sundays specifically prefer the last remembered
+  // rate over a fresh Wise read. Every other day Wise is a live, accurate
+  // rate in its own right, so falling straight through to it is correct.
   if (isCairoSunday()) {
-    const cib = await fetchCibRates();
-    const usd = cib?.USD;
-    if (usd && usd > 0) {
-      logger.info({ rate: usd, source: "cib-sunday" }, "USD/EGP from CIB (Sunday override — Wise repeats Friday's close on the global FX weekend)");
-      return rememberWise("USD", usd);
-    }
     const memo = recentWise("USD");
     if (memo) {
-      logger.warn({ rate: memo.value, ageMs: memo.ageMs }, "USD/EGP: Sunday CIB override unavailable — reusing last remembered rate instead of jumping to Wise");
+      logger.warn({ rate: memo.value, ageMs: memo.ageMs }, "USD/EGP: CIB unavailable on a Sunday — reusing last remembered rate instead of Wise's stale weekend number");
       return memo.value;
     }
-    logger.warn("USD/EGP: Sunday CIB override unavailable and no memo yet — falling back to Wise");
   }
 
   async function tryWise(): Promise<number | null> {
@@ -654,25 +657,25 @@ async function fetchUsdToEgp(): Promise<number> {
   // hiccup shouldn't be enough to fall back to a stale memo.
   const rate = (await tryWise()) ?? (await tryWise());
   if (rate !== null) {
-    logger.info({ rate, source: "wise" }, "USD/EGP from Wise");
+    logger.info({ rate, source: "wise-fallback" }, "USD/EGP from Wise (CIB unavailable)");
     return rememberWise("USD", rate);
   }
 
-  // Wise unreachable on both attempts — reuse the last rate Wise itself gave
-  // us, however old, rather than ever substituting another provider's number.
+  // Both CIB and Wise unreachable — reuse the last rate either one gave us,
+  // however old, rather than ever substituting a fabricated number.
   const memo = recentWise("USD");
   if (memo) {
     const ageMin = Math.round(memo.ageMs / 60_000);
-    logger.warn({ rate: memo.value, ageMinutes: ageMin, source: "wise-memo" },
+    logger.warn({ rate: memo.value, ageMinutes: ageMin, source: "memo" },
       ageMin > 60
-        ? `USD/EGP: Wise still unreachable after ${ageMin} min — reusing this stale Wise rate, no other source will be substituted, but this needs attention`
-        : "USD/EGP: Wise unreachable, reusing the last rate Wise gave us");
+        ? `USD/EGP: both CIB and Wise unreachable for ${ageMin} min — reusing this stale rate, no fabricated source will be substituted, but this needs attention`
+        : "USD/EGP: both CIB and Wise unreachable, reusing the last rate either gave us");
     return memo.value;
   }
 
-  // No Wise reading has ever succeeded (a brand new deploy that has never
-  // once reached Wise). There's truly nothing to fall back to yet.
-  logger.error("USD/EGP: Wise has never succeeded on this instance — using the hardcoded constant until it does");
+  // Neither source has ever succeeded (a brand new deploy). There's truly
+  // nothing to fall back to yet.
+  logger.error("USD/EGP: neither CIB nor Wise has ever succeeded on this instance — using the hardcoded constant until one does");
   return FALLBACK_EGP;
 }
 
@@ -687,15 +690,17 @@ const FX_SYMBOLS = ['EUR', 'GBP', 'TRY', 'CNY', 'CHF', 'QAR', 'SAR', 'AED', 'KWD
 // "unknown" (`fx.EUR ?? 0` and friends), which is honest; a computed number
 // from a different provider, silently standing in for Wise, is not.
 async function fetchFxCrossRates(_usdToEgp: number): Promise<Record<string, number>> {
-  // Same Sunday-only exception as USD/EGP above. CIB only quotes a subset of
-  // FX_SYMBOLS (EUR, GBP, CHF, SAR, KWD as of writing) — TRY/CNY/QAR/AED
-  // fall straight through to Wise below exactly as on any other day.
-  const cibRates = isCairoSunday() ? await fetchCibRates() : null;
+  // CIB first, every day — same policy as USD/EGP above. CIB only quotes a
+  // subset of FX_SYMBOLS (EUR, GBP, CHF, SAR, KWD as of writing); TRY/CNY/
+  // QAR/AED always come from Wise since CIB has no equivalent for them.
+  const cibRates = await fetchCibRates();
   // Distinguishes "CIB doesn't quote this pair" (cibRates came back fine,
   // just without this symbol — normal, use Wise) from "the whole CIB fetch
-  // failed" (Incapsula block, network error — prefer holding each symbol's
-  // last remembered value over a fresh Wise read that would visibly jump).
-  const cibFetchFailed = isCairoSunday() && cibRates === null;
+  // failed" (Incapsula block, network error). Only the latter, and only on
+  // a Sunday (the one day Wise's own number is known-stale rather than
+  // just different — see fetchUsdToEgp), prefers each symbol's last
+  // remembered value over a fresh Wise read.
+  const cibFetchFailed = cibRates === null;
 
   async function tryWiseFor(sym: string): Promise<number | null> {
     const data = await safeJson<WiseRateResponse>(
@@ -708,12 +713,12 @@ async function fetchFxCrossRates(_usdToEgp: number): Promise<Record<string, numb
   const settled = await Promise.allSettled(
     FX_SYMBOLS.map(async sym => {
       const cibValue = cibRates?.[sym];
-      if (cibValue && cibValue > 0) return { sym, value: cibValue, source: "cib-sunday" as const };
-      if (cibFetchFailed) {
+      if (cibValue && cibValue > 0) return { sym, value: cibValue, source: "cib" as const };
+      if (cibFetchFailed && isCairoSunday()) {
         const memo = recentWise(sym);
-        if (memo) return { sym, value: memo.value, source: "cib-sunday" as const };
+        if (memo) return { sym, value: memo.value, source: "cib" as const };
       }
-      return { sym, value: (await tryWiseFor(sym)) ?? (await tryWiseFor(sym)), source: "wise" as const };
+      return { sym, value: (await tryWiseFor(sym)) ?? (await tryWiseFor(sym)), source: "wise-fallback" as const };
     })
   );
 
@@ -725,16 +730,16 @@ async function fetchFxCrossRates(_usdToEgp: number): Promise<Record<string, numb
     if (value !== null) {
       out[sym] = Math.round(value * 10000) / 10000;
       rememberWise(sym, value);
-      logger.info({ sym, rate: value, source }, source === "cib-sunday" ? `FX from CIB (Sunday override)` : `FX from Wise`);
+      logger.info({ sym, rate: value, source }, source === "cib" ? "FX from CIB" : "FX from Wise (CIB unavailable)");
       continue;
     }
     const memo = recentWise(sym);
     if (memo) {
       out[sym] = Math.round(memo.value * 10000) / 10000;
-      logger.warn({ sym, rate: memo.value, ageMs: memo.ageMs, source: "wise-memo" },
-        "FX: Wise unreachable, reusing the last rate Wise gave us");
+      logger.warn({ sym, rate: memo.value, ageMs: memo.ageMs, source: "memo" },
+        "FX: both CIB and Wise unreachable, reusing the last rate either gave us");
     } else {
-      logger.error({ sym }, "FX: Wise has never succeeded for this pair on this instance — omitting it");
+      logger.error({ sym }, "FX: neither CIB nor Wise has ever succeeded for this pair on this instance — omitting it");
     }
   }
 
