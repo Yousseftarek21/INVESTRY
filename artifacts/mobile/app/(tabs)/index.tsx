@@ -391,6 +391,11 @@ export default function HomeScreen() {
   const summary = useMemo(() => {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;
     let todayGold = 0, todaySilver = 0, todayStock = 0, todayFI = 0;
+    // Metal-only slice of todayGold/todaySilver — isolates the price of the
+    // metal itself from the FX move that's compounded into it below, so the
+    // Today breakdown can show "gold: 0%, currency: -1.2%" instead of
+    // crediting/blaming gold for a move that was actually the EGP rate.
+    let todayGoldMetal = 0, todaySilverMetal = 0;
     let goldGrams = 0, silverGrams = 0, stockCount = 0, reCount = 0, paCount = 0;
 
     for (const h of holdings) {
@@ -404,9 +409,11 @@ export default function HomeScreen() {
         // today's FX move, which is what a holding valued in EGP (`v`)
         // actually needs, or it can show a gain on a day the EGP value fell.
         todayGold += v * ((prices?.goldChangePercentEgp ?? 0) / 100);
+        todayGoldMetal += v * ((prices?.goldChangePercent ?? 0) / 100);
       } else if (h.type === 'silver') {
         silverV += v; silverGrams += h.grams;
         todaySilver += v * ((prices?.silverChangePercentEgp ?? 0) / 100);
+        todaySilverMetal += v * ((prices?.silverChangePercent ?? 0) / 100);
       } else if (h.type === 'stock') {
         stockV += v; stockCount++;
         const changePercent = egxChangeByTicker[h.symbol] ?? 0;
@@ -437,6 +444,7 @@ export default function HomeScreen() {
       goldV, silverV, stockV, reV, paV, fiV,
       goldGrams, silverGrams, stockCount, reCount, paCount,
       todayGold, todaySilver, todayStock, todayFI,
+      todayGoldMetal, todaySilverMetal,
     };
   }, [holdings, prices, egxChangeByTicker]);
 
@@ -444,20 +452,33 @@ export default function HomeScreen() {
   // Same four buckets that already sum to summary.todayGain above — this just
   // exposes them individually instead of only their total, so "why is today
   // up/down X%" has a real, traceable answer instead of one opaque number.
+  //
+  // Gold/silver's own row shows only the metal's price move; the FX move
+  // compounded into their EGP value is broken out into its own Currency row
+  // instead — otherwise a day like "gold didn't move, but EGP/USD did" would
+  // show as a misleading "Gold -1.2%" when gold itself was flat.
   const todayBreakdown = useMemo(() => {
     const rows: { key: string; label: string; color: string; icon: React.ReactNode; amount: number; pct: number | null }[] = [];
     if (summary.goldV > 0) {
       rows.push({
         key: 'gold', label: t.gold, color: colors.primary,
         icon: <MaterialCommunityIcons name="gold" size={16} color={colors.primary} />,
-        amount: summary.todayGold, pct: prices?.goldChangePercentEgp ?? null,
+        amount: summary.todayGoldMetal, pct: prices?.goldChangePercent ?? null,
       });
     }
     if (summary.silverV > 0) {
       rows.push({
         key: 'silver', label: t.silver, color: colors.silverColor,
         icon: <MaterialCommunityIcons name="gold" size={16} color={colors.silverColor} />,
-        amount: summary.todaySilver, pct: prices?.silverChangePercentEgp ?? null,
+        amount: summary.todaySilverMetal, pct: prices?.silverChangePercent ?? null,
+      });
+    }
+    if (summary.goldV > 0 || summary.silverV > 0) {
+      const todayFx = (summary.todayGold - summary.todayGoldMetal) + (summary.todaySilver - summary.todaySilverMetal);
+      rows.push({
+        key: 'fx', label: t.currencyFxLabel, color: '#F59E0B',
+        icon: <Feather name="dollar-sign" size={16} color="#F59E0B" />,
+        amount: todayFx, pct: prices?.usdToEgpChangePercent ?? null,
       });
     }
     if (summary.stockV > 0) {
