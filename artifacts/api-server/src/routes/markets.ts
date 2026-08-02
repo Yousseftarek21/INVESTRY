@@ -214,7 +214,7 @@ const EGX_TICKERS = [
   { yahoo: "EEII.CA",   symbol: "EEII",   name: "El Arabia Engineering Industries"             },
   { yahoo: "ACFR.CA",   symbol: "ACFR",   name: "Alexandria Company for Refractories"          },
   { yahoo: "ANCC.CA",   symbol: "ANCC",   name: "ALNAHDA Industrial Co."                       },
-  { yahoo: "ARVA.CA",   symbol: "ARVA",   name: "Arab Valves"                                  },
+  // ARVA (Arab Valves) removed — absent from TradingView scanner, no live data available.
   { yahoo: "ATQA.CA",   symbol: "ATQA",   name: "Misr National Steel"                          },
   { yahoo: "DTPP.CA",   symbol: "DTPP",   name: "Delta for Printing & Packaging"               },
   { yahoo: "ELEC.CA",   symbol: "ELEC",   name: "Electro Cable Egypt"                          },

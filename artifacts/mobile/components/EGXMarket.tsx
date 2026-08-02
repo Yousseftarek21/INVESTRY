@@ -144,11 +144,11 @@ const ix = StyleSheet.create({
     flexDirection: 'row', borderRadius: 14, borderWidth: 1,
     paddingVertical: 10,
   },
-  half: { flex: 1, paddingHorizontal: 14, gap: 4 },
+  half: { flex: 1, paddingHorizontal: 14, gap: 4, alignItems: 'center' },
   divider: { width: StyleSheet.hairlineWidth },
-  name: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-  price: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
-  badge: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
+  name: { fontSize: 11, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  price: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3, textAlign: 'center' },
+  badge: { flexDirection: 'row', alignSelf: 'center', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
   badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 });
 

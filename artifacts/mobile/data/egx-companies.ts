@@ -175,7 +175,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'EEII',  yahoo: 'EEII.CA',  nameEn: 'El Arabia Engineering Industries',         nameAr: 'العربية للصناعات الهندسية',             sector: 'Industrial', industry: 'Diversified Industrials',    fallbackPrice: 2.78   },
   { ticker: 'ACFR',  yahoo: 'ACFR.CA',  nameEn: 'Alexandria Company For Refractories',      nameAr: 'الإسكندرية للحراريات',                  sector: 'Industrial', industry: 'Diversified Industrials',    fallbackPrice: 10.00  },
   { ticker: 'ANCC',  yahoo: 'ANCC.CA',  nameEn: 'ALNAHDA Industrial Co.',                   nameAr: 'النهضة للصناعات الوطنية',               sector: 'Industrial', industry: 'Diversified Industrials',    fallbackPrice: 10.00  },
-  { ticker: 'ARVA',  yahoo: 'ARVA.CA',  nameEn: 'Arab Valves Co.',                              nameAr: 'العربية للصمامات الصناعية',             sector: 'Industrial', industry: 'Diversified Industrials',    fallbackPrice: 10.72  },
+  // ARVA (Arab Valves) removed — absent from TradingView scanner, no live data available.
   { ticker: 'ATQA',  yahoo: 'ATQA.CA',  nameEn: 'Misr National Steel',                      nameAr: 'مصر الوطنية للصلب',                     sector: 'Industrial', industry: 'Metals & Mining',            fallbackPrice: 9.59   },
   { ticker: 'DTPP',  yahoo: 'DTPP.CA',  nameEn: 'Delta for Printing & Packaging',           nameAr: 'دلتا للطباعة والتغليف',                 sector: 'Industrial', industry: 'Packaging & Containers',     fallbackPrice: 207.52 },
   { ticker: 'ELEC',  yahoo: 'ELEC.CA',  nameEn: 'Electro Cable Egypt',                      nameAr: 'إليكترو كابل مصر',                      sector: 'Industrial', industry: 'Electrical Equipment',       fallbackPrice: 2.16   },
