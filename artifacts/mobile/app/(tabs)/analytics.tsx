@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
+import { pctDelta } from '@/utils/pctDelta';
 import Svg, {
   Defs, LinearGradient, Stop, Path,
 } from 'react-native-svg';
@@ -555,15 +556,15 @@ export default function AnalyticsScreen() {
         // goldChangePercent is the metal's raw USD move; goldChangePercentEgp
         // compounds it with today's FX move, which is what a holding valued
         // in EGP (`v`) actually needs — see markets.ts for why.
-        todayGold += v * ((prices?.goldChangePercentEgp ?? 0) / 100);
+        todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
       } else if (h.type === 'silver') {
         silverV += v; silverCost += c; totalSilverGrams += h.grams;
-        todaySilver += v * ((prices?.silverChangePercentEgp ?? 0) / 100);
+        todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
       }
       else if (h.type === 'stock') {
         stockV += v; stockCount++;
         const changePercent = egxChangeByTicker[h.symbol] ?? 0;
-        todayStock += v * (changePercent / 100);
+        todayStock += pctDelta(v, changePercent);
       }
       else if (h.type === 'personal_asset') { paV += v; paCount++; }
       else if (h.type === 'fixed_income') {

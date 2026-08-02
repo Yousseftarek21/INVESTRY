@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron, forwardArrow } from '@/utils/rtl';
+import { pctDelta } from '@/utils/pctDelta';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -409,16 +410,16 @@ export default function HomeScreen() {
         // tab's own display) — goldChangePercentEgp compounds that with
         // today's FX move, which is what a holding valued in EGP (`v`)
         // actually needs, or it can show a gain on a day the EGP value fell.
-        todayGold += v * ((prices?.goldChangePercentEgp ?? 0) / 100);
-        todayGoldMetal += v * ((prices?.goldChangePercent ?? 0) / 100);
+        todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
+        todayGoldMetal += pctDelta(v, prices?.goldChangePercent ?? 0);
       } else if (h.type === 'silver') {
         silverV += v; silverGrams += h.grams;
-        todaySilver += v * ((prices?.silverChangePercentEgp ?? 0) / 100);
-        todaySilverMetal += v * ((prices?.silverChangePercent ?? 0) / 100);
+        todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
+        todaySilverMetal += pctDelta(v, prices?.silverChangePercent ?? 0);
       } else if (h.type === 'stock') {
         stockV += v; stockCount++;
         const changePercent = egxChangeByTicker[h.symbol] ?? 0;
-        todayStock += v * (changePercent / 100);
+        todayStock += pctDelta(v, changePercent);
       } else if (h.type === 'personal_asset') {
         paV += v; paCount++;
       } else if (h.type === 'fixed_income') {
