@@ -138,13 +138,17 @@ const tb = StyleSheet.create({
 
 function ChangeBadge({ changePct }: { changePct: number }) {
   const colors = useColors();
+  // Same fix as the Home Today badge/breakdown: an exact 0.00% (e.g. gold
+  // outside trading hours, or genuinely flat) satisfies changePct >= 0 and
+  // read as a green "gain" — flat isn't a gain.
+  const isFlat = Math.abs(changePct) < 0.005;
   const isPos = changePct >= 0;
-  const color = isPos ? colors.green : colors.red;
+  const color = isFlat ? colors.mutedForeground : (isPos ? colors.green : colors.red);
   return (
     <View style={[cb.badge, { backgroundColor: color + '15' }]}>
-      <Feather name={isPos ? 'arrow-up-right' : 'arrow-down-right'} size={11} color={color} />
+      <Feather name={isFlat ? 'minus' : isPos ? 'arrow-up-right' : 'arrow-down-right'} size={11} color={color} />
       <Text style={[cb.txt, { color }]}>
-        {isPos ? '+' : ''}{changePct.toFixed(2)}%
+        {!isFlat && isPos ? '+' : ''}{changePct.toFixed(2)}%
       </Text>
     </View>
   );
