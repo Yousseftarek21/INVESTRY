@@ -1,5 +1,9 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
+import Reanimated, {
+  useSharedValue, useAnimatedProps, withDelay, withTiming,
+  Easing as REasing, interpolate as rInterpolate, Extrapolation,
+} from "react-native-reanimated";
 import Svg, { Path, Circle } from "react-native-svg";
 import { useAppSettings } from "@/context/AppSettingsContext";
 import { useColors } from "@/hooks/useColors";
@@ -11,8 +15,16 @@ interface Props {
 const LOGO_DARK = require("@/assets/images/logo-mark.png");
 const LOGO_LIGHT = require("@/assets/images/logo-mark-light.png");
 
-const AnimatedPath = Animated.createAnimatedComponent(Path);
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+// The chart-line draw specifically uses Reanimated, not the classic Animated
+// API used everywhere else on this screen — react-native's "native driver"
+// flag reliably covers opacity/transform (used for the logo/tagline/status
+// fades below) but doesn't reliably keep SVG's strokeDashoffset off the JS
+// thread the same way, which is what was causing this one animation to
+// visibly stutter during the heavy JS-thread startup work (fonts, contexts,
+// AsyncStorage/API reads) that's running at the same time. Reanimated
+// worklets run on the UI thread regardless of what the JS thread is doing.
+const RAnimatedPath = Reanimated.createAnimatedComponent(Path);
+const RAnimatedCircle = Reanimated.createAnimatedComponent(Circle);
 
 // A small "chart line" drawn left-to-right as loading progresses, instead of
 // a generic bar — echoes the app's own portfolio charts. Straight segments
@@ -29,11 +41,13 @@ const CHART_PATH_LENGTH = 190; // approx length of the segments above, with marg
 export function CustomSplash({ statusMessage }: Props) {
   const { resolvedTheme } = useAppSettings();
   const colors = useColors();
-  const progress = useRef(new Animated.Value(0)).current;
+  const progress = useSharedValue(0);
   const logoIn = useRef(new Animated.Value(0)).current;
   const taglineIn = useRef(new Animated.Value(0)).current;
   const chartIn = useRef(new Animated.Value(0)).current;
   const statusIn = useRef(new Animated.Value(0)).current;
+
+  const REVEAL_DELAY = 150;
 
   useEffect(() => {
     // Logo settles first with a soft spring, then a short beat later
@@ -45,35 +59,24 @@ export function CustomSplash({ statusMessage }: Props) {
       friction: 7, tension: 60,
     }).start();
 
-    const REVEAL_DELAY = 150;
     Animated.timing(taglineIn, { toValue: 1, duration: 280, delay: REVEAL_DELAY, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
     Animated.timing(chartIn, { toValue: 1, duration: 280, delay: REVEAL_DELAY, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
     Animated.timing(statusIn, { toValue: 1, duration: 280, delay: REVEAL_DELAY, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
 
-    // Native driver keeps this off the JS thread — important here since the
-    // splash renders during heavy JS-thread startup work (fonts, contexts,
-    // AsyncStorage/API reads), which was causing this to visibly stutter,
-    // most noticeably on the chart line's steeper "up" segments where a
-    // dropped frame reads as a bigger jump. react-native-svg supports
-    // useNativeDriver for animatable props like strokeDashoffset.
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: 1400,
-      delay: REVEAL_DELAY,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [progress, logoIn, taglineIn, chartIn, statusIn]);
+    // Linear, not eased — the zigzag's segments are uneven lengths (steep
+    // "up" jumps vs. flatter stretches), so an eased curve made the draw
+    // speed visibly change mid-animation on top of the geometry already
+    // doing that; constant speed reads as one smooth stroke instead.
+    progress.value = withDelay(REVEAL_DELAY, withTiming(1, { duration: 1400, easing: REasing.linear }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logoIn, taglineIn, chartIn, statusIn]);
 
-  const strokeDashoffset = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [CHART_PATH_LENGTH, 0],
-  });
-  const dotOpacity = progress.interpolate({
-    inputRange: [0, 0.85, 1],
-    outputRange: [0, 0, 1],
-    extrapolate: "clamp",
-  });
+  const pathAnimatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: CHART_PATH_LENGTH * (1 - progress.value),
+  }));
+  const dotAnimatedProps = useAnimatedProps(() => ({
+    opacity: rInterpolate(progress.value, [0, 0.85, 1], [0, 0, 1], Extrapolation.CLAMP),
+  }));
   const logoOpacity = logoIn;
   const logoScale = logoIn.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
   const taglineTranslateY = taglineIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] });
@@ -102,7 +105,7 @@ export function CustomSplash({ statusMessage }: Props) {
 
       <Animated.View style={[styles.chartWrap, { opacity: chartIn, transform: [{ translateY: chartTranslateY }] }]}>
         <Svg width={CHART_W} height={CHART_H} viewBox={`0 0 ${CHART_W} ${CHART_H}`}>
-          <AnimatedPath
+          <RAnimatedPath
             d={CHART_PATH}
             stroke={colors.primary}
             strokeWidth={3}
@@ -110,14 +113,14 @@ export function CustomSplash({ statusMessage }: Props) {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeDasharray={CHART_PATH_LENGTH}
-            strokeDashoffset={strokeDashoffset}
+            animatedProps={pathAnimatedProps}
           />
-          <AnimatedCircle
+          <RAnimatedCircle
             cx={CHART_POINTS[CHART_POINTS.length - 1][0]}
             cy={CHART_POINTS[CHART_POINTS.length - 1][1]}
             r={4}
             fill={colors.primary}
-            opacity={dotOpacity}
+            animatedProps={dotAnimatedProps}
           />
         </Svg>
       </Animated.View>
