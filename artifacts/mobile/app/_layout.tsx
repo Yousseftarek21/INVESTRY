@@ -39,10 +39,12 @@ import * as Updates from "expo-updates";
 SplashScreen.preventAutoHideAsync();
 
 const splashStartTime = Date.now();
-// Kept just above CustomSplash's own animation length (~1.55s: logo spring +
-// 150ms reveal delay + 1400ms chart draw) so the chart line still finishes
-// drawing cleanly before hide, while cutting the old 2.5s floor down
-// noticeably for a snappier feel on fast loads.
+// Floor so the splash's own reveal choreography (logo spring + staggered
+// fade-ins, ~0.5s) always finishes on screen before hide, without holding
+// a fast load back as long as the old 2.5s floor did. The equalizer bars
+// themselves loop indefinitely rather than drawing to a fixed finish point,
+// so unlike the previous chart-line animation this floor isn't calibrated
+// against how long any one animation takes to complete.
 const MIN_SPLASH_DURATION_MS = Platform.OS === 'web' ? 0 : 1600;
 
 // Hard ceiling on how long the splash may wait for launch data before
