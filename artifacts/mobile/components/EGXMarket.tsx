@@ -657,10 +657,10 @@ export function EGXMarket({
     <View style={{ gap: 20 }}>
       {topHeader}
       <View style={em.listHeaderWrap}>
+        <MarketStatusBanner />
         <EGXSectionTabs active={section} onChange={setSection} />
         {section === 'stocks' && (
           <>
-            <MarketStatusBanner />
             <EGXIndexChips />
             <SearchBar value={query} onChange={handleQuery} />
             <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
