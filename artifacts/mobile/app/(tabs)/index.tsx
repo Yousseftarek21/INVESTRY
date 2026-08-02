@@ -520,8 +520,12 @@ export default function HomeScreen() {
 
   const isGain = summary.gain >= 0;
   const isTodayGain = summary.todayGain >= 0;
+  // A genuinely flat day (every market closed, e.g. a Saturday holiday)
+  // still satisfies todayGain >= 0 and read as a green "+0.00%" gain —
+  // same fix as the breakdown modal's rows, applied to the badge itself.
+  const isTodayFlat = Math.abs(toDisp(summary.todayGain)) < 0.005;
   const gainColor = isGain ? colors.green : colors.red;
-  const todayColor = isTodayGain ? colors.green : colors.red;
+  const todayColor = isTodayFlat ? colors.mutedForeground : (isTodayGain ? colors.green : colors.red);
   const hasHoldings = holdings.length > 0;
   // Real prices AND holdings both loaded — only once this is true does the
   // hero mount PortfolioHeroValue (see its own comment for why the mount
@@ -779,17 +783,17 @@ export default function HomeScreen() {
                   style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}
                 >
                   <View style={styles.plTop}>
-                    <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
+                    <Feather name={isTodayFlat ? 'minus' : isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
                     <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
                     <View style={[styles.plBadge, { backgroundColor: todayColor + '1A' }]}>
                       <Text style={[styles.plBadgeText, { color: todayColor }]}>
-                        {`${isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
+                        {`${!isTodayFlat && isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
                       </Text>
                     </View>
                     <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
                   </View>
                   <Text style={[styles.plValue, { color: todayColor }]}>
-                    {hideValues ? '••••' : `${isTodayGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.todayGain)))} ${displayCurrency}`}
+                    {hideValues ? '••••' : isTodayFlat ? `0 ${displayCurrency}` : `${isTodayGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.todayGain)))} ${displayCurrency}`}
                   </Text>
                 </Pressable>
               )}
