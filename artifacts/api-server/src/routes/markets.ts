@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { lt, desc, eq } from "drizzle-orm";
 import { db, marketCloseSnapshotsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { cairoDateString } from "../lib/cairoDate";
 
 const router: IRouter = Router();
 
@@ -522,8 +523,21 @@ async function fetchMetalsViaTradingView(): Promise<{
 // while still labelled as today's. There is no other-provider fallback left:
 // when Wise is unreachable the app shows a remembered Wise reading, however
 // old, rather than a different source's number.
+//
+// One deliberate, narrow exception (2026-08-02): Wise's EGP feed tracks the
+// global FX week (closed Sat/Sun UTC), so it simply repeats Friday's close
+// all day Sunday — not a failure, Wise is reachable and "correct" by its own
+// clock, just not representative of Egypt's actual rate that day. Egypt's
+// banking week runs Sun-Thu, so CIB Egypt publishes a live rate on Sundays.
+// fetchCibRates() below is used ONLY on Cairo-Sundays, and only ever as a
+// same-day live reading — never a stale memo of its own — so this can't
+// reintroduce the frozen-number problem the 2026-07-30 decision fixed.
 
 interface WiseRateResponse { source: string; target: string; value: number; time: number }
+
+function isCairoSunday(): boolean {
+  return new Date(`${cairoDateString()}T00:00:00Z`).getUTCDay() === 0;
+}
 
 // Requests with no User-Agent from a cloud datacenter IP are exactly what a
 // bot-blocker flags first — Render's outbound IPs are datacenter, not
@@ -534,6 +548,26 @@ const WISE_HEADERS = {
   "Referer": "https://wise.com/",
   "Accept": "application/json",
 };
+
+interface CibRatesResponse { rates: { currencyID: string; buyRate: number; sellRate: number }[] }
+
+// CIB Egypt's public currency-converter API (no key required) — used only
+// as the Sunday override above. Returns the bank's own buy/sell rates per
+// currency; we take the midpoint as the closest equivalent to Wise's single
+// mid-market figure everywhere else in this file.
+async function fetchCibRates(): Promise<Record<string, number> | null> {
+  const res = await safeFetch("https://www.cibeg.com/api/currency/rates", {
+    headers: { "User-Agent": WISE_HEADERS["User-Agent"], "Accept": "application/json" },
+  });
+  const data = await safeJson<CibRatesResponse>(res, "cib-rates");
+  if (!data?.rates?.length) return null;
+
+  const out: Record<string, number> = {};
+  for (const r of data.rates) {
+    if (r.buyRate > 0 && r.sellRate > 0) out[r.currencyID] = (r.buyRate + r.sellRate) / 2;
+  }
+  return out;
+}
 
 // ─── Wise short-term memo ─────────────────────────────────────────────────────
 //
@@ -571,6 +605,19 @@ function recentWise(key: string): { value: number; ageMs: number } | null {
 // Wise is unreachable, the fallback is Wise itself — a recently remembered
 // Wise reading — not a different source with a different number.
 async function fetchUsdToEgp(): Promise<number> {
+  // Sunday-only: see the comment above this section for why. If CIB is
+  // unavailable this falls straight through to the Wise chain below exactly
+  // as on any other day — this is an addition, never a new failure mode.
+  if (isCairoSunday()) {
+    const cib = await fetchCibRates();
+    const usd = cib?.USD;
+    if (usd && usd > 0) {
+      logger.info({ rate: usd, source: "cib-sunday" }, "USD/EGP from CIB (Sunday override — Wise repeats Friday's close on the global FX weekend)");
+      return rememberWise("USD", usd);
+    }
+    logger.warn("USD/EGP: Sunday CIB override unavailable — falling back to Wise as usual");
+  }
+
   async function tryWise(): Promise<number | null> {
     const wise = await safeJson<WiseRateResponse>(
       await safeFetch("https://wise.com/rates/live?source=USD&target=EGP", { headers: WISE_HEADERS }),
@@ -616,6 +663,11 @@ const FX_SYMBOLS = ['EUR', 'GBP', 'TRY', 'CNY', 'CHF', 'QAR', 'SAR', 'AED', 'KWD
 // "unknown" (`fx.EUR ?? 0` and friends), which is honest; a computed number
 // from a different provider, silently standing in for Wise, is not.
 async function fetchFxCrossRates(_usdToEgp: number): Promise<Record<string, number>> {
+  // Same Sunday-only exception as USD/EGP above. CIB only quotes a subset of
+  // FX_SYMBOLS (EUR, GBP, CHF, SAR, KWD as of writing) — TRY/CNY/QAR/AED
+  // fall straight through to Wise below exactly as on any other day.
+  const cibRates = isCairoSunday() ? await fetchCibRates() : null;
+
   async function tryWiseFor(sym: string): Promise<number | null> {
     const data = await safeJson<WiseRateResponse>(
       await safeFetch(`https://wise.com/rates/live?source=${sym}&target=EGP`, { headers: WISE_HEADERS }),
@@ -625,18 +677,22 @@ async function fetchFxCrossRates(_usdToEgp: number): Promise<Record<string, numb
   }
 
   const settled = await Promise.allSettled(
-    FX_SYMBOLS.map(async sym => ({ sym, value: (await tryWiseFor(sym)) ?? (await tryWiseFor(sym)) }))
+    FX_SYMBOLS.map(async sym => {
+      const cibValue = cibRates?.[sym];
+      if (cibValue && cibValue > 0) return { sym, value: cibValue, source: "cib-sunday" as const };
+      return { sym, value: (await tryWiseFor(sym)) ?? (await tryWiseFor(sym)), source: "wise" as const };
+    })
   );
 
   const out: Record<string, number> = {};
 
   for (const r of settled) {
     if (r.status !== 'fulfilled') continue;
-    const { sym, value } = r.value;
+    const { sym, value, source } = r.value;
     if (value !== null) {
       out[sym] = Math.round(value * 10000) / 10000;
       rememberWise(sym, value);
-      logger.info({ sym, rate: value, source: "wise" }, `FX from Wise`);
+      logger.info({ sym, rate: value, source }, source === "cib-sunday" ? `FX from CIB (Sunday override)` : `FX from Wise`);
       continue;
     }
     const memo = recentWise(sym);
@@ -684,10 +740,6 @@ function isMetalsMarketOpen(now: Date): boolean {
 // does, staying anchored to a stale reference until the fallback's own
 // source happens to update. Persisting to the database instead means a
 // restart can never lose the real previous close.
-
-function cairoDateString(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
-}
 
 interface MarketCloseSnapshot { goldEgp24k: number; silverEgp: number; usdToEgp: number; }
 
