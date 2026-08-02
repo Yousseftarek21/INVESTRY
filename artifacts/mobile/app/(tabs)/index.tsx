@@ -1066,8 +1066,13 @@ function TodayBreakdownModal({
         ) : (
           <View style={tb.list}>
             {rows.map(r => {
+              // Sub-cent amounts round to "0 EGP" either way — treat them as
+              // flat rather than as a gain, or a genuinely unmoved row (like
+              // gold on a day only the currency moved) shows up green as if
+              // it had gone up.
+              const isFlat = Math.abs(toDisp(r.amount)) < 0.005;
               const rowGain = r.amount >= 0;
-              const rowColor = rowGain ? colors.green : colors.red;
+              const rowColor = isFlat ? colors.mutedForeground : (rowGain ? colors.green : colors.red);
               return (
                 <View key={r.key} style={tb.row}>
                   <View style={[tb.iconBox, { backgroundColor: r.color + '1A' }]}>{r.icon}</View>
@@ -1077,12 +1082,12 @@ function TodayBreakdownModal({
                       <Text style={[tb.rowSub, { color: colors.mutedForeground }]}>{t.interestAccruedToday}</Text>
                     ) : r.pct !== null ? (
                       <Text style={[tb.rowSub, { color: colors.mutedForeground }]}>
-                        {`${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(2)}%`}
+                        {`${!isFlat && r.pct >= 0 ? '+' : ''}${r.pct.toFixed(2)}%`}
                       </Text>
                     ) : null}
                   </View>
                   <Text style={[tb.rowAmount, { color: rowColor }]}>
-                    {hideValues ? '••••' : `${rowGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(r.amount)))} ${displayCurrency}`}
+                    {hideValues ? '••••' : isFlat ? `0 ${displayCurrency}` : `${rowGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(r.amount)))} ${displayCurrency}`}
                   </Text>
                 </View>
               );
