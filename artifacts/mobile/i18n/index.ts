@@ -1093,7 +1093,7 @@ const en = {
 
   // Settings — invite friends / referrals
   inviteFriendsNav: 'Invite Friends',
-  inviteFriendsNavSub: 'Give a month, get a month',
+  inviteFriendsNavSub: 'Share your code — every feature is free',
   referralScreenTitle: 'Invite Friends',
   referralHeroTitle: 'Invite a friend to Investry',
   referralHeroSub: 'Share your code with a friend so they can track their investments too. Every feature is free for everyone.',
@@ -2225,7 +2225,7 @@ const ar: typeof en = {
 
   // Settings — invite friends / referrals
   inviteFriendsNav: 'ادعُ أصدقاءك',
-  inviteFriendsNavSub: 'أعطِ شهرًا، واحصل على شهر',
+  inviteFriendsNavSub: 'شارك رمزك — جميع المزايا مجانية',
   referralScreenTitle: 'ادعُ أصدقاءك',
   referralHeroTitle: 'ادعُ صديقًا إلى Investry',
   referralHeroSub: 'شارك رمزك مع صديق ليتابع استثماراته أيضًا. جميع المزايا مجانية للجميع.',
