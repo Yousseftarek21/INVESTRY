@@ -7,6 +7,7 @@ import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@clerk/expo';
 import { Feather } from '@expo/vector-icons';
+import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -80,7 +81,7 @@ export default function AIAssistantScreen() {
 
         <View style={[s.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Feather name="chevron-left" size={22} color={colors.text} />
+            <Feather name={backChevron()} size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
           <View style={{ width: 22 }} />

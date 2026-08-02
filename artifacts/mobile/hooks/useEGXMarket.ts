@@ -166,12 +166,12 @@ export function fmtMarketCap(cap?: number, currency: string = 'EGP'): string {
   if (cap >= 1_000_000_000_000) return `${(cap / 1_000_000_000_000).toFixed(1)}T ${currency}`;
   if (cap >= 1_000_000_000)     return `${(cap / 1_000_000_000).toFixed(1)}B ${currency}`;
   if (cap >= 1_000_000)         return `${(cap / 1_000_000).toFixed(0)}M ${currency}`;
-  return `${cap.toLocaleString()} ${currency}`;
+  return `${cap.toLocaleString('en-EG')} ${currency}`;
 }
 
 export function fmtVolume(vol?: number): string {
   if (!vol) return '—';
   if (vol >= 1_000_000) return `${(vol / 1_000_000).toFixed(1)}M`;
   if (vol >= 1_000)     return `${(vol / 1_000).toFixed(0)}K`;
-  return vol.toLocaleString();
+  return vol.toLocaleString('en-EG');
 }

@@ -8,6 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useSignUp, useSSO, useClerk } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import { backArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { FieldPlaceholder } from '@/components/FieldPlaceholder';
@@ -196,7 +197,7 @@ export default function SignUpScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.inner, { paddingTop: topPad + 24, paddingBottom: botPad + 24, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}>
           <Pressable onPress={() => setVerificationDismissed(true)} style={styles.backBtn}>
-            <Feather name="arrow-left" size={20} color={colors.text} />
+            <Feather name={backArrow()} size={20} color={colors.text} />
           </Pressable>
           <View style={styles.iconWrap}>
             <View style={[styles.iconCircle, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -265,7 +266,7 @@ export default function SignUpScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={20} color={colors.text} />
+            <Feather name={backArrow()} size={20} color={colors.text} />
           </Pressable>
 
           <View style={styles.headerWrap}>

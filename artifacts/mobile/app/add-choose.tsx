@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { forwardChevron } from '@/utils/rtl';
 import { router } from 'expo-router';
 import React from 'react';
 import {
@@ -64,7 +65,7 @@ export default function AddChooseScreen() {
             <Text style={[s.cardTitle, { color: colors.text }]}>{t.addInvestmentOption}</Text>
             <Text style={[s.cardDesc, { color: colors.mutedForeground }]}>{t.addInvestmentOptionDesc}</Text>
           </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -79,7 +80,7 @@ export default function AddChooseScreen() {
             <Text style={[s.cardTitle, { color: colors.text }]}>{t.addCashOption}</Text>
             <Text style={[s.cardDesc, { color: colors.mutedForeground }]}>{t.addCashOptionDesc}</Text>
           </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -94,7 +95,7 @@ export default function AddChooseScreen() {
             <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addRecurringIncomeOption}</Text>
             <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.addRecurringIncomeOptionDesc}</Text>
           </View>
-          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
       </View>
     </View>

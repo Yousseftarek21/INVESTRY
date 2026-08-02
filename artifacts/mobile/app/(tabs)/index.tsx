@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -940,7 +941,7 @@ export default function HomeScreen() {
             </Text>
           )}
         </View>
-        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
 
       {/* ── Top Investments ─────────────────────────────────────── */}
@@ -961,8 +962,8 @@ export default function HomeScreen() {
                 hitSlop={8}
                 style={styles.manageBtn}
               >
-                <Text style={[styles.manageTxt, { color: colors.primary }]}>Manage</Text>
-                <Feather name="chevron-right" size={12} color={colors.primary} />
+                <Text style={[styles.manageTxt, { color: colors.primary }]}>{t.manageBtnLabel}</Text>
+                <Feather name={forwardChevron()} size={12} color={colors.primary} />
               </TouchableOpacity>
             )}
           </View>
@@ -1001,9 +1002,9 @@ export default function HomeScreen() {
                 style={[styles.seeAllBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.seeAllTxt, { color: colors.mutedForeground }]}>
-                  See all {holdings.length} investments
+                  {t.seeAllInvestmentsCount(String(holdings.length))}
                 </Text>
-                <Feather name="arrow-right" size={14} color={colors.mutedForeground} />
+                <Feather name={forwardArrow()} size={14} color={colors.mutedForeground} />
               </TouchableOpacity>
             )}
           </View>
@@ -1159,7 +1160,7 @@ const styles = StyleSheet.create({
   greetingName:    { fontSize: 15, fontFamily: 'Inter_600SemiBold', flexShrink: 1 },
   headerRight:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bellBtn:         { width: 30, height: 30, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
-  bellBadge:       { position: 'absolute', top: 3, right: 3, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
+  bellBadge:       { position: 'absolute', top: 3, end: 3, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
   screenTitle:   { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 

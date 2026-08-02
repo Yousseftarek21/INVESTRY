@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, KeyboardAvoidingView, Platform, ScrollView,
+  Alert, I18nManager, KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -104,7 +105,7 @@ export default function TargetAllocationScreen() {
       <View style={[s.screen, { backgroundColor: colors.background }]}>
         <View style={[s.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Feather name="chevron-left" size={22} color={colors.text} />
+            <Feather name={backChevron()} size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: colors.text }]}>{t.targetAllocationTitle}</Text>
           <View style={{ width: 22 }} />
@@ -192,7 +193,7 @@ const s = StyleSheet.create({
   iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   rowLabel: { flex: 1, fontSize: 14, fontFamily: 'Inter_500Medium' },
   inputRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, width: 84 },
-  input: { flex: 1, fontSize: 15, fontFamily: 'Inter_600SemiBold', paddingVertical: 8, textAlign: 'right' },
+  input: { flex: 1, fontSize: 15, fontFamily: 'Inter_600SemiBold', paddingVertical: 8, textAlign: I18nManager.isRTL ? 'left' : 'right' },
   pct: { fontSize: 13, fontFamily: 'Inter_500Medium', marginLeft: 4 },
   sumRow: { paddingHorizontal: 6, paddingTop: 10, gap: 2 },
   sumText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },

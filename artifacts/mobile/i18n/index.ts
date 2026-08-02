@@ -363,6 +363,12 @@ const en = {
   // Financial Goals
   goals: 'Financial Goals',
   planningGrowthTools: 'Planning & Growth Tools',
+  planningToolsSub: 'Set targets & calculate returns',
+  goalsToolSub: 'Set a financial target',
+  tbillsToolSub: 'Egypt T-Bills estimator',
+  financialToolsCountBadge: '8 TOOLS',
+  noAnalyticsYetTitle: 'No analytics yet',
+  noAnalyticsYetHint: 'Add investments in the Investments tab and your portfolio analytics will appear here.',
   addGoal: 'Add Goal',
   editGoal: 'Edit Goal',
   deleteGoal: 'Delete Goal',
@@ -471,6 +477,7 @@ const en = {
   skip: 'Skip',
   welcomeTagline: 'Track All Investments. One Portfolio',
   welcomeDesc: 'Track gold, silver, EGX stocks and real estate — live prices in Egyptian pounds.',
+  welcomeFooter: (year: string) => `Egypt · Live Market Data · ${year}` as string,
   signInBtn: 'Sign In',
 
   // Auth — sign in
@@ -528,6 +535,8 @@ const en = {
   currencyFxLabel: 'Currency (EGP/USD)',
   todayNoChangeTitle: 'No Changes Yet',
   todayNoChangeHint: "Gold, silver, stocks, and the EGP/USD rate haven't moved since yesterday's close.",
+  manageBtnLabel: 'Manage',
+  seeAllInvestmentsCount: (count: string) => `See all ${count} investments` as string,
   hiGreeting: 'Hi,',
   thereGreeting: 'there',
 
@@ -1497,6 +1506,12 @@ const ar: typeof en = {
   // Financial Goals
   goals: 'الأهداف المالية',
   planningGrowthTools: 'أدوات التخطيط والنمو',
+  planningToolsSub: 'حدد الأهداف واحسب العوائد',
+  goalsToolSub: 'حدد هدفًا ماليًا',
+  tbillsToolSub: 'حاسبة أذون الخزانة المصرية',
+  financialToolsCountBadge: '8 أدوات',
+  noAnalyticsYetTitle: 'لا توجد تحليلات بعد',
+  noAnalyticsYetHint: 'أضف استثمارات في تبويب الاستثمارات وستظهر تحليلات محفظتك هنا.',
   addGoal: 'إضافة هدف',
   editGoal: 'تعديل الهدف',
   deleteGoal: 'حذف الهدف',
@@ -1605,6 +1620,7 @@ const ar: typeof en = {
   skip: 'تخطى',
   welcomeTagline: 'تابع جميع استثماراتك في محفظة واحدة',
   welcomeDesc: 'تتبع الذهب والفضة وأسهم البورصة والعقارات — بأسعار حية بالجنيه المصري.',
+  welcomeFooter: (year: string) => `مصر · بيانات السوق الحية · ${year}` as string,
   signInBtn: 'تسجيل الدخول',
 
   // Auth — sign in
@@ -1662,6 +1678,8 @@ const ar: typeof en = {
   currencyFxLabel: 'العملة (جنيه/دولار)',
   todayNoChangeTitle: 'لا تغييرات بعد',
   todayNoChangeHint: 'الذهب والفضة والأسهم وسعر الجنيه/الدولار لم تتحرك منذ إغلاق الأمس.',
+  manageBtnLabel: 'إدارة',
+  seeAllInvestmentsCount: (count: string) => `عرض كل ${count} استثمار` as string,
   hiGreeting: 'مرحباً،',
   thereGreeting: 'صديقي',
 

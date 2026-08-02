@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/expo';
 import { useColors } from '@/hooks/useColors';
@@ -95,7 +96,7 @@ export default function InviteFriendsScreen() {
       <View style={[s.screen, { backgroundColor: colors.background }]}>
         <View style={[s.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Feather name="chevron-left" size={24} color={colors.text} />
+            <Feather name={backChevron()} size={24} color={colors.text} />
           </Pressable>
           <Text style={[s.headerTitle, { color: colors.text }]}>{t.referralScreenTitle}</Text>
           <View style={{ width: 24 }} />

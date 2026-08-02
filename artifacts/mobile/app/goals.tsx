@@ -6,6 +6,7 @@ import {
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
+import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerField } from '@/components/DatePickerField';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -175,7 +176,7 @@ export default function GoalsScreen() {
         {/* Header */}
         <View style={[s.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => { if (showForm) resetForm(); else router.back(); }} hitSlop={8}>
-            <Feather name="chevron-left" size={22} color={colors.text} />
+            <Feather name={backChevron()} size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: colors.text }]}>
             {showForm ? (editingId ? t.editGoal : t.addGoal) : t.goals}

@@ -8,6 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useSignIn, useSSO, useClerk } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import { backArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { FieldPlaceholder } from '@/components/FieldPlaceholder';
@@ -197,7 +198,7 @@ export default function SignInScreen() {
             showsVerticalScrollIndicator={false}
           >
             <Pressable onPress={() => setResetMode('none')} style={styles.backBtn}>
-              <Feather name="arrow-left" size={20} color={colors.text} />
+              <Feather name={backArrow()} size={20} color={colors.text} />
             </Pressable>
 
             <View style={styles.headerWrap}>
@@ -314,7 +315,7 @@ export default function SignInScreen() {
         >
           {/* Back */}
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={20} color={colors.text} />
+            <Feather name={backArrow()} size={20} color={colors.text} />
           </Pressable>
 
           {/* Header */}

@@ -7,6 +7,7 @@ import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
+import { backChevron } from '@/utils/rtl';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
@@ -379,7 +380,7 @@ export default function CashAccountsScreen() {
           }}
           hitSlop={12}
         >
-          <Feather name="chevron-left" size={22} color={colors.mutedForeground} />
+          <Feather name={backChevron()} size={22} color={colors.mutedForeground} />
         </TouchableOpacity>
         <Text style={[styles.modalTitle, { color: colors.text }]}>
           {showForm
@@ -779,7 +780,7 @@ export default function CashAccountsScreen() {
               <>
                 <View style={styles.pickerHeader}>
                   <TouchableOpacity onPress={() => setTransferPicker(null)} hitSlop={12}>
-                    <Feather name="chevron-left" size={20} color={colors.text} />
+                    <Feather name={backChevron()} size={20} color={colors.text} />
                   </TouchableOpacity>
                   <Text style={[confirmStyles.title, { marginBottom: 0 }]}>{t.selectAccount}</Text>
                   <View style={{ width: 20 }} />

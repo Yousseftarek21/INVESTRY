@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { backChevron, forwardChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -103,7 +104,7 @@ export default function ShariaScreeningScreen() {
         {/* Header */}
         <View style={[s.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={goBack} hitSlop={8}>
-            <Feather name="chevron-left" size={22} color={colors.text} />
+            <Feather name={backChevron()} size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: colors.text }]}>{t.shariahScreening}</Text>
           <View style={{ width: 22 }} />
@@ -202,7 +203,7 @@ export default function ShariaScreeningScreen() {
                       <Text style={[s.rowName, { color: colors.mutedForeground }]} numberOfLines={1}>{item.nameEn}</Text>
                       <Text style={[s.rowNameAr, { color: colors.mutedForeground }]} numberOfLines={1}>{item.nameAr}</Text>
                     </View>
-                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 );
               }}

@@ -6,6 +6,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useAppSettings } from '@/context/AppSettingsContext';
 
 interface Props {
   label: string;
@@ -22,14 +23,20 @@ function isoToDate(iso: string): Date {
   return isNaN(d.getTime()) ? new Date() : d;
 }
 
-function formatDisplay(iso: string): string {
+// '-u-nu-latn' keeps Western digits (matching every other number in the
+// app, financial or otherwise) while still translating the month name —
+// otherwise Arabic mode would render Arabic-Indic digits (١٥ أغسطس ٢٠٢٦)
+// inconsistent with every EGP figure around it.
+function formatDisplay(iso: string, language: 'en' | 'ar'): string {
   const d = isoToDate(iso);
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const locale = language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB';
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export function DatePickerField({ label, value, onChange, onClear, placeholder, maxDate, minDate }: Props) {
   const colors = useColors();
   const t = useT();
+  const { language } = useAppSettings();
   const [showPicker, setShowPicker] = useState(false);
   const [tempDate, setTempDate] = useState<Date>(isoToDate(value));
 
@@ -65,7 +72,7 @@ export function DatePickerField({ label, value, onChange, onClear, placeholder, 
         <View style={[st.field, { borderColor: colors.border, backgroundColor: colors.card, position: 'relative', overflow: 'hidden' }]}>
           <Feather name="calendar" size={16} color={isEmpty ? colors.mutedForeground : colors.primary} />
           <Text style={[st.value, { color: isEmpty ? colors.mutedForeground : colors.text }]}>
-            {isEmpty ? (placeholder ?? '') : formatDisplay(value)}
+            {isEmpty ? (placeholder ?? '') : formatDisplay(value, language)}
           </Text>
           {onClear && !isEmpty ? (
             <TouchableOpacity onPress={onClear} hitSlop={8}>
@@ -105,7 +112,7 @@ export function DatePickerField({ label, value, onChange, onClear, placeholder, 
       >
         <Feather name="calendar" size={16} color={isEmpty ? colors.mutedForeground : colors.primary} />
         <Text style={[st.value, { color: isEmpty ? colors.mutedForeground : colors.text }]}>
-          {isEmpty ? (placeholder ?? '') : formatDisplay(value)}
+          {isEmpty ? (placeholder ?? '') : formatDisplay(value, language)}
         </Text>
         {onClear && !isEmpty ? (
           <TouchableOpacity onPress={onClear} hitSlop={8}>

@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -126,7 +127,7 @@ export default function HelpCenterScreen() {
       <View style={[s.screen, { backgroundColor: colors.background }]}>
         <View style={[s.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Feather name="chevron-left" size={24} color={colors.text} />
+            <Feather name={backChevron()} size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: colors.text }]}>{t.helpCenter}</Text>
           <View style={{ width: 24 }} />

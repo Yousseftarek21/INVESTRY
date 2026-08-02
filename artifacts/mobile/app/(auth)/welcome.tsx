@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
+import { forwardArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 
@@ -158,7 +159,7 @@ export default function WelcomeScreen() {
               onPress={() => router.push('/(auth)/sign-up' as any)}
             >
               <Text style={[styles.btnPrimaryText, { color: colors.primaryForeground }]}>{t.getStarted}</Text>
-              <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
+              <Feather name={forwardArrow()} size={18} color={colors.primaryForeground} />
             </Pressable>
 
             <Pressable
@@ -170,7 +171,7 @@ export default function WelcomeScreen() {
           </View>
 
           <Text style={[styles.welcomeFooter, { color: colors.mutedForeground }]}>
-            Egypt · Live Market Data · {new Date().getFullYear()}
+            {t.welcomeFooter(String(new Date().getFullYear()))}
           </Text>
         </View>
       </Animated.View>
@@ -206,7 +207,7 @@ export default function WelcomeScreen() {
               style={[styles.nextBtn, { backgroundColor: colors.primary }]}
               onPress={handleNext}
             >
-              <Feather name="arrow-right" size={22} color={colors.primaryForeground} />
+              <Feather name={forwardArrow()} size={22} color={colors.primaryForeground} />
             </Pressable>
           )}
         </View>
@@ -217,7 +218,7 @@ export default function WelcomeScreen() {
             onPress={handleNext}
           >
             <Text style={[styles.getStartedText, { color: colors.primaryForeground }]}>{t.getStarted}</Text>
-            <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
+            <Feather name={forwardArrow()} size={18} color={colors.primaryForeground} />
           </Pressable>
         )}
       </View>

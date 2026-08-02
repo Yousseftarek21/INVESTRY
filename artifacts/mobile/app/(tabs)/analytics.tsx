@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { forwardChevron } from '@/utils/rtl';
 import Svg, {
   Defs, LinearGradient, Stop, Path,
 } from 'react-native-svg';
@@ -454,14 +455,15 @@ function LiveDot() {
 
 function EmptyState() {
   const colors = useColors();
+  const t = useT();
   return (
     <View style={[em.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[em.icon, { backgroundColor: colors.muted }]}>
         <Feather name="bar-chart-2" size={28} color={colors.mutedForeground} />
       </View>
-      <Text style={[em.title, { color: colors.text }]}>No analytics yet</Text>
+      <Text style={[em.title, { color: colors.text }]}>{t.noAnalyticsYetTitle}</Text>
       <Text style={[em.sub, { color: colors.mutedForeground }]}>
-        Add investments in the Investments tab and your portfolio analytics will appear here.
+        {t.noAnalyticsYetHint}
       </Text>
     </View>
   );
@@ -785,20 +787,20 @@ export default function AnalyticsScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[s.sectionTitle, { color: colors.text }]}>{t.planningGrowthTools}</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>Set targets & calculate returns</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.planningToolsSub}</Text>
         </View>
       </View>
       <View style={s.planningRow}>
         <PlanningToolCard
           icon="target" color={colors.primary}
           label={t.goals}
-          sub="Set a financial target"
+          sub={t.goalsToolSub}
           onPress={() => router.push('/goals' as any)}
         />
         <PlanningToolCard
           icon="percent" color="#4A9EFF"
           label={t.tbillsCalculator}
-          sub="Egypt T-Bills estimator"
+          sub={t.tbillsToolSub}
           onPress={() => router.push('/tbills-calculator' as any)}
         />
         <PlanningToolCard
@@ -820,7 +822,7 @@ export default function AnalyticsScreen() {
           <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.financialToolsSub}</Text>
         </View>
         <View style={[s.toolsBadge, { backgroundColor: colors.primary + '18' }]}>
-          <Text style={[s.toolsBadgeTxt, { color: colors.primary }]}>8 TOOLS</Text>
+          <Text style={[s.toolsBadgeTxt, { color: colors.primary }]}>{t.financialToolsCountBadge}</Text>
         </View>
       </View>
       <FinancialTools />
@@ -845,7 +847,7 @@ export default function AnalyticsScreen() {
           <View style={[s.aiAssistantBadge, { backgroundColor: '#8B5CF622' }]}>
             <Text style={[s.aiAssistantBadgeTxt, { color: '#8B5CF6' }]}>AI</Text>
           </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
         </Pressable>
       </PremiumGate>
 
@@ -1089,7 +1091,7 @@ export default function AnalyticsScreen() {
                       <Text style={[dr.emptyTitle, { color: colors.text }]}>{t.rebalancingEmptyTitle}</Text>
                       <Text style={[dr.sub, { color: colors.mutedForeground }]}>{t.rebalancingEmptyHint}</Text>
                     </View>
-                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
                   </Pressable>
                 ) : (
                   <View style={[s.performersList, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14 }]}>

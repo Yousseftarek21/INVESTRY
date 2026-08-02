@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
+import { forwardChevron } from '@/utils/rtl';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -116,7 +117,7 @@ function NavRow({
             </View>
           ) : null}
           {value ? <Text style={[rw.val, { color: colors.mutedForeground }]}>{value}</Text> : null}
-          {onPress ? <Feather name="chevron-right" size={16} color={colors.mutedForeground} /> : null}
+          {onPress ? <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} /> : null}
         </View>
       </TouchableOpacity>
       {!last && <Div />}
@@ -410,7 +411,7 @@ function ProfileHero({
           </View>
         </View>
 
-        <Feather name="chevron-right" size={17} color={colors.mutedForeground} style={{ marginTop: 4 }} />
+        <Feather name={forwardChevron()} size={17} color={colors.mutedForeground} style={{ marginTop: 4 }} />
       </View>
     </TouchableOpacity>
   );
@@ -980,7 +981,7 @@ export default function SettingsScreen() {
               <Text style={[sc.signInTitle, { color: colors.text }]}>{t.signInToYourAccount}</Text>
               <Text style={[sc.signInSub, { color: colors.mutedForeground }]}>{t.loadSavedInvestments}</Text>
             </View>
-            <Feather name="chevron-right" size={18} color="#C9A227" />
+            <Feather name={forwardChevron()} size={18} color="#C9A227" />
           </Pressable>
         )}
 

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { forwardArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data/egx-companies';
@@ -368,7 +369,7 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
             style={[sc.seeAllBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
           >
             <Text style={[sc.seeAllTxt, { color: colors.primary }]}>{t.seeAllFinancials}</Text>
-            <Feather name="arrow-right" size={13} color={colors.primary} />
+            <Feather name={forwardArrow()} size={13} color={colors.primary} />
           </Pressable>
         </View>
       )}

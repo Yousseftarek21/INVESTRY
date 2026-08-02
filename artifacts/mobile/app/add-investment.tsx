@@ -6,6 +6,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useHaptic } from '@/hooks/useHaptic';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { backChevron } from '@/utils/rtl';
 import { useAuth } from '@clerk/expo';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -804,7 +805,7 @@ export default function AddInvestmentScreen() {
             hitSlop={12}
           >
             <Feather
-              name={isEditing ? 'x' : 'chevron-left'}
+              name={isEditing ? 'x' : backChevron()}
               size={22}
               color={colors.mutedForeground}
             />
@@ -1044,7 +1045,7 @@ export default function AddInvestmentScreen() {
               <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
                 {t.realEstatePurchasePriceHint}
                 {reAreaNum > 0 && rePurchasePriceNum > 0
-                  ? `  (≈ ${rePurchasePricePerM2.toLocaleString(undefined, { maximumFractionDigits: 0 })} EGP/m²)`
+                  ? `  (≈ ${rePurchasePricePerM2.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP/m²)`
                   : ''}
               </Text>
               {rePurchasePriceLooksPerM2 && (
@@ -1069,14 +1070,14 @@ export default function AddInvestmentScreen() {
                     <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>LIVE DATA</Text>
                   </View>
                   <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }}>
-                    {autoFilledArea.minPricePerM2.toLocaleString()}–{autoFilledArea.maxPricePerM2.toLocaleString()} EGP/m² · YoY {autoFilledArea.changePercent > 0 ? '+' : ''}{autoFilledArea.changePercent}%
+                    {autoFilledArea.minPricePerM2.toLocaleString('en-EG')}–{autoFilledArea.maxPricePerM2.toLocaleString('en-EG')} EGP/m² · YoY {autoFilledArea.changePercent > 0 ? '+' : ''}{autoFilledArea.changePercent}%
                   </Text>
                 </View>
               )}
               <AmountInput
                 style={inputStyle}
                 placeholder={autoFilledArea
-                  ? `Market avg: ${autoFilledArea.avgPricePerM2.toLocaleString()} EGP/m²`
+                  ? `Market avg: ${autoFilledArea.avgPricePerM2.toLocaleString('en-EG')} EGP/m²`
                   : t.currentMarketPricePerM2Placeholder}
                 placeholderTextColor={colors.mutedForeground}
                 value={currentMarketPricePerM2}
@@ -1193,24 +1194,24 @@ export default function AddInvestmentScreen() {
                 <Text style={[styles.summaryTitle, { color: colors.text }]}>{t.propertySummary}</Text>
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.purchasePrice}</Text>
-                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePurchasePriceNum.toLocaleString()} EGP</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePurchasePriceNum.toLocaleString('en-EG')} EGP</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.purchasePricePerM2}</Text>
-                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePurchasePricePerM2.toLocaleString(undefined, { maximumFractionDigits: 0 })} EGP</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePurchasePricePerM2.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.currentMarketPricePerM2}</Text>
-                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePricePerM2Num.toLocaleString()} EGP</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>{rePricePerM2Num.toLocaleString('en-EG')} EGP</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.currentPropertyValue}</Text>
-                  <Text style={[styles.summaryValue, { color: colors.text }]}>{reCurrentValue.toLocaleString()} EGP</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text }]}>{reCurrentValue.toLocaleString('en-EG')} EGP</Text>
                 </View>
                 <View style={[styles.summaryRow, styles.summaryDivider, { borderTopColor: colors.border }]}>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.unrealizedGainLoss}</Text>
                   <Text style={[styles.summaryValue, { color: reGainLoss >= 0 ? colors.green : colors.red }]}>
-                    {reGainLoss >= 0 ? '+' : ''}{reGainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })} EGP
+                    {reGainLoss >= 0 ? '+' : ''}{reGainLoss.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
                   </Text>
                 </View>
                 <View style={styles.summaryRow}>
