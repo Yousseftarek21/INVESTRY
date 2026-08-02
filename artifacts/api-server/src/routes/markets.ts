@@ -25,6 +25,7 @@ const pricesCache    = makeCache<MarketPricesResponse>(30_000);   // 30 s
 const historicalCache = makeCache<HistoricalRates>(86_400_000);   // 24 h
 const stocksCache    = makeCache<EGXStockResponse[]>(30_000);     // 30 s
 const globalStocksCache = makeCache<EGXStockResponse[]>(5 * 60_000); // 5 min (Twelve Data free tier)
+const egxIndicesCache = makeCache<EGXStockResponse[]>(30_000);    // 30 s
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1030,6 +1031,55 @@ export async function fetchStocks(): Promise<EGXStockResponse[]> {
   return tvData;
 }
 
+// ─── EGX indices (EGX30, EGX70 EWI) ────────────────────────────────────────────
+// Same TradingView Egypt scanner as individual stocks, just a different pair
+// of tickers, shown as their own chips above the stock list. EGX 33 Shariah
+// was also requested but doesn't have live data available this way — it
+// resolves in TradingView's own symbol search (it's a real, licensed index
+// on their site) but returns "symbol not found" on every actual quote/scan
+// endpoint tried, on every scanner region (egypt/global/cfd/america) and the
+// single-symbol quote endpoint too. Rather than guess at another symbol
+// string or fabricate a number, it's left out entirely — shipping a fake or
+// stale Shariah figure would be worse than not having the chip.
+const EGX_INDICES = [
+  { symbol: "EGX30", name: "EGX 30" },
+  { symbol: "EGX70EWI", name: "EGX 70 EWI" },
+] as const;
+
+async function fetchEGXIndices(): Promise<EGXStockResponse[]> {
+  const body = JSON.stringify({
+    columns: ["close", "change_abs", "change", "volume"],
+    symbols: { tickers: EGX_INDICES.map(i => `EGX:${i.symbol}`) },
+  });
+  const res = await safeFetch("https://scanner.tradingview.com/egypt/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
+    body,
+  });
+  const data = await safeJson<{ data: Array<{ s: string; d: [number, number, number, number | null] }> }>(
+    res, "EGX indices TradingView"
+  );
+  if (!data?.data) return [];
+
+  const bySymbol: Record<string, [number, number, number, number | null]> = {};
+  for (const item of data.data) bySymbol[item.s.replace(/^EGX:/, "")] = item.d;
+
+  const results: EGXStockResponse[] = [];
+  for (const { symbol, name } of EGX_INDICES) {
+    const d = bySymbol[symbol];
+    if (!d) continue;
+    const [close, changeAbs, changePct, volume] = d;
+    if (!close) continue;
+    results.push({
+      symbol, name,
+      price: round2(close), previousClose: round2(close - changeAbs),
+      change: round2(changeAbs), changePercent: round2(changePct),
+      volume: volume ?? undefined,
+    });
+  }
+  return results;
+}
+
 /** Fetch US stock quotes via TradingView's America scanner. */
 async function fetchGlobalStocksViaTradingView(): Promise<EGXStockResponse[]> {
   const tickers = GLOBAL_TICKERS.map(t => `${GLOBAL_EXCHANGE[t.symbol]}:${t.symbol}`);
@@ -1315,6 +1365,20 @@ router.get("/markets/stocks", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch EGX stocks");
     res.status(500).json({ error: "Failed to fetch stocks" });
+  }
+});
+
+router.get("/markets/egx-indices", async (req, res) => {
+  const cached = egxIndicesCache.get();
+  if (cached) { res.setHeader("X-Cache", "HIT"); res.json(cached); return; }
+  try {
+    const data = await fetchEGXIndices();
+    egxIndicesCache.set(data);
+    res.setHeader("X-Cache", "MISS");
+    res.json(data);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch EGX indices");
+    res.status(500).json({ error: "Failed to fetch EGX indices" });
   }
 });
 

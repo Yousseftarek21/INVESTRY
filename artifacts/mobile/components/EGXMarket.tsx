@@ -10,6 +10,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data/egx-companies';
 import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
+import { useEGXIndices, EGXIndex } from '@/hooks/useEGXIndices';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 import { RangeBar } from '@/components/RangeBar';
 import { StockFinancialsSheet } from '@/components/StockFinancialsSheet';
@@ -93,6 +94,56 @@ const est = StyleSheet.create({
 });
 
 // ─── Market Status Banner ─────────────────────────────────────────────────────
+
+// ─── Index chips (EGX30 / EGX70 EWI) ───────────────────────────────────────────
+// EGX 33 Shariah was requested too, but has no live data available through
+// TradingView's free public API (confirmed: it resolves in their symbol
+// search, but every quote/scan endpoint returns "not found" for it) — left
+// out rather than shown with a fabricated or stale number.
+
+function IndexChip({ index }: { index: EGXIndex }) {
+  const colors = useColors();
+  const isFlat = Math.abs(index.changePercent) < 0.005;
+  const isPos = index.changePercent >= 0;
+  const color = isFlat ? colors.mutedForeground : (isPos ? colors.green : colors.red);
+  return (
+    <View style={[ix.chip, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[ix.name, { color: colors.mutedForeground }]}>{index.name}</Text>
+      <Text style={[ix.price, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {index.price.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+      </Text>
+      <View style={[ix.badge, { backgroundColor: color + '18' }]}>
+        <Feather name={isFlat ? 'minus' : isPos ? 'arrow-up-right' : 'arrow-down-right'} size={10} color={color} />
+        <Text style={[ix.badgeTxt, { color }]}>
+          {!isFlat && isPos ? '+' : ''}{index.changePercent.toFixed(2)}%
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function EGXIndexChips() {
+  const { data: indices = [] } = useEGXIndices();
+  // Honest-empty: nothing fabricated while loading or if the fetch fails —
+  // the chips simply don't appear rather than showing a placeholder number.
+  if (indices.length === 0) return null;
+  return (
+    <View style={ix.row}>
+      {indices.map(idx => <IndexChip key={idx.symbol} index={idx} />)}
+    </View>
+  );
+}
+const ix = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 10 },
+  chip: {
+    flex: 1, borderRadius: 14, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 10, gap: 4,
+  },
+  name: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  price: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
+  badge: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
+  badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+});
 
 function MarketStatusBanner() {
   const colors = useColors();
@@ -602,6 +653,7 @@ export function EGXMarket({
         <EGXSectionTabs active={section} onChange={setSection} />
         {section === 'stocks' && (
           <>
+            <EGXIndexChips />
             <MarketStatusBanner />
             <SearchBar value={query} onChange={handleQuery} />
             <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
