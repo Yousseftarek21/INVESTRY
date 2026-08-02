@@ -328,7 +328,7 @@ const sl = StyleSheet.create({
 
 // ─── Currency hero card ────────────────────────────────────────────────────────
 
-function CurrencyHeroCard({ rate }: { rate: number }) {
+function CurrencyHeroCard({ rate, changePercent }: { rate: number; changePercent?: number }) {
   const colors = useColors();
   const t = useT();
 
@@ -338,10 +338,12 @@ function CurrencyHeroCard({ rate }: { rate: number }) {
       <View style={ch.body}>
         {/* Top: flag + name/pair. The page header above already shows a
             single "LIVE" indicator — a second one here (as this card used
-            to have) was a redundant duplicate, not a second signal. No
-            change% badge: there's no reliable same-day reference for
-            USD/EGP the way TradingView gives gold/silver, so it's not
-            shown here rather than shown wrong. */}
+            to have) was a redundant duplicate, not a second signal.
+            changePercent is today's rate vs. yesterday's Cairo-day close
+            (marketCloseSnapshotsTable — see markets.ts), resetting itself
+            every Cairo midnight the same way gold/silver's does; there IS
+            a real same-day reference for USD/EGP after all (this card just
+            never used it before). */}
         <View style={ch.topRow}>
           <View style={ch.flagRow}>
             <Text style={ch.flag}>🇺🇸</Text>
@@ -350,6 +352,7 @@ function CurrencyHeroCard({ rate }: { rate: number }) {
               <Text style={[ch.pair, { color: colors.mutedForeground }]}>USD / EGP</Text>
             </View>
           </View>
+          {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
         </View>
         {/* Rate */}
         <View style={ch.rateRow}>
@@ -699,6 +702,10 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
   const t = useT();
   const usd  = prices?.usdToEgp ?? 0;
   const fx   = prices?.fxRates  ?? {};
+  // Same launch-cache guard as gold/silver above: a rehydrated cache has a
+  // real spot rate but no usable daily delta (zeroed on load), so hide the
+  // badge rather than briefly show a wrong flat 0.00%.
+  const usdChangePct = prices?.changesUnknown ? undefined : prices?.usdToEgpChangePercent;
 
   const eur  = fx.EUR ?? 0;
   const gbp  = fx.GBP ?? 0;
@@ -716,7 +723,7 @@ function CurrenciesTab({ prices }: { prices: ReturnType<typeof useMarketPrices>[
           title, the only tab where the order was flipped). */}
       <View style={tab.section}>
         <SLabel icon="dollar-sign" title={t.exchangeRatesVsEGP} />
-        <CurrencyHeroCard rate={usd} />
+        <CurrencyHeroCard rate={usd} changePercent={usdChangePct} />
         <TableCard>
           <CurrencyRow flag="🇪🇺" name={t.currencyEUR} pair="EUR / EGP" rate={eur}  unit={`${t.currencyUnitEGP} EUR`} />
           <CurrencyRow flag="🇬🇧" name={t.currencyGBP} pair="GBP / EGP" rate={gbp}  unit={`${t.currencyUnitEGP} GBP`} />
