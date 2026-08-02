@@ -1044,8 +1044,13 @@ function TodayBreakdownModal({
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
+  const isFlatTotal = Math.abs(toDisp(totalAmount)) < 0.005;
   const isGain = totalAmount >= 0;
-  const totalColor = isGain ? colors.green : colors.red;
+  const totalColor = isFlatTotal ? colors.mutedForeground : (isGain ? colors.green : colors.red);
+  // Every category present is individually flat — rather than list five
+  // zero rows, say plainly that nothing has moved rather than let a wall
+  // of "0 EGP" read as broken or still loading.
+  const allFlat = rows.length > 0 && rows.every(r => Math.abs(toDisp(r.amount)) < 0.005);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -1056,8 +1061,8 @@ function TodayBreakdownModal({
           <View>
             <Text style={[tb.title, { color: colors.text }]}>{t.todayBreakdownTitle}</Text>
             <Text style={[tb.subtitle, { color: totalColor }]}>
-              {hideValues ? '••••' : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(totalAmount)))} ${displayCurrency}`}
-              {'  ·  '}{`${isGain ? '+' : ''}${totalPct.toFixed(2)}%`}
+              {hideValues ? '••••' : isFlatTotal ? `0 ${displayCurrency}` : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(totalAmount)))} ${displayCurrency}`}
+              {'  ·  '}{`${!isFlatTotal && isGain ? '+' : ''}${totalPct.toFixed(2)}%`}
             </Text>
           </View>
           <TouchableOpacity onPress={onClose} style={[tb.close, { backgroundColor: colors.muted }]}>
@@ -1067,6 +1072,14 @@ function TodayBreakdownModal({
 
         {rows.length === 0 ? (
           <Text style={[tb.emptyText, { color: colors.mutedForeground }]}>{t.todayBreakdownEmpty}</Text>
+        ) : allFlat ? (
+          <View style={tb.noChangeWrap}>
+            <View style={[tb.noChangeIcon, { backgroundColor: colors.muted }]}>
+              <Feather name="moon" size={22} color={colors.mutedForeground} />
+            </View>
+            <Text style={[tb.noChangeTitle, { color: colors.text }]}>{t.todayNoChangeTitle}</Text>
+            <Text style={[tb.noChangeHint, { color: colors.mutedForeground }]}>{t.todayNoChangeHint}</Text>
+          </View>
         ) : (
           <View style={tb.list}>
             {rows.map(r => {
@@ -1122,6 +1135,10 @@ const tb = StyleSheet.create({
   rowSub: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   rowAmount: { fontSize: 14, fontFamily: 'Inter_700Bold' },
   emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', paddingVertical: 20 },
+  noChangeWrap: { alignItems: 'center', paddingVertical: 24, gap: 10 },
+  noChangeIcon: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  noChangeTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  noChangeHint: { fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 18, paddingHorizontal: 20 },
   footnote: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16, marginTop: 18 },
 });
 

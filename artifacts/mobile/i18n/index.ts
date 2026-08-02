@@ -526,6 +526,8 @@ const en = {
   todayBreakdownExcludedNote: "Real estate & personal assets aren't included — they don't have live daily pricing, so they're left out rather than guessed at.",
   interestAccruedToday: 'Interest accrued today',
   currencyFxLabel: 'Currency (EGP/USD)',
+  todayNoChangeTitle: 'No Changes Yet',
+  todayNoChangeHint: "Gold, silver, stocks, and the EGP/USD rate haven't moved since yesterday's close.",
   hiGreeting: 'Hi,',
   thereGreeting: 'there',
 
@@ -1658,6 +1660,8 @@ const ar: typeof en = {
   todayBreakdownExcludedNote: 'العقارات والأصول الشخصية غير مدرجة — لا تتوفر لها تسعيرة يومية حية، لذا تُستبعد بدلاً من تخمينها.',
   interestAccruedToday: 'فائدة متراكمة اليوم',
   currencyFxLabel: 'العملة (جنيه/دولار)',
+  todayNoChangeTitle: 'لا تغييرات بعد',
+  todayNoChangeHint: 'الذهب والفضة والأسهم وسعر الجنيه/الدولار لم تتحرك منذ إغلاق الأمس.',
   hiGreeting: 'مرحباً،',
   thereGreeting: 'صديقي',
 
