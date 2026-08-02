@@ -101,13 +101,13 @@ const est = StyleSheet.create({
 // search, but every quote/scan endpoint returns "not found" for it) — left
 // out rather than shown with a fabricated or stale number.
 
-function IndexChip({ index }: { index: EGXIndex }) {
+function IndexHalf({ index }: { index: EGXIndex }) {
   const colors = useColors();
   const isFlat = Math.abs(index.changePercent) < 0.005;
   const isPos = index.changePercent >= 0;
   const color = isFlat ? colors.mutedForeground : (isPos ? colors.green : colors.red);
   return (
-    <View style={[ix.chip, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={ix.half}>
       <Text style={[ix.name, { color: colors.mutedForeground }]}>{index.name}</Text>
       <Text style={[ix.price, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {index.price.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
@@ -122,23 +122,30 @@ function IndexChip({ index }: { index: EGXIndex }) {
   );
 }
 
+// Single combined card, both indices side by side split by a center divider —
+// not two separate chips — since they're always shown together as one EGX
+// market-overview unit.
 function EGXIndexChips() {
+  const colors = useColors();
   const { data: indices = [] } = useEGXIndices();
   // Honest-empty: nothing fabricated while loading or if the fetch fails —
-  // the chips simply don't appear rather than showing a placeholder number.
-  if (indices.length === 0) return null;
+  // the card simply doesn't appear rather than showing a placeholder number.
+  if (indices.length < 2) return null;
   return (
-    <View style={ix.row}>
-      {indices.map(idx => <IndexChip key={idx.symbol} index={idx} />)}
+    <View style={[ix.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <IndexHalf index={indices[0]} />
+      <View style={[ix.divider, { backgroundColor: colors.border }]} />
+      <IndexHalf index={indices[1]} />
     </View>
   );
 }
 const ix = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 10 },
-  chip: {
-    flex: 1, borderRadius: 14, borderWidth: 1,
-    paddingHorizontal: 12, paddingVertical: 10, gap: 4,
+  card: {
+    flexDirection: 'row', borderRadius: 14, borderWidth: 1,
+    paddingVertical: 10,
   },
+  half: { flex: 1, paddingHorizontal: 14, gap: 4 },
+  divider: { width: StyleSheet.hairlineWidth },
   name: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
   price: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
   badge: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
@@ -653,6 +660,8 @@ export function EGXMarket({
         <EGXSectionTabs active={section} onChange={setSection} />
         {section === 'stocks' && (
           <>
+            <MarketStatusBanner />
+            <EGXIndexChips />
             <SearchBar value={query} onChange={handleQuery} />
             <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
             <View style={em.resultRow}>
@@ -671,8 +680,6 @@ export function EGXMarket({
                 </View>
               )}
             </View>
-            <MarketStatusBanner />
-            <EGXIndexChips />
           </>
         )}
       </View>
