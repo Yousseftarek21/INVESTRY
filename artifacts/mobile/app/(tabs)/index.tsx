@@ -1,10 +1,10 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import {
-  ActivityIndicator, Animated, AppState, Image, LayoutChangeEvent, Platform, Pressable, RefreshControl,
+  ActivityIndicator, Animated, AppState, Image, LayoutChangeEvent, Modal, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -379,6 +379,7 @@ export default function HomeScreen() {
 
   const [timeFilter, setTimeFilter] = useState<ChartPeriod>('1D');
   const [sparkWidth, setSparkWidth] = useState(0);
+  const [showTodayBreakdown, setShowTodayBreakdown] = useState(false);
 
   // ── Portfolio maths ────────────────────────────────────────────────────────
   const egxChangeByTicker = useMemo(() => {
@@ -435,8 +436,47 @@ export default function HomeScreen() {
       totalValue, totalCost, gain, gainPct, todayGain, todayPct,
       goldV, silverV, stockV, reV, paV, fiV,
       goldGrams, silverGrams, stockCount, reCount, paCount,
+      todayGold, todaySilver, todayStock, todayFI,
     };
   }, [holdings, prices, egxChangeByTicker]);
+
+  // ── Today breakdown ──────────────────────────────────────────────────────────
+  // Same four buckets that already sum to summary.todayGain above — this just
+  // exposes them individually instead of only their total, so "why is today
+  // up/down X%" has a real, traceable answer instead of one opaque number.
+  const todayBreakdown = useMemo(() => {
+    const rows: { key: string; label: string; color: string; icon: React.ReactNode; amount: number; pct: number | null }[] = [];
+    if (summary.goldV > 0) {
+      rows.push({
+        key: 'gold', label: t.gold, color: colors.primary,
+        icon: <MaterialCommunityIcons name="gold" size={16} color={colors.primary} />,
+        amount: summary.todayGold, pct: prices?.goldChangePercentEgp ?? null,
+      });
+    }
+    if (summary.silverV > 0) {
+      rows.push({
+        key: 'silver', label: t.silver, color: colors.silverColor,
+        icon: <MaterialCommunityIcons name="gold" size={16} color={colors.silverColor} />,
+        amount: summary.todaySilver, pct: prices?.silverChangePercentEgp ?? null,
+      });
+    }
+    if (summary.stockV > 0) {
+      const startOfDayStockV = summary.stockV - summary.todayStock;
+      rows.push({
+        key: 'stock', label: t.egxStocksAllocLabel, color: '#4A9EFF',
+        icon: <Feather name="bar-chart-2" size={16} color="#4A9EFF" />,
+        amount: summary.todayStock, pct: startOfDayStockV > 0 ? (summary.todayStock / startOfDayStockV) * 100 : null,
+      });
+    }
+    if (summary.fiV > 0) {
+      rows.push({
+        key: 'fixedIncome', label: t.fixedIncome, color: '#22C55E',
+        icon: <MaterialCommunityIcons name="bank-transfer" size={16} color="#22C55E" />,
+        amount: summary.todayFI, pct: null, // accrual, not a price move — no % is shown for this row
+      });
+    }
+    return rows.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  }, [summary, prices, colors, t]);
 
   const { snapshots } = usePortfolioSnapshots(summary.totalValue);
   const startOfDayValue = summary.totalValue - summary.todayGain;
@@ -713,7 +753,10 @@ export default function HomeScreen() {
                   <Text style={[styles.plValue, { color: colors.mutedForeground + '88' }]}>—</Text>
                 </View>
               ) : (
-                <View style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}>
+                <Pressable
+                  onPress={() => { impact(); setShowTodayBreakdown(true); }}
+                  style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}
+                >
                   <View style={styles.plTop}>
                     <Feather name={isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
                     <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
@@ -722,11 +765,12 @@ export default function HomeScreen() {
                         {`${isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
                       </Text>
                     </View>
+                    <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
                   </View>
                   <Text style={[styles.plValue, { color: todayColor }]}>
                     {hideValues ? '••••' : `${isTodayGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.todayGain)))} ${displayCurrency}`}
                   </Text>
-                </View>
+                </Pressable>
               )}
 
               <View style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}>
@@ -941,9 +985,115 @@ export default function HomeScreen() {
         )}
       </View>
     </ScrollView>
+
+    <TodayBreakdownModal
+      visible={showTodayBreakdown}
+      onClose={() => setShowTodayBreakdown(false)}
+      rows={todayBreakdown}
+      totalAmount={summary.todayGain}
+      totalPct={summary.todayPct}
+      hasExcludedAssets={summary.reV > 0 || summary.paV > 0}
+      hideValues={hideValues}
+      toDisp={toDisp}
+      displayCurrency={displayCurrency}
+    />
     </View>
   );
 }
+
+// ─── Today breakdown modal ──────────────────────────────────────────────────────
+// Answers "why is today up/down X%" with the actual per-category numbers
+// that sum to it, instead of leaving the badge as one opaque figure.
+
+interface TodayBreakdownRow {
+  key: string; label: string; color: string; icon: React.ReactNode; amount: number; pct: number | null;
+}
+
+function TodayBreakdownModal({
+  visible, onClose, rows, totalAmount, totalPct, hasExcludedAssets, hideValues, toDisp, displayCurrency,
+}: {
+  visible: boolean; onClose: () => void; rows: TodayBreakdownRow[];
+  totalAmount: number; totalPct: number; hasExcludedAssets: boolean;
+  hideValues: boolean; toDisp: (egp: number) => number; displayCurrency: DisplayCurrency;
+}) {
+  const colors = useColors();
+  const t = useT();
+  const insets = useSafeAreaInsets();
+  const isGain = totalAmount >= 0;
+  const totalColor = isGain ? colors.green : colors.red;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={tb.backdrop} onPress={onClose} />
+      <View style={[tb.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]}>
+        <View style={[tb.handle, { backgroundColor: colors.border }]} />
+        <View style={tb.header}>
+          <View>
+            <Text style={[tb.title, { color: colors.text }]}>{t.todayBreakdownTitle}</Text>
+            <Text style={[tb.subtitle, { color: totalColor }]}>
+              {hideValues ? '••••' : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(totalAmount)))} ${displayCurrency}`}
+              {'  ·  '}{`${isGain ? '+' : ''}${totalPct.toFixed(2)}%`}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={[tb.close, { backgroundColor: colors.muted }]}>
+            <Feather name="x" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        {rows.length === 0 ? (
+          <Text style={[tb.emptyText, { color: colors.mutedForeground }]}>{t.todayBreakdownEmpty}</Text>
+        ) : (
+          <View style={tb.list}>
+            {rows.map(r => {
+              const rowGain = r.amount >= 0;
+              const rowColor = rowGain ? colors.green : colors.red;
+              return (
+                <View key={r.key} style={tb.row}>
+                  <View style={[tb.iconBox, { backgroundColor: r.color + '1A' }]}>{r.icon}</View>
+                  <View style={tb.rowBody}>
+                    <Text style={[tb.rowLabel, { color: colors.text }]}>{r.label}</Text>
+                    {r.key === 'fixedIncome' ? (
+                      <Text style={[tb.rowSub, { color: colors.mutedForeground }]}>{t.interestAccruedToday}</Text>
+                    ) : r.pct !== null ? (
+                      <Text style={[tb.rowSub, { color: colors.mutedForeground }]}>
+                        {`${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(2)}%`}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={[tb.rowAmount, { color: rowColor }]}>
+                    {hideValues ? '••••' : `${rowGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(r.amount)))} ${displayCurrency}`}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {hasExcludedAssets && (
+          <Text style={[tb.footnote, { color: colors.mutedForeground }]}>{t.todayBreakdownExcludedNote}</Text>
+        )}
+      </View>
+    </Modal>
+  );
+}
+const tb = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10 },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 },
+  title: { fontSize: 17, fontFamily: 'Inter_700Bold' },
+  subtitle: { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginTop: 4 },
+  close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  list: { gap: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconBox: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  rowBody: { flex: 1, minWidth: 0, gap: 1 },
+  rowLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  rowSub: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  rowAmount: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', paddingVertical: 20 },
+  footnote: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16, marginTop: 18 },
+});
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 

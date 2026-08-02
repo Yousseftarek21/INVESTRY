@@ -521,6 +521,10 @@ const en = {
   todayLabel: 'Today',
   totalPL: 'Total P/L',
   updatedAt: 'Updated ',
+  todayBreakdownTitle: 'What Moved Today',
+  todayBreakdownEmpty: 'Nothing to break down yet — add a holding to see what moves your total.',
+  todayBreakdownExcludedNote: "Real estate & personal assets aren't included — they don't have live daily pricing, so they're left out rather than guessed at.",
+  interestAccruedToday: 'Interest accrued today',
   hiGreeting: 'Hi,',
   thereGreeting: 'there',
 
@@ -1648,6 +1652,10 @@ const ar: typeof en = {
   todayLabel: 'اليوم',
   totalPL: 'إجمالي الأرباح/الخسائر',
   updatedAt: 'مُحدَّث ',
+  todayBreakdownTitle: 'ما الذي تحرك اليوم',
+  todayBreakdownEmpty: 'لا يوجد شيء لتحليله بعد — أضف استثمارًا لترى ما يحرك إجماليك.',
+  todayBreakdownExcludedNote: 'العقارات والأصول الشخصية غير مدرجة — لا تتوفر لها تسعيرة يومية حية، لذا تُستبعد بدلاً من تخمينها.',
+  interestAccruedToday: 'فائدة متراكمة اليوم',
   hiGreeting: 'مرحباً،',
   thereGreeting: 'صديقي',
 
