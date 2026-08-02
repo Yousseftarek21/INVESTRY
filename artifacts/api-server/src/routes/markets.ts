@@ -679,16 +679,19 @@ async function fetchUsdToEgp(): Promise<number> {
   return FALLBACK_EGP;
 }
 
-// ─── FX cross rates via Wise (same source as USD/EGP) ────────────────────────
-// Wise live mid-market rate for each pair directly vs EGP — only Wise.
+// ─── FX cross rates via CIB, Wise fallback (same policy as USD/EGP) ───────────
+// CIB first for every pair it quotes (EUR, GBP, CHF, SAR, KWD as of writing).
+// Wise is strictly the fallback — reached only when CIB has no value for a
+// given pair, whether because the whole CIB fetch failed or because CIB
+// simply doesn't publish that currency at all (TRY/CNY/QAR/AED). Never used
+// in parallel with CIB and never preferred over it. No pair is ever filled
+// in from a third provider (e.g. open.er-api.com); a pair with no CIB
+// reading, no Wise reading, and no memo is simply left out of the returned
+// object — every caller already treats a missing rate as "unknown"
+// (`fx.EUR ?? 0` and friends), which is honest.
 
 const FX_SYMBOLS = ['EUR', 'GBP', 'TRY', 'CNY', 'CHF', 'QAR', 'SAR', 'AED', 'KWD'] as const;
 
-// Same rule as USD/EGP: Wise only. No pair is ever filled in from
-// open.er-api.com. A pair with no Wise reading and no memo is simply left out
-// of the returned object — every caller already treats a missing rate as
-// "unknown" (`fx.EUR ?? 0` and friends), which is honest; a computed number
-// from a different provider, silently standing in for Wise, is not.
 async function fetchFxCrossRates(_usdToEgp: number): Promise<Record<string, number>> {
   // CIB first, every day — same policy as USD/EGP above. CIB only quotes a
   // subset of FX_SYMBOLS (EUR, GBP, CHF, SAR, KWD as of writing); TRY/CNY/
