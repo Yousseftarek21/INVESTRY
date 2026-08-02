@@ -653,7 +653,6 @@ export function EGXMarket({
         <EGXSectionTabs active={section} onChange={setSection} />
         {section === 'stocks' && (
           <>
-            <MarketStatusBanner />
             <SearchBar value={query} onChange={handleQuery} />
             <SectorPills active={sector} onChange={handleSector} counts={sectorCounts} />
             <View style={em.resultRow}>
@@ -672,6 +671,7 @@ export function EGXMarket({
                 </View>
               )}
             </View>
+            <MarketStatusBanner />
             <EGXIndexChips />
           </>
         )}
