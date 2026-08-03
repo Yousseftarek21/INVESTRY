@@ -7,3 +7,4 @@ export * from "./goals";
 export * from "./recurringIncome";
 export * from "./priceAlerts";
 export * from "./portfolioTargets";
+export * from "./cashBalanceUpdates";

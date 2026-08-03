@@ -1,8 +1,12 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
-import { db, cashAccountsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, cashAccountsTable, cashBalanceUpdatesTable } from "@workspace/db";
+import { eq, and, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
+
+function generateUpdateId(): string {
+  return `cbu_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
 
 const router: IRouter = Router();
 
@@ -113,6 +117,79 @@ router.put("/cash-accounts/:id", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "PUT /cash-accounts/:id failed");
     res.status(500).json({ error: "Failed to update cash account" });
+  }
+});
+
+// GET /api/cash-accounts/:id/balance-updates — this account's manual balance
+// change history (not a transaction/expense ledger — just delta + resulting
+// balance + when), most recent first.
+router.get("/cash-accounts/:id/balance-updates", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { id } = req.params;
+
+  try {
+    const rows = await db
+      .select({
+        id: cashBalanceUpdatesTable.id,
+        delta: cashBalanceUpdatesTable.delta,
+        resultingBalance: cashBalanceUpdatesTable.resultingBalance,
+        createdAt: cashBalanceUpdatesTable.createdAt,
+      })
+      .from(cashBalanceUpdatesTable)
+      .where(and(eq(cashBalanceUpdatesTable.userId, userId), eq(cashBalanceUpdatesTable.cashAccountId, id)))
+      .orderBy(desc(cashBalanceUpdatesTable.createdAt))
+      .limit(20);
+
+    res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, "GET /cash-accounts/:id/balance-updates failed");
+    res.status(500).json({ error: "Failed to fetch balance updates" });
+  }
+});
+
+// POST /api/cash-accounts/:id/balance-updates — log a manual balance change.
+// The client computes delta/resultingBalance itself (it already has the old
+// and new balance at the moment of editing) — this just records it. Only
+// verifies the account belongs to this user; doesn't recompute or validate
+// the math server-side, same trust boundary as the account's own balance
+// field (client-authored, like every other holding/cash field in this app).
+router.post("/cash-accounts/:id/balance-updates", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { id } = req.params;
+
+  const body = req.body as Record<string, unknown>;
+  const delta = body.delta;
+  const resultingBalance = body.resultingBalance;
+  if (typeof delta !== "number" || !Number.isFinite(delta)) {
+    res.status(400).json({ error: "delta must be a finite number" });
+    return;
+  }
+  if (typeof resultingBalance !== "number" || !Number.isFinite(resultingBalance)) {
+    res.status(400).json({ error: "resultingBalance must be a finite number" });
+    return;
+  }
+
+  try {
+    const [account] = await db
+      .select({ id: cashAccountsTable.id })
+      .from(cashAccountsTable)
+      .where(and(eq(cashAccountsTable.id, id), eq(cashAccountsTable.userId, userId)));
+    if (!account) { res.status(404).json({ error: "Cash account not found" }); return; }
+
+    const row = {
+      id: generateUpdateId(),
+      userId,
+      cashAccountId: id,
+      delta,
+      resultingBalance,
+    };
+    await db.insert(cashBalanceUpdatesTable).values(row);
+    res.status(201).json(row);
+  } catch (err) {
+    req.log.error({ err }, "POST /cash-accounts/:id/balance-updates failed");
+    res.status(500).json({ error: "Failed to log balance update" });
   }
 });
 

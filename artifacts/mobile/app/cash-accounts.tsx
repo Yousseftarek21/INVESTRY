@@ -21,6 +21,7 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
 import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { useMarketPrices } from '@/hooks/usePrices';
+import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
 
 type EntryType = CashAccountType | 'recurring_income';
 
@@ -64,6 +65,17 @@ export default function CashAccountsScreen() {
   const [entryType, setEntryType] = useState<EntryType>(initialType);
   const [accountName, setAccountName] = useState('');
   const [balance, setBalance] = useState('');
+  // Captured when an existing account's edit form opens — the baseline the
+  // live "+/- since last time" hint and the balance-update history log are
+  // both computed against. Null while adding a new account (nothing to
+  // diff against yet).
+  const [editingOriginalBalance, setEditingOriginalBalance] = useState<number | null>(null);
+  const balanceUpdatesAccountId = editingId && !isEditingIncome ? editingId : null;
+  const { updates: balanceUpdates, refresh: refreshBalanceUpdates, logUpdate: logBalanceUpdate } = useCashBalanceUpdates(balanceUpdatesAccountId);
+  useEffect(() => {
+    if (balanceUpdatesAccountId) refreshBalanceUpdates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [balanceUpdatesAccountId]);
   const [currency, setCurrency] = useState('EGP');
   const [dateAdded, setDateAdded] = useState(todayISO());
   const [notes, setNotes] = useState('');
@@ -152,6 +164,7 @@ export default function CashAccountsScreen() {
     setEntryType('bank');
     setAccountName('');
     setBalance('');
+    setEditingOriginalBalance(null);
     setCurrency('EGP');
     setDateAdded(todayISO());
     setNotes('');
@@ -174,6 +187,7 @@ export default function CashAccountsScreen() {
     setEntryType(a.type);
     setAccountName(a.accountName);
     setBalance(String(a.balance));
+    setEditingOriginalBalance(a.balance);
     setCurrency(a.currency);
     setDateAdded(a.dateAdded ?? todayISO());
     setNotes(a.notes ?? '');
@@ -249,6 +263,12 @@ export default function CashAccountsScreen() {
         showPaywall();
         return;
       }
+      const isExistingAccount = !!(editingId && !isEditingIncome);
+      // Only a genuine manual change gets a fresh lastBalanceUpdateAt/history
+      // entry — re-saving the form without touching the number (e.g. just
+      // editing the notes) shouldn't look like a balance update that never
+      // happened.
+      const balanceChanged = isExistingAccount && editingOriginalBalance !== null && parsedBalance !== editingOriginalBalance;
       const account: CashAccount = {
         id: editingId ?? generateId(),
         type: entryType as CashAccountType,
@@ -257,13 +277,17 @@ export default function CashAccountsScreen() {
         currency,
         dateAdded,
         notes: notes.trim() || undefined,
+        lastBalanceUpdateAt: balanceChanged
+          ? new Date().toISOString()
+          : (isExistingAccount ? cashAccounts.find(a => a.id === editingId)?.lastBalanceUpdateAt : undefined),
       };
       // addCashAccount/updateCashAccount update local state synchronously
       // before their network call — don't wait on the round-trip just to
       // dismiss the form (failures are handled by the context's own
       // rollback + syncError).
-      if (editingId && !isEditingIncome) {
+      if (isExistingAccount) {
         updateCashAccount(account);
+        if (balanceChanged) logBalanceUpdate(account.id, parsedBalance - (editingOriginalBalance as number), parsedBalance);
       } else {
         addCashAccount(account);
       }
@@ -535,8 +559,63 @@ export default function CashAccountsScreen() {
                     value={balance}
                     onChangeText={setBalance}
                   />
+                  {editingOriginalBalance !== null && (() => {
+                    const parsed = parseAmount(balance);
+                    if (balance.trim() === '' || isNaN(parsed) || parsed === editingOriginalBalance) return null;
+                    const delta = parsed - editingOriginalBalance;
+                    const isUp = delta > 0;
+                    return (
+                      <Text style={[styles.balanceDeltaHint, { color: isUp ? colors.green : colors.red }]}>
+                        {t.balanceDeltaHint(`${isUp ? '+' : ''}${delta.toLocaleString('en-EG', { maximumFractionDigits: 2 })} ${currency}`)}
+                      </Text>
+                    );
+                  })()}
+                  {editingOriginalBalance !== null && (
+                    <View style={styles.stepperRow}>
+                      {[-1000, -100, 100, 1000].map(step => (
+                        <TouchableOpacity
+                          key={step}
+                          style={[styles.stepperChip, { borderColor: colors.border, backgroundColor: colors.card }]}
+                          onPress={() => { impact(); setBalance(String((parseAmount(balance) || 0) + step)); }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.stepperChipText, { color: step > 0 ? colors.green : colors.red }]}>
+                            {step > 0 ? '+' : ''}{step}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                   <Text style={[styles.hint, { color: colors.mutedForeground }]}>{BALANCE_HINT[entryType as CashAccountType] ?? ''}</Text>
                 </View>
+
+                {/* ── Recent updates (manual balance-change history) ─── */}
+                {editingOriginalBalance !== null && balanceUpdates.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={labelStyle}>{t.recentBalanceUpdates}</Text>
+                    <View style={[styles.updatesList, { borderColor: colors.border }]}>
+                      {balanceUpdates.slice(0, 5).map((u, i) => {
+                        const isUp = u.delta > 0;
+                        return (
+                          <View
+                            key={u.id}
+                            style={[styles.updateRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
+                          >
+                            <Text style={[styles.updateDate, { color: colors.mutedForeground }]}>
+                              {new Date(u.createdAt).toLocaleDateString('en-EG', { month: 'short', day: 'numeric' })}
+                            </Text>
+                            <Text style={[styles.updateDelta, { color: isUp ? colors.green : colors.red }]}>
+                              {isUp ? '+' : ''}{u.delta.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {currency}
+                            </Text>
+                            <Text style={[styles.updateResulting, { color: colors.mutedForeground }]}>
+                              {'→'} {u.resultingBalance.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
 
                 {/* ── Currency ─────────────────────────────────────── */}
                 <View style={styles.section}>
@@ -669,6 +748,11 @@ export default function CashAccountsScreen() {
                         <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
                           {(Number(a.balance) || 0).toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
                         </Text>
+                        {a.lastBalanceUpdateAt && (
+                          <Text style={[styles.lastUpdatedHint, { color: colors.mutedForeground }]}>
+                            {t.updatedDaysAgo(String(Math.max(0, Math.floor((Date.now() - new Date(a.lastBalanceUpdateAt).getTime()) / 86400000))))}
+                          </Text>
+                        )}
                       </View>
                       <View style={styles.accountActions}>
                         <TouchableOpacity
@@ -933,6 +1017,16 @@ const styles = StyleSheet.create({
   section: { marginBottom: 16 },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 8, letterSpacing: 0.3 },
   hint: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 17 },
+  balanceDeltaHint: { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginTop: 8 },
+  stepperRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  stepperChip: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+  stepperChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  updatesList: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
+  updateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
+  updateDate: { fontSize: 12.5, fontFamily: 'Inter_400Regular', width: 52 },
+  updateDelta: { fontSize: 13, fontFamily: 'Inter_600SemiBold', flex: 1 },
+  updateResulting: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  lastUpdatedHint: { fontSize: 10.5, fontFamily: 'Inter_400Regular', marginTop: 2 },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   typeCardWrap: { width: '47%' },
   typeCard: {

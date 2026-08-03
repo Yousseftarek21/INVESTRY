@@ -127,6 +127,10 @@ export interface CashAccount {
   currency: string;
   dateAdded?: string;
   notes?: string;
+  /** ISO timestamp of the last manual balance edit — not touched by
+   * recurring-income auto-credits, only by the user changing the number
+   * themselves. Drives the "Updated X days ago" hint on the account card. */
+  lastBalanceUpdateAt?: string;
 }
 
 export interface IncomeTransaction {
