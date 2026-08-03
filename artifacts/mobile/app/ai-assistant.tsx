@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -7,13 +7,14 @@ import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@clerk/expo';
 import { Feather } from '@expo/vector-icons';
+import { fetch as expoFetch } from 'expo/fetch';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings } from '@/context/AppSettingsContext';
-import { apiFetch } from '@/utils/api';
+import { getApiBaseUrl } from '@/utils/api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -33,8 +34,11 @@ export default function AIAssistantScreen() {
   const { getToken } = useAuth();
   const { language } = useAppSettings();
 
+  // Always starts blank — this screen is a fresh conversation every time
+  // it's opened, not a restore of wherever the last one left off. Past
+  // turns are still persisted server-side (POST /api/chat) so they show up
+  // in the separate read-only History screen instead.
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,29 +46,6 @@ export default function AIAssistantScreen() {
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
-
-  // Restores the conversation from where it left off, rather than starting
-  // blank every time this screen opens — the server persists every turn
-  // (see POST /api/chat) precisely so this can happen.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const token = await getToken();
-        if (!token) return;
-        const res = await apiFetch('/api/chat/history', token);
-        if (!res.ok) return;
-        const data = (await res.json()) as { messages: ChatMessage[] };
-        if (!cancelled) setMessages(data.messages);
-      } catch {
-        // Best-effort — worst case the screen just starts blank, same as before.
-      } finally {
-        if (!cancelled) setHistoryLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -74,27 +55,57 @@ export default function AIAssistantScreen() {
     setError(null);
     setInput('');
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
-    setMessages(nextMessages);
+    // The assistant's own bubble starts empty and fills in as the stream
+    // arrives — rendered as a spinner until the first chunk lands (see the
+    // bubble render below).
+    setMessages([...nextMessages, { role: 'assistant', content: '' }]);
     setLoading(true);
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
 
     try {
       const token = await getToken();
       if (!token) throw new Error('no-token');
-      const res = await apiFetch('/api/chat', token, {
+
+      // expo/fetch, not the global fetch apiFetch wraps — only this one
+      // supports reading response.body as a real streaming ReadableStream
+      // in React Native.
+      const res = await expoFetch(`${getApiBaseUrl()}/api/chat`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ messages: nextMessages, language }),
       });
-      if (!res.ok) throw new Error(`status-${res.status}`);
-      const data = (await res.json()) as { reply: string };
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
+      if (!res.ok || !res.body) throw new Error(`status-${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += decoder.decode(value, { stream: true });
+        setMessages((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = { role: 'assistant', content: full };
+          return next;
+        });
+        requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+      }
+      if (!full.trim()) throw new Error('empty-reply');
     } catch {
       setError(t.aiAssistantError);
+      // Drop the still-empty placeholder bubble rather than leaving a blank one.
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        return last?.role === 'assistant' && !last.content ? prev.slice(0, -1) : prev;
+      });
     } finally {
       setLoading(false);
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     }
-  }, [messages, loading, getToken, impact, t]);
+  }, [messages, loading, getToken, impact, t, language]);
 
   const suggestions = [t.aiSuggestion1, t.aiSuggestion2, t.aiSuggestion3];
 
@@ -108,7 +119,9 @@ export default function AIAssistantScreen() {
             <Feather name={backChevron()} size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
-          <View style={{ width: 22 }} />
+          <TouchableOpacity onPress={() => router.push('/ai-assistant-history' as any)} hitSlop={8}>
+            <Feather name="clock" size={21} color={colors.text} />
+          </TouchableOpacity>
         </View>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
@@ -119,11 +132,7 @@ export default function AIAssistantScreen() {
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           >
-            {historyLoading ? (
-              <View style={s.empty}>
-                <ActivityIndicator size="small" color={colors.mutedForeground} />
-              </View>
-            ) : messages.length === 0 ? (
+            {messages.length === 0 ? (
               <View style={s.empty}>
                 <View style={[s.emptyIcon, { backgroundColor: AI_ACCENT + '18' }]}>
                   <Feather name="cpu" size={28} color={AI_ACCENT} />
@@ -144,27 +153,28 @@ export default function AIAssistantScreen() {
                 </View>
               </View>
             ) : (
-              messages.map((m, i) => (
-                <View
-                  key={i}
-                  style={[
-                    s.bubble,
-                    m.role === 'user'
-                      ? [s.bubbleUser, { backgroundColor: AI_ACCENT }]
-                      : [s.bubbleAssistant, { backgroundColor: colors.card, borderColor: colors.border }],
-                  ]}
-                >
-                  <Text style={[s.bubbleText, { color: m.role === 'user' ? '#FFFFFF' : colors.text }]}>
-                    {m.content}
-                  </Text>
-                </View>
-              ))
-            )}
-
-            {loading && (
-              <View style={[s.bubble, s.bubbleAssistant, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <ActivityIndicator size="small" color={colors.mutedForeground} />
-              </View>
+              messages.map((m, i) => {
+                const isPendingPlaceholder = loading && i === messages.length - 1 && m.role === 'assistant' && m.content === '';
+                return (
+                  <View
+                    key={i}
+                    style={[
+                      s.bubble,
+                      m.role === 'user'
+                        ? [s.bubbleUser, { backgroundColor: AI_ACCENT }]
+                        : [s.bubbleAssistant, { backgroundColor: colors.card, borderColor: colors.border }],
+                    ]}
+                  >
+                    {isPendingPlaceholder ? (
+                      <ActivityIndicator size="small" color={colors.mutedForeground} />
+                    ) : (
+                      <Text style={[s.bubbleText, { color: m.role === 'user' ? '#FFFFFF' : colors.text }]}>
+                        {m.content}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })
             )}
 
             {error && <Text style={[s.errorText, { color: colors.red }]}>{error}</Text>}
