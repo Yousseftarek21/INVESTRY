@@ -1266,7 +1266,7 @@ const styles = StyleSheet.create({
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
 
-  goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingLeft: 6, paddingRight: 18 },
+  goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingRight: 18 },
   goalRingCluster: { flexDirection: 'row' },
   goalsInfo: { flex: 1, gap: 2, minWidth: 0 },
   goalsTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
