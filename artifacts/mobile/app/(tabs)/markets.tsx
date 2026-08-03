@@ -675,6 +675,7 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
           <MetalRow metalType="gold" accentColor={colors.goldDark ?? '#A68700'} label={t.gold18K} sublabel={t.gold18KSub} price={gold18} />
           <MetalRow metalType="gold" accentColor={colors.primary} label={t.goldTroyOz} sublabel={t.goldTroyOzSub} price={goldOz} unit="EGP" usdPrice={prices?.goldUsd} isLast bold />
         </TableCard>
+        <Text style={tab.note}>{t.realGoldPriceNote}</Text>
       </View>
 
       {/* Silver section */}
