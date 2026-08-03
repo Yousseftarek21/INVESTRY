@@ -7,14 +7,13 @@ import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@clerk/expo';
 import { Feather } from '@expo/vector-icons';
-import { fetch as expoFetch } from 'expo/fetch';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings } from '@/context/AppSettingsContext';
-import { getApiBaseUrl } from '@/utils/api';
+import { apiFetch } from '@/utils/api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -55,9 +54,10 @@ export default function AIAssistantScreen() {
     setError(null);
     setInput('');
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: trimmed }];
-    // The assistant's own bubble starts empty and fills in as the stream
-    // arrives — rendered as a spinner until the first chunk lands (see the
-    // bubble render below).
+    // The assistant's own bubble appears immediately as a spinner and fills
+    // in once the (whole) reply arrives — not word-by-word. An earlier
+    // version streamed this incrementally but shipped broken (see chat.ts's
+    // callGemini comment) and was reverted to this plain request/response.
     setMessages([...nextMessages, { role: 'assistant', content: '' }]);
     setLoading(true);
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
@@ -65,35 +65,17 @@ export default function AIAssistantScreen() {
     try {
       const token = await getToken();
       if (!token) throw new Error('no-token');
-
-      // expo/fetch, not the global fetch apiFetch wraps — only this one
-      // supports reading response.body as a real streaming ReadableStream
-      // in React Native.
-      const res = await expoFetch(`${getApiBaseUrl()}/api/chat`, {
+      const res = await apiFetch('/api/chat', token, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ messages: nextMessages, language }),
       });
-      if (!res.ok || !res.body) throw new Error(`status-${res.status}`);
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let full = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        full += decoder.decode(value, { stream: true });
-        setMessages((prev) => {
-          const next = [...prev];
-          next[next.length - 1] = { role: 'assistant', content: full };
-          return next;
-        });
-        requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
-      }
-      if (!full.trim()) throw new Error('empty-reply');
+      if (!res.ok) throw new Error(`status-${res.status}`);
+      const data = (await res.json()) as { reply: string };
+      setMessages((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = { role: 'assistant', content: data.reply };
+        return next;
+      });
     } catch {
       setError(t.aiAssistantError);
       // Drop the still-empty placeholder bubble rather than leaving a blank one.

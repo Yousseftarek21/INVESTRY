@@ -332,82 +332,16 @@ type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
 
 const MAX_TOOL_ROUNDS = 3;
 
-// One streamed call to Gemini. Reads the SSE response as it arrives and
-// forwards each text delta to onText immediately — this is what lets the
-// client render words as they're generated instead of waiting for the whole
-// reply. A function-call part, when present, normally arrives as a single
-// complete chunk (not fragmented like text), so it's captured whole rather
-// than accumulated.
-async function streamGeminiRound(
-  apiKey: string,
-  contents: GeminiContent[],
-  systemPrompt: string,
-  onText: (delta: string) => void,
-): Promise<Extract<GeminiPart, { functionCall: unknown }> | null> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`,
-    {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents,
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: { maxOutputTokens: 1024 },
-        tools: [LOOKUP_TOOL],
-      }),
-    },
-  );
-
-  if (!res.ok || !res.body) {
-    throw new Error(`Gemini ${res.status}: ${await res.text().catch(() => "")}`);
-  }
-
-  let functionCallPart: Extract<GeminiPart, { functionCall: unknown }> | null = null;
-  let buffer = "";
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const events = buffer.split("\n\n");
-    buffer = events.pop() ?? "";
-    for (const evt of events) {
-      const line = evt.trim();
-      if (!line.startsWith("data:")) continue;
-      const jsonStr = line.slice(5).trim();
-      if (!jsonStr) continue;
-      let parsed: { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> };
-      try {
-        parsed = JSON.parse(jsonStr);
-      } catch {
-        continue;
-      }
-      const parts = parsed.candidates?.[0]?.content?.parts ?? [];
-      for (const p of parts) {
-        if ("text" in p && p.text) onText(p.text);
-        else if ("functionCall" in p) functionCallPart = p;
-      }
-    }
-  }
-
-  return functionCallPart;
-}
-
-// Drives the tool-calling loop across streamed rounds. onDelta fires for
-// every piece of text from every round (not just the final one) — the
-// returned string mirrors exactly what was streamed to the client, so
-// what gets persisted to chat_messages always matches what the user saw,
-// even in the rare case text arrives before a function call in the same turn.
-async function streamGemini(
+// Reverted from a streamed (SSE) implementation — it shipped broken (every
+// reply fell straight to the "couldn't come up with a response" fallback,
+// confirmed by production logs, likely a parsing mismatch against Gemini's
+// actual streamGenerateContent chunk shape). A working synchronous call
+// beats a broken streaming one; re-attempt streaming later with a way to
+// verify it against a real response before shipping again.
+async function callGemini(
   systemPrompt: string,
   messages: ChatTurn[],
   egxStocks: EGXStockResponse[],
-  onDelta: (text: string) => void,
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
@@ -417,12 +351,42 @@ async function streamGemini(
     parts: [{ text: m.content }],
   }));
 
-  let fullReply = "";
-  const wrappedOnDelta = (text: string) => { fullReply += text; onDelta(text); };
-
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const functionCallPart = await streamGeminiRound(apiKey, contents, systemPrompt, wrappedOnDelta);
-    if (!functionCallPart) return fullReply.trim();
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { maxOutputTokens: 1024 },
+          tools: [LOOKUP_TOOL],
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
+    };
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const functionCallPart = parts.find(
+      (p): p is Extract<GeminiPart, { functionCall: unknown }> => "functionCall" in p,
+    );
+
+    if (!functionCallPart) {
+      return parts
+        .map((p) => ("text" in p ? p.text : ""))
+        .join("")
+        .trim();
+    }
 
     const { name, id, args } = functionCallPart.functionCall;
     const result =
@@ -434,9 +398,7 @@ async function streamGemini(
     contents.push({ role: "user", parts: [{ functionResponse: { name, id, response: { result } } }] });
   }
 
-  const fallback = "I looked into a few things but couldn't finish in time — try asking again, maybe more specifically.";
-  wrappedOnDelta(fallback);
-  return fullReply.trim();
+  return "I looked into a few things but couldn't finish in time — try asking again, maybe more specifically.";
 }
 
 // Bounds both what GET /chat/history returns and, in turn, what the client
@@ -474,9 +436,9 @@ router.get("/chat/history", async (req, res) => {
   }
 });
 
-// POST /api/chat — streams the reply back as plain text (see streamGemini
-// above) rather than a single JSON payload. The active conversation is
-// always fresh per screen-open (the client no longer seeds itself from
+// POST /api/chat — a single grounded turn, JSON in and out (see callGemini's
+// comment for why this isn't streamed). The active conversation is always
+// fresh per screen-open (the client no longer seeds itself from
 // GET /chat/history); this still persists every turn so that endpoint has
 // something to show in the separate history view.
 router.post("/chat", chatGenerationLimit, async (req, res) => {
@@ -525,22 +487,10 @@ router.post("/chat", chatGenerationLimit, async (req, res) => {
   }
   const systemPrompt = `${SYSTEM_PREAMBLE}${languageInstruction}\n\nHere is the user's current portfolio:\n\n${portfolioContext}`;
 
-  // Plain text, streamed as it's generated — not JSON. The client reads this
-  // as a stream and appends each chunk to the assistant bubble live, instead
-  // of the whole reply staying invisible until generation finishes (the main
-  // driver of the AI Assistant feeling slow, independent of actual latency).
-  res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache");
-
-  let streamedAny = false;
   try {
-    const fullReply = await streamGemini(systemPrompt, messages, egxStocks, (delta) => {
-      streamedAny = true;
-      res.write(delta);
-    });
-    const finalReply = fullReply || "I couldn't come up with a response — try rephrasing your question.";
-    if (!streamedAny) res.write(finalReply);
-    res.end();
+    const reply = await callGemini(systemPrompt, messages, egxStocks);
+    const finalReply = reply || "I couldn't come up with a response — try rephrasing your question.";
+    res.json({ reply: finalReply });
 
     // Only the new turn — everything earlier in `messages` was already
     // persisted on a previous call. Fire-and-forget: a failed history write
@@ -553,10 +503,7 @@ router.post("/chat", chatGenerationLimit, async (req, res) => {
       .catch((err) => req.log.error({ err }, "Failed to persist chat turn"));
   } catch (err) {
     req.log.error({ err }, "POST /chat failed");
-    // Headers (and possibly some text) may already be sent once streaming
-    // starts — a JSON error response is only possible if nothing went out yet.
-    if (!streamedAny) res.status(500).json({ error: "Failed to get a response from the assistant" });
-    else res.end();
+    res.status(500).json({ error: "Failed to get a response from the assistant" });
   }
 });
 
