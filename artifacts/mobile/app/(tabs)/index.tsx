@@ -392,7 +392,9 @@ export default function HomeScreen() {
       return 0;
     });
     const avgPct = withPct.reduce((sum, g) => sum + g.pct, 0) / withPct.length;
-    return { sorted, avgPct, count: goals.length, single: withPct.length === 1 ? withPct[0] : null };
+    const totalSaved = withPct.reduce((sum, g) => sum + g.saved, 0);
+    const totalTarget = withPct.reduce((sum, g) => sum + g.goal.targetAmount, 0);
+    return { sorted, avgPct, totalSaved, totalTarget, count: goals.length, single: withPct.length === 1 ? withPct[0] : null };
   }, [goals, effectiveGoalSaved]);
 
   // Auto-refresh prices when app comes back to foreground
@@ -994,11 +996,21 @@ export default function HomeScreen() {
                 <Text style={[styles.goalsTitle, { color: colors.text }]} numberOfLines={1}>
                   {goalsSummary.single.goal.name}
                 </Text>
-                <Text style={[styles.goalsSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {hideValues ? '••••••' : t.overviewGoalSingleSub(
-                    String(Math.round(goalsSummary.single.pct)),
-                    goalsSummary.single.saved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                    goalsSummary.single.goal.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                <Text style={styles.goalsSub} numberOfLines={1}>
+                  {hideValues ? (
+                    <Text style={{ color: colors.mutedForeground }}>••••••</Text>
+                  ) : (
+                    <>
+                      <Text style={{ color: colors.mutedForeground }}>
+                        {t.overviewGoalPctSaved(String(Math.round(goalsSummary.single.pct)))}
+                      </Text>
+                      <Text style={{ color: goalsSummary.single.done ? colors.green : colors.primary, fontFamily: 'Inter_600SemiBold' }}>
+                        {t.overviewGoalAmount(
+                          goalsSummary.single.saved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                          goalsSummary.single.goal.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                        )}
+                      </Text>
+                    </>
                   )}
                 </Text>
               </View>
@@ -1022,8 +1034,22 @@ export default function HomeScreen() {
                 <Text style={[styles.goalsTitle, { color: colors.text }]} numberOfLines={1}>
                   {t.overviewGoalClusterTitle(String(goalsSummary.count))}
                 </Text>
-                <Text style={[styles.goalsSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {t.overviewGoalClusterSub(String(Math.round(goalsSummary.avgPct)))}
+                <Text style={styles.goalsSub} numberOfLines={1}>
+                  {hideValues ? (
+                    <Text style={{ color: colors.mutedForeground }}>••••••</Text>
+                  ) : (
+                    <>
+                      <Text style={{ color: colors.mutedForeground }}>
+                        {t.overviewGoalPctSavedAvg(String(Math.round(goalsSummary.avgPct)))}
+                      </Text>
+                      <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
+                        {t.overviewGoalAmount(
+                          goalsSummary.totalSaved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                          goalsSummary.totalTarget.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                        )}
+                      </Text>
+                    </>
+                  )}
                 </Text>
               </View>
             </>
