@@ -32,15 +32,17 @@ export default function TargetAllocationScreen() {
     { key: 'realEstate', color: '#A47FCA', icon: { lib: 'mci', name: 'home-city' } },
     { key: 'personalAsset', color: '#E08E45', icon: { lib: 'mci', name: 'tag-multiple' } },
     { key: 'fixedIncome', color: '#22C55E', icon: { lib: 'mci', name: 'bank-transfer' } },
+    { key: 'cash', color: colors.green, icon: { lib: 'feather', name: 'dollar-sign' } },
   ], [colors]);
 
   const CLASS_LABEL: Record<AllocationClass, string> = {
     gold: t.gold, silver: t.silver, stock: t.egxStocksAllocLabel,
     realEstate: t.realEstate, personalAsset: t.personalAssetsAllocLabel, fixedIncome: t.fixedIncome,
+    cash: t.cash,
   };
 
   const [values, setValues] = useState<Record<AllocationClass, string>>({
-    gold: '', silver: '', stock: '', realEstate: '', personalAsset: '', fixedIncome: '',
+    gold: '', silver: '', stock: '', realEstate: '', personalAsset: '', fixedIncome: '', cash: '',
   });
   const [driftAlertsEnabled, setDriftAlertsEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,7 +54,7 @@ export default function TargetAllocationScreen() {
   useEffect(() => {
     if (hydrated || isLoading) return;
     if (configured) {
-      const next: Record<AllocationClass, string> = { gold: '', silver: '', stock: '', realEstate: '', personalAsset: '', fixedIncome: '' };
+      const next: Record<AllocationClass, string> = { gold: '', silver: '', stock: '', realEstate: '', personalAsset: '', fixedIncome: '', cash: '' };
       (Object.keys(next) as AllocationClass[]).forEach(k => {
         const v = targets[k];
         if (v !== undefined) next[k] = String(v);

@@ -15,6 +15,9 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
+import { useCash } from '@/context/CashContext';
+import { computeCashTotalEGP } from '@/utils/cash';
+import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
@@ -521,6 +524,7 @@ export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const { holdings, isLoading: holdingsLoading } = useHoldings();
+  const { cashAccounts } = useCash();
   const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
@@ -596,6 +600,12 @@ export default function AnalyticsScreen() {
   const { data: inflation } = useInflationRate();
   const { data: benchmark } = usePortfolioBenchmark();
   const { configured: targetsConfigured, targets } = usePortfolioTargets();
+  // Only for the rebalancing/drift comparison below — sm.totalValue stays
+  // investment-only everywhere else (gain %, health score, benchmark), same
+  // as the server's computeUserPortfolioValue. Target allocation is about
+  // the whole net-worth mix including cash, so its own denominator needs to
+  // be the two combined.
+  const cashTotalEGP = useMemo(() => computeCashTotalEGP(cashAccounts, prices), [cashAccounts, prices]);
   const startOfDayValue = sm.totalValue - sm.todayGain;
   const rawTodaySamples = useIntradaySamples(sm.totalValue, startOfDayValue);
   // Keep the chart's start/end always freshly consistent with the "Today"
@@ -662,11 +672,16 @@ export default function AnalyticsScreen() {
   ], [sm, colors, t]);
 
   // ── Rebalancing / drift ──────────────────────────────────────────────────────
+  // Net worth (investments + cash), not sm.totalValue — target allocation is
+  // about the whole mix a user might set a cash target against, unlike every
+  // other use of sm.totalValue on this screen (gain %, health score,
+  // benchmark), which stay investment-only on purpose.
+  const netWorthForDrift = sm.totalValue + cashTotalEGP;
   const driftRows = useMemo(() => {
-    if (!targetsConfigured || sm.totalValue <= 0) return [];
+    if (!targetsConfigured || netWorthForDrift <= 0) return [];
     const classValue: Record<AllocationClass, number> = {
       gold: sm.goldV, silver: sm.silverV, stock: sm.stockV,
-      realEstate: sm.reV, personalAsset: sm.paV, fixedIncome: sm.fiV,
+      realEstate: sm.reV, personalAsset: sm.paV, fixedIncome: sm.fiV, cash: cashTotalEGP,
     };
     const meta: Record<AllocationClass, { label: string; color: string; icon: React.ReactNode }> = {
       gold: { label: t.gold, color: colors.primary, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.primary} /> },
@@ -675,17 +690,18 @@ export default function AnalyticsScreen() {
       realEstate: { label: t.realEstate, color: '#A47FCA', icon: <MaterialCommunityIcons name="home-city" size={16} color="#A47FCA" /> },
       personalAsset: { label: t.personalAssetsAllocLabel, color: '#E08E45', icon: <MaterialCommunityIcons name="tag-multiple" size={16} color="#E08E45" /> },
       fixedIncome: { label: t.fixedIncome, color: '#22C55E', icon: <MaterialCommunityIcons name="bank-transfer" size={16} color="#22C55E" /> },
+      cash: { label: t.cash, color: colors.green, icon: <BanknoteIcon size={16} color={colors.green} /> },
     };
     return (Object.keys(targets) as AllocationClass[])
       .filter(k => targets[k] !== undefined)
       .map(k => ({
         key: k,
         ...meta[k],
-        currentPct: (classValue[k] / sm.totalValue) * 100,
+        currentPct: (classValue[k] / netWorthForDrift) * 100,
         targetPct: targets[k] as number,
       }))
       .sort((a, b) => Math.abs(b.currentPct - b.targetPct) - Math.abs(a.currentPct - a.targetPct));
-  }, [targetsConfigured, targets, sm, colors, t]);
+  }, [targetsConfigured, targets, sm, cashTotalEGP, netWorthForDrift, colors, t]);
 
   // ── Insights ──────────────────────────────────────────────────────────────────
   const insights = useMemo(() => {

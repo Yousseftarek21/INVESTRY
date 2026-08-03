@@ -33,7 +33,7 @@ router.get("/portfolio/snapshots", clerkMiddleware(), async (req, res) => {
   }
 });
 
-const CLASS_KEYS = ["gold", "silver", "stock", "realEstate", "personalAsset", "fixedIncome"] as const;
+const CLASS_KEYS = ["gold", "silver", "stock", "realEstate", "personalAsset", "fixedIncome", "cash"] as const;
 
 function generateTargetId(): string {
   return `pt_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;

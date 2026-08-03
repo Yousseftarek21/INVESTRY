@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
 
-export type AllocationClass = 'gold' | 'silver' | 'stock' | 'realEstate' | 'personalAsset' | 'fixedIncome';
+export type AllocationClass = 'gold' | 'silver' | 'stock' | 'realEstate' | 'personalAsset' | 'fixedIncome' | 'cash';
 export type TargetAllocation = Partial<Record<AllocationClass, number>>;
 
 interface TargetsResponse {

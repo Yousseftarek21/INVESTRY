@@ -1,4 +1,4 @@
-import { db, holdingsTable } from "@workspace/db";
+import { db, holdingsTable, cashAccountsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { decryptFromStorage } from "./encryption";
 import { fetchPrices, fetchStocks } from "../routes/markets";
@@ -106,22 +106,27 @@ export async function computeUserPortfolioValue(userId: string): Promise<number>
   }, 0);
 }
 
-export type AllocationClass = "gold" | "silver" | "stock" | "realEstate" | "personalAsset" | "fixedIncome";
+export type AllocationClass = "gold" | "silver" | "stock" | "realEstate" | "personalAsset" | "fixedIncome" | "cash";
 
 /**
- * Same value universe as computeUserPortfolioValue (cash excluded), but
- * bucketed by asset class instead of summed into one scalar — the input
+ * Bucketed by asset class instead of summed into one scalar — the input
  * portfolioDriftCron needs to compare each class's live share of the
  * portfolio against the user's stored targets. Mirrors the bucketing in
- * artifacts/mobile/app/(tabs)/analytics.tsx's `sm` useMemo exactly, so a
- * class's server-computed % matches what the user sees on their own
- * Analytics screen.
+ * artifacts/mobile/app/(tabs)/analytics.tsx's `sm`/driftRows useMemos
+ * exactly, so a class's server-computed % matches what the user sees on
+ * their own Analytics screen.
+ *
+ * Unlike computeUserPortfolioValue (investment holdings only, matching
+ * "Total Portfolio Value"), cash IS included here as its own class — target
+ * allocation is about the user's whole net worth mix ("keep 15% in cash"),
+ * not just the investment side.
  */
 export async function computeUserPortfolioAllocation(
   userId: string,
 ): Promise<{ totalValue: number; byClass: Record<AllocationClass, number> }> {
-  const [holdingRows, prices, egxStocks] = await Promise.all([
+  const [holdingRows, cashRows, prices, egxStocks] = await Promise.all([
     db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
+    db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
     fetchPrices(),
     fetchStocks().catch(() => []),
   ]);
@@ -130,7 +135,7 @@ export async function computeUserPortfolioAllocation(
   for (const s of egxStocks) egxPrices[s.symbol] = s.price;
 
   const byClass: Record<AllocationClass, number> = {
-    gold: 0, silver: 0, stock: 0, realEstate: 0, personalAsset: 0, fixedIncome: 0,
+    gold: 0, silver: 0, stock: 0, realEstate: 0, personalAsset: 0, fixedIncome: 0, cash: 0,
   };
   let totalValue = 0;
 
@@ -146,6 +151,21 @@ export async function computeUserPortfolioAllocation(
       case "personal_asset": byClass.personalAsset += value; break;
       case "fixed_income": byClass.fixedIncome += value; break;
     }
+  }
+
+  // Same per-currency conversion as the mobile Overview Cash card's own
+  // total — USD via the dedicated usdToEgp field, everything else via
+  // fxRates, unknown currencies falling back to face value.
+  for (const row of cashRows) {
+    const account = decryptFromStorage(row.data) as { balance?: number; currency?: string };
+    const bal = Number(account.balance) || 0;
+    let egpValue = bal;
+    if (account.currency && account.currency !== "EGP") {
+      if (account.currency === "USD" && prices.usdToEgp) egpValue = bal * prices.usdToEgp;
+      else if (prices.fxRates?.[account.currency]) egpValue = bal * prices.fxRates[account.currency];
+    }
+    byClass.cash += egpValue;
+    totalValue += egpValue;
   }
 
   return { totalValue, byClass };

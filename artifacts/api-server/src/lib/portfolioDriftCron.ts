@@ -25,6 +25,7 @@ const CLASS_LABEL: Record<AllocationClass, string> = {
   realEstate: "real estate",
   personalAsset: "personal assets",
   fixedIncome: "fixed income",
+  cash: "cash",
 };
 
 interface TargetRow {

@@ -30,6 +30,7 @@ import { useAppSettings, DisplayCurrency } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding, MarketPrices } from '@/types';
+import { computeCashTotalEGP } from '@/utils/cash';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -357,18 +358,7 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, [holdingsSyncError]);
 
-  // Convert each cash account to EGP using live FX rates.
-  // USD uses the dedicated usdToEgp field; EUR/GBP/SAR/AED/etc use fxRates
-  // (a Record<string,number> of EGP-per-unit rates from the Wise feed).
-  // Unknown currencies fall back to face value so totals are never silently dropped.
-  const cashTotalEGP = useMemo(() => cashAccounts.reduce((sum, a) => {
-    const bal = Number(a.balance) || 0;
-    if (a.currency === 'EGP') return sum + bal;
-    if (a.currency === 'USD' && prices?.usdToEgp) return sum + bal * prices.usdToEgp;
-    const fxRate = prices?.fxRates?.[a.currency];
-    if (fxRate) return sum + bal * fxRate;
-    return sum + bal;
-  }, 0), [cashAccounts, prices]);
+  const cashTotalEGP = useMemo(() => computeCashTotalEGP(cashAccounts, prices), [cashAccounts, prices]);
   const hasForeignCash = cashAccounts.some(a => a.currency !== 'EGP');
 
   // Auto-refresh prices when app comes back to foreground
