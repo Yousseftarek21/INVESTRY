@@ -589,7 +589,8 @@ const en = {
   currencyTRY: 'Turkish Lira',
   currencyCNY: 'Chinese Yuan',
   currencyUnitEGP: 'EGP per 1',
-  liveRatesNote: 'All rates are live mid-market prices from Wise · Refreshed every 30s',
+  liveRatesNote: 'Live bank rates, refreshed every 30s',
+  realGoldPriceNote: "The real market price — no jeweler's making charge or informal dollar rate included.",
   // Coming soon
   betaPreview: 'Beta Preview',
   globalIndicesTitle: 'Global Indices',
@@ -1735,7 +1736,8 @@ const ar: typeof en = {
   currencyTRY: 'الليرة التركية',
   currencyCNY: 'اليوان الصيني',
   currencyUnitEGP: 'جنيه مقابل 1',
-  liveRatesNote: 'جميع الأسعار حية من Wise · تُحدَّث كل 30 ثانية',
+  liveRatesNote: 'أسعار بنكية حية، تُحدَّث كل 30 ثانية',
+  realGoldPriceNote: 'السعر الحقيقي للسوق العالمي — بدون مصنعية أو دولار الصاغة.',
   // Coming soon
   betaPreview: 'معاينة تجريبية',
   globalIndicesTitle: 'المؤشرات العالمية',
