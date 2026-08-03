@@ -278,8 +278,12 @@ export default function CashAccountsScreen() {
       }
     } else {
       const isExistingAccount = !!(editingId && !isEditingIncome);
-      const magnitude = parseAmount(balance);
-      if (!accountName.trim() || !balance.trim() || isNaN(magnitude)) {
+      const isAddMode = isExistingAccount && balanceEntryMode === 'add';
+      // In 'add' mode, leaving the amount blank means "no balance change" —
+      // the user might just be editing the name/notes/date. Only 'total'
+      // mode and brand-new accounts actually require a typed number.
+      const magnitude = isAddMode && !balance.trim() ? 0 : parseAmount(balance);
+      if (!accountName.trim() || (!isAddMode && !balance.trim()) || isNaN(magnitude)) {
         Alert.alert(t.enterAccountDetails);
         return;
       }
@@ -287,8 +291,8 @@ export default function CashAccountsScreen() {
       // represent a minus sign) — direction comes from the separate addSign
       // toggle. 'total' mode and new accounts both take the input as the
       // balance directly, same as before this distinction existed.
-      const rawInput = isExistingAccount && balanceEntryMode === 'add' ? addSign * magnitude : magnitude;
-      const parsedBalance = isExistingAccount && balanceEntryMode === 'add'
+      const rawInput = isAddMode ? addSign * magnitude : magnitude;
+      const parsedBalance = isAddMode
         ? (editingOriginalBalance ?? 0) + rawInput
         : rawInput;
       const isNewAccount = !(editingId && !isEditingIncome);
@@ -1107,7 +1111,7 @@ const styles = StyleSheet.create({
   signDivider: { width: StyleSheet.hairlineWidth },
   addAmountInput: { flex: 1, borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' },
   modeLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'flex-start' },
-  modeLink: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold', textDecorationLine: 'underline' },
+  modeLink: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
   updatesList: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
   updateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
   updateDate: { fontSize: 12.5, fontFamily: 'Inter_400Regular', width: 52 },
