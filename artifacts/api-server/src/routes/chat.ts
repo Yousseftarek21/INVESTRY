@@ -13,7 +13,7 @@ import {
 } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 import { decryptFromStorage } from "../lib/encryption";
-import { fetchPrices, fetchStocks, type EGXStockResponse } from "./markets";
+import { getCachedPrices, getCachedStocks, type EGXStockResponse } from "./markets";
 import { computeHoldingValue, type StoredHolding } from "../lib/portfolioValue";
 import { fetchInflation } from "./inflation";
 import { RE_PRICES } from "@workspace/shared-data";
@@ -204,8 +204,8 @@ async function buildPortfolioContext(
         .from(portfolioSnapshotsTable)
         .where(eq(portfolioSnapshotsTable.userId, userId))
         .orderBy(asc(portfolioSnapshotsTable.date)),
-      fetchPrices(),
-      fetchStocks().catch(() => []),
+      getCachedPrices(),
+      getCachedStocks().catch(() => []),
       fetchInflation(),
     ]);
 

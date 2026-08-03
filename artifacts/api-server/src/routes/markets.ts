@@ -1039,6 +1039,32 @@ export async function fetchStocks(): Promise<EGXStockResponse[]> {
   return tvData;
 }
 
+// Cache-aware wrappers around fetchPrices/fetchStocks — any caller that just
+// wants "the current prices/stocks, fresh within the last 30s" (as opposed
+// to a guaranteed-fresh fetch) should use these instead of calling
+// fetchPrices/fetchStocks directly. The /markets/prices and /markets/stocks
+// routes below inline this same check themselves (so they can also set the
+// X-Cache response header); this pair exists for non-HTTP callers like
+// chat.ts, which previously called fetchPrices/fetchStocks directly and so
+// bypassed the cache entirely — a full uncached 281-ticker TradingView scan
+// plus a fresh CIB/Wise round-trip on every single chat message, a real
+// chunk of the AI assistant's per-message latency.
+export async function getCachedPrices(): Promise<MarketPricesResponse> {
+  const cached = pricesCache.get();
+  if (cached) return cached;
+  const data = await fetchPrices();
+  pricesCache.set(data);
+  return data;
+}
+
+export async function getCachedStocks(): Promise<EGXStockResponse[]> {
+  const cached = stocksCache.get();
+  if (cached) return cached;
+  const data = await fetchStocks();
+  stocksCache.set(data);
+  return data;
+}
+
 // ─── EGX indices (EGX30, EGX70 EWI) ────────────────────────────────────────────
 // Same TradingView Egypt scanner as individual stocks, just a different pair
 // of tickers, shown as their own chips above the stock list. EGX 33 Shariah
