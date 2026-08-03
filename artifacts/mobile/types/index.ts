@@ -131,10 +131,6 @@ export interface CashAccount {
    * recurring-income auto-credits, only by the user changing the number
    * themselves. Drives the "Updated X days ago" hint on the account card. */
   lastBalanceUpdateAt?: string;
-  /** Signed change from that last manual edit (+ added, - subtracted) — shown
-   * next to lastBalanceUpdateAt on the account card so a change is visible
-   * without opening Edit and scrolling to the history list. */
-  lastBalanceDelta?: number;
 }
 
 export interface IncomeTransaction {

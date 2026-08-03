@@ -21,7 +21,6 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
-import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
@@ -310,7 +309,6 @@ export default function HomeScreen() {
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
   const { cashAccounts } = useCash();
-  const { todayChanges: cashTodayChanges } = useCashAccountsTodayChanges();
   const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
@@ -372,19 +370,6 @@ export default function HomeScreen() {
     return sum + bal;
   }, 0), [cashAccounts, prices]);
   const hasForeignCash = cashAccounts.some(a => a.currency !== 'EGP');
-
-  // Same per-currency conversion as cashTotalEGP, applied to today's logged
-  // deltas instead of the balances themselves — gives one aggregate "today"
-  // figure across accounts that don't all share a currency.
-  const cashTodayChangeEGP = useMemo(() => cashAccounts.reduce((sum, a) => {
-    const delta = cashTodayChanges[a.id];
-    if (!delta) return sum;
-    if (a.currency === 'EGP') return sum + delta;
-    if (a.currency === 'USD' && prices?.usdToEgp) return sum + delta * prices.usdToEgp;
-    const fxRate = prices?.fxRates?.[a.currency];
-    if (fxRate) return sum + delta * fxRate;
-    return sum + delta;
-  }, 0), [cashAccounts, cashTodayChanges, prices]);
 
   // Auto-refresh prices when app comes back to foreground
   useEffect(() => {
@@ -948,18 +933,9 @@ export default function HomeScreen() {
         <View style={styles.cashInfo}>
           <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
           {cashAccounts.length > 0 ? (
-            <View style={styles.cashValueRow}>
-              <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1}>
-                {hideValues ? '••••••' : `${hasForeignCash ? '≈ ' : ''}${cashTotalEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })}`} EGP
-              </Text>
-              {!hideValues && !!cashTodayChangeEGP && (
-                <View style={[styles.cashTodayBadge, { backgroundColor: cashTodayChangeEGP > 0 ? colors.green + '18' : colors.red + '18' }]}>
-                  <Text style={[styles.cashTodayBadgeText, { color: cashTodayChangeEGP > 0 ? colors.green : colors.red }]} numberOfLines={1}>
-                    {cashTodayChangeEGP > 0 ? '+' : '−'}{Math.abs(cashTodayChangeEGP).toLocaleString('en-EG', { maximumFractionDigits: 0 })}
-                  </Text>
-                </View>
-              )}
-            </View>
+            <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1}>
+              {hideValues ? '••••••' : `${hasForeignCash ? '≈ ' : ''}${cashTotalEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })}`} EGP
+            </Text>
           ) : (
             <Text style={[styles.cashValue, { color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
               {t.noCashAccountsYet}
@@ -1201,10 +1177,7 @@ const styles = StyleSheet.create({
   cashIconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   cashInfo: { flex: 1, gap: 2 },
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'], flexShrink: 1 },
-  cashValueRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
-  cashTodayBadge: { paddingHorizontal: 7, paddingVertical: 2.5, borderRadius: 7, flexShrink: 0 },
-  cashTodayBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
+  cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },

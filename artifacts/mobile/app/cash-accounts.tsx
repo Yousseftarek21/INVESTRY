@@ -318,9 +318,6 @@ export default function CashAccountsScreen() {
         lastBalanceUpdateAt: balanceChanged
           ? new Date().toISOString()
           : (isExistingAccount ? cashAccounts.find(a => a.id === editingId)?.lastBalanceUpdateAt : undefined),
-        lastBalanceDelta: balanceChanged
-          ? parsedBalance - (editingOriginalBalance as number)
-          : (isExistingAccount ? cashAccounts.find(a => a.id === editingId)?.lastBalanceDelta : undefined),
       };
       // addCashAccount/updateCashAccount update local state synchronously
       // before their network call — don't wait on the round-trip just to
@@ -840,15 +837,8 @@ export default function CashAccountsScreen() {
                           )}
                         </View>
                         {a.lastBalanceUpdateAt && (
-                          <Text style={styles.lastUpdatedHint} numberOfLines={1}>
-                            {!!a.lastBalanceDelta && (
-                              <Text style={{ color: a.lastBalanceDelta > 0 ? colors.green : colors.red, fontFamily: 'Inter_600SemiBold' }}>
-                                {a.lastBalanceDelta > 0 ? '+' : ''}{a.lastBalanceDelta.toLocaleString('en-EG', { maximumFractionDigits: 2 })} {a.currency} · {' '}
-                              </Text>
-                            )}
-                            <Text style={{ color: colors.mutedForeground }}>
-                              {t.updatedDaysAgo(String(Math.max(0, Math.floor((Date.now() - new Date(a.lastBalanceUpdateAt).getTime()) / 86400000))))}
-                            </Text>
+                          <Text style={[styles.lastUpdatedHint, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {t.updatedDaysAgo(String(Math.max(0, Math.floor((Date.now() - new Date(a.lastBalanceUpdateAt).getTime()) / 86400000))))}
                           </Text>
                         )}
                       </View>
