@@ -8,3 +8,4 @@ export * from "./recurringIncome";
 export * from "./priceAlerts";
 export * from "./portfolioTargets";
 export * from "./cashBalanceUpdates";
+export * from "./chatMessages";

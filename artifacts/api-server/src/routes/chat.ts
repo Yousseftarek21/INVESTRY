@@ -10,9 +10,10 @@ import {
   portfolioSnapshotsTable,
   priceAlertsTable,
   recurringIncomeTable,
+  chatMessagesTable,
 } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
-import { decryptFromStorage } from "../lib/encryption";
+import { eq, asc, desc } from "drizzle-orm";
+import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 import { getCachedPrices, getCachedStocks, type EGXStockResponse } from "./markets";
 import { computeHoldingValue, type StoredHolding } from "../lib/portfolioValue";
 import { fetchInflation } from "./inflation";
@@ -30,16 +31,19 @@ router.use("/chat", clerkMiddleware(), (req, res, next) => {
 // A single chat message triggers a real, paid Claude API call — cap per
 // user well below the app-wide IP limiter in app.ts, which exists for a
 // different purpose (abuse from a shared IP, not per-account cost control).
-router.use(
-  "/chat",
-  rateLimit({
-    windowMs: 60 * 60 * 1000,
-    limit: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => getAuth(req).userId ?? "anonymous",
-  }),
-);
+// Applied only to the POST route below, not GET /chat/history — loading
+// past messages doesn't call Gemini and shouldn't eat into that budget.
+const chatGenerationLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => getAuth(req).userId ?? "anonymous",
+});
+
+function generateChatMessageId(): string {
+  return `chm_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
 
 type DecodedRow = { type: string } & Record<string, unknown>;
 
@@ -391,10 +395,41 @@ async function callGemini(
   return "I looked into a few things but couldn't finish in time — try asking again, maybe more specifically.";
 }
 
-// POST /api/chat — a single grounded turn, not a persisted conversation.
-// The client resends full message history each call (stateless); nothing
-// is stored server-side.
-router.post("/chat", async (req, res) => {
+// Bounds both what GET /chat/history returns and, in turn, what the client
+// resends on every POST /chat call — the system prompt already injects a
+// sizeable portfolio context every turn, so letting the resent history grow
+// unbounded would keep inflating token cost and latency the longer someone
+// uses the assistant. 40 turns (20 exchanges) is generous scrollback without
+// that growth.
+const CHAT_HISTORY_LIMIT = 40;
+
+// GET /api/chat/history — this user's persisted conversation, oldest first,
+// so the client can seed the screen with where things left off instead of
+// starting blank every time it's opened.
+router.get("/chat/history", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const rows = await db
+      .select({ data: chatMessagesTable.data })
+      .from(chatMessagesTable)
+      .where(eq(chatMessagesTable.userId, userId))
+      .orderBy(desc(chatMessagesTable.createdAt))
+      .limit(CHAT_HISTORY_LIMIT);
+
+    const messages = rows.reverse().map((r) => decryptFromStorage(r.data) as ChatTurn);
+    res.json({ messages });
+  } catch (err) {
+    req.log.error({ err }, "GET /chat/history failed");
+    res.status(500).json({ error: "Failed to fetch chat history" });
+  }
+});
+
+// POST /api/chat — the client resends the full (capped) message history each
+// call; the server additionally persists the new turn (user message + reply)
+// so GET /chat/history can restore it in a later session.
+router.post("/chat", chatGenerationLimit, async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
@@ -410,6 +445,7 @@ router.post("/chat", async (req, res) => {
     res.status(400).json({ error: "messages must be a non-empty array ending with a user message" });
     return;
   }
+  const latestUserMessage = messages[messages.length - 1];
 
   // What the user actually typed decides the reply language; the app's own
   // language setting is only the tie-breaker.
@@ -432,7 +468,20 @@ router.post("/chat", async (req, res) => {
     const { context: portfolioContext, egxStocks } = await buildPortfolioContext(userId);
     const systemPrompt = `${SYSTEM_PREAMBLE}${languageInstruction}\n\nHere is the user's current portfolio:\n\n${portfolioContext}`;
     const reply = await callGemini(systemPrompt, messages, egxStocks);
-    res.json({ reply: reply || "I couldn't come up with a response — try rephrasing your question." });
+    const finalReply = reply || "I couldn't come up with a response — try rephrasing your question.";
+    res.json({ reply: finalReply });
+
+    // Only the new turn — everything earlier in `messages` was already
+    // persisted on a previous call (the client seeds itself from
+    // GET /chat/history, then appends locally before resending). Fire-and-
+    // forget: a failed history write shouldn't fail a reply the user already
+    // received.
+    db.insert(chatMessagesTable)
+      .values([
+        { id: generateChatMessageId(), userId, data: encryptForStorage(latestUserMessage) },
+        { id: generateChatMessageId(), userId, data: encryptForStorage({ role: "assistant", content: finalReply }) },
+      ])
+      .catch((err) => req.log.error({ err }, "Failed to persist chat turn"));
   } catch (err) {
     req.log.error({ err }, "POST /chat failed");
     res.status(500).json({ error: "Failed to get a response from the assistant" });

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -34,6 +34,7 @@ export default function AIAssistantScreen() {
   const { language } = useAppSettings();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,29 @@ export default function AIAssistantScreen() {
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
+
+  // Restores the conversation from where it left off, rather than starting
+  // blank every time this screen opens — the server persists every turn
+  // (see POST /api/chat) precisely so this can happen.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const res = await apiFetch('/api/chat/history', token);
+        if (!res.ok) return;
+        const data = (await res.json()) as { messages: ChatMessage[] };
+        if (!cancelled) setMessages(data.messages);
+      } catch {
+        // Best-effort — worst case the screen just starts blank, same as before.
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -95,7 +119,11 @@ export default function AIAssistantScreen() {
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           >
-            {messages.length === 0 ? (
+            {historyLoading ? (
+              <View style={s.empty}>
+                <ActivityIndicator size="small" color={colors.mutedForeground} />
+              </View>
+            ) : messages.length === 0 ? (
               <View style={s.empty}>
                 <View style={[s.emptyIcon, { backgroundColor: AI_ACCENT + '18' }]}>
                   <Feather name="cpu" size={28} color={AI_ACCENT} />
