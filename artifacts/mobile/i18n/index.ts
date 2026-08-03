@@ -173,7 +173,7 @@ const en = {
   addCashOption: 'Cash Account',
   addCashOptionDesc: 'Bank accounts, physical cash & foreign currency',
   addRecurringIncomeOption: 'Recurring Income',
-  addRecurringIncomeOptionDesc: 'Salary, freelance & automatic monthly deposits',
+  addRecurringIncomeOptionDesc: 'Salary, freelance & rent — credited automatically each month',
   back: 'Back',
 
   // Cash accounts
@@ -1327,7 +1327,7 @@ const ar: typeof en = {
   addCashOption: 'حساب نقدي',
   addCashOptionDesc: 'حسابات بنكية، نقد وعملات أجنبية',
   addRecurringIncomeOption: 'الدخل المتكرر',
-  addRecurringIncomeOptionDesc: 'راتب، عمل حر وإيداعات شهرية تلقائية',
+  addRecurringIncomeOptionDesc: 'راتب، عمل حر وإيجار — يُضاف تلقائيًا كل شهر',
   back: 'رجوع',
 
   // Cash accounts
