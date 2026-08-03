@@ -586,22 +586,9 @@ export default function CashAccountsScreen() {
                   <Text style={labelStyle}>{t.balance}</Text>
 
                   {editingOriginalBalance !== null && (
-                    <View style={styles.balanceModeRow}>
-                      <TouchableOpacity
-                        style={[styles.balanceModeChip, { backgroundColor: balanceEntryMode === 'add' ? colors.primary : colors.card, borderColor: balanceEntryMode === 'add' ? colors.primary : colors.border }]}
-                        onPress={() => switchBalanceMode('add')}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.balanceModeChipText, { color: balanceEntryMode === 'add' ? colors.primaryForeground : colors.text }]}>{t.balanceModeAdd}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.balanceModeChip, { backgroundColor: balanceEntryMode === 'total' ? colors.primary : colors.card, borderColor: balanceEntryMode === 'total' ? colors.primary : colors.border }]}
-                        onPress={() => switchBalanceMode('total')}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.balanceModeChipText, { color: balanceEntryMode === 'total' ? colors.primaryForeground : colors.text }]}>{t.balanceModeTotal}</Text>
-                      </TouchableOpacity>
-                    </View>
+                    <Text style={[styles.currentBalanceLabel, { color: colors.mutedForeground }]}>
+                      {t.currentBalanceLabel(editingOriginalBalance.toLocaleString('en-EG', { maximumFractionDigits: 2 }), currency)}
+                    </Text>
                   )}
 
                   {editingOriginalBalance !== null && balanceEntryMode === 'add' ? (
@@ -662,6 +649,18 @@ export default function CashAccountsScreen() {
                   <Text style={[styles.hint, { color: colors.mutedForeground }]}>
                     {editingOriginalBalance !== null && balanceEntryMode === 'add' ? t.balanceModeAddHelp : (BALANCE_HINT[entryType as CashAccountType] ?? '')}
                   </Text>
+
+                  {editingOriginalBalance !== null && (
+                    <TouchableOpacity
+                      onPress={() => switchBalanceMode(balanceEntryMode === 'add' ? 'total' : 'add')}
+                      activeOpacity={0.7}
+                      style={styles.modeLinkRow}
+                    >
+                      <Text style={[styles.modeLink, { color: colors.primary }]}>
+                        {balanceEntryMode === 'add' ? t.balanceModeSwitchToTotal : t.balanceModeSwitchToAdd}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 {/* ── Recent updates (manual balance-change history) ─── */}
@@ -1093,12 +1092,12 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 8, letterSpacing: 0.3 },
   hint: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 17 },
   balanceDeltaHint: { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginTop: 8 },
-  balanceModeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  balanceModeChip: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
-  balanceModeChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  currentBalanceLabel: { fontSize: 13, fontFamily: 'Inter_500Medium', marginBottom: 8 },
   addAmountRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
   signToggle: { width: 48, borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   addAmountInput: { flex: 1 },
+  modeLinkRow: { marginTop: 10, alignSelf: 'flex-start' },
+  modeLink: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   updatesList: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
   updateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
   updateDate: { fontSize: 12.5, fontFamily: 'Inter_400Regular', width: 52 },
