@@ -21,6 +21,8 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
+import { useGoals } from '@/context/GoalsContext';
+import { GoalRing } from '@/components/GoalRing';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
@@ -310,6 +312,7 @@ export default function HomeScreen() {
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
   const { cashAccounts } = useCash();
+  const { goals } = useGoals();
   const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   const prices = useMemo(() => {
@@ -360,6 +363,37 @@ export default function HomeScreen() {
 
   const cashTotalEGP = useMemo(() => computeCashTotalEGP(cashAccounts, prices), [cashAccounts, prices]);
   const hasForeignCash = cashAccounts.some(a => a.currency !== 'EGP');
+
+  // A goal linked to a cash account tracks that account's live balance
+  // instead of its own stored savedAmount — mirrors goals.tsx's own
+  // effectiveSaved exactly, so this row's numbers always match that screen.
+  const effectiveGoalSaved = useCallback((g: (typeof goals)[number]) => {
+    if (!g.linkedCashAccountId) return g.savedAmount;
+    const account = cashAccounts.find(a => a.id === g.linkedCashAccountId);
+    return account ? account.balance : g.savedAmount;
+  }, [cashAccounts]);
+
+  const GOAL_RING_COLORS = [colors.primary, '#4A9EFF', '#8B5CF6'];
+
+  const goalsSummary = useMemo(() => {
+    if (goals.length === 0) return null;
+    const withPct = goals.map(g => {
+      const saved = effectiveGoalSaved(g);
+      const pct = g.targetAmount > 0 ? (saved / g.targetAmount) * 100 : 0;
+      return { goal: g, saved, pct, done: pct >= 100 };
+    });
+    // Nearest deadline first — goals with no deadline sort last. Only
+    // matters for which 3 rings appear in the cluster; the average below
+    // still covers every goal, not just the ones shown.
+    const sorted = [...withPct].sort((a, b) => {
+      if (a.goal.deadline && b.goal.deadline) return a.goal.deadline.localeCompare(b.goal.deadline);
+      if (a.goal.deadline) return -1;
+      if (b.goal.deadline) return 1;
+      return 0;
+    });
+    const avgPct = withPct.reduce((sum, g) => sum + g.pct, 0) / withPct.length;
+    return { sorted, avgPct, count: goals.length, single: withPct.length === 1 ? withPct[0] : null };
+  }, [goals, effectiveGoalSaved]);
 
   // Auto-refresh prices when app comes back to foreground
   useEffect(() => {
@@ -935,6 +969,69 @@ export default function HomeScreen() {
         <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
 
+      {/* ── Goals row ──────────────────────────────────────────────
+           A slim single line, not a card — the ring(s) carry the visual
+           weight. Only shown when goals exist; a single goal gets one ring,
+           more than one gets an overlapping cluster (up to 3, nearest
+           deadline first) plus an average across all of them. Placed right
+           after Cash because a goal's "saved" figure is often literally a
+           linked cash account's own balance. */}
+      {goalsSummary && (
+        <TouchableOpacity
+          style={styles.goalsRow}
+          onPress={() => router.push('/goals' as any)}
+          activeOpacity={0.7}
+        >
+          {goalsSummary.single ? (
+            <>
+              <GoalRing
+                pct={goalsSummary.single.pct}
+                color={goalsSummary.single.done ? colors.green : colors.primary}
+                trackColor={colors.border}
+                done={goalsSummary.single.done}
+              />
+              <View style={styles.goalsInfo}>
+                <Text style={[styles.goalsTitle, { color: colors.text }]} numberOfLines={1}>
+                  {goalsSummary.single.goal.name}
+                </Text>
+                <Text style={[styles.goalsSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {hideValues ? '••••••' : t.overviewGoalSingleSub(
+                    String(Math.round(goalsSummary.single.pct)),
+                    goalsSummary.single.saved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                    goalsSummary.single.goal.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                  )}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.goalRingCluster}>
+                {goalsSummary.sorted.slice(0, 3).map((g, i) => (
+                  <View key={g.goal.id} style={i > 0 ? { marginLeft: -10 } : undefined}>
+                    <GoalRing
+                      size={34} strokeWidth={3.5}
+                      pct={g.pct}
+                      color={g.done ? colors.green : GOAL_RING_COLORS[i % GOAL_RING_COLORS.length]}
+                      trackColor={colors.border}
+                      done={g.done}
+                    />
+                  </View>
+                ))}
+              </View>
+              <View style={styles.goalsInfo}>
+                <Text style={[styles.goalsTitle, { color: colors.text }]} numberOfLines={1}>
+                  {t.overviewGoalClusterTitle(String(goalsSummary.count))}
+                </Text>
+                <Text style={[styles.goalsSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {t.overviewGoalClusterSub(String(Math.round(goalsSummary.avgPct)))}
+                </Text>
+              </View>
+            </>
+          )}
+          <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
+
       {/* ── Top Investments ─────────────────────────────────────── */}
       <View style={styles.holdingsSection}>
         <View style={styles.sectionRow}>
@@ -1168,6 +1265,12 @@ const styles = StyleSheet.create({
   cashInfo: { flex: 1, gap: 2 },
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+
+  goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingLeft: 6, paddingRight: 18 },
+  goalRingCluster: { flexDirection: 'row' },
+  goalsInfo: { flex: 1, gap: 2, minWidth: 0 },
+  goalsTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  goalsSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
