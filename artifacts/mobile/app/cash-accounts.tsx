@@ -70,6 +70,18 @@ export default function CashAccountsScreen() {
   // both computed against. Null while adding a new account (nothing to
   // diff against yet).
   const [editingOriginalBalance, setEditingOriginalBalance] = useState<number | null>(null);
+  // Only meaningful while editingOriginalBalance is set (an existing
+  // account) — 'add' is the default because most updates are "I got/spent
+  // this much," not "let me recompute my whole balance." 'total' stays
+  // available for whenever copying the bank app's number directly is easier.
+  const [balanceEntryMode, setBalanceEntryMode] = useState<'add' | 'total'>('add');
+  // 'add' mode's field (AmountInput) only ever holds a positive magnitude —
+  // it shares the same clean/format helpers as every other amount field in
+  // the app, none of which accept a minus sign. Direction is tracked here
+  // instead, via its own +/- toggle, so a withdrawal is "tap minus, type
+  // 200" rather than requiring the text field itself to parse a signed
+  // number.
+  const [addSign, setAddSign] = useState<1 | -1>(1);
   const balanceUpdatesAccountId = editingId && !isEditingIncome ? editingId : null;
   const { updates: balanceUpdates, refresh: refreshBalanceUpdates, logUpdate: logBalanceUpdate } = useCashBalanceUpdates(balanceUpdatesAccountId);
   useEffect(() => {
@@ -165,6 +177,8 @@ export default function CashAccountsScreen() {
     setAccountName('');
     setBalance('');
     setEditingOriginalBalance(null);
+    setBalanceEntryMode('add');
+    setAddSign(1);
     setCurrency('EGP');
     setDateAdded(todayISO());
     setNotes('');
@@ -186,12 +200,22 @@ export default function CashAccountsScreen() {
     setIsEditingIncome(false);
     setEntryType(a.type);
     setAccountName(a.accountName);
-    setBalance(String(a.balance));
+    setBalance('');
+    setBalanceEntryMode('add');
+    setAddSign(1);
     setEditingOriginalBalance(a.balance);
     setCurrency(a.currency);
     setDateAdded(a.dateAdded ?? todayISO());
     setNotes(a.notes ?? '');
     setShowForm(true);
+  };
+
+  const switchBalanceMode = (mode: 'add' | 'total') => {
+    if (mode === balanceEntryMode) return;
+    impact();
+    setBalanceEntryMode(mode);
+    setAddSign(1);
+    setBalance(mode === 'total' && editingOriginalBalance !== null ? String(editingOriginalBalance) : '');
   };
 
   const openEditIncome = (r: RecurringIncome) => {
@@ -253,17 +277,25 @@ export default function CashAccountsScreen() {
         await addRecurringIncome(income);
       }
     } else {
-      const parsedBalance = parseAmount(balance);
-      if (!accountName.trim() || !balance.trim() || isNaN(parsedBalance)) {
+      const isExistingAccount = !!(editingId && !isEditingIncome);
+      const magnitude = parseAmount(balance);
+      if (!accountName.trim() || !balance.trim() || isNaN(magnitude)) {
         Alert.alert(t.enterAccountDetails);
         return;
       }
+      // In 'add' mode the field holds a magnitude only (AmountInput can't
+      // represent a minus sign) — direction comes from the separate addSign
+      // toggle. 'total' mode and new accounts both take the input as the
+      // balance directly, same as before this distinction existed.
+      const rawInput = isExistingAccount && balanceEntryMode === 'add' ? addSign * magnitude : magnitude;
+      const parsedBalance = isExistingAccount && balanceEntryMode === 'add'
+        ? (editingOriginalBalance ?? 0) + rawInput
+        : rawInput;
       const isNewAccount = !(editingId && !isEditingIncome);
       if (isNewAccount && !subLoading && !featuresUnlocked && cashAccounts.length >= FREE_LIMIT_CASH) {
         showPaywall();
         return;
       }
-      const isExistingAccount = !!(editingId && !isEditingIncome);
       // Only a genuine manual change gets a fresh lastBalanceUpdateAt/history
       // entry — re-saving the form without touching the number (e.g. just
       // editing the notes) shouldn't look like a balance update that never
@@ -552,41 +584,84 @@ export default function CashAccountsScreen() {
                 {/* ── Balance ──────────────────────────────────────── */}
                 <View style={styles.section}>
                   <Text style={labelStyle}>{t.balance}</Text>
-                  <AmountInput
-                    style={inputStyle}
-                    placeholder="0.00"
-                    placeholderTextColor={colors.mutedForeground}
-                    value={balance}
-                    onChangeText={setBalance}
-                  />
+
+                  {editingOriginalBalance !== null && (
+                    <View style={styles.balanceModeRow}>
+                      <TouchableOpacity
+                        style={[styles.balanceModeChip, { backgroundColor: balanceEntryMode === 'add' ? colors.primary : colors.card, borderColor: balanceEntryMode === 'add' ? colors.primary : colors.border }]}
+                        onPress={() => switchBalanceMode('add')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.balanceModeChipText, { color: balanceEntryMode === 'add' ? colors.primaryForeground : colors.text }]}>{t.balanceModeAdd}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.balanceModeChip, { backgroundColor: balanceEntryMode === 'total' ? colors.primary : colors.card, borderColor: balanceEntryMode === 'total' ? colors.primary : colors.border }]}
+                        onPress={() => switchBalanceMode('total')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.balanceModeChipText, { color: balanceEntryMode === 'total' ? colors.primaryForeground : colors.text }]}>{t.balanceModeTotal}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {editingOriginalBalance !== null && balanceEntryMode === 'add' ? (
+                    <View style={styles.addAmountRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.signToggle,
+                          {
+                            backgroundColor: addSign === 1 ? colors.green + '1A' : colors.red + '1A',
+                            borderColor: addSign === 1 ? colors.green : colors.red,
+                          },
+                        ]}
+                        onPress={() => { impact(); setAddSign(s => (s === 1 ? -1 : 1)); }}
+                        activeOpacity={0.8}
+                      >
+                        <Feather name={addSign === 1 ? 'plus' : 'minus'} size={20} color={addSign === 1 ? colors.green : colors.red} />
+                      </TouchableOpacity>
+                      <AmountInput
+                        style={[...inputStyle, styles.addAmountInput]}
+                        placeholder={t.balanceModeAddPlaceholder}
+                        placeholderTextColor={colors.mutedForeground}
+                        value={balance}
+                        onChangeText={setBalance}
+                      />
+                    </View>
+                  ) : (
+                    <AmountInput
+                      style={inputStyle}
+                      placeholder="0.00"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={balance}
+                      onChangeText={setBalance}
+                    />
+                  )}
+
                   {editingOriginalBalance !== null && (() => {
                     const parsed = parseAmount(balance);
-                    if (balance.trim() === '' || isNaN(parsed) || parsed === editingOriginalBalance) return null;
+                    if (balance.trim() === '' || isNaN(parsed)) return null;
+                    if (balanceEntryMode === 'add') {
+                      if (parsed === 0) return null;
+                      const delta = addSign * parsed;
+                      const newTotal = editingOriginalBalance + delta;
+                      return (
+                        <Text style={[styles.balanceDeltaHint, { color: delta > 0 ? colors.green : colors.red }]}>
+                          {t.balanceModeAddHint(newTotal.toLocaleString('en-EG', { maximumFractionDigits: 2 }), currency)}
+                        </Text>
+                      );
+                    }
+                    if (parsed === editingOriginalBalance) return null;
                     const delta = parsed - editingOriginalBalance;
-                    const isUp = delta > 0;
                     return (
-                      <Text style={[styles.balanceDeltaHint, { color: isUp ? colors.green : colors.red }]}>
-                        {t.balanceDeltaHint(`${isUp ? '+' : ''}${delta.toLocaleString('en-EG', { maximumFractionDigits: 2 })} ${currency}`)}
+                      <Text style={[styles.balanceDeltaHint, { color: delta > 0 ? colors.green : colors.red }]}>
+                        {t.balanceDeltaHint(`${delta > 0 ? '+' : ''}${delta.toLocaleString('en-EG', { maximumFractionDigits: 2 })} ${currency}`)}
                       </Text>
                     );
                   })()}
-                  {editingOriginalBalance !== null && (
-                    <View style={styles.stepperRow}>
-                      {[-1000, -100, 100, 1000].map(step => (
-                        <TouchableOpacity
-                          key={step}
-                          style={[styles.stepperChip, { borderColor: colors.border, backgroundColor: colors.card }]}
-                          onPress={() => { impact(); setBalance(String((parseAmount(balance) || 0) + step)); }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[styles.stepperChipText, { color: step > 0 ? colors.green : colors.red }]}>
-                            {step > 0 ? '+' : ''}{step}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>{BALANCE_HINT[entryType as CashAccountType] ?? ''}</Text>
+
+                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+                    {editingOriginalBalance !== null && balanceEntryMode === 'add' ? t.balanceModeAddHelp : (BALANCE_HINT[entryType as CashAccountType] ?? '')}
+                  </Text>
                 </View>
 
                 {/* ── Recent updates (manual balance-change history) ─── */}
@@ -1018,9 +1093,12 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 8, letterSpacing: 0.3 },
   hint: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 17 },
   balanceDeltaHint: { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginTop: 8 },
-  stepperRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  stepperChip: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
-  stepperChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  balanceModeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  balanceModeChip: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
+  balanceModeChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  addAmountRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
+  signToggle: { width: 48, borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  addAmountInput: { flex: 1 },
   updatesList: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
   updateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
   updateDate: { fontSize: 12.5, fontFamily: 'Inter_400Regular', width: 52 },
