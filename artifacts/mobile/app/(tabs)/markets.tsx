@@ -656,7 +656,10 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
   const silverOz   = prices ? Math.round(prices.silverUsd * prices.usdToEgp) : 0;
 
   return (
-    <View style={tab.group}>
+    // Tighter than tab.group's default 24 — that gap reads fine between bare
+    // sections, but here it stacks on top of the note's own line-height right
+    // above the next section's icon+title, so it visibly overshoots.
+    <View style={[tab.group, { gap: 12 }]}>
       {/* Gold section */}
       <View style={tab.section}>
         <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.goldSectionLabel} />

@@ -592,20 +592,15 @@ export default function CashAccountsScreen() {
                   )}
 
                   {editingOriginalBalance !== null && balanceEntryMode === 'add' ? (
-                    <View style={styles.addAmountRow}>
+                    <View style={[styles.addAmountRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
                       <TouchableOpacity
-                        style={[
-                          styles.signToggle,
-                          {
-                            backgroundColor: addSign === 1 ? colors.green + '1A' : colors.red + '1A',
-                            borderColor: addSign === 1 ? colors.green : colors.red,
-                          },
-                        ]}
+                        style={[styles.signToggle, { backgroundColor: addSign === 1 ? colors.green + '16' : colors.red + '16' }]}
                         onPress={() => { impact(); setAddSign(s => (s === 1 ? -1 : 1)); }}
-                        activeOpacity={0.8}
+                        activeOpacity={0.7}
                       >
                         <Feather name={addSign === 1 ? 'plus' : 'minus'} size={20} color={addSign === 1 ? colors.green : colors.red} />
                       </TouchableOpacity>
+                      <View style={[styles.signDivider, { backgroundColor: colors.border }]} />
                       <AmountInput
                         style={[...inputStyle, styles.addAmountInput]}
                         placeholder={t.balanceModeAddPlaceholder}
@@ -653,10 +648,11 @@ export default function CashAccountsScreen() {
                   {editingOriginalBalance !== null && (
                     <TouchableOpacity
                       onPress={() => switchBalanceMode(balanceEntryMode === 'add' ? 'total' : 'add')}
-                      activeOpacity={0.7}
+                      activeOpacity={0.6}
                       style={styles.modeLinkRow}
                     >
-                      <Text style={[styles.modeLink, { color: colors.primary }]}>
+                      <Feather name="repeat" size={12} color={colors.mutedForeground} />
+                      <Text style={[styles.modeLink, { color: colors.mutedForeground }]}>
                         {balanceEntryMode === 'add' ? t.balanceModeSwitchToTotal : t.balanceModeSwitchToAdd}
                       </Text>
                     </TouchableOpacity>
@@ -1093,11 +1089,15 @@ const styles = StyleSheet.create({
   hint: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 17 },
   balanceDeltaHint: { fontSize: 13, fontFamily: 'Inter_600SemiBold', marginTop: 8 },
   currentBalanceLabel: { fontSize: 13, fontFamily: 'Inter_500Medium', marginBottom: 8 },
-  addAmountRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
-  signToggle: { width: 48, borderWidth: 1.5, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  addAmountInput: { flex: 1 },
-  modeLinkRow: { marginTop: 10, alignSelf: 'flex-start' },
-  modeLink: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  // One seamless control (shared border, rounded corners, internal divider)
+  // rather than two separate boxes side by side — reads as a single input
+  // with a direction switch built in, not two competing widgets.
+  addAmountRow: { flexDirection: 'row', alignItems: 'stretch', borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
+  signToggle: { width: 50, alignItems: 'center', justifyContent: 'center' },
+  signDivider: { width: StyleSheet.hairlineWidth },
+  addAmountInput: { flex: 1, borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' },
+  modeLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'flex-start' },
+  modeLink: { fontSize: 12.5, fontFamily: 'Inter_500Medium' },
   updatesList: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
   updateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
   updateDate: { fontSize: 12.5, fontFamily: 'Inter_400Regular', width: 52 },
