@@ -1196,7 +1196,7 @@ const styles = StyleSheet.create({
   cashCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     borderRadius: 20, borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 18, paddingVertical: 16, marginTop: 14,
+    paddingHorizontal: 18, paddingVertical: 16,
   },
   cashIconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   cashInfo: { flex: 1, gap: 2 },
