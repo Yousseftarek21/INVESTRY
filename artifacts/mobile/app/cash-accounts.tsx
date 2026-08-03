@@ -651,8 +651,8 @@ export default function CashAccountsScreen() {
                       activeOpacity={0.6}
                       style={styles.modeLinkRow}
                     >
-                      <Feather name="repeat" size={12} color={colors.mutedForeground} />
-                      <Text style={[styles.modeLink, { color: colors.mutedForeground }]}>
+                      <Feather name="repeat" size={12} color={colors.primary} />
+                      <Text style={[styles.modeLink, { color: colors.primary }]}>
                         {balanceEntryMode === 'add' ? t.balanceModeSwitchToTotal : t.balanceModeSwitchToAdd}
                       </Text>
                     </TouchableOpacity>
@@ -1097,7 +1097,7 @@ const styles = StyleSheet.create({
   signDivider: { width: StyleSheet.hairlineWidth },
   addAmountInput: { flex: 1, borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' },
   modeLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'flex-start' },
-  modeLink: { fontSize: 12.5, fontFamily: 'Inter_500Medium' },
+  modeLink: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold', textDecorationLine: 'underline' },
   updatesList: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
   updateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
   updateDate: { fontSize: 12.5, fontFamily: 'Inter_400Regular', width: 52 },
