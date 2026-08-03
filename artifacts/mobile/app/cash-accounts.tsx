@@ -22,6 +22,7 @@ import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
 import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
+import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 
 type EntryType = CashAccountType | 'recurring_income';
 
@@ -84,6 +85,7 @@ export default function CashAccountsScreen() {
   const [addSign, setAddSign] = useState<1 | -1>(1);
   const balanceUpdatesAccountId = editingId && !isEditingIncome ? editingId : null;
   const { updates: balanceUpdates, refresh: refreshBalanceUpdates, logUpdate: logBalanceUpdate } = useCashBalanceUpdates(balanceUpdatesAccountId);
+  const { todayChanges, refresh: refreshTodayChanges } = useCashAccountsTodayChanges();
   useEffect(() => {
     if (balanceUpdatesAccountId) refreshBalanceUpdates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -326,7 +328,10 @@ export default function CashAccountsScreen() {
       // rollback + syncError).
       if (isExistingAccount) {
         updateCashAccount(account);
-        if (balanceChanged) logBalanceUpdate(account.id, parsedBalance - (editingOriginalBalance as number), parsedBalance);
+        if (balanceChanged) {
+          logBalanceUpdate(account.id, parsedBalance - (editingOriginalBalance as number), parsedBalance)
+            .then(() => refreshTodayChanges());
+        }
       } else {
         addCashAccount(account);
       }
@@ -822,9 +827,18 @@ export default function CashAccountsScreen() {
                       <View style={styles.accountInfo}>
                         <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{a.accountName}</Text>
                         <Text style={[styles.accountType, { color: colors.mutedForeground }]}>{TYPE_LABELS[a.type]}</Text>
-                        <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
-                          {(Number(a.balance) || 0).toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
-                        </Text>
+                        <View style={styles.balanceRow}>
+                          <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
+                            {(Number(a.balance) || 0).toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
+                          </Text>
+                          {!!todayChanges[a.id] && (
+                            <View style={[styles.todayBadge, { backgroundColor: todayChanges[a.id] > 0 ? colors.green + '18' : colors.red + '18' }]}>
+                              <Text style={[styles.todayBadgeText, { color: todayChanges[a.id] > 0 ? colors.green : colors.red }]} numberOfLines={1}>
+                                {t.todayChangeBadge(`${todayChanges[a.id] > 0 ? '+' : ''}${todayChanges[a.id].toLocaleString('en-EG', { maximumFractionDigits: 2 })} ${a.currency}`)}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                         {a.lastBalanceUpdateAt && (
                           <Text style={styles.lastUpdatedHint} numberOfLines={1}>
                             {!!a.lastBalanceDelta && (
@@ -1161,6 +1175,9 @@ const styles = StyleSheet.create({
   accountName: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   accountType: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   accountBalance: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: -0.2, marginTop: 1 },
+  balanceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  todayBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, flexShrink: 1 },
+  todayBadgeText: { fontSize: 10.5, fontFamily: 'Inter_700Bold' },
   accountActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   actionBtn: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   pickerSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, gap: 8 },

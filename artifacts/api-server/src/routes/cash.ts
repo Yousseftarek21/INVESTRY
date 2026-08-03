@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, cashAccountsTable, cashBalanceUpdatesTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, gte, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
+import { cairoDateString } from "../lib/cairoDate";
 
 function generateUpdateId(): string {
   return `cbu_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -190,6 +191,42 @@ router.post("/cash-accounts/:id/balance-updates", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "POST /cash-accounts/:id/balance-updates failed");
     res.status(500).json({ error: "Failed to log balance update" });
+  }
+});
+
+// GET /api/cash-accounts/today-changes — sum of each account's manual
+// balance-update deltas for the current Cairo calendar day, keyed by
+// cashAccountId. Cash isn't a live market instrument with its own
+// start-of-day snapshot, so "today's change" is simply whatever was
+// manually added/subtracted today — no baseline value needed the way
+// market prices require one.
+router.get("/cash-accounts/today-changes", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    // A 2-day lookback comfortably covers the Cairo-vs-UTC offset without
+    // scanning the whole table as history accumulates over months.
+    const since = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        cashAccountId: cashBalanceUpdatesTable.cashAccountId,
+        delta: cashBalanceUpdatesTable.delta,
+        createdAt: cashBalanceUpdatesTable.createdAt,
+      })
+      .from(cashBalanceUpdatesTable)
+      .where(and(eq(cashBalanceUpdatesTable.userId, userId), gte(cashBalanceUpdatesTable.createdAt, since)));
+
+    const today = cairoDateString();
+    const totals: Record<string, number> = {};
+    for (const r of rows) {
+      if (cairoDateString(new Date(r.createdAt)) !== today) continue;
+      totals[r.cashAccountId] = (totals[r.cashAccountId] ?? 0) + r.delta;
+    }
+    res.json(totals);
+  } catch (err) {
+    req.log.error({ err }, "GET /cash-accounts/today-changes failed");
+    res.status(500).json({ error: "Failed to fetch today's changes" });
   }
 });
 
