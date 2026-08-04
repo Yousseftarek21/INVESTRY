@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
+import { fmtCompact } from '@/utils/formatNumber';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -82,12 +83,6 @@ function computeCost(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'personal_asset') return personalAssetCostEGP(h, prices);
   if (h.type === 'fixed_income') return h.principal;
   return 0;
-}
-
-function fmtCompact(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(n >= 100_000 ? 0 : 1)}K`;
-  return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
 
 // ─── Animated number display ──────────────────────────────────────────────────
@@ -987,6 +982,7 @@ export default function HomeScreen() {
           {goalsSummary.single ? (
             <>
               <GoalRing
+                size={34} strokeWidth={3.5}
                 pct={goalsSummary.single.pct}
                 color={goalsSummary.single.done ? colors.green : colors.primary}
                 trackColor={colors.border}

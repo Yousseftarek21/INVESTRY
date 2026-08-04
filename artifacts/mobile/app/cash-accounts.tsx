@@ -20,9 +20,11 @@ import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
 import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
+import { fmtCompact } from '@/utils/formatNumber';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
+import { useRecentCashUpdates } from '@/hooks/useRecentCashUpdates';
 
 type EntryType = CashAccountType | 'recurring_income';
 
@@ -83,13 +85,13 @@ export default function CashAccountsScreen() {
   // 200" rather than requiring the text field itself to parse a signed
   // number.
   const [addSign, setAddSign] = useState<1 | -1>(1);
-  const balanceUpdatesAccountId = editingId && !isEditingIncome ? editingId : null;
-  const { updates: balanceUpdates, refresh: refreshBalanceUpdates, logUpdate: logBalanceUpdate } = useCashBalanceUpdates(balanceUpdatesAccountId);
+  // Only the write path (logUpdate) is used here — per-account history
+  // reads happen through useRecentCashUpdates below instead, which merges
+  // every account's history into one feed rather than fetching one
+  // account's history in isolation (which is all this hook call gives you).
+  const { logUpdate: logBalanceUpdate } = useCashBalanceUpdates(null);
   const { todayChanges, refresh: refreshTodayChanges } = useCashAccountsTodayChanges();
-  useEffect(() => {
-    if (balanceUpdatesAccountId) refreshBalanceUpdates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [balanceUpdatesAccountId]);
+  const { updates: recentUpdates, refresh: refreshRecentUpdates } = useRecentCashUpdates(cashAccounts);
   const [currency, setCurrency] = useState('EGP');
   const [dateAdded, setDateAdded] = useState(todayISO());
   const [notes, setNotes] = useState('');
@@ -327,7 +329,7 @@ export default function CashAccountsScreen() {
         updateCashAccount(account);
         if (balanceChanged) {
           logBalanceUpdate(account.id, parsedBalance - (editingOriginalBalance as number), parsedBalance)
-            .then(() => refreshTodayChanges());
+            .then(() => { refreshTodayChanges(); refreshRecentUpdates(); });
         }
       } else {
         addCashAccount(account);
@@ -668,34 +670,6 @@ export default function CashAccountsScreen() {
                   )}
                 </View>
 
-                {/* ── Recent updates (manual balance-change history) ─── */}
-                {editingOriginalBalance !== null && balanceUpdates.length > 0 && (
-                  <View style={styles.section}>
-                    <Text style={labelStyle}>{t.recentBalanceUpdates}</Text>
-                    <View style={[styles.updatesList, { borderColor: colors.border }]}>
-                      {balanceUpdates.slice(0, 5).map((u, i) => {
-                        const isUp = u.delta > 0;
-                        return (
-                          <View
-                            key={u.id}
-                            style={[styles.updateRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
-                          >
-                            <Text style={[styles.updateDate, { color: colors.mutedForeground }]}>
-                              {new Date(u.createdAt).toLocaleDateString('en-EG', { month: 'short', day: 'numeric' })}
-                            </Text>
-                            <Text style={[styles.updateDelta, { color: isUp ? colors.green : colors.red }]}>
-                              {isUp ? '+' : ''}{u.delta.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {currency}
-                            </Text>
-                            <Text style={[styles.updateResulting, { color: colors.mutedForeground }]}>
-                              {'→'} {u.resultingBalance.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </View>
-                )}
-
                 {/* ── Currency ─────────────────────────────────────── */}
                 <View style={styles.section}>
                   <Text style={labelStyle}>{t.accountCurrency}</Text>
@@ -831,7 +805,7 @@ export default function CashAccountsScreen() {
                           {!!todayChanges[a.id] && (
                             <View style={[styles.todayBadge, { backgroundColor: todayChanges[a.id] > 0 ? colors.green + '18' : colors.red + '18' }]}>
                               <Text style={[styles.todayBadgeText, { color: todayChanges[a.id] > 0 ? colors.green : colors.red }]} numberOfLines={1}>
-                                {t.todayChangeBadge(`${todayChanges[a.id] > 0 ? '+' : ''}${todayChanges[a.id].toLocaleString('en-EG', { maximumFractionDigits: 2 })} ${a.currency}`)}
+                                {t.todayChangeBadge(`${todayChanges[a.id] > 0 ? '+' : '−'}${fmtCompact(Math.abs(todayChanges[a.id]))} ${a.currency}`)}
                               </Text>
                             </View>
                           )}
@@ -907,6 +881,37 @@ export default function CashAccountsScreen() {
                     </View>
                   </SwipeToDelete>
                 ))}
+              </View>
+            )}
+
+            {/* ── Recent updates — merged across every cash account, each
+                 row labeled with which one it belongs to ──────────────── */}
+            {recentUpdates.length > 0 && (
+              <View style={styles.recentSection}>
+                <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t.recentUpdatesTitle}</Text>
+                <View style={[styles.recentList, { borderColor: colors.border }]}>
+                  {recentUpdates.map((u, i) => {
+                    const isUp = u.delta > 0;
+                    return (
+                      <View
+                        key={u.id}
+                        style={[styles.recentRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.recentAccountName, { color: colors.text }]} numberOfLines={1}>
+                            {u.accountName}
+                          </Text>
+                          <Text style={[styles.recentDate, { color: colors.mutedForeground }]}>
+                            {new Date(u.createdAt).toLocaleDateString('en-EG', { month: 'short', day: 'numeric' })}
+                          </Text>
+                        </View>
+                        <Text style={[styles.recentDelta, { color: isUp ? colors.green : colors.red }]} numberOfLines={1}>
+                          {isUp ? '+' : ''}{u.delta.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {u.currency}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
             )}
           </>
@@ -1116,11 +1121,6 @@ const styles = StyleSheet.create({
   addAmountInput: { flex: 1, borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' },
   modeLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'flex-start' },
   modeLink: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
-  updatesList: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
-  updateRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11, gap: 10 },
-  updateDate: { fontSize: 12.5, fontFamily: 'Inter_400Regular', width: 52 },
-  updateDelta: { fontSize: 13, fontFamily: 'Inter_600SemiBold', flex: 1 },
-  updateResulting: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   lastUpdatedHint: { fontSize: 10.5, fontFamily: 'Inter_400Regular', marginTop: 2 },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   typeCardWrap: { width: '47%' },
@@ -1156,6 +1156,13 @@ const styles = StyleSheet.create({
   },
   transferBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   list: { gap: 10 },
+  recentSection: { marginTop: 24 },
+  sectionLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, marginBottom: 10 },
+  recentList: { borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
+  recentRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
+  recentAccountName: { fontSize: 13.5, fontFamily: 'Inter_600SemiBold' },
+  recentDate: { fontSize: 11.5, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  recentDelta: { fontSize: 13.5, fontFamily: 'Inter_600SemiBold' },
   accountCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderRadius: 16, borderWidth: 1, padding: 14,
