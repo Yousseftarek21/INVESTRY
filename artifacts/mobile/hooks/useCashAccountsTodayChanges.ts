@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
 
@@ -9,14 +9,21 @@ import { apiFetch } from '@/utils/api';
 export function useCashAccountsTodayChanges() {
   const { getToken } = useAuth();
   const [todayChanges, setTodayChanges] = useState<Record<string, number>>({});
+  // Guards against an older refresh() resolving after a newer one and
+  // clobbering fresh data with stale data — see the identical comment in
+  // useRecentCashUpdates, which this hook is called alongside.
+  const requestIdRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     try {
       const token = await getToken();
       if (!token) return;
       const res = await apiFetch('/api/cash-accounts/today-changes', token);
       if (!res.ok) return;
-      setTodayChanges(await res.json());
+      const data = await res.json();
+      if (requestId !== requestIdRef.current) return;
+      setTodayChanges(data);
     } catch {
       // Best-effort — the badge just doesn't show rather than the screen failing.
     }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
 import { CashAccount } from '@/types';
@@ -25,8 +25,14 @@ export function useRecentCashUpdates(accounts: CashAccount[]) {
   const { getToken } = useAuth();
   const [updates, setUpdates] = useState<RecentCashUpdate[]>([]);
   const idsKey = useMemo(() => accounts.map(a => a.id).join(','), [accounts]);
+  // refresh() is called both automatically (idsKey change) and manually
+  // (right after a save) — without this, an older call that happens to
+  // resolve after a newer one silently clobbers fresh data with stale data,
+  // which looks like the list flickering between correct and wrong.
+  const requestIdRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     if (!idsKey) { setUpdates([]); return; }
     const targets = idsKey.split(',').map(id => accounts.find(a => a.id === id)!).filter(Boolean);
     try {
@@ -38,6 +44,7 @@ export function useRecentCashUpdates(accounts: CashAccount[]) {
         const rows: Array<{ id: string; delta: number; resultingBalance: number; createdAt: string }> = await res.json();
         return rows.map(r => ({ ...r, accountId: a.id, accountName: a.accountName, currency: a.currency }));
       }));
+      if (requestId !== requestIdRef.current) return;
       const merged = lists.flat().sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime());
       setUpdates(merged.slice(0, LIMIT));
     } catch {
