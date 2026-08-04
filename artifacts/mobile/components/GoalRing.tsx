@@ -31,7 +31,7 @@ export function GoalRing({ pct, color, fillColor, trackColor, size = 42, strokeW
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: [{ rotate: '-90deg' }] }}>
-        <Circle cx={size / 2} cy={size / 2} r={radius} fill={centerFill + '26'} />
+        <Circle cx={size / 2} cy={size / 2} r={radius} fill={centerFill + '40'} />
         <Circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={trackColor} strokeWidth={strokeWidth} />
         <Circle
           cx={size / 2} cy={size / 2} r={radius} fill="none"
@@ -40,7 +40,7 @@ export function GoalRing({ pct, color, fillColor, trackColor, size = 42, strokeW
         />
       </Svg>
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
-        <Feather name={done ? 'check' : 'target'} size={size * 0.38} color={color} />
+        <Feather name={done ? 'check' : 'target'} size={size * 0.38} color={centerFill} />
       </View>
     </View>
   );
