@@ -984,8 +984,8 @@ export default function HomeScreen() {
               <GoalRing
                 size={34} strokeWidth={3.5}
                 pct={goalsSummary.single.pct}
-                color={goalsSummary.single.done ? colors.green : colors.primary}
-                gradientColors={goalsSummary.single.done ? undefined : [colors.primary, colors.green]}
+                color={colors.green}
+                fillColor={colors.primary}
                 trackColor={colors.border}
                 done={goalsSummary.single.done}
               />
