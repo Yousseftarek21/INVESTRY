@@ -31,10 +31,11 @@ type EntryType = CashAccountType | 'recurring_income';
 const FREE_LIMIT_CASH = 1;
 // Recurring income is a Pro-only feature — same policy as recurring-income.tsx.
 const FREE_LIMIT_INCOME = 0;
-// Matches useRecentCashUpdates' own default — a "View All" link only makes
-// sense once the preview has actually hit its cap (implying there's likely
-// more to see on the dedicated history screen).
-const RECENT_UPDATES_PREVIEW_LIMIT = 8;
+// A genuinely short at-a-glance preview — 8 (the old default) was high
+// enough that ordinary usage (a handful of edits) never hit it, so "View
+// all" never had a chance to appear at all. The dedicated history screen
+// is where the fuller list actually lives now.
+const RECENT_UPDATES_PREVIEW_LIMIT = 5;
 
 const CURRENCIES_DEFAULT = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 const CURRENCIES_FOREIGN  = ['USD', 'EUR', 'GBP', 'SAR', 'AED', 'EGP'];
