@@ -114,6 +114,10 @@ function RootLayoutNav() {
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
+        name="cash-history"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="recurring-income"
         options={{ presentation: "modal", headerShown: false }}
       />
@@ -136,6 +140,30 @@ function RootLayoutNav() {
       <Stack.Screen
         name="financial-tool"
         options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="ai-assistant"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="ai-assistant-history"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="target-allocation"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="help-center"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="invite-friends"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="sharia-screening"
+        options={{ headerShown: false }}
       />
     </Stack>
   );
