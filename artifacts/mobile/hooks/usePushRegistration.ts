@@ -17,18 +17,33 @@ import { requestNotificationPermission } from './useNotifications';
  * sync with the user's local "Portfolio Alerts"/"Price Alerts" toggles in
  * Settings — without this, the toggles would only affect a since-removed
  * local notification path and do nothing to the server-driven one.
+ *
+ * Called from the root layout, which re-renders often — each effect below
+ * used to have no guard against a second attempt starting while the first
+ * was still in flight, so a burst of re-renders (or one slow/failed call)
+ * could fire a rapid pile of duplicate requests. Confirmed in production:
+ * dozens of POST /push/register + PUT /push/preferences calls within the
+ * same second, several hitting 429, which then ate enough of the shared
+ * per-IP rate limit to 429 unrelated requests (prices, subscription, cash
+ * accounts) right along with them — the actual cause of a much broader
+ * "app stopped loading data" complaint, not just a push-registration issue.
  */
 export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlertsEnabled: boolean) {
   const { isSignedIn, userId, getToken } = useAuth();
   const registeredForUserId = useRef<string | null>(null);
+  const registeringInFlight = useRef(false);
   const lastSyncedPortfolioPref = useRef<boolean | null>(null);
+  const syncingPortfolioInFlight = useRef(false);
   const lastSyncedPriceAlertsPref = useRef<boolean | null>(null);
+  const syncingPriceAlertsInFlight = useRef(false);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
     if (!isSignedIn || !userId) return;
     if (registeredForUserId.current === userId) return;
+    if (registeringInFlight.current) return;
 
+    registeringInFlight.current = true;
     (async () => {
       try {
         const granted = await requestNotificationPermission();
@@ -51,6 +66,8 @@ export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlerts
         if (res.ok) registeredForUserId.current = userId;
       } catch {
         // Silent — push registration is a nice-to-have, never block app usage on it.
+      } finally {
+        registeringInFlight.current = false;
       }
     })();
   }, [isSignedIn, userId, getToken]);
@@ -59,7 +76,9 @@ export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlerts
     if (Platform.OS === 'web') return;
     if (!isSignedIn || !userId) return;
     if (lastSyncedPortfolioPref.current === portfolioAlertsEnabled) return;
+    if (syncingPortfolioInFlight.current) return;
 
+    syncingPortfolioInFlight.current = true;
     (async () => {
       try {
         const authToken = await getToken();
@@ -71,6 +90,8 @@ export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlerts
         if (res.ok) lastSyncedPortfolioPref.current = portfolioAlertsEnabled;
       } catch {
         // Silent — will retry next time this value changes or the app restarts.
+      } finally {
+        syncingPortfolioInFlight.current = false;
       }
     })();
   }, [isSignedIn, userId, getToken, portfolioAlertsEnabled]);
@@ -79,7 +100,9 @@ export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlerts
     if (Platform.OS === 'web') return;
     if (!isSignedIn || !userId) return;
     if (lastSyncedPriceAlertsPref.current === priceAlertsEnabled) return;
+    if (syncingPriceAlertsInFlight.current) return;
 
+    syncingPriceAlertsInFlight.current = true;
     (async () => {
       try {
         const authToken = await getToken();
@@ -91,6 +114,8 @@ export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlerts
         if (res.ok) lastSyncedPriceAlertsPref.current = priceAlertsEnabled;
       } catch {
         // Silent — will retry next time this value changes or the app restarts.
+      } finally {
+        syncingPriceAlertsInFlight.current = false;
       }
     })();
   }, [isSignedIn, userId, getToken, priceAlertsEnabled]);
