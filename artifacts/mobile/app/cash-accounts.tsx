@@ -7,7 +7,7 @@ import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
-import { backChevron } from '@/utils/rtl';
+import { backChevron, forwardChevron } from '@/utils/rtl';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
@@ -31,6 +31,10 @@ type EntryType = CashAccountType | 'recurring_income';
 const FREE_LIMIT_CASH = 1;
 // Recurring income is a Pro-only feature — same policy as recurring-income.tsx.
 const FREE_LIMIT_INCOME = 0;
+// Matches useRecentCashUpdates' own default — a "View All" link only makes
+// sense once the preview has actually hit its cap (implying there's likely
+// more to see on the dedicated history screen).
+const RECENT_UPDATES_PREVIEW_LIMIT = 8;
 
 const CURRENCIES_DEFAULT = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 const CURRENCIES_FOREIGN  = ['USD', 'EUR', 'GBP', 'SAR', 'AED', 'EGP'];
@@ -91,7 +95,7 @@ export default function CashAccountsScreen() {
   // account's history in isolation (which is all this hook call gives you).
   const { logUpdate: logBalanceUpdate } = useCashBalanceUpdates(null);
   const { todayChanges, refresh: refreshTodayChanges } = useCashAccountsTodayChanges();
-  const { updates: recentUpdates, refresh: refreshRecentUpdates } = useRecentCashUpdates(cashAccounts);
+  const { updates: recentUpdates, refresh: refreshRecentUpdates } = useRecentCashUpdates(cashAccounts, RECENT_UPDATES_PREVIEW_LIMIT);
   const [currency, setCurrency] = useState('EGP');
   const [dateAdded, setDateAdded] = useState(todayISO());
   const [notes, setNotes] = useState('');
@@ -912,6 +916,16 @@ export default function CashAccountsScreen() {
                     );
                   })}
                 </View>
+                {recentUpdates.length >= RECENT_UPDATES_PREVIEW_LIMIT && (
+                  <TouchableOpacity
+                    onPress={() => { impact(); router.push('/cash-history' as any); }}
+                    activeOpacity={0.7}
+                    style={styles.viewAllBtn}
+                  >
+                    <Text style={[styles.viewAllText, { color: colors.primary }]}>{t.viewAllUpdates}</Text>
+                    <Feather name={forwardChevron()} size={14} color={colors.primary} />
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </>
@@ -1163,6 +1177,8 @@ const styles = StyleSheet.create({
   recentAccountName: { fontSize: 13.5, fontFamily: 'Inter_600SemiBold' },
   recentDate: { fontSize: 11.5, fontFamily: 'Inter_400Regular', marginTop: 1 },
   recentDelta: { fontSize: 13.5, fontFamily: 'Inter_600SemiBold' },
+  viewAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12 },
+  viewAllText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   accountCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderRadius: 16, borderWidth: 1, padding: 14,
