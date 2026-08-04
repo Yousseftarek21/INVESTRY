@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
+import { useStableGetToken } from './useStableGetToken';
 
 export interface CashBalanceUpdate {
   id: string;
@@ -14,7 +14,7 @@ export interface CashBalanceUpdate {
 // time." Fetched on demand (when the edit form for that account opens)
 // rather than kept live, since it's only ever shown there.
 export function useCashBalanceUpdates(accountId: string | null) {
-  const { getToken } = useAuth();
+  const getToken = useStableGetToken();
   const [updates, setUpdates] = useState<CashBalanceUpdate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 

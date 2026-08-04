@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -25,7 +25,7 @@ export default function CashHistoryScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { cashAccounts } = useCash();
-  const { updates } = useRecentCashUpdates(cashAccounts, HISTORY_LIMIT);
+  const { updates, isLoading } = useRecentCashUpdates(cashAccounts, HISTORY_LIMIT);
 
   const dayLabel = (d: Date): string => {
     const key = dayKey(d);
@@ -52,7 +52,11 @@ export default function CashHistoryScreen() {
         </View>
 
         <ScrollView contentContainerStyle={[s.content, { paddingBottom: botPad + 24 }]}>
-          {updates.length === 0 ? (
+          {isLoading ? (
+            <View style={s.empty}>
+              <ActivityIndicator size="small" color={colors.mutedForeground} />
+            </View>
+          ) : updates.length === 0 ? (
             <View style={s.empty}>
               <View style={[s.emptyIcon, { backgroundColor: colors.primary + '18' }]}>
                 <Feather name="clock" size={26} color={colors.primary} />

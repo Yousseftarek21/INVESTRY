@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
+import { useStableGetToken } from './useStableGetToken';
 import { CashAccount } from '@/types';
 
 export interface RecentCashUpdate {
@@ -23,8 +23,12 @@ const DEFAULT_LIMIT = 8;
 // client-side. `limit` defaults to a short at-a-glance preview (8); the
 // dedicated "View All" screen passes a much larger one instead.
 export function useRecentCashUpdates(accounts: CashAccount[], limit: number = DEFAULT_LIMIT) {
-  const { getToken } = useAuth();
+  const getToken = useStableGetToken();
   const [updates, setUpdates] = useState<RecentCashUpdate[]>([]);
+  // Starts true so a consumer can distinguish "still loading" from "loaded,
+  // genuinely empty" — without this the full-history screen briefly showed
+  // an empty state before the first real fetch had a chance to resolve.
+  const [isLoading, setIsLoading] = useState(true);
   const idsKey = useMemo(() => accounts.map(a => a.id).join(','), [accounts]);
   // refresh() is called both automatically (idsKey change) and manually
   // (right after a save) — without this, an older call that happens to
@@ -34,7 +38,7 @@ export function useRecentCashUpdates(accounts: CashAccount[], limit: number = DE
 
   const refresh = useCallback(async () => {
     const requestId = ++requestIdRef.current;
-    if (!idsKey) { setUpdates([]); return; }
+    if (!idsKey) { setUpdates([]); setIsLoading(false); return; }
     const targets = idsKey.split(',').map(id => accounts.find(a => a.id === id)!).filter(Boolean);
     try {
       const token = await getToken();
@@ -50,11 +54,13 @@ export function useRecentCashUpdates(accounts: CashAccount[], limit: number = DE
       setUpdates(merged.slice(0, limit));
     } catch {
       // Best-effort — this is a nice-to-have feed, not core account data.
+    } finally {
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey, getToken, limit]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { updates, refresh };
+  return { updates, isLoading, refresh };
 }

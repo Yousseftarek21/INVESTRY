@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
 import { requestNotificationPermission } from './useNotifications';
+import { useStableGetToken } from './useStableGetToken';
 
 /**
  * Registers this device's Expo push token with the backend once the user is
@@ -18,18 +19,20 @@ import { requestNotificationPermission } from './useNotifications';
  * Settings — without this, the toggles would only affect a since-removed
  * local notification path and do nothing to the server-driven one.
  *
- * Called from the root layout, which re-renders often — each effect below
- * used to have no guard against a second attempt starting while the first
- * was still in flight, so a burst of re-renders (or one slow/failed call)
- * could fire a rapid pile of duplicate requests. Confirmed in production:
- * dozens of POST /push/register + PUT /push/preferences calls within the
- * same second, several hitting 429, which then ate enough of the shared
- * per-IP rate limit to 429 unrelated requests (prices, subscription, cash
- * accounts) right along with them — the actual cause of a much broader
- * "app stopped loading data" complaint, not just a push-registration issue.
+ * Called from the root layout, which re-renders often. Two layers of
+ * protection against duplicate requests, confirmed necessary in production
+ * (a burst of duplicate POST /push/register + PUT /push/preferences calls
+ * within the same second, several hitting 429, ate enough of the shared
+ * per-IP rate limit to 429 unrelated requests too — prices, subscription,
+ * cash accounts — the actual cause of a much broader "app stopped loading
+ * data" complaint): useStableGetToken fixes the root cause (Clerk's own
+ * getToken has a new identity every render, which made every effect below
+ * re-fire every render too), and the in-flight refs are a second line of
+ * defense in case anything else ever re-triggers these effects rapidly.
  */
 export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlertsEnabled: boolean) {
-  const { isSignedIn, userId, getToken } = useAuth();
+  const { isSignedIn, userId } = useAuth();
+  const getToken = useStableGetToken();
   const registeredForUserId = useRef<string | null>(null);
   const registeringInFlight = useRef(false);
   const lastSyncedPortfolioPref = useRef<boolean | null>(null);
