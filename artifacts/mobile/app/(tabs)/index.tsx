@@ -985,6 +985,7 @@ export default function HomeScreen() {
                 size={34} strokeWidth={3.5}
                 pct={goalsSummary.single.pct}
                 color={goalsSummary.single.done ? colors.green : colors.primary}
+                gradientColors={goalsSummary.single.done ? undefined : [colors.primary, colors.green]}
                 trackColor={colors.border}
                 done={goalsSummary.single.done}
               />
