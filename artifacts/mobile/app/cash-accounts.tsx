@@ -340,8 +340,9 @@ export default function CashAccountsScreen() {
             .then(() => { refreshTodayChanges(); refreshRecentUpdates(); });
           logActivity(
             'cash_edited',
-            t.activityCashEditedTitle(account.accountName),
+            t.activityCashEditedTitle,
             t.activityCashEditedSubtitle(
+              account.accountName,
               `${delta > 0 ? '+' : ''}${delta.toLocaleString('en-EG', { maximumFractionDigits: 2 })}`,
               parsedBalance.toLocaleString('en-EG', { maximumFractionDigits: 2 }),
               account.currency,
