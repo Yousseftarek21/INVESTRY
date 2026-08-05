@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/utils/api';
 import { useStableGetToken } from './useStableGetToken';
 import { CashAccount } from '@/types';
@@ -22,45 +23,36 @@ const DEFAULT_LIMIT = 8;
 // already limited to its 20 most recent rows server-side) and merges them
 // client-side. `limit` defaults to a short at-a-glance preview (8); the
 // dedicated "View All" screen passes a much larger one instead.
+//
+// react-query, not a bare useEffect+useState: this used to refetch from
+// scratch on every mount (no cache), which is why reopening the Cash
+// Accounts screen always showed a ~1s delay before this list appeared.
+// staleTime means reopening within 30s reuses the already-fetched data
+// instantly, and also replaces the hand-rolled requestId staleness guard
+// this hook used to need — react-query already dedupes/orders concurrent
+// fetches for the same key correctly.
 export function useRecentCashUpdates(accounts: CashAccount[], limit: number = DEFAULT_LIMIT) {
   const getToken = useStableGetToken();
-  const [updates, setUpdates] = useState<RecentCashUpdate[]>([]);
-  // Starts true so a consumer can distinguish "still loading" from "loaded,
-  // genuinely empty" — without this the full-history screen briefly showed
-  // an empty state before the first real fetch had a chance to resolve.
-  const [isLoading, setIsLoading] = useState(true);
   const idsKey = useMemo(() => accounts.map(a => a.id).join(','), [accounts]);
-  // refresh() is called both automatically (idsKey change) and manually
-  // (right after a save) — without this, an older call that happens to
-  // resolve after a newer one silently clobbers fresh data with stale data,
-  // which looks like the list flickering between correct and wrong.
-  const requestIdRef = useRef(0);
 
-  const refresh = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-    if (!idsKey) { setUpdates([]); setIsLoading(false); return; }
-    const targets = idsKey.split(',').map(id => accounts.find(a => a.id === id)!).filter(Boolean);
-    try {
+  const query = useQuery<RecentCashUpdate[]>({
+    queryKey: ['recent-cash-updates', idsKey, limit],
+    enabled: !!idsKey,
+    queryFn: async () => {
+      const targets = idsKey.split(',').map(id => accounts.find(a => a.id === id)!).filter(Boolean);
       const token = await getToken();
-      if (!token) return;
+      if (!token) return [];
       const lists = await Promise.all(targets.map(async a => {
         const res = await apiFetch(`/api/cash-accounts/${a.id}/balance-updates`, token);
         if (!res.ok) return [];
         const rows: Array<{ id: string; delta: number; resultingBalance: number; createdAt: string }> = await res.json();
         return rows.map(r => ({ ...r, accountId: a.id, accountName: a.accountName, currency: a.currency }));
       }));
-      if (requestId !== requestIdRef.current) return;
       const merged = lists.flat().sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime());
-      setUpdates(merged.slice(0, limit));
-    } catch {
-      // Best-effort — this is a nice-to-have feed, not core account data.
-    } finally {
-      if (requestId === requestIdRef.current) setIsLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idsKey, getToken, limit]);
+      return merged.slice(0, limit);
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => { refresh(); }, [refresh]);
-
-  return { updates, isLoading, refresh };
+  return { updates: query.data ?? [], isLoading: query.isLoading, refresh: query.refetch };
 }
