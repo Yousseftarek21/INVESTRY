@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
-import { db, holdingsTable } from "@workspace/db";
+import { db, holdingsTable, activityLogTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 
@@ -85,6 +85,14 @@ router.delete("/holdings/:id", async (req, res) => {
       res.status(404).json({ error: "Not found" });
       return;
     }
+
+    // Clean up this holding's own notification history — otherwise a
+    // deleted holding's old "Investment added" / "updated" entries keep
+    // showing in the bell forever, for something that no longer exists.
+    await db
+      .delete(activityLogTable)
+      .where(and(eq(activityLogTable.userId, userId), eq(activityLogTable.entityId, id)));
+
     res.json({ deleted: id });
   } catch (err) {
     req.log.error({ err }, "DELETE /holdings/:id failed");

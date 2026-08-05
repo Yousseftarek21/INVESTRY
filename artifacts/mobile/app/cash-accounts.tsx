@@ -347,6 +347,7 @@ export default function CashAccountsScreen() {
               parsedBalance.toLocaleString('en-EG', { maximumFractionDigits: 2 }),
               account.currency,
             ),
+            account.id,
           );
         }
       } else {
@@ -355,6 +356,7 @@ export default function CashAccountsScreen() {
           'cash_added',
           t.activityCashAddedTitle,
           t.activityCashAddedSubtitle(account.accountName, account.balance.toLocaleString('en-EG', { maximumFractionDigits: 2 }), account.currency),
+          account.id,
         );
       }
     }

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
-import { db, cashAccountsTable, cashBalanceUpdatesTable } from "@workspace/db";
+import { db, cashAccountsTable, cashBalanceUpdatesTable, activityLogTable } from "@workspace/db";
 import { eq, and, gte, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 import { cairoDateString } from "../lib/cairoDate";
@@ -87,6 +87,14 @@ router.delete("/cash-accounts/:id", async (req, res) => {
       res.status(404).json({ error: "Not found" });
       return;
     }
+
+    // Clean up this account's own notification history — otherwise a
+    // deleted account's old "New cash account" / "updated" entries keep
+    // showing in the bell forever, for something that no longer exists.
+    await db
+      .delete(activityLogTable)
+      .where(and(eq(activityLogTable.userId, userId), eq(activityLogTable.entityId, id)));
+
     res.json({ deleted: id });
   } catch (err) {
     req.log.error({ err }, "DELETE /cash-accounts/:id failed");

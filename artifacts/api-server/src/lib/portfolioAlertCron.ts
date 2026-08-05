@@ -25,8 +25,11 @@ function generateId(): string {
   return `snap_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function generateActivityId(): string {
-  return `act_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+// Deterministic (not random) so the insert below can upsert onto the same
+// row all day — one bell entry per user per day for portfolio moves, not
+// one per milestone crossed.
+function portfolioActivityId(userId: string, date: string): string {
+  return `act_portfolio_${userId}_${date}`;
 }
 
 // Snapshot history is written for every user daily regardless of push
@@ -102,20 +105,20 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   const title = "Portfolio update";
   const subtitle = `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% today`;
 
-  // One row per milestone actually pushed (3 pushes today -> 3 rows), not a
-  // single day-level summary — this is what the in-app notification history
-  // reads (see useNotificationHistory.ts), so it needs to show every 1%
-  // crossing the same way the push itself fires, not just the day's latest
-  // value. portfolio_snapshots itself stays one-row-per-day (it also backs
-  // the mobile charts), so this is written separately, only here, only when
-  // a push is genuinely sent.
-  await db.insert(activityLogTable).values({
-    id: generateActivityId(),
-    userId,
-    type: "portfolio_alert",
-    title,
-    subtitle,
-  });
+  // A push goes out on every milestone crossed today (1%, then 2%, then
+  // 3%...), each with the live cumulative %, same as before. But the bell
+  // should only ever show today's *latest* portfolio move, not one row per
+  // crossing — so this upserts the same row instead of inserting a new one,
+  // and bumps createdAt so it re-sorts to the top as "just happened".
+  // portfolio_snapshots itself stays one-row-per-day (it also backs the
+  // mobile charts) and is unrelated to this — this write only happens here,
+  // only when a push is genuinely sent.
+  await db.insert(activityLogTable)
+    .values({ id: portfolioActivityId(userId, today), userId, type: "portfolio_alert", title, subtitle })
+    .onConflictDoUpdate({
+      target: activityLogTable.id,
+      set: { title, subtitle, createdAt: new Date() },
+    });
 
   await sendPushToTokens([pushToken], title, subtitle, { type: "portfolio_alert" });
 }

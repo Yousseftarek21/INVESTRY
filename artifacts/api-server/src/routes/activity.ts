@@ -70,13 +70,17 @@ router.post("/activity", activityLogLimit, async (req, res) => {
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = req.body as Record<string, unknown>;
-  const { type, title, subtitle } = body;
+  const { type, title, subtitle, entityId } = body;
   if (typeof type !== "string" || !VALID_TYPES.has(type)) {
     res.status(400).json({ error: `type must be one of: ${[...VALID_TYPES].join(", ")}` });
     return;
   }
   if (typeof title !== "string" || !title.trim() || typeof subtitle !== "string" || !subtitle.trim()) {
     res.status(400).json({ error: "title and subtitle are required" });
+    return;
+  }
+  if (entityId !== undefined && typeof entityId !== "string") {
+    res.status(400).json({ error: "entityId must be a string" });
     return;
   }
 
@@ -95,7 +99,7 @@ router.post("/activity", activityLogLimit, async (req, res) => {
       return;
     }
 
-    const row = { id: generateActivityId(), userId, type, title, subtitle };
+    const row = { id: generateActivityId(), userId, type, entityId: entityId ?? null, title, subtitle };
     await db.insert(activityLogTable).values(row);
     res.status(201).json(row);
     // sendPushToTokens is itself best-effort and never rejects, so nothing

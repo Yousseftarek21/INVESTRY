@@ -33,13 +33,16 @@ export function useActivityLog() {
 
   // Best-effort: if this fails, the add/edit the user just made (already
   // saved separately) is unaffected — only the confirmation is lost.
-  const logActivity = useCallback(async (type: ActivityType, title: string, subtitle: string) => {
+  // entityId (the cash account / holding id this describes) lets the
+  // server clean up this entry automatically if that account/holding is
+  // later deleted — otherwise it'd keep showing in the bell forever.
+  const logActivity = useCallback(async (type: ActivityType, title: string, subtitle: string, entityId?: string) => {
     try {
       const token = await getToken();
       if (!token) return;
       await apiFetch('/api/activity', token, {
         method: 'POST',
-        body: JSON.stringify({ type, title, subtitle }),
+        body: JSON.stringify({ type, title, subtitle, entityId }),
       });
     } catch {
       // Best-effort, see above.

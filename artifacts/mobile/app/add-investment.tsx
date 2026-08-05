@@ -784,11 +784,11 @@ export default function AddInvestmentScreen() {
       setSaving(true);
       if (isEditing) {
         await updateHolding(holding);
-        logActivity('holding_edited', t.activityHoldingEditedTitle, describeHolding(holding));
+        logActivity('holding_edited', t.activityHoldingEditedTitle, describeHolding(holding), holding.id);
         router.back();
       } else {
         await addHolding(holding);
-        logActivity('holding_added', t.activityHoldingAddedTitle, describeHolding(holding));
+        logActivity('holding_added', t.activityHoldingAddedTitle, describeHolding(holding), holding.id);
         // Editing came from the holdings list, so `back()` already returns there.
         // Adding came through the add-choose type picker, so `back()` alone would
         // just land back on that picker sheet — dismiss past it to the list instead.

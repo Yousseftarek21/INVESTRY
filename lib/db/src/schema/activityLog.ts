@@ -10,7 +10,12 @@ import { z } from "zod/v4";
 export const activityLogTable = pgTable("activity_log", {
   id:        text("id").primaryKey(),
   userId:    text("user_id").notNull(),
-  type:      text("type").notNull(), // 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited'
+  type:      text("type").notNull(), // 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited' | 'portfolio_alert'
+  // The cash account / holding this entry describes — null for types with
+  // no single owning entity (portfolio_alert). Lets a delete of that
+  // account/holding clean up its own history instead of leaving stale
+  // "New cash account" entries behind for something that no longer exists.
+  entityId:  text("entity_id"),
   title:     text("title").notNull(),
   subtitle:  text("subtitle").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
