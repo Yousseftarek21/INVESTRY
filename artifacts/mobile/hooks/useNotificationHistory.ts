@@ -3,11 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
 import { usePriceAlertsContext } from '@/context/PriceAlertsContext';
+import { useActivityLog, ActivityLogEntry } from '@/hooks/useActivityLog';
 import { useT } from '@/hooks/useTranslation';
 
 export interface NotificationEvent {
   id: string;
-  type: 'price_alert' | 'portfolio_alert';
+  type: 'price_alert' | 'portfolio_alert' | 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited';
   title: string;
   subtitle: string;
   at: string; // ISO timestamp
@@ -30,7 +31,9 @@ export function useNotificationHistory() {
   const { userId, getToken } = useAuth();
   const t = useT();
   const { alerts } = usePriceAlertsContext();
+  const { fetchRecent: fetchActivity } = useActivityLog();
   const [snapshots, setSnapshots] = useState<ServerSnapshot[]>([]);
+  const [activity, setActivity] = useState<ActivityLogEntry[]>([]);
   const [lastSeenAt, setLastSeenAt] = useState<number>(0);
   const loadedUserRef = useRef<string | null>(null);
 
@@ -58,9 +61,13 @@ export function useNotificationHistory() {
         setSnapshots(rows);
       } catch { /* offline — just shows price alerts */ }
     })();
+
+    fetchActivity().then(setActivity);
     // Deliberately NOT depending on getToken — see PriceAlertsContext.tsx
     // for why an unstable Clerk callback reference in this array is
-    // dangerous (refires every render, pegging the JS thread).
+    // dangerous (refires every render, pegging the JS thread). fetchActivity
+    // itself is safe (built on useStableGetToken) but is left out too, to
+    // keep this effect's one trigger (userId) obvious at a glance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -96,8 +103,12 @@ export function useNotificationHistory() {
       });
     });
 
+    activity.forEach(a => {
+      result.push({ id: `activity-${a.id}`, type: a.type, title: a.title, subtitle: a.subtitle, at: a.createdAt });
+    });
+
     return result.sort((a, b) => b.at.localeCompare(a.at));
-  }, [alerts, snapshots, t]);
+  }, [alerts, snapshots, activity, t]);
 
   const unreadCount = useMemo(
     () => events.filter(e => new Date(e.at).getTime() > lastSeenAt).length,

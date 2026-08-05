@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -27,6 +28,26 @@ interface NotifItem {
 function effectiveCreditDay(day: number, year: number, month: number): number {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   return Math.min(day, daysInMonth);
+}
+
+// Icon + color per Recent Alerts event type — cash events reuse the app's
+// established cash iconography (BanknoteIcon, green), holding events reuse
+// the investment identity (gold), matching how Cash/Investments already
+// look everywhere else rather than inventing a new palette just here.
+function eventVisual(type: string, colors: ReturnType<typeof useColors>) {
+  switch (type) {
+    case 'price_alert':
+      return { icon: <Feather name="bell" size={18} color={colors.primary} />, color: colors.primary };
+    case 'cash_added':
+    case 'cash_edited':
+      return { icon: <BanknoteIcon size={18} color={colors.green} />, color: colors.green };
+    case 'holding_added':
+    case 'holding_edited':
+      return { icon: <Feather name="trending-up" size={18} color={colors.primary} />, color: colors.primary };
+    case 'portfolio_alert':
+    default:
+      return { icon: <Feather name="trending-up" size={18} color={colors.green} />, color: colors.green };
+  }
 }
 
 export default function NotificationsScreen() {
@@ -163,17 +184,15 @@ export default function NotificationsScreen() {
               {recentEvents.length > 0 && (
                 <View style={[s.list, items.length > 0 && { marginTop: 20 }]}>
                   <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{t.recentAlertsSection}</Text>
-                  {recentEvents.map(item => (
+                  {recentEvents.map(item => {
+                    const visual = eventVisual(item.type, colors);
+                    return (
                     <View
                       key={item.id}
                       style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
                     >
-                      <View style={[s.iconWrap, { backgroundColor: (item.type === 'price_alert' ? colors.primary : colors.green) + '18' }]}>
-                        <Feather
-                          name={item.type === 'price_alert' ? 'bell' : 'trending-up'}
-                          size={18}
-                          color={item.type === 'price_alert' ? colors.primary : colors.green}
-                        />
+                      <View style={[s.iconWrap, { backgroundColor: visual.color + '18' }]}>
+                        {visual.icon}
                       </View>
                       <View style={s.cardBody}>
                         <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={1}>
@@ -184,7 +203,8 @@ export default function NotificationsScreen() {
                         </Text>
                       </View>
                     </View>
-                  ))}
+                    );
+                  })}
                 </View>
               )}
             </>

@@ -15,6 +15,7 @@ export const usersTable = pgTable("users", {
   pushToken:              text("push_token"), // Expo push token for the user's most recent device
   portfolioAlertsEnabled: boolean("portfolio_alerts_enabled").notNull().default(true), // gates the daily ±1% portfolio-value push
   priceAlertsEnabled:     boolean("price_alerts_enabled").notNull().default(true), // gates the custom target-price push
+  activityAlertsEnabled:  boolean("activity_alerts_enabled").notNull().default(true), // gates the "you just added/edited X" push
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -12,6 +12,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
+import { useActivityLog } from '@/hooks/useActivityLog';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { EGX_COMPANIES } from '@/data/egx-companies';
@@ -389,6 +390,7 @@ export default function AddInvestmentScreen() {
   const insets = useSafeAreaInsets();
   const { impact, notify } = useHaptic();
   const { addHolding, updateHolding, holdings } = useHoldings();
+  const { logActivity } = useActivityLog();
   const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
   const { isSignedIn } = useAuth();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
@@ -758,6 +760,21 @@ export default function AddInvestmentScreen() {
 
     if (!holding) return;
     notify();
+    // Short "what this is" line for the activity-log confirmation — no
+    // field-by-field diffing between old/new on edit (six holding shapes
+    // would each need their own diff logic); just describes the holding as
+    // it stands after the save, same for add and edit.
+    const describeHolding = (h: Holding): string => {
+      switch (h.type) {
+        case 'gold': return `${t.gold}: ${h.grams}g`;
+        case 'silver': return `${t.silver}: ${h.grams}g`;
+        case 'stock': return `${h.symbol}: ${h.shares} ${t.sharesLabel}`;
+        case 'real_estate': return h.propertyName;
+        case 'personal_asset': return h.name;
+        case 'fixed_income': return h.label;
+        default: return t.egxStocksAllocLabel;
+      }
+    };
     // addHolding/updateHolding update local state synchronously (so the list
     // already reflects the edit) but still await the network round-trip here
     // before navigating away — otherwise a failed save gets silently rolled
@@ -767,9 +784,11 @@ export default function AddInvestmentScreen() {
       setSaving(true);
       if (isEditing) {
         await updateHolding(holding);
+        logActivity('holding_edited', t.activityHoldingEditedTitle, describeHolding(holding));
         router.back();
       } else {
         await addHolding(holding);
+        logActivity('holding_added', t.activityHoldingAddedTitle, describeHolding(holding));
         // Editing came from the holdings list, so `back()` already returns there.
         // Adding came through the add-choose type picker, so `back()` alone would
         // just land back on that picker sheet — dismiss past it to the list instead.

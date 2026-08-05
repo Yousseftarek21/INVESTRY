@@ -39,14 +39,15 @@ router.post("/push/register", async (req, res) => {
 // PUT /api/push/preferences — toggle server-sent notification categories.
 // portfolioAlertsEnabled gates the daily ±1% portfolio-value push (see
 // lib/portfolioAlertCron.ts); priceAlertsEnabled gates custom target-price
-// pushes (see lib/userPriceAlertCron.ts). Both optional so either can be
-// updated independently.
+// pushes (see lib/userPriceAlertCron.ts); activityAlertsEnabled gates the
+// "you just added/edited X" push (see routes/activity.ts). All optional so
+// any one can be updated independently.
 router.put("/push/preferences", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = req.body as Record<string, unknown>;
-  const { portfolioAlertsEnabled, priceAlertsEnabled } = body;
+  const { portfolioAlertsEnabled, priceAlertsEnabled, activityAlertsEnabled } = body;
   if (portfolioAlertsEnabled !== undefined && typeof portfolioAlertsEnabled !== "boolean") {
     res.status(400).json({ error: "portfolioAlertsEnabled must be a boolean" });
     return;
@@ -55,7 +56,11 @@ router.put("/push/preferences", async (req, res) => {
     res.status(400).json({ error: "priceAlertsEnabled must be a boolean" });
     return;
   }
-  if (portfolioAlertsEnabled === undefined && priceAlertsEnabled === undefined) {
+  if (activityAlertsEnabled !== undefined && typeof activityAlertsEnabled !== "boolean") {
+    res.status(400).json({ error: "activityAlertsEnabled must be a boolean" });
+    return;
+  }
+  if (portfolioAlertsEnabled === undefined && priceAlertsEnabled === undefined && activityAlertsEnabled === undefined) {
     res.status(400).json({ error: "at least one preference is required" });
     return;
   }
@@ -63,6 +68,7 @@ router.put("/push/preferences", async (req, res) => {
   const set: Record<string, unknown> = { updatedAt: new Date() };
   if (portfolioAlertsEnabled !== undefined) set.portfolioAlertsEnabled = portfolioAlertsEnabled;
   if (priceAlertsEnabled !== undefined) set.priceAlertsEnabled = priceAlertsEnabled;
+  if (activityAlertsEnabled !== undefined) set.activityAlertsEnabled = activityAlertsEnabled;
 
   try {
     await db

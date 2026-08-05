@@ -25,6 +25,7 @@ import { useMarketPrices } from '@/hooks/usePrices';
 import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 import { useRecentCashUpdates } from '@/hooks/useRecentCashUpdates';
+import { useActivityLog } from '@/hooks/useActivityLog';
 
 type EntryType = CashAccountType | 'recurring_income';
 
@@ -97,6 +98,7 @@ export default function CashAccountsScreen() {
   const { logUpdate: logBalanceUpdate } = useCashBalanceUpdates(null);
   const { todayChanges, refresh: refreshTodayChanges } = useCashAccountsTodayChanges();
   const { updates: recentUpdates, refresh: refreshRecentUpdates } = useRecentCashUpdates(cashAccounts, RECENT_UPDATES_PREVIEW_LIMIT);
+  const { logActivity } = useActivityLog();
   const [currency, setCurrency] = useState('EGP');
   const [dateAdded, setDateAdded] = useState(todayISO());
   const [notes, setNotes] = useState('');
@@ -333,11 +335,26 @@ export default function CashAccountsScreen() {
       if (isExistingAccount) {
         updateCashAccount(account);
         if (balanceChanged) {
-          logBalanceUpdate(account.id, parsedBalance - (editingOriginalBalance as number), parsedBalance)
+          const delta = parsedBalance - (editingOriginalBalance as number);
+          logBalanceUpdate(account.id, delta, parsedBalance)
             .then(() => { refreshTodayChanges(); refreshRecentUpdates(); });
+          logActivity(
+            'cash_edited',
+            t.activityCashEditedTitle(account.accountName),
+            t.activityCashEditedSubtitle(
+              `${delta > 0 ? '+' : ''}${delta.toLocaleString('en-EG', { maximumFractionDigits: 2 })}`,
+              parsedBalance.toLocaleString('en-EG', { maximumFractionDigits: 2 }),
+              account.currency,
+            ),
+          );
         }
       } else {
         addCashAccount(account);
+        logActivity(
+          'cash_added',
+          t.activityCashAddedTitle,
+          t.activityCashAddedSubtitle(account.accountName, account.balance.toLocaleString('en-EG', { maximumFractionDigits: 2 }), account.currency),
+        );
       }
     }
     notify();
