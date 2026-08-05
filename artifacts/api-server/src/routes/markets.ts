@@ -562,7 +562,10 @@ interface CibRatesResponse { rates: { currencyID: string; buyRate: number; sellR
 // does. This cache does double duty: it keeps CIB's actual request rate low
 // enough to stay under Incapsula's radar, and it's the reason the primary
 // FX figure doesn't need a fresh network round-trip on every price refresh.
-const cibRatesCache = makeCache<Record<string, number>>(5 * 60_000);
+// 1 request/min is a steady, gentle rate — a different pattern from the
+// rapid burst that triggered blocking, so this stays well clear of that
+// while cutting how stale a rate can be from 5 minutes down to 1.
+const cibRatesCache = makeCache<Record<string, number>>(60_000);
 
 // CIB Egypt's public currency-converter API (no key required) — the primary
 // FX source, tried before Wise on every request (see the policy comment
