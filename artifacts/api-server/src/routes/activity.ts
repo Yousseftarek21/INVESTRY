@@ -81,19 +81,26 @@ router.post("/activity", activityLogLimit, async (req, res) => {
   }
 
   try {
-    const row = { id: generateActivityId(), userId, type, title, subtitle };
-    await db.insert(activityLogTable).values(row);
-    res.status(201).json(row);
-
     const [user] = await db
       .select({ pushToken: usersTable.pushToken, alertsEnabled: usersTable.activityAlertsEnabled })
       .from(usersTable)
       .where(eq(usersTable.id, userId));
+
+    // Only log a row (and thus show a bell entry) when a push is actually
+    // going out for it — otherwise a muted/unregistered device would still
+    // see "Cash account updated" in its notification history for something
+    // it was never actually notified about.
+    if (!user?.alertsEnabled || !user.pushToken) {
+      res.status(204).end();
+      return;
+    }
+
+    const row = { id: generateActivityId(), userId, type, title, subtitle };
+    await db.insert(activityLogTable).values(row);
+    res.status(201).json(row);
     // sendPushToTokens is itself best-effort and never rejects, so nothing
     // further to await/catch here — the response has already gone out.
-    if (user?.alertsEnabled && user.pushToken) {
-      void sendPushToTokens([user.pushToken], title, subtitle, { type: "activity_log" });
-    }
+    void sendPushToTokens([user.pushToken], title, subtitle, { type: "activity_log" });
   } catch (err) {
     req.log.error({ err }, "POST /activity failed");
     res.status(500).json({ error: "Failed to log activity" });

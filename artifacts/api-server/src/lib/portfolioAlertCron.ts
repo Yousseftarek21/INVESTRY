@@ -1,5 +1,5 @@
 import { and, desc, eq, lt, gt } from "drizzle-orm";
-import { db, usersTable, portfolioSnapshotsTable } from "@workspace/db";
+import { db, usersTable, portfolioSnapshotsTable, activityLogTable } from "@workspace/db";
 import { computeUserPortfolioValue } from "./portfolioValue";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
@@ -23,6 +23,10 @@ const SANITY_MAX_PCT = 20;
 
 function generateId(): string {
   return `snap_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function generateActivityId(): string {
+  return `act_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
 
 // Snapshot history is written for every user daily regardless of push
@@ -95,12 +99,25 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   if (updated.length === 0) return; // this milestone (or a further one) was already notified today
 
   const dir = pctChange > 0 ? "up" : "down";
-  await sendPushToTokens(
-    [pushToken],
-    "Portfolio update",
-    `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% today`,
-    { type: "portfolio_alert" },
-  );
+  const title = "Portfolio update";
+  const subtitle = `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% today`;
+
+  // One row per milestone actually pushed (3 pushes today -> 3 rows), not a
+  // single day-level summary — this is what the in-app notification history
+  // reads (see useNotificationHistory.ts), so it needs to show every 1%
+  // crossing the same way the push itself fires, not just the day's latest
+  // value. portfolio_snapshots itself stays one-row-per-day (it also backs
+  // the mobile charts), so this is written separately, only here, only when
+  // a push is genuinely sent.
+  await db.insert(activityLogTable).values({
+    id: generateActivityId(),
+    userId,
+    type: "portfolio_alert",
+    title,
+    subtitle,
+  });
+
+  await sendPushToTokens([pushToken], title, subtitle, { type: "portfolio_alert" });
 }
 
 let running = false;

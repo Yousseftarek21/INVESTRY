@@ -1,34 +1,15 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import {
   Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { useMarketPrices } from '@/hooks/usePrices';
-import { useRecurringIncome } from '@/context/RecurringIncomeContext';
-import { useCash } from '@/context/CashContext';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
-
-type NotifType = 'income' | 'gold' | 'silver';
-
-interface NotifItem {
-  id: string;
-  type: NotifType;
-  title: string;
-  subtitle: string;
-  iconBg: string;
-  iconColor: string;
-}
-
-function effectiveCreditDay(day: number, year: number, month: number): number {
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  return Math.min(day, daysInMonth);
-}
 
 // Icon + color per Recent Alerts event type — cash events reuse the app's
 // established cash iconography (BanknoteIcon, green), holding events reuse
@@ -54,74 +35,10 @@ export default function NotificationsScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { recurringIncomes } = useRecurringIncome();
-  const { cashAccounts } = useCash();
-  const { data: prices } = useMarketPrices();
   const { events: recentEvents, markAllRead } = useNotificationHistory();
 
   // Opening this screen is what "reads" recent alerts — clears the bell badge.
   useEffect(() => { markAllRead(); }, [markAllRead]);
-
-  const items = useMemo<NotifItem[]>(() => {
-    const result: NotifItem[] = [];
-    const today = new Date();
-    const todayDay = today.getDate();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-
-    recurringIncomes
-      .filter(inc => inc.active)
-      .forEach(inc => {
-        const effDay = effectiveCreditDay(inc.creditDay, year, month);
-        const daysUntil = effDay - todayDay;
-        if (daysUntil < 0 || daysUntil > 7) return;
-
-        const account = cashAccounts.find(a => a.id === inc.cashAccountId);
-        const accountLabel = account ? ` → ${account.accountName}` : '';
-
-        let dueLine: string;
-        if (daysUntil === 0) dueLine = t.dueTodayLabel;
-        else if (daysUntil === 1) dueLine = t.dueTomorrowLabel;
-        else dueLine = `${t.dueInDaysLabel} ${daysUntil} ${t.daysLeft}`;
-
-        result.push({
-          id: `income-${inc.id}`,
-          type: 'income',
-          title: inc.name,
-          subtitle: `${dueLine} · ${inc.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} ${inc.currency}${accountLabel}`,
-          iconBg: '#8B5CF618',
-          iconColor: '#8B5CF6',
-        });
-      });
-
-    const goldPct = prices?.goldChangePercent;
-    if (goldPct !== undefined && Math.abs(goldPct) >= 0.5) {
-      const up = goldPct > 0;
-      result.push({
-        id: 'gold-change',
-        type: 'gold',
-        title: up ? t.goldUpAlert : t.goldDownAlert,
-        subtitle: `${up ? '+' : ''}${goldPct.toFixed(2)}${t.pctToday}`,
-        iconBg: colors.primary + '20',
-        iconColor: colors.primary,
-      });
-    }
-
-    const silverPct = prices?.silverChangePercent;
-    if (silverPct !== undefined && Math.abs(silverPct) >= 0.5) {
-      const up = silverPct > 0;
-      result.push({
-        id: 'silver-change',
-        type: 'silver',
-        title: up ? t.silverUpAlert : t.silverDownAlert,
-        subtitle: `${up ? '+' : ''}${silverPct.toFixed(2)}${t.pctToday}`,
-        iconBg: colors.silverColor + '20',
-        iconColor: colors.silverColor,
-      });
-    }
-
-    return result;
-  }, [recurringIncomes, cashAccounts, prices, t, colors]);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -144,7 +61,7 @@ export default function NotificationsScreen() {
           contentContainerStyle={[s.content, { paddingBottom: botPad + 32 }]}
           showsVerticalScrollIndicator={false}
         >
-          {items.length === 0 && recentEvents.length === 0 ? (
+          {recentEvents.length === 0 ? (
             <View style={[s.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[s.emptyIcon, { backgroundColor: colors.primary + '18' }]}>
                 <Feather name="bell" size={28} color={colors.primary} />
@@ -153,61 +70,29 @@ export default function NotificationsScreen() {
               <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.noNotificationsHint}</Text>
             </View>
           ) : (
-            <>
-              {items.length > 0 && (
-                <View style={s.list}>
-                  {items.map(item => (
-                    <View
-                      key={item.id}
-                      style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-                    >
-                      <View style={[s.iconWrap, { backgroundColor: item.iconBg }]}>
-                        {item.type === 'income' ? (
-                          <Feather name="repeat" size={18} color={item.iconColor} />
-                        ) : (
-                          <MaterialCommunityIcons name="gold" size={18} color={item.iconColor} />
-                        )}
-                      </View>
-                      <View style={s.cardBody}>
-                        <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={2}>
-                          {item.subtitle}
-                        </Text>
-                      </View>
+            <View style={s.list}>
+              {recentEvents.map(item => {
+                const visual = eventVisual(item.type, colors);
+                return (
+                  <View
+                    key={item.id}
+                    style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  >
+                    <View style={[s.iconWrap, { backgroundColor: visual.color + '18' }]}>
+                      {visual.icon}
                     </View>
-                  ))}
-                </View>
-              )}
-
-              {recentEvents.length > 0 && (
-                <View style={[s.list, items.length > 0 && { marginTop: 20 }]}>
-                  <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{t.recentAlertsSection}</Text>
-                  {recentEvents.map(item => {
-                    const visual = eventVisual(item.type, colors);
-                    return (
-                    <View
-                      key={item.id}
-                      style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-                    >
-                      <View style={[s.iconWrap, { backgroundColor: visual.color + '18' }]}>
-                        {visual.icon}
-                      </View>
-                      <View style={s.cardBody}>
-                        <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={2}>
-                          {item.subtitle}
-                        </Text>
-                      </View>
+                    <View style={s.cardBody}>
+                      <Text style={[s.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+                        {item.subtitle}
+                      </Text>
                     </View>
-                    );
-                  })}
-                </View>
-              )}
-            </>
+                  </View>
+                );
+              })}
+            </View>
           )}
         </ScrollView>
       </View>
@@ -223,7 +108,6 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold' },
   content: { padding: 16, gap: 12 },
-  sectionLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, marginBottom: 10 },
   empty: {
     borderRadius: 18, borderWidth: 1, padding: 32,
     alignItems: 'center', gap: 10, marginTop: 8,
