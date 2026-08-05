@@ -5,11 +5,15 @@ import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
 import { cairoDateString } from "./cairoDate";
 
-// Checked every 30 minutes throughout the day — each check compares
+// Checked every 5 minutes throughout the day — each check compares
 // today's live value against yesterday's close and may push again if the
 // move has reached a new 1% milestone since the last push (see
-// lastNotifiedMilestone below).
-const CHECK_INTERVAL_MS = 30 * 60 * 1000;
+// lastNotifiedMilestone below). Can't go faster than ~1 min: the EGP
+// conversion rate this depends on (fetchUsdToEgp -> CIB) is rate-limited
+// upstream by Incapsula bot-protection, so 5 min leaves a comfortable
+// safety margin while cutting the old 30-min worst-case lag 6x. There's no
+// live push price feed to react to instantly — every value here is polled.
+const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const CHANGE_THRESHOLD_PCT = 1;
 // A real diversified portfolio doesn't swing this much in one day — a
 // reading past this is almost certainly a data artifact (e.g. a valuation
