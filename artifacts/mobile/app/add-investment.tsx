@@ -555,6 +555,10 @@ export default function AddInvestmentScreen() {
   const [compoundName, setCompoundName] = useState('');
   const [reCompoundId, setReCompoundId] = useState<string | undefined>(undefined);
   const [compoundPickerVisible, setCompoundPickerVisible] = useState(false);
+  // null = not chosen yet (forces an explicit choice before either path's
+  // fields appear) — true shows the compound picker + governorate only,
+  // false shows the traditional governorate/city/district flow.
+  const [isInCompound, setIsInCompound] = useState<boolean | null>(null);
   const { data: compoundPrices = [] } = useRealEstateCompoundPrices();
   const selectedCompoundPrice = reCompoundId ? compoundPrices.find(c => c.id === reCompoundId) : undefined;
   const [unitNumber, setUnitNumber] = useState('');
@@ -635,6 +639,7 @@ export default function AddInvestmentScreen() {
       setDeveloper(editingHolding.developer ?? '');
       setCompoundName(editingHolding.compoundName ?? '');
       setReCompoundId(editingHolding.reCompoundId);
+      setIsInCompound(!!editingHolding.reCompoundId || !!editingHolding.compoundName);
       setUnitNumber(editingHolding.unitNumber ?? '');
       const hasInstallment = !!editingHolding.hasInstallmentPlan;
       setHasInstallmentPlan(hasInstallment);
@@ -832,10 +837,17 @@ export default function AddInvestmentScreen() {
       holding = { id, type: 'stock', symbol: sym, companyName: name, shares: parseAmount(shares), purchasePricePerShare: parseAmount(purchasePricePerShare), purchaseDate, notes };
     } else if (type === 'real_estate') {
       const finalGovernorate = governorate.trim();
-      const finalCity = city.trim();
-      const finalDistrict = district.trim();
+      // City/District only apply to the standalone-property path — a
+      // compound already IS the specific location, so district holds the
+      // compound name instead (still a meaningful, non-empty value for a
+      // field the data type requires as a plain string).
+      const finalCity = isInCompound ? '' : city.trim();
+      const finalDistrict = isInCompound ? compoundName.trim() : district.trim();
       if (
-        !propertyName.trim() || !finalGovernorate || !finalCity || !finalDistrict ||
+        isInCompound === null ||
+        !propertyName.trim() || !finalGovernorate ||
+        (!isInCompound && (!finalCity || !finalDistrict)) ||
+        (isInCompound && !finalDistrict) ||
         !area || !purchasePrice || !realEstatePurchaseDate || rePricePerM2Num === 0
       ) {
         Alert.alert(t.missingFields, t.enterRealEstateRequired);
@@ -1152,94 +1164,125 @@ export default function AddInvestmentScreen() {
               </ScrollView>
             </View>
 
-            {/* Compound / developer — optional. Picking a known one drives
-                everything below (governorate + a live price estimate), but
-                most properties aren't in a gated compound at all, so this
-                must never look mandatory. */}
+            {/* First, explicit choice: this decides which fields show next.
+                No more asking a standalone-property owner to pick a
+                compound they don't have, and no more asking a compound
+                owner to redundantly re-pick City/District their compound
+                already implies. */}
             <View style={styles.section}>
-              <Text style={labelStyle}>{t.compoundName}</Text>
+              <Text style={labelStyle}>{t.isInCompoundLabel}</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Chip value="yes" selected={isInCompound === true} onPress={() => {
+                  setIsInCompound(true);
+                  setCity(''); setDistrict('');
+                }} label={t.yesInCompound} />
+                <Chip value="no" selected={isInCompound === false} onPress={() => {
+                  setIsInCompound(false);
+                  setCompoundName(''); setReCompoundId(undefined);
+                }} label={t.noStandalone} />
+              </View>
+            </View>
+
+            {isInCompound === true && (
+              <View style={styles.section}>
+                <Text style={labelStyle}>{t.compoundName}</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border, flex: 1 }]}
+                    onPress={() => setCompoundPickerVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.dropdownSymbol, { color: compoundName ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                      {compoundName || t.selectCompound}
+                    </Text>
+                    <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                  {!!compoundName && (
+                    <TouchableOpacity
+                      onPress={() => { setCompoundName(''); setReCompoundId(undefined); }}
+                      style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border, flex: 0, paddingHorizontal: 12 }]}
+                      activeOpacity={0.7}
+                      accessibilityLabel={t.clearCompoundSelection}
+                    >
+                      <Feather name="x" size={18} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {reCompoundId && selectedCompoundPrice && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, paddingHorizontal: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
+                      <Feather name="bar-chart-2" size={9} color={colors.green} />
+                      <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>
+                        {selectedCompoundPrice.isLive ? 'LIVE DATA' : t.reAreaEstimateBadge}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }} numberOfLines={1}>
+                      {selectedCompoundPrice.isLive
+                        ? t.compoundLiveDataHint
+                        : t.compoundAreaEstimateHint(selectedCompoundPrice.areaLabel ?? selectedCompoundPrice.governorate)}
+                    </Text>
+                  </View>
+                )}
+                {/* Governorate — auto-filled by a curated pick; still shown
+                    (and editable) since a free-text compound name can't
+                    tell us where it is. */}
+                <View style={{ marginTop: 12 }}>
+                  <Text style={labelStyle}>{t.governorate}</Text>
+                  <TouchableOpacity
+                    style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => setGovernoratePickerVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.dropdownSymbol, { color: governorate ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                      {governorate || t.selectGovernorate}
+                    </Text>
+                    <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {isInCompound === false && (<>
+              <View style={styles.section}>
+                <Text style={labelStyle}>{t.governorate}</Text>
                 <TouchableOpacity
-                  style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border, flex: 1 }]}
-                  onPress={() => setCompoundPickerVisible(true)}
+                  style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => setGovernoratePickerVisible(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.dropdownSymbol, { color: compoundName ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
-                    {compoundName || t.selectCompound}
+                  <Text style={[styles.dropdownSymbol, { color: governorate ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                    {governorate || t.selectGovernorate}
                   </Text>
                   <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
                 </TouchableOpacity>
-                {!!compoundName && (
-                  <TouchableOpacity
-                    onPress={() => { setCompoundName(''); setReCompoundId(undefined); }}
-                    style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border, flex: 0, paddingHorizontal: 12 }]}
-                    activeOpacity={0.7}
-                    accessibilityLabel={t.clearCompoundSelection}
-                  >
-                    <Feather name="x" size={18} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                )}
               </View>
-              {!compoundName && (
-                <Text style={[styles.hintText, { color: colors.mutedForeground }]}>{t.compoundNameHint}</Text>
-              )}
-              {reCompoundId && selectedCompoundPrice && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, paddingHorizontal: 2 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
-                    <Feather name="bar-chart-2" size={9} color={colors.green} />
-                    <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>
-                      {selectedCompoundPrice.isLive ? 'LIVE DATA' : t.reAreaEstimateBadge}
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }} numberOfLines={1}>
-                    {selectedCompoundPrice.isLive
-                      ? t.compoundLiveDataHint
-                      : t.compoundAreaEstimateHint(selectedCompoundPrice.areaLabel ?? selectedCompoundPrice.governorate)}
+              <View style={styles.section}>
+                <Text style={labelStyle}>{t.city}</Text>
+                <TouchableOpacity
+                  style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => setCityPickerVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dropdownSymbol, { color: city ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                    {city || t.selectCity}
                   </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Location */}
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.governorate}</Text>
-              <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => setGovernoratePickerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.dropdownSymbol, { color: governorate ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
-                  {governorate || t.selectGovernorate}
-                </Text>
-                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.city}</Text>
-              <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => setCityPickerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.dropdownSymbol, { color: city ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
-                  {city || t.selectCity}
-                </Text>
-                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.district}</Text>
-              <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => setDistrictPickerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.dropdownSymbol, { color: district ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
-                  {district || t.selectDistrict}
-                </Text>
-                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
+                  <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.section}>
+                <Text style={labelStyle}>{t.district}</Text>
+                <TouchableOpacity
+                  style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => setDistrictPickerVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dropdownSymbol, { color: district ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                    {district || t.selectDistrict}
+                  </Text>
+                  <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            </>)}
 
             <View style={styles.section}>
               <Text style={labelStyle}>{t.area}</Text>
