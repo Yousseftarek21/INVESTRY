@@ -743,6 +743,13 @@ export default function AddInvestmentScreen() {
   const rePurchasePricePerM2 = reAreaNum > 0 ? rePurchasePriceNum / reAreaNum : 0;
   const reGainLoss = reCurrentValue - rePurchasePriceNum;
   const reAppreciationPct = rePurchasePriceNum > 0 ? (reGainLoss / rePurchasePriceNum) * 100 : 0;
+  // ROI used to just re-display reAppreciationPct under a second label —
+  // annualRent was collected in the Rental Info section but never actually
+  // used anywhere, so a rented-out property's ROI looked identical to one
+  // that was never rented at all. Real total return = price appreciation +
+  // a year of rental income, both as a % of what was actually paid.
+  const reAnnualRentNum = hasRentalInfo ? (parseAmount(annualRent) || 0) : 0;
+  const reROIPct = rePurchasePriceNum > 0 ? ((reGainLoss + reAnnualRentNum) / rePurchasePriceNum) * 100 : 0;
   const reShowSummary = reAreaNum > 0 && rePricePerM2Num > 0 && rePurchasePriceNum > 0;
   // Heuristic: a total purchase price for a property bigger than ~5 m² should be a
   // multiple of the per-m² rate, not roughly equal to it. If the number the user typed
@@ -1436,8 +1443,8 @@ export default function AddInvestmentScreen() {
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{t.roi}</Text>
-                  <Text style={[styles.summaryValue, { color: reAppreciationPct >= 0 ? colors.green : colors.red }]}>
-                    {reAppreciationPct >= 0 ? '+' : ''}{reAppreciationPct.toFixed(1)}%
+                  <Text style={[styles.summaryValue, { color: reROIPct >= 0 ? colors.green : colors.red }]}>
+                    {reROIPct >= 0 ? '+' : ''}{reROIPct.toFixed(1)}%
                   </Text>
                 </View>
               </View>
