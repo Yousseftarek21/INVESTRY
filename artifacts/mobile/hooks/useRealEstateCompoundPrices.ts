@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { getApiBaseUrl } from '@/utils/api';
 import { REPropertyType } from '@/data/egypt-real-estate-prices';
+import { loadCachedRealEstateCompounds, saveCachedRealEstateCompounds } from '@/utils/realEstateCompoundsCache';
 
 export type RECompoundPriceSource = 'compound' | 'area_estimate' | 'none';
 
@@ -21,18 +23,43 @@ export interface RealEstateCompoundLive {
   updatedAt: string | null;
 }
 
+const REAL_ESTATE_COMPOUNDS_KEY = ['real-estate-compound-prices'];
+
 async function fetchRealEstateCompoundPrices(): Promise<RealEstateCompoundLive[]> {
   const base = getApiBaseUrl();
   const res = await fetch(`${base}/api/markets/real-estate/compounds`);
   if (!res.ok) throw new Error(`server ${res.status}`);
-  return res.json();
+  const data: RealEstateCompoundLive[] = await res.json();
+  void saveCachedRealEstateCompounds(data);
+  return data;
+}
+
+// Same startup pre-warming pattern as useRealEstatePrices.ts /
+// usePrices.ts's hydratePricesFromCache — see app/_layout.tsx.
+export async function hydrateRealEstateCompoundsFromCache(queryClient: QueryClient): Promise<void> {
+  if (queryClient.getQueryState(REAL_ESTATE_COMPOUNDS_KEY)?.dataUpdatedAt) return;
+  const cached = await loadCachedRealEstateCompounds();
+  if (!cached) return;
+  if (queryClient.getQueryState(REAL_ESTATE_COMPOUNDS_KEY)?.dataUpdatedAt) return; // a real fetch won the race
+  queryClient.setQueryData(REAL_ESTATE_COMPOUNDS_KEY, cached);
+}
+
+export function prefetchRealEstateCompounds(queryClient: QueryClient): void {
+  void queryClient.prefetchQuery({
+    queryKey: REAL_ESTATE_COMPOUNDS_KEY,
+    queryFn: fetchRealEstateCompoundPrices,
+    staleTime: 2 * 60 * 60 * 1000,
+  });
 }
 
 // Same cadence reasoning as useRealEstatePrices.ts — the underlying data
 // only refreshes server-side twice a day.
 export function useRealEstateCompoundPrices() {
+  const queryClient = useQueryClient();
+  useEffect(() => { void hydrateRealEstateCompoundsFromCache(queryClient); }, [queryClient]);
+
   return useQuery<RealEstateCompoundLive[]>({
-    queryKey: ['real-estate-compound-prices'],
+    queryKey: REAL_ESTATE_COMPOUNDS_KEY,
     queryFn: fetchRealEstateCompoundPrices,
     staleTime: 2 * 60 * 60 * 1000,
     refetchInterval: 2 * 60 * 60 * 1000,

@@ -34,6 +34,9 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { getApiBaseUrl } from "@/utils/api";
 import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled } from "@/hooks/usePrices";
+import { hydrateEGXIndicesFromCache, prefetchEGXIndices } from "@/hooks/useEGXIndices";
+import { hydrateRealEstatePricesFromCache, prefetchRealEstatePrices } from "@/hooks/useRealEstatePrices";
+import { hydrateRealEstateCompoundsFromCache, prefetchRealEstateCompounds } from "@/hooks/useRealEstateCompoundPrices";
 import * as Updates from "expo-updates";
 
 SplashScreen.preventAutoHideAsync();
@@ -90,6 +93,17 @@ const queryClient = new QueryClient();
 // data once a real fetch has landed.
 void hydratePricesFromCache(queryClient);
 prefetchMarketPrices(queryClient);
+
+// Same reasoning, extended to EGX indices and real estate — neither gates
+// the splash (they're not on the first screen the user sees), but warming
+// both before any tab mounts means the EGX chips and Real Estate tab show
+// real data instantly instead of a visible delay on every cold open.
+void hydrateEGXIndicesFromCache(queryClient);
+prefetchEGXIndices(queryClient);
+void hydrateRealEstatePricesFromCache(queryClient);
+prefetchRealEstatePrices(queryClient);
+void hydrateRealEstateCompoundsFromCache(queryClient);
+prefetchRealEstateCompounds(queryClient);
 
 interface ClerkConfig {
   publishableKey: string;

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApiBaseUrl } from '@/utils/api';
 import { loadCachedEGXIndices, saveCachedEGXIndices } from '@/utils/egxIndicesCache';
 
@@ -24,6 +24,31 @@ async function fetchEGXIndices(): Promise<EGXIndex[]> {
   return data;
 }
 
+// Seeds the query cache with the last indices this device actually fetched
+// — called at app module load (see app/_layout.tsx), before any screen
+// mounts, same pattern as usePrices.ts's hydratePricesFromCache. Without
+// this, every cold mount of the EGX tab showed nothing for ~1s while the
+// first fetch landed; pre-warming at startup means it's already there by
+// the time the user gets to the tab.
+export async function hydrateEGXIndicesFromCache(queryClient: QueryClient): Promise<void> {
+  if (queryClient.getQueryState(EGX_INDICES_KEY)?.dataUpdatedAt) return;
+  const cached = await loadCachedEGXIndices();
+  if (!cached) return;
+  if (queryClient.getQueryState(EGX_INDICES_KEY)?.dataUpdatedAt) return; // a real fetch won the race
+  queryClient.setQueryData(EGX_INDICES_KEY, cached);
+}
+
+// Starts the real network request at startup instead of waiting for the EGX
+// tab to mount — covers a genuine first-ever launch (no cache yet) the same
+// way hydrate covers every launch after the first.
+export function prefetchEGXIndices(queryClient: QueryClient): void {
+  void queryClient.prefetchQuery({
+    queryKey: EGX_INDICES_KEY,
+    queryFn: fetchEGXIndices,
+    staleTime: 30_000,
+  });
+}
+
 // EGX30 and EGX70 EWI, shown as chips above the EGX stock list. Sourced from
 // the same TradingView Egypt scanner as individual stocks (see markets.ts).
 // EGX 33 Shariah was investigated too — it's a real, licensed index that
@@ -33,20 +58,10 @@ async function fetchEGXIndices(): Promise<EGXIndex[]> {
 export function useEGXIndices() {
   const queryClient = useQueryClient();
 
-  // Hydrates from the last real fetch this device made, via setQueryData
-  // (real data, not placeholderData) — same pattern as usePrices.ts's
-  // hydratePricesFromCache, scoped to this hook since indices are only
-  // used here. Fixes the visible "nothing, then pop in a second later"
-  // every time the EGX tab is opened cold: a fresh 30s-old fetch is both
-  // instant and true, unlike a hardcoded number would be.
-  useEffect(() => {
-    if (queryClient.getQueryState(EGX_INDICES_KEY)?.dataUpdatedAt) return;
-    loadCachedEGXIndices().then(cached => {
-      if (!cached) return;
-      if (queryClient.getQueryState(EGX_INDICES_KEY)?.dataUpdatedAt) return; // a real fetch won the race
-      queryClient.setQueryData(EGX_INDICES_KEY, cached);
-    });
-  }, [queryClient]);
+  // Belt and braces: if a screen mounts before startup hydration finished
+  // (deep link, fast resume), pull the cache in here too. No-op once real
+  // data exists.
+  useEffect(() => { void hydrateEGXIndicesFromCache(queryClient); }, [queryClient]);
 
   return useQuery<EGXIndex[]>({
     queryKey: EGX_INDICES_KEY,
