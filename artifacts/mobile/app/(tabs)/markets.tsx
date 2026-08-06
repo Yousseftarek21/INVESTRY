@@ -14,7 +14,7 @@ import { pricesAreFresh } from '@/utils/pricesCache';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
-import { RE_PRICES, LAST_UPDATED, REAreaPrice } from '@/data/egypt-real-estate-prices';
+import { useRealEstatePrices, RealEstateAreaLive } from '@/hooks/useRealEstatePrices';
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 
@@ -482,24 +482,16 @@ const sr = StyleSheet.create({
 
 // ─── Real estate ───────────────────────────────────────────────────────────────
 
-// Precompute grouped sections once at module level — pure static data, zero cost.
-const GOV_SECTIONS: { gov: string; areas: REAreaPrice[] }[] = (() => {
-  const map = new Map<string, REAreaPrice[]>();
-  RE_PRICES.forEach(a => {
-    if (!map.has(a.governorate)) map.set(a.governorate, []);
-    map.get(a.governorate)!.push(a);
-  });
-  return Array.from(map.entries()).map(([gov, areas]) => ({ gov, areas }));
-})();
-
 function fmtKEGP(n: number): string {
   return `${Math.round(n / 1_000)}K`;
 }
 
-function RERow({ area, isLast }: { area: REAreaPrice; isLast: boolean }) {
+function RERow({ area, isLast }: { area: RealEstateAreaLive; isLast: boolean }) {
   const colors = useColors();
-  const isUp   = area.trend === 'up';
-  const isDown = area.trend === 'down';
+  const t = useT();
+  const pct = area.changePercent ?? 0;
+  const isUp   = pct > 0;
+  const isDown = pct < 0;
   const tc = isUp ? colors.green : isDown ? colors.red : colors.mutedForeground;
   return (
     <View style={[
@@ -510,7 +502,14 @@ function RERow({ area, isLast }: { area: REAreaPrice; isLast: boolean }) {
         <MaterialCommunityIcons name="home-city" size={14} color={colors.primary} />
       </View>
       <View style={rer.info}>
-        <Text style={[rer.name, { color: colors.text }]} numberOfLines={1}>{area.area}</Text>
+        <View style={rer.nameRow}>
+          <Text style={[rer.name, { color: colors.text }]} numberOfLines={1}>{area.area}</Text>
+          {!area.isLive && (
+            <View style={[rer.estBadge, { backgroundColor: colors.muted }]}>
+              <Text style={[rer.estTxt, { color: colors.mutedForeground }]}>{t.estAbbrevLabel}</Text>
+            </View>
+          )}
+        </View>
         <Text style={[rer.range, { color: colors.mutedForeground }]} numberOfLines={1}>
           {fmtKEGP(area.minPricePerM2)}–{fmtKEGP(area.maxPricePerM2)} EGP/m²
         </Text>
@@ -520,11 +519,17 @@ function RERow({ area, isLast }: { area: REAreaPrice; isLast: boolean }) {
           {fmtKEGP(area.avgPricePerM2)}{' '}
           <Text style={[rer.unit, { color: colors.mutedForeground }]}>EGP/m²</Text>
         </Text>
-        <View style={[rer.badge, { backgroundColor: tc + '18' }]}>
-          <Text style={[rer.badgeTxt, { color: tc }]}>
-            {isUp ? '↑' : isDown ? '↓' : '–'} {area.changePercent > 0 ? '+' : ''}{area.changePercent}%
-          </Text>
-        </View>
+        {area.changePercent != null ? (
+          <View style={[rer.badge, { backgroundColor: tc + '18' }]}>
+            <Text style={[rer.badgeTxt, { color: tc }]}>
+              {isUp ? '↑' : isDown ? '↓' : '–'} {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
+            </Text>
+          </View>
+        ) : (
+          <View style={[rer.badge, { backgroundColor: colors.muted }]}>
+            <Text style={[rer.badgeTxt, { color: colors.mutedForeground }]}>{t.naBadge}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -533,7 +538,10 @@ const rer = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
   icon: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   info: { flex: 1, gap: 2, minWidth: 0 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  estBadge: { borderRadius: 5, paddingHorizontal: 5, paddingVertical: 1 },
+  estTxt: { fontSize: 9, fontFamily: 'Inter_500Medium' },
   range: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   right: { alignItems: 'flex-end', gap: 4, flexShrink: 0 },
   price: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: -0.2 },
@@ -545,6 +553,28 @@ const rer = StyleSheet.create({
 function RealEstateTab() {
   const colors = useColors();
   const t = useT();
+  const { data: areas = [] } = useRealEstatePrices();
+
+  const govSections = React.useMemo(() => {
+    const map = new Map<string, RealEstateAreaLive[]>();
+    areas.forEach(a => {
+      if (!map.has(a.governorate)) map.set(a.governorate, []);
+      map.get(a.governorate)!.push(a);
+    });
+    return Array.from(map.entries()).map(([gov, list]) => ({ gov, areas: list }));
+  }, [areas]);
+
+  // "Live as of [latest scrape]" if anything has actually been scraped yet,
+  // otherwise honestly says "Estimate" instead of a fake/stale date pill —
+  // this used to be a hardcoded "Q2 2026" string, unrelated to whether the
+  // data behind it was actually current.
+  const freshnessLabel = React.useMemo(() => {
+    const liveUpdatedAts = areas.filter(a => a.isLive && a.updatedAt).map(a => new Date(a.updatedAt!).getTime());
+    if (liveUpdatedAts.length === 0) return t.reEstimateLabel;
+    const latest = new Date(Math.max(...liveUpdatedAts));
+    return latest.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }, [areas, t]);
+
   return (
     <View style={tab.group}>
       {/* Hero info card */}
@@ -561,21 +591,21 @@ function RealEstateTab() {
               </Text>
             </View>
             <View style={[reh.pill, { backgroundColor: colors.muted }]}>
-              <Text style={[reh.pillTxt, { color: colors.mutedForeground }]}>Q2 2026</Text>
+              <Text style={[reh.pillTxt, { color: colors.mutedForeground }]}>{freshnessLabel}</Text>
             </View>
           </View>
-          <Text style={[reh.title, { color: colors.text }]}>{RE_PRICES.length} {t.reAreasAvgLabel}</Text>
+          <Text style={[reh.title, { color: colors.text }]}>{areas.length} {t.reAreasAvgLabel}</Text>
           <Text style={[reh.sub, { color: colors.mutedForeground }]}>{t.reMarketSubHeader}</Text>
         </View>
       </View>
 
       {/* One section per governorate */}
-      {GOV_SECTIONS.map(({ gov, areas }) => (
+      {govSections.map(({ gov, areas: list }) => (
         <View key={gov} style={tab.section}>
           <SLabel icon={{ lib: 'feather', name: 'map-pin' }} title={gov.toUpperCase()} />
           <TableCard>
-            {areas.map((area, idx) => (
-              <RERow key={area.id} area={area} isLast={idx === areas.length - 1} />
+            {list.map((area, idx) => (
+              <RERow key={area.id} area={area} isLast={idx === list.length - 1} />
             ))}
           </TableCard>
         </View>

@@ -632,8 +632,9 @@ const en = {
   reMarketNoResults: 'No areas found',
   rePropertyMarketTitle: 'EGYPT PROPERTY MARKET',
   reAreasAvgLabel: 'areas · avg price/m²',
-  reMarketDisclaimer: 'Price estimates based on Q2 2026 market research (Aqarmap, Property Finder). Update via OTA as market shifts.',
+  reMarketDisclaimer: 'Prices scraped from live Property Finder listings twice a day where available. Areas marked "Est." have too few current listings and show a curated reference estimate instead.',
   reMarketLastUpdated: 'Last updated',
+  reEstimateLabel: 'Estimate',
   // EGX
   egxSearchPlaceholder: 'Search ticker, company, sector…',
   egyptianExchange: 'Egyptian Exchange',
@@ -1803,8 +1804,9 @@ const ar: typeof en = {
   reMarketNoResults: 'لا توجد مناطق',
   rePropertyMarketTitle: 'سوق العقارات المصري',
   reAreasAvgLabel: 'منطقة · متوسط سعر/م²',
-  reMarketDisclaimer: 'تقديرات أسعار بناءً على أبحاث السوق لعام 2026 (عقارماب، بروبرتي فايندر). يُحدَّث عبر OTA.',
+  reMarketDisclaimer: 'الأسعار مستخرجة من إعلانات بروبرتي فايندر الحية مرتين يوميًا حيثما توفرت. المناطق المُعلَّمة "تقديري" لا تحتوي على إعلانات كافية حاليًا، ويُعرض بدلاً منها تقدير مرجعي.',
   reMarketLastUpdated: 'آخر تحديث',
+  reEstimateLabel: 'تقديري',
   // EGX
   egxSearchPlaceholder: 'ابحث عن الرمز أو الشركة أو القطاع...',
   egyptianExchange: 'البورصة المصرية',

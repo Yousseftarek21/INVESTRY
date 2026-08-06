@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { lt, desc, eq } from "drizzle-orm";
-import { db, marketCloseSnapshotsTable } from "@workspace/db";
+import { db, marketCloseSnapshotsTable, realEstatePricesTable } from "@workspace/db";
+import { RE_PRICES } from "@workspace/shared-data";
 import { logger } from "../lib/logger";
 import { cairoDateString } from "../lib/cairoDate";
 
@@ -1430,6 +1431,56 @@ router.get("/markets/global-stocks", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch global stocks");
     res.status(500).json({ error: "Failed to fetch global stocks" });
+  }
+});
+
+// GET /markets/real-estate — scraped Property Finder averages per area,
+// refreshed twice a day by realEstatePriceCron.ts. Falls back to the
+// static RE_PRICES file per-area for anything not yet scraped (a fresh
+// deploy before the cron's first run completes, or an area with too few
+// matched listings that run) — same "static file as last resort only"
+// pattern as EGX_STATIC_FALLBACK in the mobile app's useEGXMarket.ts.
+router.get("/markets/real-estate", async (req, res) => {
+  try {
+    const rows = await db.select().from(realEstatePricesTable);
+    const byId = new Map(rows.map((r) => [r.id, r]));
+
+    const data = RE_PRICES.map((area) => {
+      const scraped = byId.get(area.id);
+      if (scraped) {
+        return {
+          id: scraped.id,
+          governorate: scraped.governorate,
+          area: scraped.area,
+          minPricePerM2: scraped.minPricePerM2,
+          maxPricePerM2: scraped.maxPricePerM2,
+          avgPricePerM2: scraped.avgPricePerM2,
+          changePercent: scraped.changePercent,
+          sampleSize: scraped.sampleSize,
+          type: scraped.type,
+          isLive: true,
+          updatedAt: scraped.updatedAt,
+        };
+      }
+      return {
+        id: area.id,
+        governorate: area.governorate,
+        area: area.area,
+        minPricePerM2: area.minPricePerM2,
+        maxPricePerM2: area.maxPricePerM2,
+        avgPricePerM2: area.avgPricePerM2,
+        changePercent: area.changePercent,
+        sampleSize: 0,
+        type: area.type,
+        isLive: false,
+        updatedAt: null,
+      };
+    });
+
+    res.json(data);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch real estate prices");
+    res.status(500).json({ error: "Failed to fetch real estate prices" });
   }
 });
 

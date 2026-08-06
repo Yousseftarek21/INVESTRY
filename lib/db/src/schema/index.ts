@@ -10,3 +10,4 @@ export * from "./portfolioTargets";
 export * from "./cashBalanceUpdates";
 export * from "./chatMessages";
 export * from "./activityLog";
+export * from "./realEstatePrices";

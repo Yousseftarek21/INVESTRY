@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startPortfolioAlertCron } from "./lib/portfolioAlertCron";
 import { startUserPriceAlertCron } from "./lib/userPriceAlertCron";
 import { startPortfolioDriftCron } from "./lib/portfolioDriftCron";
+import { startRealEstatePriceCron } from "./lib/realEstatePriceCron";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
 const rawPort = process.env["PORT"];
@@ -31,4 +32,5 @@ app.listen(port, (err) => {
   startPortfolioAlertCron();
   startUserPriceAlertCron();
   startPortfolioDriftCron();
+  startRealEstatePriceCron();
 });

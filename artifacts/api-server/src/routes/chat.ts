@@ -11,6 +11,7 @@ import {
   priceAlertsTable,
   recurringIncomeTable,
   chatMessagesTable,
+  realEstatePricesTable,
 } from "@workspace/db";
 import { eq, asc, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
@@ -159,13 +160,27 @@ function summarizeEgxMovers(stocks: EGXStockResponse[]): string {
   return `EGX market today (${stocks.length} stocks tracked) — top gainers: ${gainers.join(", ")}. Top losers: ${losers.join(", ")}.`;
 }
 
-// Full curated per-area dataset, not just areas the user owns property in —
-// lets the assistant answer general "what's the going rate in X" questions.
-function summarizeRealEstateMarket(): string {
-  const lines = RE_PRICES.map(
-    (a) => `${a.area}, ${a.governorate}: ~${a.avgPricePerM2.toLocaleString()} EGP/m² (${a.trend}, ${a.changePercent >= 0 ? "+" : ""}${a.changePercent}% YoY)`,
-  );
-  return `Egypt real estate price guide (EGP per m², curated averages):\n${lines.join("\n")}`;
+// Full dataset, not just areas the user owns property in — lets the
+// assistant answer general "what's the going rate in X" questions. Prefers
+// live-scraped Property Finder averages (real_estate_prices, refreshed
+// twice a day by realEstatePriceCron.ts) per area, falling back to the
+// static RE_PRICES file for any area not yet scraped — same pattern as
+// GET /markets/real-estate in markets.ts.
+async function summarizeRealEstateMarket(): Promise<string> {
+  const rows = await db.select().from(realEstatePricesTable);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+
+  const lines = RE_PRICES.map((a) => {
+    const scraped = byId.get(a.id);
+    if (scraped) {
+      const changeTxt = scraped.changePercent != null
+        ? `${scraped.changePercent >= 0 ? "+" : ""}${scraped.changePercent.toFixed(1)}% since last check`
+        : "no trend yet";
+      return `${a.area}, ${a.governorate}: ~${scraped.avgPricePerM2.toLocaleString()} EGP/m² (live, ${scraped.sampleSize} listings, ${changeTxt})`;
+    }
+    return `${a.area}, ${a.governorate}: ~${a.avgPricePerM2.toLocaleString()} EGP/m² (estimate, ${a.trend}, ${a.changePercent >= 0 ? "+" : ""}${a.changePercent}% YoY)`;
+  });
+  return `Egypt real estate price guide (EGP per m²):\n${lines.join("\n")}`;
 }
 
 // Finds the snapshot closest to `daysAgo` days before today and describes
@@ -196,7 +211,7 @@ function summarizeTrend(
 async function buildPortfolioContext(
   userId: string,
 ): Promise<{ context: string; egxStocks: EGXStockResponse[] }> {
-  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, inflation] =
+  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, inflation, realEstateSummary] =
     await Promise.all([
       db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
       db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
@@ -211,6 +226,7 @@ async function buildPortfolioContext(
       getCachedPrices(),
       getCachedStocks().catch(() => []),
       fetchInflation(),
+      summarizeRealEstateMarket(),
     ]);
 
   const holdings = holdingRows.map(
@@ -242,7 +258,7 @@ async function buildPortfolioContext(
     summarizeRecurringIncome(income),
     `Egypt annual inflation rate: ${inflation.rate}% (${inflation.year}, World Bank/CAPMAS CPI data).`,
     summarizeEgxMovers(egxStocks),
-    summarizeRealEstateMarket(),
+    realEstateSummary,
   ].join("\n\n");
 
   return { context, egxStocks };
