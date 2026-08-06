@@ -102,7 +102,7 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   if (updated.length === 0) return; // this milestone (or a further one) was already notified today
 
   const dir = pctChange > 0 ? "up" : "down";
-  const title = "Portfolio update";
+  const title = "Portfolio Update";
   const subtitle = `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% today`;
 
   // A push goes out on every milestone crossed today (1%, then 2%, then

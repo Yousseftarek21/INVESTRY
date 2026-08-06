@@ -80,7 +80,7 @@ async function checkUser(row: TargetRow): Promise<void> {
 
   await sendPushToTokens(
     [row.pushToken],
-    "Portfolio drifted from target",
+    "Portfolio Drifted From Target",
     `Your ${label} allocation is ${currentPct.toFixed(0)}% — ${Math.abs(worstDrift).toFixed(0)}pp ${dir} your ${targetPct.toFixed(0)}% target`,
     { type: "drift_alert" },
   );

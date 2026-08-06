@@ -58,6 +58,11 @@ export interface RealEstateHolding {
   // Valuation — currentValue is derived (area × currentMarketPricePerM2).
   // reAreaId links to RE_PRICES for live price updates via OTA; takes priority.
   reAreaId?: string;
+  // Links to RE_COMPOUNDS (lib/shared-data) when the user picked a specific
+  // development from the curated compound list instead of just an area —
+  // purely a reference for display; currentMarketPricePerM2 is what actually
+  // drives valuation, captured from live compound data at add/edit time.
+  reCompoundId?: string;
   currentMarketPricePerM2?: number;
   currentValue?: number;
   lastValuationDate?: string;

@@ -17,7 +17,8 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { EGX_COMPANIES } from '@/data/egx-companies';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
-import { RE_PRICES, REAreaPrice } from '@/data/egypt-real-estate-prices';
+import { RE_PRICES, REAreaPrice, RE_COMPOUNDS, RECompound } from '@/data/egypt-real-estate-prices';
+import { useRealEstateCompoundPrices } from '@/hooks/useRealEstateCompoundPrices';
 import { parseAmount, cleanAmountInput } from '@/utils/parseAmount';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
@@ -272,6 +273,134 @@ function StockPickerModal({
   );
 }
 
+// ─── Compound Picker Modal ──────────────────────────────────────────────────
+// Lets the user pick a specific development from the curated RE_COMPOUNDS
+// list (lib/shared-data) instead of only typing a free-text developer/
+// compound name — selecting one links reCompoundId so the current-price
+// field below can auto-fill from that compound's live scraped data (see
+// useRealEstateCompoundPrices) instead of a plain area-level average.
+
+function CompoundPickerModal({
+  visible,
+  selectedId,
+  onSelect,
+  onFreeText,
+  onClose,
+}: {
+  visible: boolean;
+  selectedId?: string;
+  onSelect: (c: RECompound) => void;
+  onFreeText: (query: string) => void;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const t = useT();
+  const insets = useSafeAreaInsets();
+  const { impact } = useHaptic();
+  const [query, setQuery] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return RE_COMPOUNDS;
+    return RE_COMPOUNDS.filter(
+      c => c.name.toLowerCase().includes(q) || c.developer.toLowerCase().includes(q) || c.governorate.toLowerCase().includes(q)
+    );
+  }, [query]);
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaProvider>
+      <View style={[pickerStyles.container, { backgroundColor: colors.background }]}>
+        <View style={[pickerStyles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
+          <Text style={[pickerStyles.title, { color: colors.text }]}>{t.selectCompound}</Text>
+          <TouchableOpacity onPress={onClose} style={[pickerStyles.closeBtn, { backgroundColor: colors.muted }]}>
+            <Feather name="x" size={15} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[pickerStyles.searchWrap, { borderBottomColor: colors.border }]}>
+          <View style={[pickerStyles.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="search" size={15} color={colors.mutedForeground} />
+            <TextInput
+              style={[pickerStyles.searchInput, { color: colors.text }]}
+              placeholder={t.searchCompoundPlaceholder}
+              placeholderTextColor={colors.mutedForeground}
+              value={query}
+              onChangeText={setQuery}
+              returnKeyType="search"
+            />
+            {query.length > 0 && (
+              <TouchableOpacity onPress={() => setQuery('')}>
+                <Feather name="x-circle" size={15} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          ListHeaderComponent={
+            <Text style={[pickerStyles.countLabel, { color: colors.mutedForeground }]}>
+              {t.compoundNotListedHint}
+            </Text>
+          }
+          ListFooterComponent={
+            query.trim().length > 0 ? (
+              <TouchableOpacity
+                style={[pickerStyles.stockRow, { borderBottomColor: colors.border }]}
+                onPress={() => { impact(); onFreeText(query.trim()); onClose(); }}
+                activeOpacity={0.65}
+              >
+                <View style={[pickerStyles.avatar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Feather name="edit-3" size={16} color={colors.mutedForeground} />
+                </View>
+                <View style={pickerStyles.stockInfo}>
+                  <Text style={[pickerStyles.symbol, { color: colors.text }]}>{t.useCustomNameLabel}</Text>
+                  <Text style={[pickerStyles.stockName, { color: colors.mutedForeground }]} numberOfLines={1}>"{query.trim()}"</Text>
+                </View>
+              </TouchableOpacity>
+            ) : null
+          }
+          renderItem={({ item, index }) => {
+            const isSelected = selectedId === item.id;
+            const isLast = index === filtered.length - 1;
+            return (
+              <TouchableOpacity
+                style={[
+                  pickerStyles.stockRow,
+                  { borderBottomColor: colors.border },
+                  !isLast && pickerStyles.stockRowBorder,
+                  isSelected && { backgroundColor: colors.primary + '10' },
+                ]}
+                onPress={() => { impact(); onSelect(item); onClose(); }}
+                activeOpacity={0.65}
+              >
+                <View style={[pickerStyles.avatar, {
+                  backgroundColor: isSelected ? colors.primary + '25' : colors.muted,
+                  borderColor: isSelected ? colors.primary + '60' : colors.border,
+                }]}>
+                  <MaterialCommunityIcons name="home-city" size={16} color={isSelected ? colors.primary : colors.mutedForeground} />
+                </View>
+                <View style={pickerStyles.stockInfo}>
+                  <Text style={[pickerStyles.symbol, { color: colors.text }]}>{item.name}</Text>
+                  <Text style={[pickerStyles.stockName, { color: colors.mutedForeground }]} numberOfLines={1}>
+                    {item.developer} · {item.governorate}
+                  </Text>
+                </View>
+                {isSelected && <Feather name="check-circle" size={18} color={colors.primary} />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+      </SafeAreaProvider>
+    </Modal>
+  );
+}
+
 // ─── Generic search picker modal (Governorate / City / District) ──────────────
 
 function SearchPickerModal({
@@ -424,6 +553,10 @@ export default function AddInvestmentScreen() {
   const [valuationSource, setValuationSource] = useState<ValuationSource>('manual');
   const [developer, setDeveloper] = useState('');
   const [compoundName, setCompoundName] = useState('');
+  const [reCompoundId, setReCompoundId] = useState<string | undefined>(undefined);
+  const [compoundPickerVisible, setCompoundPickerVisible] = useState(false);
+  const { data: compoundPrices = [] } = useRealEstateCompoundPrices();
+  const selectedCompoundPrice = reCompoundId ? compoundPrices.find(c => c.id === reCompoundId) : undefined;
   const [unitNumber, setUnitNumber] = useState('');
   const [hasInstallmentPlan, setHasInstallmentPlan] = useState(false);
   const [installmentExpanded, setInstallmentExpanded] = useState(false);
@@ -501,6 +634,7 @@ export default function AddInvestmentScreen() {
       setRealEstatePurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
       setDeveloper(editingHolding.developer ?? '');
       setCompoundName(editingHolding.compoundName ?? '');
+      setReCompoundId(editingHolding.reCompoundId);
       setUnitNumber(editingHolding.unitNumber ?? '');
       const hasInstallment = !!editingHolding.hasInstallmentPlan;
       setHasInstallmentPlan(hasInstallment);
@@ -719,6 +853,7 @@ export default function AddInvestmentScreen() {
         purchaseDate: realEstatePurchaseDate,
         developer: developer.trim() || undefined,
         compoundName: compoundName.trim() || undefined,
+        reCompoundId,
         unitNumber: unitNumber.trim() || undefined,
         hasInstallmentPlan: hasInstallmentPlan || undefined,
         downPayment: hasInstallmentPlan && downPayment ? parseAmount(downPayment) : undefined,
@@ -1078,10 +1213,25 @@ export default function AddInvestmentScreen() {
               <DatePickerField label={t.purchaseDate} value={realEstatePurchaseDate} onChange={setRealEstatePurchaseDate} />
             </View>
 
-            {/* Current Market Price — editable, pre-filled from live data when available */}
+            {/* Current Market Price — editable, pre-filled from live data when available.
+                Prefers the selected compound's own price (live scrape, or its area's
+                honest fallback) over the plain area-level lookup below. */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentMarketPricePerM2}</Text>
-              {autoFilledArea && (
+              {selectedCompoundPrice?.avgPricePerM2 != null ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6, paddingHorizontal: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
+                    <Feather name="bar-chart-2" size={9} color={colors.green} />
+                    <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>
+                      {selectedCompoundPrice.isLive ? 'LIVE DATA' : t.reAreaEstimateBadge}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }}>
+                    {selectedCompoundPrice.minPricePerM2!.toLocaleString('en-EG')}–{selectedCompoundPrice.maxPricePerM2!.toLocaleString('en-EG')} EGP/m²
+                    {!selectedCompoundPrice.isLive && selectedCompoundPrice.areaLabel ? ` (${selectedCompoundPrice.areaLabel})` : ''}
+                  </Text>
+                </View>
+              ) : autoFilledArea && (
                 /* Live data reference — shown above the editable input */
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6, paddingHorizontal: 2 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
@@ -1095,7 +1245,9 @@ export default function AddInvestmentScreen() {
               )}
               <AmountInput
                 style={inputStyle}
-                placeholder={autoFilledArea
+                placeholder={selectedCompoundPrice?.avgPricePerM2 != null
+                  ? `Market avg: ${selectedCompoundPrice.avgPricePerM2.toLocaleString('en-EG')} EGP/m²`
+                  : autoFilledArea
                   ? `Market avg: ${autoFilledArea.avgPricePerM2.toLocaleString('en-EG')} EGP/m²`
                   : t.currentMarketPricePerM2Placeholder}
                 placeholderTextColor={colors.mutedForeground}
@@ -1119,14 +1271,32 @@ export default function AddInvestmentScreen() {
 
             {/* Purchase info */}
             <View style={styles.section}>
+              <Text style={labelStyle}>{t.compoundName}</Text>
+              <TouchableOpacity
+                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => setCompoundPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dropdownSymbol, { color: compoundName ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                  {compoundName || t.selectCompound}
+                </Text>
+                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              {reCompoundId && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, paddingHorizontal: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
+                    <Feather name="bar-chart-2" size={9} color={colors.green} />
+                    <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>
+                      {compoundPrices.find(c => c.id === reCompoundId)?.isLive ? 'LIVE DATA' : t.reAreaEstimateBadge}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+            <View style={styles.section}>
               <Text style={labelStyle}>{t.developer}</Text>
               <TextInput style={inputStyle} placeholder={t.developerPlaceholder} placeholderTextColor={colors.mutedForeground}
                 value={developer} onChangeText={setDeveloper} />
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.compoundName}</Text>
-              <TextInput style={inputStyle} placeholder={t.compoundNamePlaceholder} placeholderTextColor={colors.mutedForeground}
-                value={compoundName} onChangeText={setCompoundName} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.unitNumber}</Text>
@@ -1435,6 +1605,21 @@ export default function AddInvestmentScreen() {
         }}
         onClose={() => setDistrictPickerVisible(false)}
         otherLabel={t.enterManually}
+      />
+
+      {/* Real estate compound/developer picker */}
+      <CompoundPickerModal
+        visible={compoundPickerVisible}
+        selectedId={reCompoundId}
+        onSelect={(c) => {
+          setCompoundName(c.name);
+          setDeveloper(c.developer);
+          setReCompoundId(c.id);
+          const live = compoundPrices.find(cp => cp.id === c.id);
+          if (live?.avgPricePerM2 != null) setCurrentMarketPricePerM2(String(live.avgPricePerM2));
+        }}
+        onFreeText={(text) => { setCompoundName(text); setReCompoundId(undefined); }}
+        onClose={() => setCompoundPickerVisible(false)}
       />
     </>
   );
