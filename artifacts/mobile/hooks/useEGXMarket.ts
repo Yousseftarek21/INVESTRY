@@ -154,13 +154,15 @@ export function useEGXMarket() {
     staleTime: 30_000,
     refetchInterval: 30_000,
     retry: 1,
-    placeholderData: EGX_COMPANIES.map(c => ({
-      ...c,
-      price: c.fallbackPrice,
-      change: 0,
-      changePercent: 0,
-      isLive: false,
-    })),
+    // No placeholderData: a hardcoded fake price list (isLive: false, every
+    // stock at a suspicious +0.00%) used to render immediately on every cold
+    // mount — including every time iOS fully restarts the app after
+    // backgrounding it, which wipes the in-memory query cache — making a
+    // normal "still loading" moment look identical to a real data failure.
+    // Without it, isLoading genuinely reflects "no data yet" so
+    // EGXMarket.tsx shows its real skeleton instead of fabricated numbers;
+    // fetchAllEGX's own internal static fallback still applies if the fetch
+    // genuinely fails, same as before.
   });
 }
 

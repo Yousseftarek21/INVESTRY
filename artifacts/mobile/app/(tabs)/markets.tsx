@@ -11,6 +11,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { pricesAreFresh } from '@/utils/pricesCache';
+import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
 import { RE_PRICES, LAST_UPDATED, REAreaPrice } from '@/data/egypt-real-estate-prices';
@@ -768,6 +769,12 @@ export default function MarketsScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { data: prices, isLoading: lP, refetch: rP } = useMarketPrices();
+  // Shares the same query cache as EGXMarket.tsx's own useEGXMarket() call
+  // (same queryKey) — this doesn't trigger a second fetch, just reads the
+  // already-in-flight/cached result so the header dot can reflect EGX's own
+  // live status instead of metals'.
+  const { data: egxStocks = [] } = useEGXMarket();
+  const egxHasLive = egxStocks.some(s => s.isLive);
   const [activeTab, setActiveTab] = useState<TabKey>(_persistedTab);
   const { impact } = useHaptic();
 
@@ -831,7 +838,11 @@ export default function MarketsScreen() {
             <View style={{ gap: 16, paddingTop: 16 }}>
               <View style={s.header}>
                 <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
-                <LiveDot fresh={pricesAreFresh(prices?.lastUpdated)} />
+                {/* EGX's own live status, not metals' — this used to always
+                    show metals freshness even while EGX itself was showing
+                    an "ESTIMATED" pill right below it, two contradicting
+                    signals on the same screen. */}
+                <LiveDot fresh={egxHasLive} />
               </View>
               <TabBar active={activeTab} onChange={handleTabChange} />
             </View>
