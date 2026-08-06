@@ -138,6 +138,8 @@ const en = {
   searchCompoundPlaceholder: 'Search compound, developer, or governorate…',
   compoundNotListedHint: "Can't find it? Search below, then use your own name at the bottom of the results.",
   useCustomNameLabel: 'Use custom name',
+  compoundLiveDataHint: 'Price from live listings for this exact compound.',
+  compoundAreaEstimateHint: (area: string) => `No listings for this compound yet — showing ${area}'s average instead, not compound-specific.` as string,
   unitNumber: 'Unit Number (optional)',
   unitNumberPlaceholder: 'e.g. B12-304',
 
@@ -1319,6 +1321,8 @@ const ar: typeof en = {
   searchCompoundPlaceholder: 'ابحث عن الكمبوند أو المطوّر أو المحافظة...',
   compoundNotListedHint: 'لم تجده؟ ابحث أدناه، ثم استخدم اسمك الخاص في أسفل النتائج.',
   useCustomNameLabel: 'استخدام اسم مخصص',
+  compoundLiveDataHint: 'السعر من إعلانات حية لهذا الكمبوند تحديدًا.',
+  compoundAreaEstimateHint: (area: string) => `لا توجد إعلانات لهذا الكمبوند بعد — يُعرض متوسط ${area} بدلاً منه، وليس خاصًا بالكمبوند.` as string,
   unitNumber: 'رقم الوحدة (اختياري)',
   unitNumberPlaceholder: 'مثال: B12-304',
 

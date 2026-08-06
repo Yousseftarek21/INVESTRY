@@ -1145,6 +1145,37 @@ export default function AddInvestmentScreen() {
               </ScrollView>
             </View>
 
+            {/* Compound / developer — first, since picking a known one drives
+                everything below (governorate + a live price estimate) */}
+            <View style={styles.section}>
+              <Text style={labelStyle}>{t.compoundName}</Text>
+              <TouchableOpacity
+                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => setCompoundPickerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dropdownSymbol, { color: compoundName ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                  {compoundName || t.selectCompound}
+                </Text>
+                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+              {reCompoundId && selectedCompoundPrice && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, paddingHorizontal: 2 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
+                    <Feather name="bar-chart-2" size={9} color={colors.green} />
+                    <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>
+                      {selectedCompoundPrice.isLive ? 'LIVE DATA' : t.reAreaEstimateBadge}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 10, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }} numberOfLines={1}>
+                    {selectedCompoundPrice.isLive
+                      ? t.compoundLiveDataHint
+                      : t.compoundAreaEstimateHint(selectedCompoundPrice.areaLabel ?? selectedCompoundPrice.governorate)}
+                  </Text>
+                </View>
+              )}
+            </View>
+
             {/* Location */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.governorate}</Text>
@@ -1270,29 +1301,6 @@ export default function AddInvestmentScreen() {
             </View>
 
             {/* Purchase info */}
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.compoundName}</Text>
-              <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => setCompoundPickerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.dropdownSymbol, { color: compoundName ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
-                  {compoundName || t.selectCompound}
-                </Text>
-                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
-              {reCompoundId && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, paddingHorizontal: 2 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
-                    <Feather name="bar-chart-2" size={9} color={colors.green} />
-                    <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>
-                      {compoundPrices.find(c => c.id === reCompoundId)?.isLive ? 'LIVE DATA' : t.reAreaEstimateBadge}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.developer}</Text>
               <TextInput style={inputStyle} placeholder={t.developerPlaceholder} placeholderTextColor={colors.mutedForeground}
@@ -1615,8 +1623,19 @@ export default function AddInvestmentScreen() {
           setCompoundName(c.name);
           setDeveloper(c.developer);
           setReCompoundId(c.id);
+          setGovernorate(c.governorate);
+          setCity('');
+          setDistrict('');
           const live = compoundPrices.find(cp => cp.id === c.id);
           if (live?.avgPricePerM2 != null) setCurrentMarketPricePerM2(String(live.avgPricePerM2));
+          // Also links to the compound's parent area (when known) so this
+          // holding keeps revaluing over time the same way area-only
+          // holdings do (see rePrice.ts) — without this a compound-based
+          // holding would never update again after today.
+          if (c.areaId) {
+            const area = RE_PRICES.find(a => a.id === c.areaId);
+            if (area) setAutoFilledArea(area);
+          }
         }}
         onFreeText={(text) => { setCompoundName(text); setReCompoundId(undefined); }}
         onClose={() => setCompoundPickerVisible(false)}

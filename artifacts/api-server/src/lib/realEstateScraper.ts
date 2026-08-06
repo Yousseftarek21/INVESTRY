@@ -24,7 +24,13 @@ const MAX_PAGES = 250;
 // back to back — this plus the cron's 12h interval (real-estate-price-cron.ts)
 // is the actual mitigation for the WAF/blocking risk, not a guarantee.
 const PAGE_DELAY_MS = 1800;
-const MIN_SAMPLE_SIZE = 3; // fewer matched listings than this isn't trustworthy enough to overwrite a previous value
+// Fewer matched listings than this isn't trustworthy enough to overwrite a
+// previous value. Raised from 3 to 8 after a real check against Property
+// Finder: El Gouna's n=5 sample averaged 232K/m² because two genuine but
+// ultra-luxury villa listings (337K/m², 174K/m² — both verified real, not a
+// bug) dominated a tiny sample. 8 gives the median below more to work with
+// before a couple of outlier mansions can define the whole number.
+const MIN_SAMPLE_SIZE = 8;
 
 interface ScrapedListing {
   pricePerM2: number;
@@ -114,15 +120,28 @@ function matchesCompound(listing: ScrapedListing, compound: RECompound): boolean
   return candidates.includes(name);
 }
 
+function median(sorted: number[]): number {
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
 // Shared by both area- and compound-level bucketing — trims the outer ~5%
 // on each side (cheap outlier protection against a single mis-tagged
-// luxury/distressed listing skewing a small sample) and computes avg/min/max.
+// luxury/distressed listing skewing a small sample) and computes min/max.
+// avgPricePerM2 is the MEDIAN of the trimmed set, not the mean — real
+// estate listing prices are heavily right-skewed (a handful of ultra-luxury
+// villas can sit at 5-10x a "typical" unit in the same area), and a mean
+// gets pulled toward those outliers hard, especially at the smaller sample
+// sizes this scraper often works with. Median reports what a typical
+// matched listing actually costs, not what the presence of one mansion
+// implies. min/max stay real, untouched extremes — worth showing as the
+// actual range, not something to "fix."
 function aggregate(matched: ScrapedListing[]): ScrapedAreaResult {
   const prices = matched.map((l) => l.pricePerM2).sort((a, b) => a - b);
   const trimCount = Math.floor(prices.length * 0.05);
   const trimmed = trimCount > 0 ? prices.slice(trimCount, prices.length - trimCount) : prices;
   return {
-    avgPricePerM2: Math.round(trimmed.reduce((sum, v) => sum + v, 0) / trimmed.length),
+    avgPricePerM2: Math.round(median(trimmed)),
     minPricePerM2: Math.round(trimmed[0]),
     maxPricePerM2: Math.round(trimmed[trimmed.length - 1]),
     sampleSize: matched.length,
