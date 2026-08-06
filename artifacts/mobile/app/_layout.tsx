@@ -37,6 +37,7 @@ import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled }
 import { hydrateEGXIndicesFromCache, prefetchEGXIndices } from "@/hooks/useEGXIndices";
 import { hydrateRealEstatePricesFromCache, prefetchRealEstatePrices } from "@/hooks/useRealEstatePrices";
 import { hydrateRealEstateCompoundsFromCache, prefetchRealEstateCompounds } from "@/hooks/useRealEstateCompoundPrices";
+import { initMetaSDK } from "@/utils/metaSdk";
 import * as Updates from "expo-updates";
 
 SplashScreen.preventAutoHideAsync();
@@ -194,6 +195,16 @@ function NotificationsInitializer() {
   return null;
 }
 
+// Mounted post-sign-in (inside AppWithPaywall), same timing as push
+// notification registration — not on the cold-start splash path, so the ATT
+// prompt never competes with the biometric gate for the user's first frame.
+function MetaSDKInitializer() {
+  useEffect(() => {
+    void initMetaSDK();
+  }, []);
+  return null;
+}
+
 function DirectionWrapper({ children }: { children: React.ReactNode }) {
   const { language } = useAppSettings();
   return (
@@ -264,6 +275,7 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
     <>
       <StatusBarManager />
       <NotificationsInitializer />
+      <MetaSDKInitializer />
       {children}
     </>
   );

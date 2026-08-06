@@ -23,10 +23,11 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.investry.app",
-      "buildNumber": "57",
+      "buildNumber": "58",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserTrackingUsageDescription": "Investry uses this to measure how you found the app and to show ads that are more relevant to you."
       }
     },
     "android": {
@@ -89,6 +90,19 @@
         "expo-local-authentication",
         {
           "faceIDPermission": "INVESTRY uses Face ID to unlock the app, so only you can view your portfolio and financial information."
+        }
+      ],
+      "expo-tracking-transparency",
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "4449689125361219",
+          "clientToken": "5facfed5e5b29cc2e26e197b26198964",
+          "displayName": "Investry",
+          "scheme": "fb4449689125361219",
+          "isAutoInitEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "advertiserIDCollectionEnabled": true
         }
       ]
     ],

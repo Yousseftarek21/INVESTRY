@@ -70,7 +70,9 @@
     "expo-notifications": "^0.32.17",
     "expo-print": "~15.0.8",
     "expo-sharing": "~14.0.8",
+    "expo-tracking-transparency": "^57.0.1",
     "expo-updates": "~29.0.18",
+    "react-native-fbsdk-next": "^13.4.3",
     "react-native-purchases": "^10.4.0"
   }
 }
