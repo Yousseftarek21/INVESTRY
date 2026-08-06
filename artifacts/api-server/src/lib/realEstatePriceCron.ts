@@ -26,10 +26,21 @@ async function runScrape(): Promise<void> {
 
     for (const area of RE_PRICES) {
       const result = areas.get(area.id);
-      // Not enough listings matched this area this run — leave its existing
-      // row (or absence of one, falling back to the static file) untouched
-      // rather than overwriting a real value with a low-confidence guess.
-      if (!result) continue;
+      // Not enough listings matched this area this run — delete any
+      // existing row instead of leaving it stale. A prior run's row was
+      // only ever written because it met MIN_SAMPLE_SIZE at the time; if
+      // this run doesn't (fewer live listings now, or the threshold itself
+      // was raised since), it stops being trustworthy "live" data and the
+      // API route's fallback to the static file takes over instead of
+      // silently keeping showing an old, possibly-outdated number forever.
+      if (!result) {
+        try {
+          await db.delete(realEstatePricesTable).where(eq(realEstatePricesTable.id, area.id));
+        } catch (err) {
+          logger.warn({ err, areaId: area.id }, "Real estate price cron: failed to clear stale area");
+        }
+        continue;
+      }
 
       try {
         const [existing] = await db
@@ -73,7 +84,17 @@ async function runScrape(): Promise<void> {
 
     for (const compound of RE_COMPOUNDS) {
       const result = compounds.get(compound.id);
-      if (!result) continue;
+      // Same reasoning as the area loop above — a compound that no longer
+      // meets MIN_SAMPLE_SIZE reverts to the honest area-estimate fallback
+      // (GET /markets/real-estate/compounds) instead of keeping a stale row.
+      if (!result) {
+        try {
+          await db.delete(realEstateCompoundPricesTable).where(eq(realEstateCompoundPricesTable.id, compound.id));
+        } catch (err) {
+          logger.warn({ err, compoundId: compound.id }, "Real estate price cron: failed to clear stale compound");
+        }
+        continue;
+      }
 
       try {
         const [existing] = await db
