@@ -6,7 +6,7 @@ import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useEGXMarket, EGX_STATIC_FALLBACK } from '@/hooks/useEGXMarket';
 import { StockFinancialsContent } from '@/components/StockFinancialsContent';
 
 // Same screen chrome as app/financial-tool.tsx (header row, safe-area
@@ -18,7 +18,11 @@ export default function StockFinancialsScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { data: stocks = [] } = useEGXMarket();
+  const { data: liveStocks, isError } = useEGXMarket();
+  // Same last-resort fallback as EGXMarket.tsx — without this, arriving
+  // here while the query has never once succeeded (no cached data at all)
+  // renders a blank screen instead of the static reference data.
+  const stocks = liveStocks ?? (isError ? EGX_STATIC_FALLBACK : []);
 
   const stock = stocks.find(s => s.ticker === ticker);
 

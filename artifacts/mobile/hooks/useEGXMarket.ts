@@ -47,6 +47,18 @@ const YF_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
 };
 
+// AbortSignal.timeout() isn't reliably available in React Native's JS
+// engine (Hermes) — calling it can throw synchronously instead of just
+// timing out the request, which would make every single fetch attempt
+// fail immediately regardless of the network, every time, with no way to
+// self-correct. Manual AbortController + setTimeout is the well-supported,
+// guaranteed-correct equivalent.
+function timeoutSignal(ms: number): AbortSignal {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
+
 // ─── Source 1: API server (uses YF v8 chart, works everywhere) ────────────────
 async function fetchFromServer(): Promise<EGXStockLive[]> {
   const base = getApiBaseUrl();
@@ -54,7 +66,7 @@ async function fetchFromServer(): Promise<EGXStockLive[]> {
   // connection it can hang well past what a user will wait for, and a plain
   // fetch() with no timeout just sits there instead of failing fast enough
   // to let the fallback/retry logic below actually help.
-  const res = await fetch(`${base}/api/markets/stocks`, { signal: AbortSignal.timeout(8000) });
+  const res = await fetch(`${base}/api/markets/stocks`, { signal: timeoutSignal(8000) });
   if (!res.ok) throw new Error(`server ${res.status}`);
   const data: ServerEGXStock[] = await res.json();
   if (!data.length || data.every(s => s.price === 0)) throw new Error('no prices');
@@ -90,7 +102,7 @@ async function fetchBatch(companies: EGXCompany[]): Promise<EGXStockLive[]> {
   const symbols = companies.map(c => encodeURIComponent(c.yahoo)).join('%2C');
   const res = await fetch(
     `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&lang=en-US&region=EG`,
-    { headers: YF_HEADERS, signal: AbortSignal.timeout(8000) }
+    { headers: YF_HEADERS, signal: timeoutSignal(8000) }
   );
   if (!res.ok) throw new Error(`YF ${res.status}`);
   const data = await res.json();
