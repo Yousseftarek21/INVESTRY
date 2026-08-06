@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { forwardArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -13,7 +14,6 @@ import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/use
 import { useEGXIndices, EGXIndex } from '@/hooks/useEGXIndices';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 import { RangeBar } from '@/components/RangeBar';
-import { StockFinancialsSheet } from '@/components/StockFinancialsSheet';
 
 // ─── Timezone helpers ─────────────────────────────────────────────────────────
 // Egypt observes EEST (UTC+3) Apr–Oct and EET (UTC+2) Nov–Mar (DST reintroduced 2023).
@@ -224,7 +224,6 @@ function SearchBar({ value, onChange }: { value: string; onChange: (t: string) =
         onChangeText={onChange}
         autoCapitalize="characters"
         autoCorrect={false}
-        clearButtonMode="while-editing"
       />
       {value.length > 0 && (
         <Pressable onPress={() => onChange('')} hitSlop={8}>
@@ -309,7 +308,6 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
   const colors = useColors();
   const t = useT();
   const [expanded, setExpanded] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const isPos = stock.changePercent >= 0;
   const changeColor = stock.change === 0 && !stock.isLive ? colors.mutedForeground
     : isPos ? colors.green : colors.red;
@@ -423,7 +421,7 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
           </View>
 
           <Pressable
-            onPress={(e) => { e.stopPropagation(); setSheetOpen(true); }}
+            onPress={(e) => { e.stopPropagation(); router.push({ pathname: '/stock-financials', params: { ticker: stock.ticker } }); }}
             style={[sc.seeAllBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
           >
             <Text style={[sc.seeAllTxt, { color: colors.primary }]}>{t.seeAllFinancials}</Text>
@@ -440,8 +438,6 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
           color={colors.mutedForeground}
         />
       </View>
-
-      <StockFinancialsSheet stock={stock} visible={sheetOpen} onClose={() => setSheetOpen(false)} />
     </Pressable>
   );
 }

@@ -146,8 +146,13 @@ export function useEGXMarket() {
   return useQuery<EGXStockLive[]>({
     queryKey: ['egx-market-full'],
     queryFn: fetchAllEGX,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    // Matches useMarketPrices' 30s cadence (usePrices.ts) — this used to be
+    // 60s, twice as slow as metals, which is why EGX prices visibly lagged
+    // behind gold/silver even though the server caches both at the same 30s
+    // TTL (markets.ts: pricesCache/stocksCache). The server was never the
+    // bottleneck; the client just polled it half as often.
+    staleTime: 30_000,
+    refetchInterval: 30_000,
     retry: 1,
     placeholderData: EGX_COMPANIES.map(c => ({
       ...c,
