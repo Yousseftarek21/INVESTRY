@@ -1145,20 +1145,37 @@ export default function AddInvestmentScreen() {
               </ScrollView>
             </View>
 
-            {/* Compound / developer — first, since picking a known one drives
-                everything below (governorate + a live price estimate) */}
+            {/* Compound / developer — optional. Picking a known one drives
+                everything below (governorate + a live price estimate), but
+                most properties aren't in a gated compound at all, so this
+                must never look mandatory. */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.compoundName}</Text>
-              <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => setCompoundPickerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.dropdownSymbol, { color: compoundName ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
-                  {compoundName || t.selectCompound}
-                </Text>
-                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border, flex: 1 }]}
+                  onPress={() => setCompoundPickerVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dropdownSymbol, { color: compoundName ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                    {compoundName || t.selectCompound}
+                  </Text>
+                  <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+                {!!compoundName && (
+                  <TouchableOpacity
+                    onPress={() => { setCompoundName(''); setReCompoundId(undefined); }}
+                    style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border, flex: 0, paddingHorizontal: 12 }]}
+                    activeOpacity={0.7}
+                    accessibilityLabel={t.clearCompoundSelection}
+                  >
+                    <Feather name="x" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {!compoundName && (
+                <Text style={[styles.hintText, { color: colors.mutedForeground }]}>{t.compoundNameHint}</Text>
+              )}
               {reCompoundId && selectedCompoundPrice && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, paddingHorizontal: 2 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.green + '18', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 }}>
