@@ -190,11 +190,3 @@ export interface MarketPrices {
    * green +0.00%. This lets the UI say "not known yet" instead. */
   changesUnknown?: boolean;
 }
-
-export interface EGXStock {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-}
