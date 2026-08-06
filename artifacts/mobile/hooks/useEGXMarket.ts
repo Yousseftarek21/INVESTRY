@@ -175,13 +175,15 @@ export function useEGXMarket() {
   return useQuery<EGXStockLive[]>({
     queryKey: ['egx-market-full'],
     queryFn: fetchAllEGX,
-    // Matches useMarketPrices' 30s cadence (usePrices.ts) — this used to be
-    // 60s, twice as slow as metals, which is why EGX prices visibly lagged
-    // behind gold/silver even though the server caches both at the same 30s
-    // TTL (markets.ts: pricesCache/stocksCache). The server was never the
-    // bottleneck; the client just polled it half as often.
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    // 10s, faster than metals' 30s (usePrices.ts) — not because the server
+    // is slower to cache EGX, but because scanning 281 companies genuinely
+    // takes longer to complete than metals' 2-value fetch, and every stock
+    // has its own visible piastre-level tick where lag is much more
+    // noticeable than on a large round gold/silver price. Matches
+    // markets.ts's stocksCache TTL (also 10s) — metals/pricesCache is
+    // untouched, still 30s.
+    staleTime: 10_000,
+    refetchInterval: 10_000,
     // 2 retries (react-query's default backoff) instead of 1 — fetchAllEGX
     // now actually throws on failure (see above) instead of swallowing it,
     // so this can meaningfully help ride out one bad request instead of

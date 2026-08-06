@@ -23,7 +23,7 @@ function makeCache<T>(ttlMs: number) {
 
 const pricesCache    = makeCache<MarketPricesResponse>(30_000);   // 30 s
 const historicalCache = makeCache<HistoricalRates>(86_400_000);   // 24 h
-const stocksCache    = makeCache<EGXStockResponse[]>(30_000);     // 30 s
+const stocksCache    = makeCache<EGXStockResponse[]>(10_000);     // 10 s — matches useEGXMarket.ts's client poll; shorter than metals' 30s to compensate for the bigger 281-company scan taking longer to visibly refresh
 const globalStocksCache = makeCache<EGXStockResponse[]>(5 * 60_000); // 5 min (Twelve Data free tier)
 const egxIndicesCache = makeCache<EGXStockResponse[]>(30_000);    // 30 s
 
