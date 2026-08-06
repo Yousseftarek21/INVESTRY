@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { db, realEstatePricesTable } from "@workspace/db";
-import { RE_PRICES } from "@workspace/shared-data";
+import { db, realEstatePricesTable, realEstateCompoundPricesTable } from "@workspace/db";
+import { RE_PRICES, RE_COMPOUNDS } from "@workspace/shared-data";
 import { scrapeRealEstatePrices } from "./realEstateScraper";
 import { logger } from "./logger";
 
@@ -18,14 +18,14 @@ async function runScrape(): Promise<void> {
   if (running) return; // guard against overlap if a prior run is still in flight
   running = true;
   try {
-    const scraped = await scrapeRealEstatePrices();
+    const { areas, compounds } = await scrapeRealEstatePrices();
     logger.info(
-      { areasMatched: scraped.size, areasTotal: RE_PRICES.length },
+      { areasMatched: areas.size, areasTotal: RE_PRICES.length, compoundsMatched: compounds.size, compoundsTotal: RE_COMPOUNDS.length },
       "Real estate scrape: run complete",
     );
 
     for (const area of RE_PRICES) {
-      const result = scraped.get(area.id);
+      const result = areas.get(area.id);
       // Not enough listings matched this area this run — leave its existing
       // row (or absence of one, falling back to the static file) untouched
       // rather than overwriting a real value with a low-confidence guess.
@@ -68,6 +68,52 @@ async function runScrape(): Promise<void> {
           });
       } catch (err) {
         logger.warn({ err, areaId: area.id }, "Real estate price cron: failed to upsert area");
+      }
+    }
+
+    for (const compound of RE_COMPOUNDS) {
+      const result = compounds.get(compound.id);
+      if (!result) continue;
+
+      try {
+        const [existing] = await db
+          .select({ avgPricePerM2: realEstateCompoundPricesTable.avgPricePerM2 })
+          .from(realEstateCompoundPricesTable)
+          .where(eq(realEstateCompoundPricesTable.id, compound.id));
+
+        const changePercent = existing
+          ? ((result.avgPricePerM2 - existing.avgPricePerM2) / existing.avgPricePerM2) * 100
+          : null;
+
+        await db
+          .insert(realEstateCompoundPricesTable)
+          .values({
+            id: compound.id,
+            name: compound.name,
+            developer: compound.developer,
+            governorate: compound.governorate,
+            areaId: compound.areaId ?? null,
+            minPricePerM2: result.minPricePerM2,
+            maxPricePerM2: result.maxPricePerM2,
+            avgPricePerM2: result.avgPricePerM2,
+            changePercent,
+            sampleSize: result.sampleSize,
+            type: compound.type,
+            source: "property_finder",
+          })
+          .onConflictDoUpdate({
+            target: realEstateCompoundPricesTable.id,
+            set: {
+              minPricePerM2: result.minPricePerM2,
+              maxPricePerM2: result.maxPricePerM2,
+              avgPricePerM2: result.avgPricePerM2,
+              changePercent,
+              sampleSize: result.sampleSize,
+              updatedAt: new Date(),
+            },
+          });
+      } catch (err) {
+        logger.warn({ err, compoundId: compound.id }, "Real estate price cron: failed to upsert compound");
       }
     }
   } catch (err) {

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { lt, desc, eq } from "drizzle-orm";
-import { db, marketCloseSnapshotsTable, realEstatePricesTable } from "@workspace/db";
-import { RE_PRICES } from "@workspace/shared-data";
+import { db, marketCloseSnapshotsTable, realEstatePricesTable, realEstateCompoundPricesTable } from "@workspace/db";
+import { RE_PRICES, RE_COMPOUNDS } from "@workspace/shared-data";
 import { logger } from "../lib/logger";
 import { cairoDateString } from "../lib/cairoDate";
 
@@ -1481,6 +1481,93 @@ router.get("/markets/real-estate", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch real estate prices");
     res.status(500).json({ error: "Failed to fetch real estate prices" });
+  }
+});
+
+// GET /markets/real-estate/compounds — individual developments with
+// developer attribution. Property Finder exposes no developer field
+// anywhere scrapable, so the compound/developer pairing itself is curated
+// (RE_COMPOUNDS) and only its live PRICE comes from the scraper. Fallback
+// chain, most-honest-available-number first: (1) this compound's own live
+// scrape, (2) its linked area's own genuine price (live or that area's own
+// curated estimate) tagged as borrowed, (3) no number at all. Never an
+// invented compound-specific figure.
+router.get("/markets/real-estate/compounds", async (req, res) => {
+  try {
+    const [compoundRows, areaRows] = await Promise.all([
+      db.select().from(realEstateCompoundPricesTable),
+      db.select().from(realEstatePricesTable),
+    ]);
+    const compoundById = new Map(compoundRows.map((r) => [r.id, r]));
+    const areaById = new Map(areaRows.map((r) => [r.id, r]));
+
+    const data = RE_COMPOUNDS.map((c) => {
+      const scraped = compoundById.get(c.id);
+      if (scraped) {
+        return {
+          id: c.id,
+          name: c.name,
+          developer: c.developer,
+          governorate: c.governorate,
+          minPricePerM2: scraped.minPricePerM2,
+          maxPricePerM2: scraped.maxPricePerM2,
+          avgPricePerM2: scraped.avgPricePerM2,
+          changePercent: scraped.changePercent,
+          sampleSize: scraped.sampleSize,
+          type: c.type,
+          isLive: true,
+          priceSource: "compound" as const,
+          areaLabel: null as string | null,
+          updatedAt: scraped.updatedAt,
+        };
+      }
+
+      const liveArea = c.areaId ? areaById.get(c.areaId) : undefined;
+      const staticArea = c.areaId ? RE_PRICES.find((a) => a.id === c.areaId) : undefined;
+      if (liveArea || staticArea) {
+        const avgPricePerM2 = liveArea?.avgPricePerM2 ?? staticArea!.avgPricePerM2;
+        const minPricePerM2 = liveArea?.minPricePerM2 ?? staticArea!.minPricePerM2;
+        const maxPricePerM2 = liveArea?.maxPricePerM2 ?? staticArea!.maxPricePerM2;
+        return {
+          id: c.id,
+          name: c.name,
+          developer: c.developer,
+          governorate: c.governorate,
+          minPricePerM2,
+          maxPricePerM2,
+          avgPricePerM2,
+          changePercent: null,
+          sampleSize: 0,
+          type: c.type,
+          isLive: false,
+          priceSource: "area_estimate" as const,
+          areaLabel: staticArea?.area ?? null,
+          updatedAt: null,
+        };
+      }
+
+      return {
+        id: c.id,
+        name: c.name,
+        developer: c.developer,
+        governorate: c.governorate,
+        minPricePerM2: null,
+        maxPricePerM2: null,
+        avgPricePerM2: null,
+        changePercent: null,
+        sampleSize: 0,
+        type: c.type,
+        isLive: false,
+        priceSource: "none" as const,
+        areaLabel: null,
+        updatedAt: null,
+      };
+    });
+
+    res.json(data);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch real estate compound prices");
+    res.status(500).json({ error: "Failed to fetch real estate compound prices" });
   }
 });
 

@@ -15,6 +15,7 @@ import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
 import { useRealEstatePrices, RealEstateAreaLive } from '@/hooks/useRealEstatePrices';
+import { useRealEstateCompoundPrices, RealEstateCompoundLive } from '@/hooks/useRealEstateCompoundPrices';
 
 // ─── Tab config ────────────────────────────────────────────────────────────────
 
@@ -550,10 +551,103 @@ const rer = StyleSheet.create({
   badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 });
 
+// ─── Area / Developer toggle ─────────────────────────────────────────────────
+
+function GroupByToggle({ active, onChange }: { active: 'area' | 'developer'; onChange: (v: 'area' | 'developer') => void }) {
+  const colors = useColors();
+  const t = useT();
+  const options: { key: 'area' | 'developer'; label: string }[] = [
+    { key: 'area', label: t.reGroupByAreaLabel },
+    { key: 'developer', label: t.reGroupByDeveloperLabel },
+  ];
+  return (
+    <View style={gbt.row}>
+      {options.map(opt => {
+        const isActive = opt.key === active;
+        return (
+          <Pressable
+            key={opt.key}
+            onPress={() => onChange(opt.key)}
+            style={[
+              gbt.pill,
+              { backgroundColor: isActive ? colors.primary : colors.muted },
+            ]}
+          >
+            <Text style={[gbt.label, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+const gbt = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 8 },
+  pill: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 12 },
+  label: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+});
+
+// ─── Compound row ─────────────────────────────────────────────────────────────
+
+function CompoundRow({ compound, isLast }: { compound: RealEstateCompoundLive; isLast: boolean }) {
+  const colors = useColors();
+  const t = useT();
+  const pct = compound.changePercent ?? 0;
+  const isUp = pct > 0;
+  const isDown = pct < 0;
+  const tc = isUp ? colors.green : isDown ? colors.red : colors.mutedForeground;
+  return (
+    <View style={[
+      rer.row,
+      !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+    ]}>
+      <View style={[rer.icon, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '28' }]}>
+        <MaterialCommunityIcons name="home-city" size={14} color={colors.primary} />
+      </View>
+      <View style={rer.info}>
+        <Text style={[rer.name, { color: colors.text }]} numberOfLines={1}>{compound.name}</Text>
+        <Text style={[rer.range, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {compound.developer} · {compound.governorate}
+        </Text>
+      </View>
+      <View style={rer.right}>
+        {compound.avgPricePerM2 != null ? (
+          <>
+            <Text style={[rer.price, { color: colors.text }]}>
+              {fmtKEGP(compound.avgPricePerM2)}{' '}
+              <Text style={[rer.unit, { color: colors.mutedForeground }]}>EGP/m²</Text>
+            </Text>
+            {compound.priceSource === 'compound' ? (
+              <View style={[rer.badge, { backgroundColor: tc + '18' }]}>
+                <Text style={[rer.badgeTxt, { color: tc }]}>
+                  {isUp ? '↑' : isDown ? '↓' : '–'} {pct > 0 ? '+' : ''}{pct.toFixed(1)}%
+                </Text>
+              </View>
+            ) : (
+              <View style={[rer.badge, { backgroundColor: colors.muted }]}>
+                <Text style={[rer.badgeTxt, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {t.reAreaEstimateBadge}
+                </Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <View style={[rer.badge, { backgroundColor: colors.muted }]}>
+            <Text style={[rer.badgeTxt, { color: colors.mutedForeground }]}>{t.naBadge}</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 function RealEstateTab() {
   const colors = useColors();
   const t = useT();
+  const [groupBy, setGroupBy] = React.useState<'area' | 'developer'>('area');
   const { data: areas = [] } = useRealEstatePrices();
+  const { data: compounds = [] } = useRealEstateCompoundPrices();
 
   const govSections = React.useMemo(() => {
     const map = new Map<string, RealEstateAreaLive[]>();
@@ -564,16 +658,28 @@ function RealEstateTab() {
     return Array.from(map.entries()).map(([gov, list]) => ({ gov, areas: list }));
   }, [areas]);
 
+  const devSections = React.useMemo(() => {
+    const map = new Map<string, RealEstateCompoundLive[]>();
+    compounds.forEach(c => {
+      if (!map.has(c.developer)) map.set(c.developer, []);
+      map.get(c.developer)!.push(c);
+    });
+    return Array.from(map.entries())
+      .map(([dev, list]) => ({ dev, compounds: list }))
+      .sort((a, b) => b.compounds.length - a.compounds.length);
+  }, [compounds]);
+
   // "Live as of [latest scrape]" if anything has actually been scraped yet,
   // otherwise honestly says "Estimate" instead of a fake/stale date pill —
   // this used to be a hardcoded "Q2 2026" string, unrelated to whether the
   // data behind it was actually current.
   const freshnessLabel = React.useMemo(() => {
-    const liveUpdatedAts = areas.filter(a => a.isLive && a.updatedAt).map(a => new Date(a.updatedAt!).getTime());
+    const source = groupBy === 'area' ? areas : compounds;
+    const liveUpdatedAts = source.filter(a => a.isLive && a.updatedAt).map(a => new Date(a.updatedAt!).getTime());
     if (liveUpdatedAts.length === 0) return t.reEstimateLabel;
     const latest = new Date(Math.max(...liveUpdatedAts));
     return latest.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  }, [areas, t]);
+  }, [areas, compounds, groupBy, t]);
 
   return (
     <View style={tab.group}>
@@ -594,24 +700,42 @@ function RealEstateTab() {
               <Text style={[reh.pillTxt, { color: colors.mutedForeground }]}>{freshnessLabel}</Text>
             </View>
           </View>
-          <Text style={[reh.title, { color: colors.text }]}>{areas.length} {t.reAreasAvgLabel}</Text>
+          <Text style={[reh.title, { color: colors.text }]}>
+            {groupBy === 'area' ? `${areas.length} ${t.reAreasAvgLabel}` : `${compounds.length} ${t.reCompoundsAvgLabel}`}
+          </Text>
           <Text style={[reh.sub, { color: colors.mutedForeground }]}>{t.reMarketSubHeader}</Text>
         </View>
       </View>
 
-      {/* One section per governorate */}
-      {govSections.map(({ gov, areas: list }) => (
-        <View key={gov} style={tab.section}>
-          <SLabel icon={{ lib: 'feather', name: 'map-pin' }} title={gov.toUpperCase()} />
-          <TableCard>
-            {list.map((area, idx) => (
-              <RERow key={area.id} area={area} isLast={idx === list.length - 1} />
-            ))}
-          </TableCard>
-        </View>
-      ))}
+      <GroupByToggle active={groupBy} onChange={setGroupBy} />
 
-      <Text style={tab.note}>{t.reMarketDisclaimer}</Text>
+      {groupBy === 'area' ? (
+        // One section per governorate
+        govSections.map(({ gov, areas: list }) => (
+          <View key={gov} style={tab.section}>
+            <SLabel icon={{ lib: 'feather', name: 'map-pin' }} title={gov.toUpperCase()} />
+            <TableCard>
+              {list.map((area, idx) => (
+                <RERow key={area.id} area={area} isLast={idx === list.length - 1} />
+              ))}
+            </TableCard>
+          </View>
+        ))
+      ) : (
+        // One section per developer
+        devSections.map(({ dev, compounds: list }) => (
+          <View key={dev} style={tab.section}>
+            <SLabel icon={{ lib: 'feather', name: 'briefcase' }} title={dev.toUpperCase()} />
+            <TableCard>
+              {list.map((compound, idx) => (
+                <CompoundRow key={compound.id} compound={compound} isLast={idx === list.length - 1} />
+              ))}
+            </TableCard>
+          </View>
+        ))
+      )}
+
+      <Text style={tab.note}>{groupBy === 'area' ? t.reMarketDisclaimer : t.reCompoundDisclaimer}</Text>
     </View>
   );
 }

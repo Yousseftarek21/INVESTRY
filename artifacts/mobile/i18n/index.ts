@@ -635,6 +635,11 @@ const en = {
   reMarketDisclaimer: 'Prices scraped from live Property Finder listings twice a day where available. Areas marked "Est." have too few current listings and show a curated reference estimate instead.',
   reMarketLastUpdated: 'Last updated',
   reEstimateLabel: 'Estimate',
+  reGroupByAreaLabel: 'By Area',
+  reGroupByDeveloperLabel: 'By Developer',
+  reCompoundsAvgLabel: 'compounds · avg price/m²',
+  reAreaEstimateBadge: '≈ Area avg',
+  reCompoundDisclaimer: 'Compound + developer pairings are curated by hand — Property Finder doesn\'t expose a developer field to scrape. Prices come from live listings for that exact compound where available (twice a day); "≈ Area avg" means no compound-specific listings were found yet, so its surrounding area\'s own price is shown instead — never a made-up number for the compound itself.',
   // EGX
   egxSearchPlaceholder: 'Search ticker, company, sector…',
   egyptianExchange: 'Egyptian Exchange',
@@ -1807,6 +1812,11 @@ const ar: typeof en = {
   reMarketDisclaimer: 'الأسعار مستخرجة من إعلانات بروبرتي فايندر الحية مرتين يوميًا حيثما توفرت. المناطق المُعلَّمة "تقديري" لا تحتوي على إعلانات كافية حاليًا، ويُعرض بدلاً منها تقدير مرجعي.',
   reMarketLastUpdated: 'آخر تحديث',
   reEstimateLabel: 'تقديري',
+  reGroupByAreaLabel: 'حسب المنطقة',
+  reGroupByDeveloperLabel: 'حسب المطوّر',
+  reCompoundsAvgLabel: 'كمبوند · متوسط سعر/م²',
+  reAreaEstimateBadge: '≈ متوسط المنطقة',
+  reCompoundDisclaimer: 'أسماء الكمبوندات والمطوّرين مُنسَّقة يدويًا — بروبرتي فايندر لا يوفّر بيانات المطوّر للاستخراج الآلي. الأسعار من إعلانات حية لنفس الكمبوند حيثما توفرت (مرتين يوميًا)؛ علامة "≈ متوسط المنطقة" تعني عدم وجود إعلانات كافية لهذا الكمبوند تحديدًا، فيُعرض متوسط سعر المنطقة المحيطة به بدلاً من ذلك — وليس رقمًا مختلقًا للكمبوند نفسه.',
   // EGX
   egxSearchPlaceholder: 'ابحث عن الرمز أو الشركة أو القطاع...',
   egyptianExchange: 'البورصة المصرية',

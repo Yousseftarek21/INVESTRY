@@ -1,4 +1,4 @@
-import { RE_PRICES, REAreaPrice } from "@workspace/shared-data";
+import { RE_PRICES, REAreaPrice, RE_COMPOUNDS, RECompound } from "@workspace/shared-data";
 import { logger } from "./logger";
 
 // Requests with no User-Agent from a cloud datacenter IP are exactly what a
@@ -9,13 +9,17 @@ import { logger } from "./logger";
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 // Property Finder has no per-area "price index" page — the general search
-// results are the only source, paginated. 150 pages * 25/page = ~3,750
+// results are the only source, paginated. 250 pages * 25/page = ~6,250
 // listings sampled per run, spread across as many of the 65 tracked areas
-// as show up in that sample. High-volume areas (New Cairo, Sheikh Zayed,
-// North Coast) get plenty of listings; low-volume/rural governorates may
-// get few or none — those areas just keep their previous value that run
-// (see realEstatePriceCron.ts), not zeroed out or guessed.
-const MAX_PAGES = 150;
+// and 44 tracked compounds as show up in that sample. High-volume areas
+// (New Cairo, Sheikh Zayed, North Coast) get plenty of listings; low-volume
+// areas/compounds may get few or none — those just keep their previous
+// value that run (see realEstatePriceCron.ts), not zeroed out or guessed.
+// Bumped from 150 to 250 when compound-level tracking was added: compounds
+// are a strict subset of the same sampled pool (only listings tagged
+// location.type === "COMPOUND"), so a smaller page count left most curated
+// compounds under MIN_SAMPLE_SIZE most runs.
+const MAX_PAGES = 250;
 // Spreads the whole run over ~4-5 minutes instead of firing 150 requests
 // back to back — this plus the cron's 12h interval (real-estate-price-cron.ts)
 // is the actual mitigation for the WAF/blocking risk, not a guarantee.
@@ -25,6 +29,8 @@ const MIN_SAMPLE_SIZE = 3; // fewer matched listings than this isn't trustworthy
 interface ScrapedListing {
   pricePerM2: number;
   pathName: string; // e.g. "Cairo, New Cairo City, The 5th Settlement, 5th Settlement Compounds"
+  locationType?: string; // e.g. "COMPOUND" — siblings of pathName on the same property.location object, no extra request needed
+  locationName?: string; // e.g. "Piacera", "Swan Lake"
 }
 
 export interface ScrapedAreaResult {
@@ -61,7 +67,12 @@ async function fetchListingsPage(page: number): Promise<ScrapedListing[]> {
       const pricePerM2 = p?.price_per_area?.price;
       const pathName = p?.location?.path_name;
       if (typeof pricePerM2 === "number" && pricePerM2 > 0 && typeof pathName === "string") {
-        out.push({ pricePerM2, pathName });
+        out.push({
+          pricePerM2,
+          pathName,
+          locationType: typeof p?.location?.type === "string" ? p.location.type : undefined,
+          locationName: typeof p?.location?.name === "string" ? p.location.name : undefined,
+        });
       }
     }
     return out;
@@ -92,7 +103,38 @@ function matchesArea(pathName: string, area: REAreaPrice): boolean {
   return true;
 }
 
-export async function scrapeRealEstatePrices(): Promise<Map<string, ScrapedAreaResult>> {
+// Matches on Property Finder's own structured location.type/location.name
+// fields rather than breadcrumb substrings — more precise than matchesArea
+// since it's an exact field, not a heuristic, so no qualifier-splitting
+// logic is needed here.
+function matchesCompound(listing: ScrapedListing, compound: RECompound): boolean {
+  if (listing.locationType !== "COMPOUND" || !listing.locationName) return false;
+  const name = normalize(listing.locationName);
+  const candidates = [compound.name, ...(compound.aliases ?? [])].map(normalize);
+  return candidates.includes(name);
+}
+
+// Shared by both area- and compound-level bucketing — trims the outer ~5%
+// on each side (cheap outlier protection against a single mis-tagged
+// luxury/distressed listing skewing a small sample) and computes avg/min/max.
+function aggregate(matched: ScrapedListing[]): ScrapedAreaResult {
+  const prices = matched.map((l) => l.pricePerM2).sort((a, b) => a - b);
+  const trimCount = Math.floor(prices.length * 0.05);
+  const trimmed = trimCount > 0 ? prices.slice(trimCount, prices.length - trimCount) : prices;
+  return {
+    avgPricePerM2: Math.round(trimmed.reduce((sum, v) => sum + v, 0) / trimmed.length),
+    minPricePerM2: Math.round(trimmed[0]),
+    maxPricePerM2: Math.round(trimmed[trimmed.length - 1]),
+    sampleSize: matched.length,
+  };
+}
+
+export interface ScrapeResults {
+  areas: Map<string, ScrapedAreaResult>;
+  compounds: Map<string, ScrapedAreaResult>;
+}
+
+export async function scrapeRealEstatePrices(): Promise<ScrapeResults> {
   const allListings: ScrapedListing[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
     const listings = await fetchListingsPage(page);
@@ -101,23 +143,19 @@ export async function scrapeRealEstatePrices(): Promise<Map<string, ScrapedAreaR
   }
   logger.info({ totalListings: allListings.length, pages: MAX_PAGES }, "Real estate scrape: fetched listings");
 
-  const results = new Map<string, ScrapedAreaResult>();
+  const areas = new Map<string, ScrapedAreaResult>();
   for (const area of RE_PRICES) {
     const matched = allListings.filter((l) => matchesArea(l.pathName, area));
     if (matched.length < MIN_SAMPLE_SIZE) continue;
-
-    const prices = matched.map((l) => l.pricePerM2).sort((a, b) => a - b);
-    // Trim the outer ~5% on each side — cheap outlier protection against a
-    // single mis-tagged luxury/distressed listing skewing a small sample.
-    const trimCount = Math.floor(prices.length * 0.05);
-    const trimmed = trimCount > 0 ? prices.slice(trimCount, prices.length - trimCount) : prices;
-
-    results.set(area.id, {
-      avgPricePerM2: Math.round(trimmed.reduce((sum, v) => sum + v, 0) / trimmed.length),
-      minPricePerM2: Math.round(trimmed[0]),
-      maxPricePerM2: Math.round(trimmed[trimmed.length - 1]),
-      sampleSize: matched.length,
-    });
+    areas.set(area.id, aggregate(matched));
   }
-  return results;
+
+  const compounds = new Map<string, ScrapedAreaResult>();
+  for (const compound of RE_COMPOUNDS) {
+    const matched = allListings.filter((l) => matchesCompound(l, compound));
+    if (matched.length < MIN_SAMPLE_SIZE) continue;
+    compounds.set(compound.id, aggregate(matched));
+  }
+
+  return { areas, compounds };
 }
