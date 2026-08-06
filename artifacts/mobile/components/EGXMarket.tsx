@@ -10,7 +10,7 @@ import { forwardArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data/egx-companies';
-import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
+import { useEGXMarket, EGXStockLive, EGX_STATIC_FALLBACK, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { useEGXIndices, EGXIndex } from '@/hooks/useEGXIndices';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 import { RangeBar } from '@/components/RangeBar';
@@ -557,7 +557,13 @@ export function EGXMarket({
   const t = useT();
   const insets = useSafeAreaInsets();
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
-  const { data: allStocks = [], isLoading } = useEGXMarket();
+  const { data: liveStocks, isLoading, isError } = useEGXMarket();
+  // Static list only as a genuine last resort — every live source failed
+  // AND there's no cached data from any earlier successful fetch (e.g. the
+  // very first launch with no network). A transient failure on a later
+  // background refetch just keeps showing liveStocks' last good value
+  // (react-query's default), never silently swapping in fake numbers.
+  const allStocks = liveStocks ?? (isError ? EGX_STATIC_FALLBACK : []);
   const [section, setSection] = useState<'stocks' | 'funds'>('stocks');
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');

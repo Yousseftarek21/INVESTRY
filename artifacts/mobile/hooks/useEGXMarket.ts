@@ -50,7 +50,11 @@ const YF_HEADERS = {
 // ─── Source 1: API server (uses YF v8 chart, works everywhere) ────────────────
 async function fetchFromServer(): Promise<EGXStockLive[]> {
   const base = getApiBaseUrl();
-  const res = await fetch(`${base}/api/markets/stocks`);
+  // 281 companies is a much bigger payload than metals/indices — on a weak
+  // connection it can hang well past what a user will wait for, and a plain
+  // fetch() with no timeout just sits there instead of failing fast enough
+  // to let the fallback/retry logic below actually help.
+  const res = await fetch(`${base}/api/markets/stocks`, { signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`server ${res.status}`);
   const data: ServerEGXStock[] = await res.json();
   if (!data.length || data.every(s => s.price === 0)) throw new Error('no prices');
@@ -86,7 +90,7 @@ async function fetchBatch(companies: EGXCompany[]): Promise<EGXStockLive[]> {
   const symbols = companies.map(c => encodeURIComponent(c.yahoo)).join('%2C');
   const res = await fetch(
     `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&lang=en-US&region=EG`,
-    { headers: YF_HEADERS }
+    { headers: YF_HEADERS, signal: AbortSignal.timeout(8000) }
   );
   if (!res.ok) throw new Error(`YF ${res.status}`);
   const data = await res.json();
@@ -127,6 +131,13 @@ async function fetchViaYF(): Promise<EGXStockLive[]> {
   return results.flat();
 }
 
+// Static, hardcoded reference prices — used only as a last-resort *render*
+// fallback in EGXMarket.tsx when a query has never once succeeded, never
+// stored as this hook's actual query data (see fetchAllEGX below for why).
+export const EGX_STATIC_FALLBACK: EGXStockLive[] = EGX_COMPANIES.map(c => (
+  { ...c, price: c.fallbackPrice, change: 0, changePercent: 0, isLive: false }
+));
+
 async function fetchAllEGX(): Promise<EGXStockLive[]> {
   // 1. API server — works on web and native (server-side YF v8 chart)
   try {
@@ -138,8 +149,14 @@ async function fetchAllEGX(): Promise<EGXStockLive[]> {
     return await fetchViaYF();
   } catch { /* fall through */ }
 
-  // 3. Static fallback
-  return EGX_COMPANIES.map(c => ({ ...c, price: c.fallbackPrice, change: 0, changePercent: 0, isLive: false }));
+  // Both sources failed — throw instead of quietly "succeeding" with static
+  // fallback data. A silent fallback here used to look like a successful
+  // fetch to react-query, so it never retried, AND on a background refetch
+  // it would overwrite genuinely live data with fake static numbers just
+  // because one request hit a transient blip. Throwing lets react-query's
+  // own retry run and, critically, keep showing the last real data it has
+  // instead of replacing it with something fake.
+  throw new Error('EGX: all live sources failed');
 }
 
 export function useEGXMarket() {
@@ -153,7 +170,11 @@ export function useEGXMarket() {
     // bottleneck; the client just polled it half as often.
     staleTime: 30_000,
     refetchInterval: 30_000,
-    retry: 1,
+    // 2 retries (react-query's default backoff) instead of 1 — fetchAllEGX
+    // now actually throws on failure (see above) instead of swallowing it,
+    // so this can meaningfully help ride out one bad request instead of
+    // giving up almost immediately.
+    retry: 2,
     // No placeholderData: a hardcoded fake price list (isLive: false, every
     // stock at a suspicious +0.00%) used to render immediately on every cold
     // mount — including every time iOS fully restarts the app after
