@@ -1172,14 +1172,14 @@ export default function AddInvestmentScreen() {
             <View style={styles.section}>
               <Text style={labelStyle}>{t.isInCompoundLabel}</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Chip value="yes" selected={isInCompound === true} onPress={() => {
-                  setIsInCompound(true);
-                  setCity(''); setDistrict('');
-                }} label={t.yesInCompound} />
                 <Chip value="no" selected={isInCompound === false} onPress={() => {
                   setIsInCompound(false);
                   setCompoundName(''); setReCompoundId(undefined);
                 }} label={t.noStandalone} />
+                <Chip value="yes" selected={isInCompound === true} onPress={() => {
+                  setIsInCompound(true);
+                  setCity(''); setDistrict('');
+                }} label={t.yesInCompound} />
               </View>
             </View>
 
@@ -1368,11 +1368,20 @@ export default function AddInvestmentScreen() {
             </View>
 
             {/* Purchase info */}
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.developer}</Text>
-              <TextInput style={inputStyle} placeholder={t.developerPlaceholder} placeholderTextColor={colors.mutedForeground}
-                value={developer} onChangeText={setDeveloper} />
-            </View>
+            {/* Skipped when a curated compound was picked — its developer is
+                already shown and auto-filled right in the compound section
+                above, so a second editable "Developer" field here would
+                just be the exact same value shown and editable twice. Still
+                shown for standalone properties and for a compound entered
+                as a custom name (developer genuinely unknown in that case,
+                still needs asking). */}
+            {!reCompoundId && (
+              <View style={styles.section}>
+                <Text style={labelStyle}>{t.developer}</Text>
+                <TextInput style={inputStyle} placeholder={t.developerPlaceholder} placeholderTextColor={colors.mutedForeground}
+                  value={developer} onChangeText={setDeveloper} />
+              </View>
+            )}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.unitNumber}</Text>
               <TextInput style={inputStyle} placeholder={t.unitNumberPlaceholder} placeholderTextColor={colors.mutedForeground}
