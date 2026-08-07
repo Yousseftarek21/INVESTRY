@@ -596,7 +596,7 @@ export default function AnalyticsScreen() {
     };
   }, [holdings, prices, egxChangeByTicker]);
 
-  const { snapshots, hasApproximatedTypes } = usePortfolioSnapshots(sm.totalValue);
+  const { snapshots } = usePortfolioSnapshots(sm.totalValue);
   const { data: inflation } = useInflationRate();
   const { data: benchmark } = usePortfolioBenchmark();
   const { configured: targetsConfigured, targets } = usePortfolioTargets();
@@ -1016,7 +1016,6 @@ export default function AnalyticsScreen() {
                   todayValues={todaySamples}
                   liveValue={sm.totalValue}
                   allTimeValues={[sm.totalCost, sm.totalValue]}
-                  hasApproximatedTypes={hasApproximatedTypes}
                 />
               </View>
               <View style={s.periodRow}>

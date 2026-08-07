@@ -44,15 +44,6 @@ interface PerfChartProps {
    */
   allTimeValues?: [number, number];
   /**
-   * True when the portfolio holds an asset type with no real historical
-   * price feed (EGX stocks, real estate, personal assets) — those are
-   * valued at their purchase/recorded price for every backfilled date
-   * rather than a live day-by-day price. Shown as a small caption
-   * alongside real (non-fallback) multi-day data so it's clear part of
-   * the line is a real-but-flat estimate, not full daily movement.
-   */
-  hasApproximatedTypes?: boolean;
-  /**
    * Thumbnail/snapshot rendering — this chart has no crosshair, tooltip, pan,
    * or zoom behavior to begin with (it's a static SVG paint), so this mainly
    * guarantees that stays true: touches pass straight through to whatever is
@@ -64,7 +55,7 @@ interface PerfChartProps {
 }
 
 export function PerfChart({
-  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, hasApproximatedTypes, snapshotMode = true,
+  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, snapshotMode = true,
 }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
@@ -178,18 +169,6 @@ export function PerfChart({
           opacity: 0.7,
         }}>
           {t.chartAllTimeFallbackHint}
-        </Text>
-      )}
-      {!usingAllTimeFallback && period !== '1D' && hasApproximatedTypes && (
-        <Text style={{
-          textAlign: 'center',
-          color: colors.mutedForeground,
-          fontSize: 10,
-          fontFamily: 'Inter_400Regular',
-          marginTop: 4,
-          opacity: 0.6,
-        }}>
-          {t.chartApproximatedHistoryHint}
         </Text>
       )}
     </View>

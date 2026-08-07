@@ -522,7 +522,7 @@ export default function HomeScreen() {
     return rows.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
   }, [summary, prices, colors, t]);
 
-  const { snapshots, hasApproximatedTypes } = usePortfolioSnapshots(summary.totalValue);
+  const { snapshots } = usePortfolioSnapshots(summary.totalValue);
   const startOfDayValue = summary.totalValue - summary.todayGain;
   const rawTodaySamples = useIntradaySamples(summary.totalValue, startOfDayValue);
   // The stored samples' own first/last points can be up to ~10 minutes
@@ -863,7 +863,6 @@ export default function HomeScreen() {
                   todayValues={todaysChangeKnown ? todaySamples : []}
                   liveValue={summary.totalValue}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
-                  hasApproximatedTypes={hasApproximatedTypes}
                 />
               </View>
 

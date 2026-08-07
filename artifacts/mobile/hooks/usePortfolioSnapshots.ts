@@ -21,14 +21,6 @@ function snapshotKey(userId: string) {
 // Pre-namespacing key — one-time migration only, see load effect below.
 const LEGACY_KEY = '@investry_portfolio_snapshots';
 
-function backfillKey(userId: string) {
-  return `@investry_portfolio_backfill_${userId}`;
-}
-// Reconstructed history barely changes day to day (new real closes only
-// extend it by one day, and holdings edits are rare) — a 24h cache avoids
-// re-fetching this on every app open while staying reasonably current.
-const BACKFILL_CACHE_MS = 24 * 60 * 60 * 1000;
-
 // Africa/Cairo, not UTC — must match the server's cairoDateString() in
 // portfolioAlertCron.ts exactly, or the local cache's date key can be a
 // day behind the server's for the ~3 hours after every Cairo midnight
@@ -43,13 +35,17 @@ function todayStr(): string {
  * having opened the app on a particular day) and a local same-day value
  * saved as soon as it settles, so "today" shows up immediately without
  * waiting for the next cron cycle. Server rows win for any date both have.
+ *
+ * Deliberately no reconstruction of history before real tracking began —
+ * every value here is a real observed portfolio total, TradingView-sourced
+ * the same way the live 1D chart is (via the daily snapshot cron), not a
+ * third-party historical-price estimate. History simply grows longer the
+ * more the app is used.
  */
 export function usePortfolioSnapshots(currentValue: number) {
   const { getToken, isSignedIn, userId } = useAuth();
   const [localStore, setLocalStore] = useState<Record<string, number>>({});
   const [serverStore, setServerStore] = useState<Record<string, number>>({});
-  const [backfillStore, setBackfillStore] = useState<Record<string, number>>({});
-  const [hasApproximatedTypes, setHasApproximatedTypes] = useState(false);
   const latestValue = useRef(currentValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedUserRef = useRef<string | null>(null);
@@ -61,8 +57,6 @@ export function usePortfolioSnapshots(currentValue: number) {
       const prevUserId = loadedUserRef.current;
       setLocalStore({});
       setServerStore({});
-      setBackfillStore({});
-      setHasApproximatedTypes(false);
       loadedUserRef.current = null;
       if (prevUserId) AsyncStorage.removeItem(snapshotKey(prevUserId)).catch(() => null);
       return;
@@ -104,37 +98,6 @@ export function usePortfolioSnapshots(currentValue: number) {
         rows.forEach(r => { store[r.date] = r.totalValue; });
         setServerStore(store);
       } catch { /* offline — local cache still applies */ }
-
-      // Reconstructed pre-tracking history — real gold/silver historical
-      // prices plus deterministic fixed-income accrual (see
-      // portfolioHistoryBackfill.ts server-side). Cached to disk since it's
-      // moderately expensive to compute and barely changes day to day.
-      try {
-        const cachedRaw = await AsyncStorage.getItem(backfillKey(userId));
-        if (cachedRaw) {
-          const cached = JSON.parse(cachedRaw) as {
-            fetchedAt: number;
-            points: { date: string; value: number }[];
-            hasApproximatedTypes: boolean;
-          };
-          const store: Record<string, number> = {};
-          cached.points.forEach(p => { store[p.date] = p.value; });
-          setBackfillStore(store);
-          setHasApproximatedTypes(cached.hasApproximatedTypes);
-          if (Date.now() - cached.fetchedAt < BACKFILL_CACHE_MS) return;
-        }
-
-        const t = await getToken();
-        if (!t) return;
-        const res = await apiFetch('/api/portfolio/history-backfill', t);
-        if (!res.ok) return;
-        const data: { points: { date: string; value: number }[]; hasApproximatedTypes: boolean } = await res.json();
-        const store: Record<string, number> = {};
-        data.points.forEach(p => { store[p.date] = p.value; });
-        setBackfillStore(store);
-        setHasApproximatedTypes(data.hasApproximatedTypes);
-        await AsyncStorage.setItem(backfillKey(userId), JSON.stringify({ fetchedAt: Date.now(), ...data }));
-      } catch { /* offline — cached backfill (if any) still applies */ }
     })();
     // Deliberately NOT depending on `getToken` — see PriceAlertsContext.tsx
     // for why an unstable Clerk callback reference in this deps array is
@@ -174,15 +137,15 @@ export function usePortfolioSnapshots(currentValue: number) {
     };
   }, [currentValue, userId]);
 
-  // Priority low → high: backfill (reconstructed, only covers dates before
-  // real tracking began) < server (durable, but fetched once per session)
-  // < local (today's live value, kept fresh by the save effect above).
-  // Real observed data always wins over a reconstructed estimate for any
-  // date both have — backfill only ever fills the gap before day one of
-  // real tracking.
-  const snapshots: PortfolioSnapshot[] = Object.entries({ ...backfillStore, ...serverStore, ...localStore })
+  // Local wins on overlap: the server copy is only fetched once per app
+  // session (see load effect above), so its "today" row is stuck at
+  // whatever value existed at launch. Local's today keeps updating live
+  // (see save effect above), so it's always the fresher of the two for
+  // any date both sides have. Server still fills in any date local never
+  // captured (missed days, reinstalls, other devices).
+  const snapshots: PortfolioSnapshot[] = Object.entries({ ...serverStore, ...localStore })
     .map(([date, value]) => ({ date, value }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  return { snapshots, hasApproximatedTypes };
+  return { snapshots };
 }
