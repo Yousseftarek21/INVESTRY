@@ -871,10 +871,9 @@ export default function HomeScreen() {
                   todayValues={todaysChangeKnown ? todaySamples : []}
                   liveValue={summary.totalValue}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
-                  formatStartLabel={(startDate, startValue) =>
-                    hideValues
-                      ? `${t.chartFromLabel} ${startDate}`
-                      : `${t.chartFromLabel} ${startDate} · ${fmtCompact(toDisp(startValue))} ${displayCurrency}`
+                  interactive
+                  formatScrubValue={v =>
+                    hideValues ? '••••' : `${fmtCompact(toDisp(v))} ${displayCurrency}`
                   }
                 />
               </View>

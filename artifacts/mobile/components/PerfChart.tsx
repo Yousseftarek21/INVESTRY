@@ -1,6 +1,6 @@
 import React from 'react';
-import { Text, View } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop, Circle } from 'react-native-svg';
+import { PanResponder, PanResponderInstance, Text, View } from 'react-native';
+import Svg, { Path, Defs, LinearGradient, Stop, Circle, Line } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -44,12 +44,17 @@ interface PerfChartProps {
    */
   allTimeValues?: [number, number];
   /**
-   * Renders a short line under the chart naming the real date and value the
-   * line starts from, so the drawn curve can be checked against actual
-   * recorded data rather than taken on faith. Formatting is supplied by the
-   * caller (it owns currency/locale/privacy-masking rules).
+   * Lets the user drag along the curve to read the real value at each
+   * recorded point — the honest answer to "is this line actually right?",
+   * since every position maps to a stored value rather than a smoothed
+   * guess. Requires formatScrubValue to render the readout.
    */
-  formatStartLabel?: (startDate: string, startValue: number) => string;
+  interactive?: boolean;
+  /**
+   * Formats a scrubbed value for display. Supplied by the caller because it
+   * owns currency conversion, locale, and the hide-values privacy toggle.
+   */
+  formatScrubValue?: (value: number) => string;
   /**
    * Thumbnail/snapshot rendering — this chart has no crosshair, tooltip, pan,
    * or zoom behavior to begin with (it's a static SVG paint), so this mainly
@@ -62,10 +67,55 @@ interface PerfChartProps {
 }
 
 export function PerfChart({
-  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, formatStartLabel, snapshotMode = true,
+  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues,
+  interactive = false, formatScrubValue, snapshotMode = true,
 }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
+
+  // ── Scrub-to-read state ──────────────────────────────────────────────────
+  // Declared before any early return so hook order never varies. The gesture
+  // handler reads the current points through a ref rather than closing over
+  // them, so it can be created once and still see fresh data every render.
+  const [activeIdx, setActiveIdx] = React.useState<number | null>(null);
+  const ptsRef = React.useRef<ChartPt[]>([]);
+  const interactiveRef = React.useRef(interactive);
+  interactiveRef.current = interactive;
+
+  const pickNearest = React.useCallback((x: number) => {
+    const pts = ptsRef.current;
+    if (!pts.length) return;
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const dist = Math.abs(pts[i].x - x);
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    }
+    setActiveIdx(best);
+  }, []);
+
+  const panRef = React.useRef<PanResponderInstance | null>(null);
+  if (!panRef.current) {
+    panRef.current = PanResponder.create({
+      onStartShouldSetPanResponder: () => interactiveRef.current,
+      // Horizontal-dominant only, so a vertical swipe still scrolls the page
+      // this chart is embedded in rather than being captured as a scrub.
+      onMoveShouldSetPanResponder: (_e, g) =>
+        interactiveRef.current && Math.abs(g.dx) > Math.abs(g.dy),
+      // Once scrubbing, don't surrender the gesture to the parent ScrollView
+      // mid-drag — that would strand the readout under the user's finger.
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: e => pickNearest(e.nativeEvent.locationX),
+      onPanResponderMove: e => pickNearest(e.nativeEvent.locationX),
+      onPanResponderRelease: () => setActiveIdx(null),
+      onPanResponderTerminate: () => setActiveIdx(null),
+    });
+  }
+
+  // Switching period rebuilds the series, so a held index would point at an
+  // unrelated value (or past the end of a shorter one).
+  React.useEffect(() => { setActiveIdx(null); }, [period]);
+
   if (width < 10) return <View style={{ height }} />;
 
   // ── Resolve this period's real data into a common {time, value}[] shape ──
@@ -170,16 +220,24 @@ export function PerfChart({
   const lastPt = pts[pts.length - 1];
   const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
 
-  // Only when the first point carries a real calendar date — 1D's points are
-  // intraday sample indices, and the fallback/cost anchors use synthetic
-  // 'cost'/'current' labels, none of which name a verifiable start date.
-  const firstTime = data[0].time;
-  const startLabel = formatStartLabel && typeof firstTime === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(firstTime)
-    ? formatStartLabel(firstTime, data[0].value)
+  ptsRef.current = pts;
+
+  const activePt = activeIdx != null && activeIdx < pts.length ? pts[activeIdx] : null;
+  // Dated points (multi-day snapshots) can name their day; 1D's are intraday
+  // sample indices and the cost anchor is synthetic, so those show the value
+  // alone rather than inventing a timestamp for them.
+  const activeDate = activePt && typeof activePt.time === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(activePt.time)
+    ? activePt.time
+    : null;
+  const scrubText = activePt && formatScrubValue
+    ? `${activeDate ? `${activeDate} · ` : ''}${formatScrubValue(activePt.value)}`
     : null;
 
   return (
-    <View pointerEvents={snapshotMode ? 'none' : 'auto'}>
+    <View
+      pointerEvents={interactive ? 'auto' : snapshotMode ? 'none' : 'auto'}
+      {...(interactive ? panRef.current!.panHandlers : {})}
+    >
       <Svg width={width} height={height}>
         <Defs>
           <LinearGradient id="pfc" x1="0" y1="0" x2="0" y2="1">
@@ -191,9 +249,34 @@ export function PerfChart({
         <Path d={linePath} fill="none" stroke={color}
           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={firstPt.x} cy={firstPt.y} r="3" fill={color} fillOpacity="0.4" />
-        <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
-        <Circle cx={lastPt.x} cy={lastPt.y} r="9" fill={color} fillOpacity="0.15" />
+        {activePt ? (
+          <>
+            <Line x1={activePt.x} y1={0} x2={activePt.x} y2={height}
+              stroke={colors.mutedForeground} strokeWidth="1" opacity={0.45} />
+            <Circle cx={activePt.x} cy={activePt.y} r="4.5" fill={color} />
+            <Circle cx={activePt.x} cy={activePt.y} r="10" fill={color} fillOpacity="0.18" />
+          </>
+        ) : (
+          <>
+            <Circle cx={lastPt.x} cy={lastPt.y} r="4" fill={color} />
+            <Circle cx={lastPt.x} cy={lastPt.y} r="9" fill={color} fillOpacity="0.15" />
+          </>
+        )}
       </Svg>
+      {scrubText && (
+        <Text
+          numberOfLines={1}
+          style={{
+            textAlign: 'center',
+            color: colors.text,
+            fontSize: 11,
+            fontFamily: 'Inter_600SemiBold',
+            marginTop: 4,
+          }}
+        >
+          {scrubText}
+        </Text>
+      )}
       {usingAllTimeFallback && (
         <Text style={{
           textAlign: 'center',
@@ -204,18 +287,6 @@ export function PerfChart({
           opacity: 0.7,
         }}>
           {t.chartAllTimeFallbackHint}
-        </Text>
-      )}
-      {startLabel && (
-        <Text style={{
-          textAlign: 'center',
-          color: colors.mutedForeground,
-          fontSize: 10,
-          fontFamily: 'Inter_400Regular',
-          marginTop: 4,
-          opacity: 0.6,
-        }}>
-          {startLabel}
         </Text>
       )}
     </View>
