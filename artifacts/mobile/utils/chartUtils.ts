@@ -68,9 +68,14 @@ export function getHistoryCoverage(snapshots: PortfolioSnapshotItem[]): HistoryC
  */
 export function isPeriodAvailable(period: ChartPeriod, coverage: HistoryCoverage): boolean {
   if (period === '1D' || period === 'ALL') return true;
-  // One day of slack: a window is "covered" when tracking reaches its start,
-  // so exactly 30 tracked days legitimately fills the 30-day 1M window.
-  return coverage.trackedDays + 1 >= PERIOD_DAYS[period];
+  // Most of the window, not all of it. Recording starts whenever tracking was
+  // switched on, which is usually a little after signup — demanding a full
+  // 30 days would lock 1M behind a few missing days even though ~25 days of
+  // real data is a genuine, useful month view. The chart labels the real
+  // start date either way, so partial coverage is stated, not hidden. Still
+  // far too strict for a window nothing reaches (3M/1Y on a month of data),
+  // which is the duplicate-curve case this exists to prevent.
+  return coverage.trackedDays >= PERIOD_DAYS[period] * 0.7;
 }
 
 /**
