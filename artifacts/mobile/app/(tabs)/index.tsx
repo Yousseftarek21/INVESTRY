@@ -401,6 +401,7 @@ export default function HomeScreen() {
   }, [refetch]);
 
   const [timeFilter, setTimeFilter] = useState<ChartPeriod>('1D');
+  const [chartScrubbing, setChartScrubbing] = useState(false);
   const [sparkWidth, setSparkWidth] = useState(0);
   const [showTodayBreakdown, setShowTodayBreakdown] = useState(false);
 
@@ -649,6 +650,10 @@ export default function HomeScreen() {
       style={[styles.scrollTransparent, { flex: 1 }]}
       contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: botPad + 100 }]}
       showsVerticalScrollIndicator={false}
+      // Frozen while dragging along the performance chart, otherwise the
+      // ScrollView wins the responder negotiation and the page scrolls away
+      // under the finger instead of the chart tracking it.
+      scrollEnabled={!chartScrubbing}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} colors={[colors.primary]} />}
     >
       {/* ── Portfolio label ─────────────────────────────────────── */}
@@ -875,6 +880,7 @@ export default function HomeScreen() {
                   formatScrubValue={v =>
                     hideValues ? '••••' : `${fmtCompact(toDisp(v))} ${displayCurrency}`
                   }
+                  onScrubChange={setChartScrubbing}
                 />
               </View>
 

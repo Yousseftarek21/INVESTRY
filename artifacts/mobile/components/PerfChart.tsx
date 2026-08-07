@@ -56,6 +56,13 @@ interface PerfChartProps {
    */
   formatScrubValue?: (value: number) => string;
   /**
+   * Fires as scrubbing starts/stops so the embedding screen can freeze its
+   * ScrollView. Without this the ScrollView wins the responder negotiation
+   * mid-drag and the page scrolls out from under the finger instead of the
+   * chart tracking it.
+   */
+  onScrubChange?: (scrubbing: boolean) => void;
+  /**
    * Thumbnail/snapshot rendering — this chart has no crosshair, tooltip, pan,
    * or zoom behavior to begin with (it's a static SVG paint), so this mainly
    * guarantees that stays true: touches pass straight through to whatever is
@@ -68,7 +75,7 @@ interface PerfChartProps {
 
 export function PerfChart({
   period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues,
-  interactive = false, formatScrubValue, snapshotMode = true,
+  interactive = false, formatScrubValue, onScrubChange, snapshotMode = true,
 }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
@@ -81,6 +88,8 @@ export function PerfChart({
   const ptsRef = React.useRef<ChartPt[]>([]);
   const interactiveRef = React.useRef(interactive);
   interactiveRef.current = interactive;
+  const onScrubChangeRef = React.useRef(onScrubChange);
+  onScrubChangeRef.current = onScrubChange;
 
   const pickNearest = React.useCallback((x: number) => {
     const pts = ptsRef.current;
@@ -94,21 +103,31 @@ export function PerfChart({
     setActiveIdx(best);
   }, []);
 
+  const endScrub = React.useCallback(() => {
+    setActiveIdx(null);
+    onScrubChangeRef.current?.(false);
+  }, []);
+
   const panRef = React.useRef<PanResponderInstance | null>(null);
   if (!panRef.current) {
     panRef.current = PanResponder.create({
+      // Claim on touch-down, and claim it during the capture phase too — a
+      // parent ScrollView otherwise wins the negotiation on the first move
+      // and scrolls the page instead of letting the chart track the finger.
       onStartShouldSetPanResponder: () => interactiveRef.current,
-      // Horizontal-dominant only, so a vertical swipe still scrolls the page
-      // this chart is embedded in rather than being captured as a scrub.
-      onMoveShouldSetPanResponder: (_e, g) =>
-        interactiveRef.current && Math.abs(g.dx) > Math.abs(g.dy),
+      onStartShouldSetPanResponderCapture: () => interactiveRef.current,
+      onMoveShouldSetPanResponder: () => interactiveRef.current,
+      onMoveShouldSetPanResponderCapture: () => interactiveRef.current,
       // Once scrubbing, don't surrender the gesture to the parent ScrollView
       // mid-drag — that would strand the readout under the user's finger.
       onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: e => pickNearest(e.nativeEvent.locationX),
+      onPanResponderGrant: e => {
+        onScrubChangeRef.current?.(true);
+        pickNearest(e.nativeEvent.locationX);
+      },
       onPanResponderMove: e => pickNearest(e.nativeEvent.locationX),
-      onPanResponderRelease: () => setActiveIdx(null),
-      onPanResponderTerminate: () => setActiveIdx(null),
+      onPanResponderRelease: () => endScrub(),
+      onPanResponderTerminate: () => endScrub(),
     });
   }
 
@@ -238,6 +257,24 @@ export function PerfChart({
       pointerEvents={interactive ? 'auto' : snapshotMode ? 'none' : 'auto'}
       {...(interactive ? panRef.current!.panHandlers : {})}
     >
+      {/* Above the chart, not below it — the finger doing the scrubbing sits
+          on the chart itself, so a readout underneath is hidden by the hand.
+          Height is reserved even when idle so revealing it never shifts the
+          layout mid-drag. */}
+      {interactive && formatScrubValue && (
+        <Text
+          numberOfLines={1}
+          style={{
+            textAlign: 'center',
+            color: scrubText ? colors.text : 'transparent',
+            fontSize: 11,
+            fontFamily: 'Inter_600SemiBold',
+            marginBottom: 2,
+          }}
+        >
+          {scrubText ?? ' '}
+        </Text>
+      )}
       <Svg width={width} height={height}>
         <Defs>
           <LinearGradient id="pfc" x1="0" y1="0" x2="0" y2="1">
@@ -263,20 +300,6 @@ export function PerfChart({
           </>
         )}
       </Svg>
-      {scrubText && (
-        <Text
-          numberOfLines={1}
-          style={{
-            textAlign: 'center',
-            color: colors.text,
-            fontSize: 11,
-            fontFamily: 'Inter_600SemiBold',
-            marginTop: 4,
-          }}
-        >
-          {scrubText}
-        </Text>
-      )}
       {usingAllTimeFallback && (
         <Text style={{
           textAlign: 'center',
