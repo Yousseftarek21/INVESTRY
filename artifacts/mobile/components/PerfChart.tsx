@@ -5,7 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import {
-  buildSmoothPath, snapshotsToValues, sanitizeSeries, PERIOD_DAYS,
+  buildSmoothPath, snapshotsToValues, sanitizeSeries,
   ChartPt, ChartDataPoint, ChartPeriod, PortfolioSnapshotItem,
 } from '@/utils/chartUtils';
 
@@ -44,15 +44,6 @@ interface PerfChartProps {
    */
   allTimeValues?: [number, number];
   /**
-   * Earliest real holding purchase date ("YYYY-MM-DD"). When the purchase
-   * falls inside the period being viewed, the chart starts at what was
-   * actually paid (allTimeValues[0]) rather than at whatever value snapshot
-   * tracking happened to begin at — so e.g. 1M genuinely reads "since a
-   * month ago", and a period covering the purchase can never disagree in
-   * direction with Total P/L. Omitted/absent simply skips the anchor.
-   */
-  costBasisDate?: string;
-  /**
    * Thumbnail/snapshot rendering — this chart has no crosshair, tooltip, pan,
    * or zoom behavior to begin with (it's a static SVG paint), so this mainly
    * guarantees that stays true: touches pass straight through to whatever is
@@ -64,7 +55,7 @@ interface PerfChartProps {
 }
 
 export function PerfChart({
-  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, costBasisDate, snapshotMode = true,
+  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, snapshotMode = true,
 }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
@@ -82,30 +73,16 @@ export function PerfChart({
     const snap = snapshotsToValues(snapshots, period, liveValue);
     periodPoints = snap ? snap.map(s => ({ time: s.date, value: s.value })) : null;
 
-    // Anchor the window's start to what was actually paid whenever the
-    // purchase falls inside it — the real starting value for that span.
-    // Without this a window starts at whatever value snapshot tracking
-    // happened to begin at, which can climb (and render green) even while
-    // the account is down since purchase, contradicting Total P/L.
-    //
-    //  - ALL always anchors: its window is the whole history by definition,
-    //    so it always contains the purchase, and its start/end therefore
-    //    match Total P/L's exactly — same sign, always.
-    //  - 1W/1M/3M/1Y anchor only when the purchase genuinely happened
-    //    within that many days. Buy 2 months ago and 3M/1Y start at cost
-    //    while 1W/1M start at real tracked values — so each period reads as
-    //    the true change over its own span, and they stop being identical
-    //    lines once the windows actually differ.
-    if (periodPoints) {
+    // ALL means "since you bought", so it starts at what you actually paid
+    // (real cost basis) and runs through every tracked day to now. Without
+    // this anchor it would start wherever snapshot tracking happened to
+    // begin — which can rise even while the account is down since purchase,
+    // rendering a green climbing line directly contradicting Total P/L.
+    // Anchoring here makes ALL agree with Total P/L by construction: same
+    // start (cost), same end (current value), so same sign, always.
+    if (period === 'ALL' && periodPoints) {
       const cost = allTimeValues ? sanitizeSeries([allTimeValues[0]])[0] : undefined;
-      const purchaseMs = costBasisDate ? new Date(costBasisDate).getTime() : NaN;
-      const windowStartMs = period === 'ALL'
-        ? -Infinity
-        : Date.now() - PERIOD_DAYS[period] * 86_400_000;
-      const purchaseInWindow = period === 'ALL'
-        || (Number.isFinite(purchaseMs) && purchaseMs >= windowStartMs);
-
-      if (typeof cost === 'number' && cost > 0 && purchaseInWindow) {
+      if (typeof cost === 'number' && cost > 0) {
         periodPoints = [{ time: 'cost', value: cost }, ...periodPoints];
       }
     }
@@ -151,12 +128,14 @@ export function PerfChart({
   const data = dataPoints;
   // Color always matches the direction the line itself actually draws
   // (final value vs initial value of what's on screen) — a line that rises
-  // must be green and a line that falls must be red, full stop. This can
-  // legitimately differ from the portfolio's all-time gainPct shown
-  // elsewhere (e.g. Total P/L): they answer different questions. 'ALL'
-  // shows real movement since Investry started tracking, not since the
-  // holding was purchased — see the caption below for exactly that
-  // distinction, rather than forcing the color to contradict the line.
+  // must be green and a line that falls must be red, full stop.
+  //
+  // 1W/1M/3M/1Y are rolling windows: "value now vs value N days ago". They
+  // can legitimately be green while Total P/L is red — recent gains don't
+  // undo an older loss, and anchoring them to cost instead would turn a
+  // genuine one-month gain into a red line, which is simply wrong. Only
+  // ALL is anchored to cost (above), because only ALL means "since you
+  // bought" — the same span Total P/L measures, hence always the same sign.
   const initialValue = data[0].value;
   const finalValue = data[data.length - 1].value;
   const color = finalValue >= initialValue ? colors.green : colors.red;

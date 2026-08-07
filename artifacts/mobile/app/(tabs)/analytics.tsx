@@ -597,15 +597,6 @@ export default function AnalyticsScreen() {
   }, [holdings, prices, egxChangeByTicker]);
 
   const { snapshots } = usePortfolioSnapshots(sm.totalValue);
-  // Earliest real purchase across all holdings — lets the chart start a
-  // period at the actual cost basis whenever the purchase falls inside it.
-  const earliestPurchaseDate = useMemo(() => {
-    const dates = holdings
-      .map(h => (h as { purchaseDate?: string }).purchaseDate)
-      .filter((d): d is string => !!d && Number.isFinite(new Date(d).getTime()))
-      .sort();
-    return dates[0];
-  }, [holdings]);
   const { data: inflation } = useInflationRate();
   const { data: benchmark } = usePortfolioBenchmark();
   const { configured: targetsConfigured, targets } = usePortfolioTargets();
@@ -1025,7 +1016,6 @@ export default function AnalyticsScreen() {
                   todayValues={todaySamples}
                   liveValue={sm.totalValue}
                   allTimeValues={[sm.totalCost, sm.totalValue]}
-                  costBasisDate={earliestPurchaseDate}
                 />
               </View>
               <View style={s.periodRow}>

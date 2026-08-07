@@ -523,15 +523,6 @@ export default function HomeScreen() {
   }, [summary, prices, colors, t]);
 
   const { snapshots } = usePortfolioSnapshots(summary.totalValue);
-  // Earliest real purchase across all holdings — lets the chart start a
-  // period at the actual cost basis whenever the purchase falls inside it.
-  const earliestPurchaseDate = React.useMemo(() => {
-    const dates = holdings
-      .map(h => (h as { purchaseDate?: string }).purchaseDate)
-      .filter((d): d is string => !!d && Number.isFinite(new Date(d).getTime()))
-      .sort();
-    return dates[0];
-  }, [holdings]);
   const startOfDayValue = summary.totalValue - summary.todayGain;
   const rawTodaySamples = useIntradaySamples(summary.totalValue, startOfDayValue);
   // The stored samples' own first/last points can be up to ~10 minutes
@@ -872,7 +863,6 @@ export default function HomeScreen() {
                   todayValues={todaysChangeKnown ? todaySamples : []}
                   liveValue={summary.totalValue}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
-                  costBasisDate={earliestPurchaseDate}
                 />
               </View>
 
