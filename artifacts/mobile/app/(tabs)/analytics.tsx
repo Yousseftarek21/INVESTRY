@@ -1014,6 +1014,7 @@ export default function AnalyticsScreen() {
                   height={110}
                   snapshots={snapshots}
                   todayValues={todaySamples}
+                  liveValue={sm.totalValue}
                   allTimeValues={[sm.totalCost, sm.totalValue]}
                 />
               </View>

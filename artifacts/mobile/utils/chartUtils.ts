@@ -48,22 +48,47 @@ const MIN_SPAN_FRACTION = 0.6;
  */
 const ALL_TIME_MIN_DAYS = 270;
 
+// Africa/Cairo, not UTC — must match the server's cairoDateString() and the
+// two snapshot hooks (usePortfolioSnapshots, useIntradaySamples), or a
+// UTC-based cutoff/today comparison can be a day off for ~3h after every
+// Cairo midnight (Egypt is UTC+3).
+function cairoDateStr(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
+}
+
 /**
  * Converts stored portfolio snapshots into chart points for the given
  * period. Returns null when there isn't enough real history to draw a
  * meaningful line. Keeps each point's real calendar date (rather than
  * collapsing to bare numbers) so the chart can carry genuine timestamps.
+ *
+ * liveValue, when given, overlays today's entry with the current
+ * real-time portfolio total instead of whatever was last persisted to
+ * local/server storage — persistence is debounced (see
+ * usePortfolioSnapshots), so without this overlay the last point can lag
+ * several seconds to minutes behind what the 1D chart shows instantly.
  */
 export function snapshotsToValues(
   snapshots: PortfolioSnapshotItem[],
   period: ChartPeriod,
+  liveValue?: number,
 ): PortfolioSnapshotItem[] | null {
   if (period === '1D') return null; // no intraday data
   const days = PERIOD_DAYS[period];
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
-  const filtered = snapshots.filter(s => s.date >= cutoffStr);
+  const cutoffStr = cairoDateStr(cutoff);
+  let filtered = snapshots.filter(s => s.date >= cutoffStr);
+
+  if (typeof liveValue === 'number' && Number.isFinite(liveValue) && liveValue > 0) {
+    const today = cairoDateStr(new Date());
+    const idx = filtered.findIndex(s => s.date === today);
+    const todayPoint = { date: today, value: liveValue };
+    filtered = idx >= 0
+      ? [...filtered.slice(0, idx), todayPoint, ...filtered.slice(idx + 1)]
+      : [...filtered, todayPoint];
+  }
+
   if (filtered.length < MIN_REAL_PTS) return null;
 
   const spanDays = (new Date(filtered[filtered.length - 1].date).getTime() - new Date(filtered[0].date).getTime()) / 86400000;

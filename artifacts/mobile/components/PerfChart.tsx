@@ -29,6 +29,13 @@ interface PerfChartProps {
    */
   todayValues?: number[];
   /**
+   * Current real-time total portfolio value — overlays today's entry in
+   * `snapshots` for every non-1D period so the last point tracks live
+   * movement immediately, the same way `todayValues` does for 1D, instead
+   * of waiting on the debounced snapshot save to catch up.
+   */
+  liveValue?: number;
+  /**
    * Real [total cost basis, current total value] pair — used as the fallback
    * for periods longer than 1D when there isn't yet enough real snapshot
    * history. Reflects genuine all-time direction (e.g. a portfolio down 21%
@@ -48,7 +55,7 @@ interface PerfChartProps {
 }
 
 export function PerfChart({
-  period, width, height = 110, snapshots, todayValues, allTimeValues, snapshotMode = true,
+  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, snapshotMode = true,
 }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
@@ -63,7 +70,7 @@ export function PerfChart({
     const sanitized = todayValues ? sanitizeSeries(todayValues) : [];
     periodPoints = sanitized.length >= 2 ? sanitized.map((v, i) => ({ time: i, value: v })) : null;
   } else if (snapshots) {
-    const snap = snapshotsToValues(snapshots, period);
+    const snap = snapshotsToValues(snapshots, period, liveValue);
     periodPoints = snap ? snap.map(s => ({ time: s.date, value: s.value })) : null;
   }
 

@@ -861,6 +861,7 @@ export default function HomeScreen() {
                   height={78}
                   snapshots={snapshots}
                   todayValues={todaysChangeKnown ? todaySamples : []}
+                  liveValue={summary.totalValue}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
                 />
               </View>
