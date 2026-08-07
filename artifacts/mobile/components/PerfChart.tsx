@@ -115,9 +115,18 @@ export function PerfChart({
   // Color reflects whether THIS period's line actually went up or down
   // (final value vs initial value) — not the portfolio's all-time gainPct,
   // which caused a genuinely-up-today line to render red because the
-  // all-time return happened to be negative.
-  const initialValue = data[0].value;
-  const finalValue = data[data.length - 1].value;
+  // all-time return happened to be negative. Exception: 'ALL' specifically
+  // anchors to the true all-time direction (cost vs current) instead, since
+  // the label implies whole history — without this, 'ALL' could render
+  // green while Total P/L shows a loss whenever real tracked history
+  // (which may start well after the actual purchase date) happens to be
+  // trending up even though the account is down overall since purchase.
+  // The fallback path (usingAllTimeFallback) already plots cost-vs-current
+  // directly, so this only matters when 'ALL' has real snapshot data.
+  const sanitizedAllTimeForColor = allTimeValues ? sanitizeSeries(allTimeValues) : [];
+  const useAllTimeColor = period === 'ALL' && !usingAllTimeFallback && sanitizedAllTimeForColor.length === 2;
+  const initialValue = useAllTimeColor ? sanitizedAllTimeForColor[0] : data[0].value;
+  const finalValue = useAllTimeColor ? sanitizedAllTimeForColor[1] : data[data.length - 1].value;
   const color = finalValue >= initialValue ? colors.green : colors.red;
 
   const allValues = data.map(p => p.value);
