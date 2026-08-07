@@ -112,21 +112,16 @@ export function PerfChart({
   }
 
   const data = dataPoints;
-  // Color reflects whether THIS period's line actually went up or down
-  // (final value vs initial value) — not the portfolio's all-time gainPct,
-  // which caused a genuinely-up-today line to render red because the
-  // all-time return happened to be negative. Exception: 'ALL' specifically
-  // anchors to the true all-time direction (cost vs current) instead, since
-  // the label implies whole history — without this, 'ALL' could render
-  // green while Total P/L shows a loss whenever real tracked history
-  // (which may start well after the actual purchase date) happens to be
-  // trending up even though the account is down overall since purchase.
-  // The fallback path (usingAllTimeFallback) already plots cost-vs-current
-  // directly, so this only matters when 'ALL' has real snapshot data.
-  const sanitizedAllTimeForColor = allTimeValues ? sanitizeSeries(allTimeValues) : [];
-  const useAllTimeColor = period === 'ALL' && !usingAllTimeFallback && sanitizedAllTimeForColor.length === 2;
-  const initialValue = useAllTimeColor ? sanitizedAllTimeForColor[0] : data[0].value;
-  const finalValue = useAllTimeColor ? sanitizedAllTimeForColor[1] : data[data.length - 1].value;
+  // Color always matches the direction the line itself actually draws
+  // (final value vs initial value of what's on screen) — a line that rises
+  // must be green and a line that falls must be red, full stop. This can
+  // legitimately differ from the portfolio's all-time gainPct shown
+  // elsewhere (e.g. Total P/L): they answer different questions. 'ALL'
+  // shows real movement since Investry started tracking, not since the
+  // holding was purchased — see the caption below for exactly that
+  // distinction, rather than forcing the color to contradict the line.
+  const initialValue = data[0].value;
+  const finalValue = data[data.length - 1].value;
   const color = finalValue >= initialValue ? colors.green : colors.red;
 
   const allValues = data.map(p => p.value);
@@ -178,6 +173,18 @@ export function PerfChart({
           opacity: 0.7,
         }}>
           {t.chartAllTimeFallbackHint}
+        </Text>
+      )}
+      {!usingAllTimeFallback && period === 'ALL' && (
+        <Text style={{
+          textAlign: 'center',
+          color: colors.mutedForeground,
+          fontSize: 10,
+          fontFamily: 'Inter_400Regular',
+          marginTop: 4,
+          opacity: 0.6,
+        }}>
+          {t.chartAllTrackedHint}
         </Text>
       )}
     </View>
