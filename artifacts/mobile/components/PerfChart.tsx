@@ -5,7 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import {
-  buildSmoothPath, snapshotsToValues, sanitizeSeries, PERIOD_DAYS,
+  buildSmoothPath, snapshotsToValues, sanitizeSeries,
   ChartPt, ChartDataPoint, ChartPeriod, PortfolioSnapshotItem,
 } from '@/utils/chartUtils';
 
@@ -72,6 +72,20 @@ export function PerfChart({
   } else if (snapshots) {
     const snap = snapshotsToValues(snapshots, period, liveValue);
     periodPoints = snap ? snap.map(s => ({ time: s.date, value: s.value })) : null;
+
+    // ALL means "since you bought", so it starts at what you actually paid
+    // (real cost basis) and runs through every tracked day to now. Without
+    // this anchor it would start wherever snapshot tracking happened to
+    // begin — which can rise even while the account is down since purchase,
+    // rendering a green climbing line directly contradicting Total P/L.
+    // Anchoring here makes ALL agree with Total P/L by construction: same
+    // start (cost), same end (current value), so same sign, always.
+    if (period === 'ALL' && periodPoints) {
+      const cost = allTimeValues ? sanitizeSeries([allTimeValues[0]])[0] : undefined;
+      if (typeof cost === 'number' && cost > 0) {
+        periodPoints = [{ time: 'cost', value: cost }, ...periodPoints];
+      }
+    }
   }
 
   // Longer periods need multiple days of real history, which a brand-new
@@ -135,52 +149,17 @@ export function PerfChart({
 
   const yFor = (v: number) => pad + ((maxV - v) / range) * (height - pad * 2);
 
-  // 1W/1M/3M/1Y have a fixed nominal length — position real points by their
-  // actual date within that window (not evenly by index) so a period with
-  // less real history than its full window genuinely occupies less of the
-  // chart's width, rather than being stretched to fill it and silently
-  // implying more coverage than is real. 1D (index = intraday sample order,
-  // no calendar date) and ALL/fallback (no fixed window to fall short of,
-  // or synthetic 'cost'/'current' labels) keep even index spacing.
-  const hasFixedWindow = period !== '1D' && period !== 'ALL' && !usingAllTimeFallback;
-  let pts: ChartPt[];
-  let leadingGapPath: string | null = null;
-
-  if (hasFixedWindow) {
-    const periodMs = PERIOD_DAYS[period] * 86_400_000;
-    const nowMs = Date.now();
-    const windowStartMs = nowMs - periodMs;
-    const xForDate = (dateStr: string) => {
-      const frac = Math.max(0, Math.min(1, (new Date(dateStr).getTime() - windowStartMs) / periodMs));
-      return frac * width;
-    };
-    pts = data.map(p => ({
-      x: xForDate(String(p.time)),
-      y: yFor(p.value),
-      value: p.value,
-      time: p.time,
-    }));
-
-    // Real tracking started after this window's nominal start — draw a
-    // flat dashed placeholder for the untracked lead-in instead of either
-    // stretching real data to cover it or showing nothing.
-    const firstRealX = pts[0].x;
-    if (firstRealX > 2) {
-      leadingGapPath = `M 0,${pts[0].y.toFixed(2)} L ${firstRealX.toFixed(2)},${pts[0].y.toFixed(2)}`;
-    }
-  } else {
-    pts = data.map((p, i) => ({
-      x: (i / (data.length - 1)) * width,
-      y: yFor(p.value),
-      value: p.value,
-      time: p.time,
-    }));
-  }
+  const pts: ChartPt[] = data.map((p, i) => ({
+    x: (i / (data.length - 1)) * width,
+    y: yFor(p.value),
+    value: p.value,
+    time: p.time,
+  }));
 
   const linePath = buildSmoothPath(pts);
   const firstPt = pts[0];
   const lastPt = pts[pts.length - 1];
-  const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L ${firstPt.x.toFixed(2)},${height} Z`;
+  const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
 
   return (
     <View pointerEvents={snapshotMode ? 'none' : 'auto'}>
@@ -192,10 +171,6 @@ export function PerfChart({
           </LinearGradient>
         </Defs>
         <Path d={fillPath} fill="url(#pfc)" />
-        {leadingGapPath && (
-          <Path d={leadingGapPath} fill="none" stroke={colors.mutedForeground}
-            strokeWidth="1.5" strokeDasharray="4,4" opacity={0.4} />
-        )}
         <Path d={linePath} fill="none" stroke={color}
           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={firstPt.x} cy={firstPt.y} r="3" fill={color} fillOpacity="0.4" />
@@ -212,30 +187,6 @@ export function PerfChart({
           opacity: 0.7,
         }}>
           {t.chartAllTimeFallbackHint}
-        </Text>
-      )}
-      {!usingAllTimeFallback && period === 'ALL' && (
-        <Text style={{
-          textAlign: 'center',
-          color: colors.mutedForeground,
-          fontSize: 10,
-          fontFamily: 'Inter_400Regular',
-          marginTop: 4,
-          opacity: 0.6,
-        }}>
-          {t.chartAllTrackedHint}
-        </Text>
-      )}
-      {leadingGapPath && (
-        <Text style={{
-          textAlign: 'center',
-          color: colors.mutedForeground,
-          fontSize: 10,
-          fontFamily: 'Inter_400Regular',
-          marginTop: 4,
-          opacity: 0.6,
-        }}>
-          {t.chartPartialWindowHint}
         </Text>
       )}
     </View>

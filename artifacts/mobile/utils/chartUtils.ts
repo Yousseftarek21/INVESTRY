@@ -19,7 +19,7 @@ export function sanitizeSeries(values: (number | null | undefined)[]): number[] 
 }
 
 /** Days of history each period requires to use real snapshot data. */
-export const PERIOD_DAYS: Record<ChartPeriod, number> = {
+const PERIOD_DAYS: Record<ChartPeriod, number> = {
   '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365, 'ALL': 9999,
 };
 

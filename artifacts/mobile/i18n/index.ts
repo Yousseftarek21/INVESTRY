@@ -24,8 +24,6 @@ const en = {
   chartBuildingHint: 'Open the app daily to build your portfolio chart',
   chartTodayFallbackHint: "Showing today's data — full history builds as you use the app",
   chartAllTimeFallbackHint: 'Showing all-time performance — full history builds as you use the app',
-  chartAllTrackedHint: 'Showing tracked history since you started using Investry — may differ from Total P/L, which reflects your original purchase price',
-  chartPartialWindowHint: 'Dashed = before tracking began — the solid line is real data',
 
   // Markets
   currency: 'CURRENCY',
@@ -1213,8 +1211,6 @@ const ar: typeof en = {
   chartBuildingHint: 'افتح التطبيق يومياً لبناء مخطط محفظتك',
   chartTodayFallbackHint: 'عرض بيانات اليوم — السجل الكامل يُبنى مع استخدامك للتطبيق',
   chartAllTimeFallbackHint: 'عرض الأداء منذ البداية — السجل الكامل يُبنى مع استخدامك للتطبيق',
-  chartAllTrackedHint: 'عرض السجل المتتبع منذ بدء استخدامك لـ Investry — قد يختلف عن إجمالي الربح/الخسارة الذي يعكس سعر الشراء الأصلي',
-  chartPartialWindowHint: 'المتقطع = قبل بدء التتبع — الخط المتصل هو بيانات حقيقية',
 
   // Markets
   currency: 'العملات',
