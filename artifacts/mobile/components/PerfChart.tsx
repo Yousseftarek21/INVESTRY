@@ -44,6 +44,15 @@ interface PerfChartProps {
    */
   allTimeValues?: [number, number];
   /**
+   * True when the portfolio holds an asset type with no real historical
+   * price feed (EGX stocks, real estate, personal assets) — those are
+   * valued at their purchase/recorded price for every backfilled date
+   * rather than a live day-by-day price. Shown as a small caption
+   * alongside real (non-fallback) multi-day data so it's clear part of
+   * the line is a real-but-flat estimate, not full daily movement.
+   */
+  hasApproximatedTypes?: boolean;
+  /**
    * Thumbnail/snapshot rendering — this chart has no crosshair, tooltip, pan,
    * or zoom behavior to begin with (it's a static SVG paint), so this mainly
    * guarantees that stays true: touches pass straight through to whatever is
@@ -55,7 +64,7 @@ interface PerfChartProps {
 }
 
 export function PerfChart({
-  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, snapshotMode = true,
+  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, hasApproximatedTypes, snapshotMode = true,
 }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
@@ -120,18 +129,7 @@ export function PerfChart({
   const finalValue = data[data.length - 1].value;
   const color = finalValue >= initialValue ? colors.green : colors.red;
 
-  // Optional, faint "simulated trend" reference: a straight line from your
-  // cost basis to current value, shown only alongside genuinely real data
-  // (never in place of it) so you always have the honest big-picture
-  // direction for context, even while looking at a shorter real window.
-  // Skipped for 1D (too short to need big-picture context) and ALL/fallback
-  // views (where the real line already IS this exact comparison).
-  const sanitizedAllTime = allTimeValues ? sanitizeSeries(allTimeValues) : [];
-  const showTrendOverlay =
-    period !== '1D' && !usingAllTimeFallback &&
-    sanitizedAllTime.length === 2 && sanitizedAllTime[0] > 0 && sanitizedAllTime[1] > 0;
-
-  const allValues = showTrendOverlay ? [...data.map(p => p.value), ...sanitizedAllTime] : data.map(p => p.value);
+  const allValues = data.map(p => p.value);
   const minV = Math.min(...allValues);
   const maxV = Math.max(...allValues);
   // range falls back to 1 when every value is identical (a flatline — e.g.
@@ -154,10 +152,6 @@ export function PerfChart({
   const lastPt = pts[pts.length - 1];
   const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
 
-  const trendPath = showTrendOverlay
-    ? `M 0,${yFor(sanitizedAllTime[0]).toFixed(2)} L ${width.toFixed(2)},${yFor(sanitizedAllTime[1]).toFixed(2)}`
-    : null;
-
   return (
     <View pointerEvents={snapshotMode ? 'none' : 'auto'}>
       <Svg width={width} height={height}>
@@ -168,10 +162,6 @@ export function PerfChart({
           </LinearGradient>
         </Defs>
         <Path d={fillPath} fill="url(#pfc)" />
-        {trendPath && (
-          <Path d={trendPath} fill="none" stroke={colors.mutedForeground}
-            strokeWidth="1.5" strokeDasharray="5,5" opacity={0.5} />
-        )}
         <Path d={linePath} fill="none" stroke={color}
           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <Circle cx={firstPt.x} cy={firstPt.y} r="3" fill={color} fillOpacity="0.4" />
@@ -190,7 +180,7 @@ export function PerfChart({
           {t.chartAllTimeFallbackHint}
         </Text>
       )}
-      {trendPath && (
+      {!usingAllTimeFallback && period !== '1D' && hasApproximatedTypes && (
         <Text style={{
           textAlign: 'center',
           color: colors.mutedForeground,
@@ -199,7 +189,7 @@ export function PerfChart({
           marginTop: 4,
           opacity: 0.6,
         }}>
-          {t.chartSimulatedTrendHint}
+          {t.chartApproximatedHistoryHint}
         </Text>
       )}
     </View>

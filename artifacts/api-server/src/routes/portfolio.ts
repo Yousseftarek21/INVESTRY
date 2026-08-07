@@ -4,6 +4,7 @@ import { db, portfolioSnapshotsTable, portfolioTargetsTable } from "@workspace/d
 import { eq, gte } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 import { cairoDateString } from "../lib/cairoDate";
+import { computeUserHistoryBackfill } from "../lib/portfolioHistoryBackfill";
 
 const router: IRouter = Router();
 
@@ -30,6 +31,38 @@ router.get("/portfolio/snapshots", clerkMiddleware(), async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "GET /portfolio/snapshots failed");
     res.status(500).json({ error: "Failed to fetch portfolio snapshots" });
+  }
+});
+
+// Reconstructed history only changes when holdings are added/edited or once
+// a day when "today" rolls over — an hour-long cache avoids recomputing
+// (and re-hitting Twelve Data) on every chart open without risking
+// noticeably stale data after an edit.
+const BACKFILL_CACHE_TTL_MS = 60 * 60 * 1000;
+const backfillCache = new Map<string, { expiresAt: number; result: Awaited<ReturnType<typeof computeUserHistoryBackfill>> }>();
+
+// GET /api/portfolio/history-backfill — reconstructs real portfolio value
+// for every day between this user's earliest holding purchase date and
+// today, using real historical gold/silver prices plus deterministic
+// fixed-income accrual. See portfolioHistoryBackfill.ts for exactly what's
+// real vs. approximated per asset type.
+router.get("/portfolio/history-backfill", clerkMiddleware(), async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const cached = backfillCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      res.json(cached.result);
+      return;
+    }
+
+    const result = await computeUserHistoryBackfill(userId);
+    backfillCache.set(userId, { expiresAt: Date.now() + BACKFILL_CACHE_TTL_MS, result });
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "GET /portfolio/history-backfill failed");
+    res.status(500).json({ error: "Failed to compute portfolio history backfill" });
   }
 });
 

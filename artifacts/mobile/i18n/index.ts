@@ -24,7 +24,7 @@ const en = {
   chartBuildingHint: 'Open the app daily to build your portfolio chart',
   chartTodayFallbackHint: "Showing today's data — full history builds as you use the app",
   chartAllTimeFallbackHint: 'Showing all-time performance — full history builds as you use the app',
-  chartSimulatedTrendHint: '┄ Simulated trend based on your overall return',
+  chartApproximatedHistoryHint: 'Includes purchase-price estimates for assets without daily price history',
 
   // Markets
   currency: 'CURRENCY',
@@ -1212,7 +1212,7 @@ const ar: typeof en = {
   chartBuildingHint: 'افتح التطبيق يومياً لبناء مخطط محفظتك',
   chartTodayFallbackHint: 'عرض بيانات اليوم — السجل الكامل يُبنى مع استخدامك للتطبيق',
   chartAllTimeFallbackHint: 'عرض الأداء منذ البداية — السجل الكامل يُبنى مع استخدامك للتطبيق',
-  chartSimulatedTrendHint: '┄ اتجاه محاكاة استناداً إلى عائدك الإجمالي',
+  chartApproximatedHistoryHint: 'يشمل تقديرات بسعر الشراء للأصول التي لا تتوفر لها بيانات أسعار يومية',
 
   // Markets
   currency: 'العملات',
