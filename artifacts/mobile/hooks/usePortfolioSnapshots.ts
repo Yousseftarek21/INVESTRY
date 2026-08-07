@@ -42,7 +42,6 @@ export function usePortfolioSnapshots(currentValue: number) {
   const [serverStore, setServerStore] = useState<Record<string, number>>({});
   const latestValue = useRef(currentValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const savedTodayRef = useRef(false);
   const loadedUserRef = useRef<string | null>(null);
 
   // Load local cache + fetch server history on auth state change; clear the
@@ -53,7 +52,6 @@ export function usePortfolioSnapshots(currentValue: number) {
       setLocalStore({});
       setServerStore({});
       loadedUserRef.current = null;
-      savedTodayRef.current = false;
       if (prevUserId) AsyncStorage.removeItem(snapshotKey(prevUserId)).catch(() => null);
       return;
     }
@@ -64,7 +62,6 @@ export function usePortfolioSnapshots(currentValue: number) {
       AsyncStorage.removeItem(snapshotKey(prevUserId)).catch(() => null);
     }
     loadedUserRef.current = userId;
-    savedTodayRef.current = false;
 
     (async () => {
       try {
@@ -106,14 +103,17 @@ export function usePortfolioSnapshots(currentValue: number) {
 
   // Debounced local save of today's settled value — only fires 3s after
   // currentValue stops changing, so we never save a mid-load partial total.
+  // Re-fires on every settle (not just the first one each session) so
+  // today's entry keeps tracking intraday movement — mirrors what
+  // useIntradaySamples already does for the 1D chart, so 1W/1M's last
+  // point stays in sync with it instead of freezing at app-launch value.
   useEffect(() => {
-    if (!userId || currentValue <= 0 || savedTodayRef.current) return;
+    if (!userId || currentValue <= 0) return;
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
       const settled = latestValue.current;
-      if (settled <= 0 || savedTodayRef.current) return;
-      savedTodayRef.current = true;
+      if (settled <= 0) return;
 
       try {
         const raw = await AsyncStorage.getItem(snapshotKey(userId));
@@ -131,7 +131,13 @@ export function usePortfolioSnapshots(currentValue: number) {
     };
   }, [currentValue, userId]);
 
-  const snapshots: PortfolioSnapshot[] = Object.entries({ ...localStore, ...serverStore })
+  // Local wins on overlap: the server copy is only fetched once per app
+  // session (see load effect above), so its "today" row is stuck at
+  // whatever value existed at launch. Local's today keeps updating live
+  // (see save effect above), so it's always the fresher of the two for
+  // any date both sides have. Server still fills in any date local never
+  // captured (missed days, reinstalls, other devices).
+  const snapshots: PortfolioSnapshot[] = Object.entries({ ...serverStore, ...localStore })
     .map(([date, value]) => ({ date, value }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
