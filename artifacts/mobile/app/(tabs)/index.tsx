@@ -9,7 +9,7 @@ import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
 import { fmtCompact } from '@/utils/formatNumber';
 import { PerfChart } from '@/components/PerfChart';
-import { CHART_PERIODS, ChartPeriod } from '@/utils/chartUtils';
+import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
@@ -523,6 +523,14 @@ export default function HomeScreen() {
   }, [summary, prices, colors, t]);
 
   const { snapshots } = usePortfolioSnapshots(summary.totalValue);
+  // A period is only offered once real recorded history reaches back that
+  // far — otherwise it can only redraw a shorter period's data, which reads
+  // as a duplicate curve. Selecting an unavailable one is blocked, and if
+  // the active period becomes unavailable it falls back to 1D.
+  const coverage = React.useMemo(() => getHistoryCoverage(snapshots), [snapshots]);
+  React.useEffect(() => {
+    if (!isPeriodAvailable(timeFilter, coverage)) setTimeFilter('1D');
+  }, [coverage, timeFilter]);
   const startOfDayValue = summary.totalValue - summary.todayGain;
   const rawTodaySamples = useIntradaySamples(summary.totalValue, startOfDayValue);
   // The stored samples' own first/last points can be up to ~10 minutes
@@ -863,6 +871,11 @@ export default function HomeScreen() {
                   todayValues={todaysChangeKnown ? todaySamples : []}
                   liveValue={summary.totalValue}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
+                  formatStartLabel={(startDate, startValue) =>
+                    hideValues
+                      ? `${t.chartFromLabel} ${startDate}`
+                      : `${t.chartFromLabel} ${startDate} · ${fmtCompact(toDisp(startValue))} ${displayCurrency}`
+                  }
                 />
               </View>
 
@@ -870,15 +883,17 @@ export default function HomeScreen() {
               <View style={styles.timeRow}>
                 {CHART_PERIODS.map(f => {
                   const active = f === timeFilter;
+                  const available = isPeriodAvailable(f, coverage);
                   return (
                     <Pressable
                       key={f}
+                      disabled={!available}
                       style={({ pressed }) => [
                         styles.timePill,
                         {
                           backgroundColor: active ? colors.primary : colors.muted + '90',
                           borderColor: active ? colors.primary : 'transparent',
-                          opacity: pressed ? 0.7 : 1,
+                          opacity: !available ? 0.35 : pressed ? 0.7 : 1,
                           transform: [{ scale: pressed ? 0.94 : 1 }],
                         },
                       ]}

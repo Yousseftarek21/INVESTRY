@@ -24,6 +24,7 @@ const en = {
   chartBuildingHint: 'Open the app daily to build your portfolio chart',
   chartTodayFallbackHint: "Showing today's data — full history builds as you use the app",
   chartAllTimeFallbackHint: 'Showing all-time performance — full history builds as you use the app',
+  chartFromLabel: 'From',
 
   // Markets
   currency: 'CURRENCY',
@@ -1211,6 +1212,7 @@ const ar: typeof en = {
   chartBuildingHint: 'افتح التطبيق يومياً لبناء مخطط محفظتك',
   chartTodayFallbackHint: 'عرض بيانات اليوم — السجل الكامل يُبنى مع استخدامك للتطبيق',
   chartAllTimeFallbackHint: 'عرض الأداء منذ البداية — السجل الكامل يُبنى مع استخدامك للتطبيق',
+  chartFromLabel: 'من',
 
   // Markets
   currency: 'العملات',

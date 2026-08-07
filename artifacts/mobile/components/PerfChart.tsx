@@ -44,6 +44,13 @@ interface PerfChartProps {
    */
   allTimeValues?: [number, number];
   /**
+   * Renders a short line under the chart naming the real date and value the
+   * line starts from, so the drawn curve can be checked against actual
+   * recorded data rather than taken on faith. Formatting is supplied by the
+   * caller (it owns currency/locale/privacy-masking rules).
+   */
+  formatStartLabel?: (startDate: string, startValue: number) => string;
+  /**
    * Thumbnail/snapshot rendering — this chart has no crosshair, tooltip, pan,
    * or zoom behavior to begin with (it's a static SVG paint), so this mainly
    * guarantees that stays true: touches pass straight through to whatever is
@@ -55,7 +62,7 @@ interface PerfChartProps {
 }
 
 export function PerfChart({
-  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, snapshotMode = true,
+  period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues, formatStartLabel, snapshotMode = true,
 }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
@@ -163,6 +170,14 @@ export function PerfChart({
   const lastPt = pts[pts.length - 1];
   const fillPath = `${linePath} L ${lastPt.x.toFixed(2)},${height} L 0,${height} Z`;
 
+  // Only when the first point carries a real calendar date — 1D's points are
+  // intraday sample indices, and the fallback/cost anchors use synthetic
+  // 'cost'/'current' labels, none of which name a verifiable start date.
+  const firstTime = data[0].time;
+  const startLabel = formatStartLabel && typeof firstTime === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(firstTime)
+    ? formatStartLabel(firstTime, data[0].value)
+    : null;
+
   return (
     <View pointerEvents={snapshotMode ? 'none' : 'auto'}>
       <Svg width={width} height={height}>
@@ -189,6 +204,18 @@ export function PerfChart({
           opacity: 0.7,
         }}>
           {t.chartAllTimeFallbackHint}
+        </Text>
+      )}
+      {startLabel && (
+        <Text style={{
+          textAlign: 'center',
+          color: colors.mutedForeground,
+          fontSize: 10,
+          fontFamily: 'Inter_400Regular',
+          marginTop: 4,
+          opacity: 0.6,
+        }}>
+          {startLabel}
         </Text>
       )}
     </View>

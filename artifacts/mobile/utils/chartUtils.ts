@@ -34,6 +34,45 @@ function cairoDateStr(d: Date): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
 }
 
+/** Real recorded coverage: how far back tracked history actually reaches. */
+export interface HistoryCoverage {
+  /** Earliest tracked date ("YYYY-MM-DD"), or null when nothing is tracked. */
+  earliestDate: string | null;
+  /** Whole days between the earliest tracked date and today, inclusive. */
+  trackedDays: number;
+}
+
+export function getHistoryCoverage(snapshots: PortfolioSnapshotItem[]): HistoryCoverage {
+  if (!snapshots.length) return { earliestDate: null, trackedDays: 0 };
+  const earliestDate = snapshots.reduce(
+    (min, s) => (s.date < min ? s.date : min),
+    snapshots[0].date,
+  );
+  const startMs = new Date(earliestDate).getTime();
+  if (!Number.isFinite(startMs)) return { earliestDate: null, trackedDays: 0 };
+  const todayMs = new Date(cairoDateStr(new Date())).getTime();
+  return {
+    earliestDate,
+    trackedDays: Math.max(1, Math.round((todayMs - startMs) / 86_400_000) + 1),
+  };
+}
+
+/**
+ * A period is only offered when real recorded history actually reaches back
+ * to its window start — otherwise it would render the exact same line as a
+ * shorter period (all it can do is re-show the same limited data), which
+ * reads as a duplicate/fake curve rather than a real N-day view.
+ *
+ * 1D is always available (it's live intraday data, not snapshot history).
+ * ALL is always available (its window is whatever exists, by definition).
+ */
+export function isPeriodAvailable(period: ChartPeriod, coverage: HistoryCoverage): boolean {
+  if (period === '1D' || period === 'ALL') return true;
+  // One day of slack: a window is "covered" when tracking reaches its start,
+  // so exactly 30 tracked days legitimately fills the 30-day 1M window.
+  return coverage.trackedDays + 1 >= PERIOD_DAYS[period];
+}
+
 /**
  * Converts stored portfolio snapshots into chart points for the given
  * period. Returns null when there isn't enough real history to draw a

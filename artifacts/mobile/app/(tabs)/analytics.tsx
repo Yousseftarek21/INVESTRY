@@ -31,6 +31,7 @@ import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
 import { PerfChart } from '@/components/PerfChart';
+import { getHistoryCoverage, isPeriodAvailable } from '@/utils/chartUtils';
 import { AllocationBar, AllocationSegment } from '@/components/AllocationBar';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -597,6 +598,13 @@ export default function AnalyticsScreen() {
   }, [holdings, prices, egxChangeByTicker]);
 
   const { snapshots } = usePortfolioSnapshots(sm.totalValue);
+  // Same availability rule as Home: only offer a period once real recorded
+  // history reaches back that far, so a selectable period is never just a
+  // shorter period's data redrawn under a longer label.
+  const coverage = useMemo(() => getHistoryCoverage(snapshots), [snapshots]);
+  useEffect(() => {
+    if (!isPeriodAvailable(period, coverage)) setPeriod('1D');
+  }, [coverage, period]);
   const { data: inflation } = useInflationRate();
   const { data: benchmark } = usePortfolioBenchmark();
   const { configured: targetsConfigured, targets } = usePortfolioTargets();
@@ -1021,12 +1029,15 @@ export default function AnalyticsScreen() {
               <View style={s.periodRow}>
                 {PERIODS.map(p => {
                   const active = p === period;
+                  const available = isPeriodAvailable(p, coverage);
                   return (
                     <Pressable
                       key={p}
+                      disabled={!available}
                       onPress={() => { impact(); setPeriod(p); }}
                       style={[s.periodPill, {
                         backgroundColor: active ? colors.primary : colors.muted,
+                        opacity: available ? 1 : 0.35,
                       }]}
                     >
                       <Text style={[s.periodTxt, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
