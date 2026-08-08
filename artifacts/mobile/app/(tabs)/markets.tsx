@@ -628,7 +628,12 @@ function CompoundRow({ compound, isLast }: { compound: RealEstateCompoundLive; i
             ) : (
               <View style={[rer.badge, { backgroundColor: colors.muted }]}>
                 <Text style={[rer.badgeTxt, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {t.reAreaEstimateBadge}
+                  {/* Names the actual area the number is borrowed from — a
+                      generic "≈ Area avg" badge here read as if it were this
+                      compound's own price, which is exactly what caused
+                      Palm Hills October to be mistaken for its own market
+                      rate when it was really just 6th of October's average. */}
+                  {compound.areaLabel ? `≈ ${compound.areaLabel}` : t.reAreaEstimateBadge}
                 </Text>
               </View>
             )}
