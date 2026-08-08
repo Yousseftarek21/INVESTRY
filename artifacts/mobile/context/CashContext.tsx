@@ -236,6 +236,10 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
     const from = cashAccounts.find(a => a.id === fromId);
     const to = cashAccounts.find(a => a.id === toId);
     if (!from || !to) return;
+    // Defence in depth alongside the caller's own check: an overdraft here
+    // would debit money the account never held and credit it to another,
+    // inflating total cash and net worth with no trace.
+    if (amount > from.balance) return;
 
     const updatedFrom: CashAccount = { ...from, balance: from.balance - amount };
     const updatedTo: CashAccount = { ...to, balance: to.balance + amount };

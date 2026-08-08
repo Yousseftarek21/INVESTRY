@@ -170,10 +170,14 @@ export default function CashAccountsScreen() {
       Animated.timing(cardAnims[key], { toValue: 0.94, duration: 80, useNativeDriver: true }),
       Animated.timing(cardAnims[key], { toValue: 1,    duration: 120, useNativeDriver: true }),
     ]).start();
-    if (key === 'foreign_currency' && entryType !== 'foreign_currency') {
-      setCurrency('USD');
-    } else if (key !== 'foreign_currency' && entryType === 'foreign_currency') {
-      setCurrency('EGP');
+    // Only seed a default when the currency the user is on isn't offered by
+    // the type they're switching to. Blindly resetting to USD/EGP meant
+    // picking "Foreign currency" → EUR → 20,000 and then switching to
+    // "Bank" saved 20,000 EUR as 20,000 EGP — and currency is locked on
+    // edit, so it couldn't be corrected afterwards.
+    const nextCurrencies = key === 'foreign_currency' ? CURRENCIES_FOREIGN : CURRENCIES_DEFAULT;
+    if (!nextCurrencies.includes(currency)) {
+      setCurrency(key === 'foreign_currency' ? 'USD' : 'EGP');
     }
     setEntryType(key);
     if (key !== 'recurring_income') {
@@ -254,8 +258,10 @@ export default function CashAccountsScreen() {
         Alert.alert(t.amount, t.enterValidMonthlyAmount);
         return;
       }
-      if (cashAccounts.length > 0 && !depositAccountId) {
-        Alert.alert(t.depositInto, t.selectAccount);
+      // Saving with no linked account produced a record the processor skips
+      // forever, while the UI still showed it as configured.
+      if (!depositAccountId) {
+        Alert.alert(t.depositInto, cashAccounts.length > 0 ? t.selectAccount : t.incomeNeedsAccountFirst);
         return;
       }
       if (!isEditingIncome && !subLoading && !featuresUnlocked && recurringIncomes.length >= FREE_LIMIT_INCOME) {
@@ -263,7 +269,14 @@ export default function CashAccountsScreen() {
         return;
       }
       const day = Math.min(Math.max(parseInt(creditDay) || 25, 1), 31);
+      const existingIncome = isEditingIncome ? recurringIncomes.find(r => r.id === editingId) : undefined;
       const income: RecurringIncome = {
+        // Spread the stored record first so fields this form doesn't edit —
+        // endDate and the transactions audit trail — survive. updateRecurring
+        // Income replaces wholesale, so rebuilding from only the form's
+        // fields silently dropped them: an income with a December endDate
+        // would start crediting forever after an unrelated name change.
+        ...(existingIncome ?? {}),
         id: editingId ?? generateId(),
         name: accountName.trim(),
         amount: parsedAmount,
@@ -274,7 +287,7 @@ export default function CashAccountsScreen() {
         cashAccountId: depositAccountId,
         creditDay: day,
         startDate,
-        active: true,
+        active: existingIncome?.active ?? true,
         createdAt: isEditingIncome
           ? (recurringIncomes.find(r => r.id === editingId)?.createdAt ?? todayISO())
           : todayISO(),
@@ -422,8 +435,37 @@ export default function CashAccountsScreen() {
       Alert.alert(t.transferAction, t.invalidTransferAmount);
       return;
     }
+    // Without this a typo (an extra zero) drove the source account
+    // negative and credited the destination money that never existed,
+    // silently inflating total cash and net worth.
+    if (transferFrom && amount > transferFrom.balance) {
+      Alert.alert(
+        t.transferAction,
+        t.transferExceedsBalance(
+          transferFrom.balance.toLocaleString('en-EG', { maximumFractionDigits: 2 }),
+          transferFrom.currency,
+        ),
+      );
+      return;
+    }
     impact(Haptics.ImpactFeedbackStyle.Light);
     await transferBetweenAccounts(transferFromId, transferToId, amount);
+    // Transfers used to leave no trace anywhere — no activity entry, no
+    // balance-update record, no "updated" timestamp — so a user reconciling
+    // a balance drop had nothing explaining it.
+    if (transferFrom && transferTo) {
+      const amountTxt = amount.toLocaleString('en-EG', { maximumFractionDigits: 2 });
+      Promise.all([
+        logBalanceUpdate(transferFrom.id, -amount, transferFrom.balance - amount),
+        logBalanceUpdate(transferTo.id, amount, transferTo.balance + amount),
+      ]).then(() => { refreshTodayChanges(); refreshRecentUpdates(); });
+      logActivity(
+        'cash_edited',
+        t.transferAction,
+        t.activityTransferSubtitle(amountTxt, transferFrom.currency, transferFrom.accountName, transferTo.accountName),
+        transferFrom.id,
+      );
+    }
     setShowTransferModal(false);
   };
 
