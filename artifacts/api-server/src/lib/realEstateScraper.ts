@@ -30,7 +30,7 @@ const PAGE_DELAY_MS = 1800;
 // ultra-luxury villa listings (337K/m², 174K/m² — both verified real, not a
 // bug) dominated a tiny sample. 8 gives the median below more to work with
 // before a couple of outlier mansions can define the whole number.
-const MIN_SAMPLE_SIZE = 8;
+export const MIN_SAMPLE_SIZE = 8;
 
 interface ScrapedListing {
   pricePerM2: number;
@@ -136,16 +136,23 @@ function median(sorted: number[]): number {
 // matched listing actually costs, not what the presence of one mansion
 // implies. min/max stay real, untouched extremes — worth showing as the
 // actual range, not something to "fix."
-function aggregate(matched: ScrapedListing[]): ScrapedAreaResult {
-  const prices = matched.map((l) => l.pricePerM2).sort((a, b) => a - b);
-  const trimCount = Math.floor(prices.length * 0.05);
-  const trimmed = trimCount > 0 ? prices.slice(trimCount, prices.length - trimCount) : prices;
+// Exported so realEstateScraperAqarmap.ts's per-area listing pages can use
+// the identical trim/median logic on their own raw price arrays — same
+// reasoning, same outlier protection, one implementation.
+export function aggregatePrices(prices: number[]): ScrapedAreaResult {
+  const sorted = [...prices].sort((a, b) => a - b);
+  const trimCount = Math.floor(sorted.length * 0.05);
+  const trimmed = trimCount > 0 ? sorted.slice(trimCount, sorted.length - trimCount) : sorted;
   return {
     avgPricePerM2: Math.round(median(trimmed)),
     minPricePerM2: Math.round(trimmed[0]),
     maxPricePerM2: Math.round(trimmed[trimmed.length - 1]),
-    sampleSize: matched.length,
+    sampleSize: prices.length,
   };
+}
+
+function aggregate(matched: ScrapedListing[]): ScrapedAreaResult {
+  return aggregatePrices(matched.map((l) => l.pricePerM2));
 }
 
 export interface ScrapeResults {

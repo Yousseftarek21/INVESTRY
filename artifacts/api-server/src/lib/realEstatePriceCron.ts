@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db, realEstatePricesTable, realEstateCompoundPricesTable } from "@workspace/db";
 import { RE_PRICES, RE_COMPOUNDS } from "@workspace/shared-data";
 import { scrapeRealEstatePrices } from "./realEstateScraper";
+import { scrapeAqarmapAreaPrices } from "./realEstateScraperAqarmap";
 import { logger } from "./logger";
 
 // 12h — twice a day, not more. Real estate prices don't move fast enough to
@@ -18,14 +19,31 @@ async function runScrape(): Promise<void> {
   if (running) return; // guard against overlap if a prior run is still in flight
   running = true;
   try {
-    const { areas, compounds } = await scrapeRealEstatePrices();
+    // Aqarmap first, even though it wins the merge either way: its run is
+    // ~90s (32 areas x 2 pages) against Property Finder's ~7.5min (250
+    // pages), so ordering it first means a mid-run deploy restart — which
+    // happens on every git push, a real recurring issue for this cron —
+    // is far more likely to still have let it finish before getting cut off.
+    const aqAreas = await scrapeAqarmapAreaPrices();
+    // Wins for any area both cover — a direct, hand-verified per-area page
+    // (see RE_PRICES's aqarmapPath) is a stronger source than Property
+    // Finder's fuzzy breadcrumb matching against one big general pool,
+    // which left most areas empty. Property Finder remains the only source
+    // for areas without a verified Aqarmap path, and the only source for
+    // compounds (unchanged).
+    const { areas: pfAreas, compounds } = await scrapeRealEstatePrices();
+    const areas = new Map([...pfAreas, ...aqAreas]);
     logger.info(
-      { areasMatched: areas.size, areasTotal: RE_PRICES.length, compoundsMatched: compounds.size, compoundsTotal: RE_COMPOUNDS.length },
+      {
+        areasMatched: areas.size, areasFromAqarmap: aqAreas.size, areasFromPropertyFinder: pfAreas.size,
+        areasTotal: RE_PRICES.length, compoundsMatched: compounds.size, compoundsTotal: RE_COMPOUNDS.length,
+      },
       "Real estate scrape: run complete",
     );
 
     for (const area of RE_PRICES) {
       const result = areas.get(area.id);
+      const source = aqAreas.has(area.id) ? "aqarmap" : "property_finder";
       // Not enough listings matched this area this run — delete any
       // existing row instead of leaving it stale. A prior run's row was
       // only ever written because it met MIN_SAMPLE_SIZE at the time; if
@@ -64,7 +82,7 @@ async function runScrape(): Promise<void> {
             changePercent,
             sampleSize: result.sampleSize,
             type: area.type,
-            source: "property_finder",
+            source,
           })
           .onConflictDoUpdate({
             target: realEstatePricesTable.id,
@@ -74,6 +92,7 @@ async function runScrape(): Promise<void> {
               avgPricePerM2: result.avgPricePerM2,
               changePercent,
               sampleSize: result.sampleSize,
+              source,
               updatedAt: new Date(),
             },
           });
