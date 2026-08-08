@@ -142,10 +142,10 @@ function useCounterDisplay(target: number): { text: string; tint: Animated.Anima
 // reveal. Every value change after that (refresh, a live price tick) still
 // animates normally; only this initial wrong-number-then-animate moment is
 // what's being avoided.
-// Thresholds worth marking. Deliberately sparse: a celebration that fires
-// often stops being one, and these are the round numbers people actually
-// notice crossing.
-const MILESTONES = [1_000_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000, 100_000_000];
+// Every million from 1M to 100M. Each is only ever celebrated once, so
+// climbing through them one at a time is the point — passing 4M should feel
+// like an event even though 3M already did.
+const MILESTONES = Array.from({ length: 100 }, (_, i) => (i + 1) * 1_000_000);
 
 // Fires once per threshold ever crossed, per account. The highest milestone
 // reached is persisted, so re-opening the app — or dipping back below and
