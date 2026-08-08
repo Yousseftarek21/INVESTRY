@@ -1385,7 +1385,11 @@ const styles = StyleSheet.create({
   // shades apart, so a hairline is invisible — and a line bright enough to
   // register would read as heavier than this card wants. The chip gives
   // each row a right-hand anchor, which is what the separator was for.
-  cashRows:      { gap: 7, marginTop: 3, alignSelf: 'flex-start' },
+  // Full width, not alignSelf: 'flex-start' — the separator is a child here,
+  // so shrinking this container to its content made the rule stop mid-card.
+  // The rows pack left on their own (no flex on their children), so hugging
+  // was never needed to keep amounts at the left edge.
+  cashRows:      { gap: 7, marginTop: 3 },
   // A View with a backgroundColor, matching how the portfolio card's own
   // iDivider is drawn — a borderTopWidth hairline renders sub-pixel here and
   // effectively disappears against the card, which is why the first attempt
