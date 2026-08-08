@@ -358,6 +358,17 @@ export default function HomeScreen() {
 
   const cashTotalEGP = useMemo(() => computeCashTotalEGP(cashAccounts, prices), [cashAccounts, prices]);
   const hasForeignCash = cashAccounts.some(a => a.currency !== 'EGP');
+  // Real balances in the currencies they're actually held in — the single
+  // converted total above necessarily hides this, and someone holding
+  // dollars thinks in dollars, not in an EGP equivalent. Largest first, and
+  // only rendered when more than one currency is present.
+  const cashByCurrency = useMemo(() => {
+    const totals = new Map<string, number>();
+    cashAccounts.forEach(a => {
+      totals.set(a.currency, (totals.get(a.currency) ?? 0) + (Number(a.balance) || 0));
+    });
+    return [...totals.entries()].sort((a, b) => b[1] - a[1]);
+  }, [cashAccounts]);
 
   // A goal linked to a cash account tracks that account's live balance
   // instead of its own stored savedAmount — mirrors goals.tsx's own
@@ -993,6 +1004,12 @@ export default function HomeScreen() {
               {t.noCashAccountsYet}
             </Text>
           )}
+          {/* Only when it adds something the converted total can't say. */}
+          {cashAccounts.length > 0 && cashByCurrency.length > 1 && !hideValues && (
+            <Text style={[styles.cashBreakdown, { color: colors.mutedForeground }]} numberOfLines={1}>
+              {cashByCurrency.map(([cur, amt]) => `${fmtCompact(amt)} ${cur}`).join('  ·  ')}
+            </Text>
+          )}
         </View>
         <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
@@ -1319,6 +1336,7 @@ const styles = StyleSheet.create({
   cashInfo: { flex: 1, gap: 2 },
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+  cashBreakdown: { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.1, fontVariant: ['tabular-nums'], marginTop: 1 },
 
   goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18 },
   goalRingCluster: { flexDirection: 'row' },
