@@ -991,21 +991,23 @@ export default function HomeScreen() {
                   "Net Worth incl. cash" line above — this card used to be
                   pinned to EGP, so switching the hero to USD left the cash
                   figure beneath it still reading EGP.
-                  The "≈" now also applies whenever the display currency
-                  isn't EGP: balances are held per-account and converted
-                  through EGP, so the shown figure is a conversion either
-                  way, not an exact balance. */}
+                  Deliberately no "≈" here: a math symbol reads as clutter in
+                  a large bold figure, and the breakdown line below states the
+                  real held amounts far more usefully than a prefix could. */}
               {hideValues
                 ? '••••••'
-                : `${hasForeignCash || displayCurrency !== 'EGP' ? '≈ ' : ''}${toDisp(cashTotalEGP).toLocaleString('en-EG', { maximumFractionDigits: 0 })}`} {displayCurrency}
+                : toDisp(cashTotalEGP).toLocaleString('en-EG', { maximumFractionDigits: 0 })} {displayCurrency}
             </Text>
           ) : (
             <Text style={[styles.cashValue, { color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
               {t.noCashAccountsYet}
             </Text>
           )}
-          {/* Only when it adds something the converted total can't say. */}
-          {cashAccounts.length > 0 && cashByCurrency.length > 1 && !hideValues && (
+          {/* Shown exactly when the figure above is a conversion rather than
+              a real balance — i.e. mixed currencies, or a display currency
+              the cash isn't held in. Carries the honesty the "≈" used to,
+              while actually being useful: these are the true held amounts. */}
+          {cashAccounts.length > 0 && (hasForeignCash || displayCurrency !== 'EGP') && !hideValues && (
             <Text style={[styles.cashBreakdown, { color: colors.mutedForeground }]} numberOfLines={1}>
               {cashByCurrency.map(([cur, amt]) => `${fmtCompact(amt)} ${cur}`).join('  ·  ')}
             </Text>
