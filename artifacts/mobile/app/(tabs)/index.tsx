@@ -1006,9 +1006,13 @@ export default function HomeScreen() {
           {/* Shown exactly when the figure above is a conversion rather than
               a real balance — i.e. mixed currencies, or a display currency
               the cash isn't held in. Carries the honesty the "≈" used to,
-              while actually being useful: these are the true held amounts. */}
+              while actually being useful: these are the true held amounts.
+              The "Held as" label is load-bearing: without it these read as
+              separate balances sitting alongside the total, rather than as
+              what that single converted total is actually made of. */}
           {cashAccounts.length > 0 && (hasForeignCash || displayCurrency !== 'EGP') && !hideValues && (
             <Text style={[styles.cashBreakdown, { color: colors.mutedForeground }]} numberOfLines={1}>
+              <Text style={styles.cashBreakdownLabel}>{t.cashHeldAs} </Text>
               {cashByCurrency.map(([cur, amt]) => `${fmtCompact(amt)} ${cur}`).join('  ·  ')}
             </Text>
           )}
@@ -1339,6 +1343,8 @@ const styles = StyleSheet.create({
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   cashBreakdown: { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.1, fontVariant: ['tabular-nums'], marginTop: 1 },
+  // Lighter than the amounts it introduces, so the eye lands on the figures.
+  cashBreakdownLabel: { fontFamily: 'Inter_400Regular', opacity: 0.75 },
 
   goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18 },
   goalRingCluster: { flexDirection: 'row' },
