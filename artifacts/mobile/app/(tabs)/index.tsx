@@ -87,12 +87,17 @@ function computeCost(h: Holding, prices?: MarketPrices): number {
 
 // ─── Animated number display ──────────────────────────────────────────────────
 
-function useCounterDisplay(target: number): string {
+function useCounterDisplay(target: number): { text: string; tint: Animated.AnimatedInterpolation<string> | null } {
   const anim = useRef(new Animated.Value(target)).current;
   const [text, setText] = useState(
     target.toLocaleString('en-EG', { maximumFractionDigits: 0 })
   );
   const prev = useRef(target);
+  const colors = useColors();
+  // Direction of the last change, held so the flash colour stays correct for
+  // the whole fade rather than following the next tick mid-animation.
+  const [dir, setDir] = useState<'up' | 'down' | null>(null);
+  const flash = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const id = anim.addListener(({ value }) =>
@@ -103,11 +108,30 @@ function useCounterDisplay(target: number): string {
 
   useEffect(() => {
     if (prev.current === target) return;
+    const rising = target > prev.current;
     prev.current = target;
+    setDir(rising ? 'up' : 'down');
     Animated.timing(anim, { toValue: target, duration: 700, useNativeDriver: false }).start();
+    // The counter tween alone is direction-blind — it looks identical
+    // whether the portfolio just rose or fell. Flashing the figure's colour
+    // and settling it back makes a live price tick something you can see,
+    // so the LIVE badge describes something visible rather than asserted.
+    flash.stopAnimation();
+    flash.setValue(0);
+    Animated.sequence([
+      Animated.timing(flash, { toValue: 1, duration: 140, useNativeDriver: false }),
+      Animated.timing(flash, { toValue: 0, duration: 520, delay: 60, useNativeDriver: false }),
+    ]).start();
   }, [target]);
 
-  return text;
+  const tint = dir
+    ? flash.interpolate({
+        inputRange: [0, 1],
+        outputRange: [colors.text, dir === 'up' ? colors.green : colors.red],
+      })
+    : null;
+
+  return { text, tint };
 }
 
 // Mounted only once real prices/holdings have actually loaded (the parent
@@ -119,16 +143,16 @@ function useCounterDisplay(target: number): string {
 // what's being avoided.
 function PortfolioHeroValue({ value, hidden }: { value: number; hidden: boolean }) {
   const colors = useColors();
-  const displayValue = useCounterDisplay(value);
+  const { text: displayValue, tint } = useCounterDisplay(value);
   return (
-    <Text
-      style={[styles.heroValue, { color: colors.text }]}
+    <Animated.Text
+      style={[styles.heroValue, { color: hidden ? colors.text : (tint ?? colors.text) }]}
       numberOfLines={1}
       adjustsFontSizeToFit
       minimumFontScale={0.5}
     >
       {hidden ? '••••••' : displayValue}
-    </Text>
+    </Animated.Text>
   );
 }
 
