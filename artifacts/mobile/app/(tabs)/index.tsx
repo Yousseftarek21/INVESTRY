@@ -976,7 +976,17 @@ export default function HomeScreen() {
           <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
           {cashAccounts.length > 0 ? (
             <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1}>
-              {hideValues ? '••••••' : `${hasForeignCash ? '≈ ' : ''}${cashTotalEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })}`} EGP
+              {/* Follows the same display currency as the hero total and the
+                  "Net Worth incl. cash" line above — this card used to be
+                  pinned to EGP, so switching the hero to USD left the cash
+                  figure beneath it still reading EGP.
+                  The "≈" now also applies whenever the display currency
+                  isn't EGP: balances are held per-account and converted
+                  through EGP, so the shown figure is a conversion either
+                  way, not an exact balance. */}
+              {hideValues
+                ? '••••••'
+                : `${hasForeignCash || displayCurrency !== 'EGP' ? '≈ ' : ''}${toDisp(cashTotalEGP).toLocaleString('en-EG', { maximumFractionDigits: 0 })}`} {displayCurrency}
             </Text>
           ) : (
             <Text style={[styles.cashValue, { color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
