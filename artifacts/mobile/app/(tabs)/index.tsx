@@ -1002,23 +1002,17 @@ export default function HomeScreen() {
             </Text>
           ) : isMultiCurrencyCash ? (
             <View style={styles.cashRows}>
-              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt], i) => (
-                <View
-                  key={cur}
-                  style={[
-                    styles.cashRow,
-                    i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-                  ]}
-                >
+              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt]) => (
+                <View key={cur} style={styles.cashRow}>
                   <Text
                     style={[styles.cashRowValue, { color: colors.text }]}
                     numberOfLines={1}
                   >
                     {hideValues ? '••••••' : amt.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
                   </Text>
-                  {!hideValues && (
+                  <View style={[styles.cashCurChip, { backgroundColor: colors.muted }]}>
                     <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]}>{cur}</Text>
-                  )}
+                  </View>
                 </View>
               ))}
               {cashByCurrency.length > CASH_CURRENCY_CELLS && (
@@ -1372,13 +1366,15 @@ const styles = StyleSheet.create({
   // to a shared right edge. Both columns align without needing a measured
   // width — space-between does the work, and the codes stay clear of the
   // amounts instead of trailing them at ragged offsets.
-  // No gap: rows are separated by a hairline instead, which binds each
-  // amount to its code across the gap the ledger layout puts between them.
-  cashRows:      { marginTop: 1 },
-  // Baseline-aligned so the small code sits on the same line as the digits
-  // rather than centred against their full cap height.
-  cashRow:       { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, paddingVertical: 4 },
-  cashRowCur:    { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  // Rows are separated by spacing and by each code's chip rather than a
+  // rule: on dark theme the card is #161616 against a #2E2E30 border, two
+  // shades apart, so a hairline is invisible — and a line bright enough to
+  // register would read as heavier than this card wants. The chip gives
+  // each row a right-hand anchor, which is what the separator was for.
+  cashRows:      { gap: 7, marginTop: 3 },
+  cashRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  cashCurChip:   { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2.5 },
+  cashRowCur:    { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
   cashRowValue:  { flexShrink: 1, fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
 
   goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18 },
