@@ -14,6 +14,7 @@ import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
@@ -141,6 +142,42 @@ function useCounterDisplay(target: number): { text: string; tint: Animated.Anima
 // reveal. Every value change after that (refresh, a live price tick) still
 // animates normally; only this initial wrong-number-then-animate moment is
 // what's being avoided.
+// Thresholds worth marking. Deliberately sparse: a celebration that fires
+// often stops being one, and these are the round numbers people actually
+// notice crossing.
+const MILESTONES = [1_000_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000, 100_000_000];
+
+// Fires once per threshold ever crossed, per account. The highest milestone
+// reached is persisted, so re-opening the app — or dipping back below and
+// climbing again — doesn't replay it. Values are compared in EGP, not the
+// display currency, so switching currency can't manufacture a crossing.
+function useMilestoneSweep(totalEgp: number, userId: string | null | undefined) {
+  const sweep = useRef(new Animated.Value(0)).current;
+  const [active, setActive] = useState(false);
+  const storedRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!userId) { storedRef.current = null; return; }
+    AsyncStorage.getItem(`@investry_milestone_${userId}`)
+      .then(v => { storedRef.current = v ? Number(v) || 0 : 0; })
+      .catch(() => { storedRef.current = 0; });
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || storedRef.current === null || totalEgp <= 0) return;
+    const reached = MILESTONES.filter(m => totalEgp >= m).pop() ?? 0;
+    if (reached <= storedRef.current) return;
+    storedRef.current = reached;
+    AsyncStorage.setItem(`@investry_milestone_${userId}`, String(reached)).catch(() => null);
+    setActive(true);
+    sweep.setValue(0);
+    Animated.timing(sweep, { toValue: 1, duration: 1400, useNativeDriver: true })
+      .start(() => setActive(false));
+  }, [totalEgp, userId]);
+
+  return { sweep, active };
+}
+
 function PortfolioHeroValue({ value, hidden }: { value: number; hidden: boolean }) {
   const colors = useColors();
   const { text: displayValue, tint } = useCounterDisplay(value);
@@ -620,6 +657,14 @@ export default function HomeScreen() {
   // deltas are relative to today's open and are zeroed on rehydration, so
   // rendering them would assert a flat day and then correct itself.
   const todaysChangeKnown = !pricesArePlaceholder && !prices?.changesUnknown;
+  // Ambient wash tinted by today's direction, so the day can be read from
+  // the card's colour before any figure is. Only when today's change is
+  // actually known — a wash on placeholder data would assert a direction
+  // the app hasn't established.
+  const todayTint = !todaysChangeKnown || summary.todayGain === 0
+    ? null
+    : summary.todayGain > 0 ? colors.green : colors.red;
+  const { sweep: milestoneSweep, active: milestoneActive } = useMilestoneSweep(summary.totalValue, user?.id);
 
   const topHoldings = useMemo(() => {
     const withValue = holdings.map(h => ({ h, v: computeValue(h, prices) }));
@@ -720,6 +765,40 @@ export default function HomeScreen() {
           end={{ x: 1, y: 0 }}
           style={styles.heroAccent}
         />
+        {/* Sits under the content and above the card fill, fading out well
+            before the figures so it never tints the text it sits behind. */}
+        {todayTint && (
+          <ExpoLinearGradient
+            pointerEvents="none"
+            colors={[todayTint + '1F', todayTint + '00']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.heroPerfWash}
+          />
+        )}
+        {milestoneActive && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.heroSweep,
+              {
+                transform: [{
+                  translateX: milestoneSweep.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-140, 460],
+                  }),
+                }, { rotate: '18deg' }],
+              },
+            ]}
+          >
+            <ExpoLinearGradient
+              colors={[colors.primary + '00', colors.primary + '4D', colors.primary + '00']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+        )}
 
         {/* A real network failure is covered by the full-screen
             NoNetworkOverlay mounted in (tabs)/_layout.tsx, so nothing is
@@ -1381,6 +1460,11 @@ const styles = StyleSheet.create({
 
   heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   heroAccent: { height: 1.25 },
+  // Tall enough to colour the card's upper region, short enough that it has
+  // faded to nothing behind the value itself.
+  heroPerfWash: { position: 'absolute', top: 0, left: 0, right: 0, height: 130 },
+  // A narrow angled band swept across the card once on a milestone.
+  heroSweep: { position: 'absolute', top: -40, bottom: -40, width: 90 },
   heroBody:   { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 16, alignItems: 'stretch' },
 
   cashCard: {
