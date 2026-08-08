@@ -372,6 +372,20 @@ export default function HomeScreen() {
     });
     return [...totals.entries()].sort((a, b) => b[1] - a[1]);
   }, [cashAccounts]);
+  // Width of the amount column, from the longest amount actually shown.
+  // Amounts sit left-aligned inside it, so every currency code begins at the
+  // same x while staying adjacent to its number — pushing codes to the card's
+  // right edge instead left a dead channel beside shorter balances.
+  // 10.4px is the advance of an Inter_700Bold digit at 17px, uniform here
+  // because of fontVariant: tabular-nums.
+  const cashAmountWidth = useMemo(() => {
+    const shown = cashByCurrency.slice(0, CASH_CURRENCY_CELLS);
+    if (shown.length < 2) return undefined; // a lone row has nothing to align to
+    const longest = Math.max(
+      ...shown.map(([, amt]) => amt.toLocaleString('en-EG', { maximumFractionDigits: 0 }).length),
+    );
+    return Math.ceil(longest * 10.4);
+  }, [cashByCurrency]);
   // A goal linked to a cash account tracks that account's live balance
   // instead of its own stored savedAmount — mirrors goals.tsx's own
   // effectiveSaved exactly, so this row's numbers always match that screen.
@@ -1011,7 +1025,7 @@ export default function HomeScreen() {
                     style={[
                       styles.cashRowValue,
                       cashByCurrency.length === 1 && styles.cashRowValueSolo,
-                      { color: colors.text },
+                      { color: colors.text, minWidth: cashAmountWidth },
                     ]}
                     numberOfLines={1}
                   >
@@ -1371,13 +1385,13 @@ const styles = StyleSheet.create({
   // shades apart, so a hairline is invisible — and a line bright enough to
   // register would read as heavier than this card wants. The chip gives
   // each row a right-hand anchor, which is what the separator was for.
-  cashRows:      { gap: 7, marginTop: 3 },
+  cashRows:      { gap: 7, marginTop: 3, alignSelf: 'flex-start' },
   // A View with a backgroundColor, matching how the portfolio card's own
   // iDivider is drawn — a borderTopWidth hairline renders sub-pixel here and
   // effectively disappears against the card, which is why the first attempt
   // at this separator was invisible.
   cashRowSep:    { height: StyleSheet.hairlineWidth },
-  cashRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  cashRow:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // No chip: it was added to stand in for a separator, and once the real
   // separator was drawn properly the box only boxed the code in at 10px
   // against a barely-contrasting fill. Plain text at a readable size on
