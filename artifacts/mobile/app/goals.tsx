@@ -45,6 +45,36 @@ const pb = StyleSheet.create({
   fill:  { height: '100%', borderRadius: 3 },
 });
 
+// Answers the question a goal actually raises but the card never did: will
+// this be met on time? Required pace is pure arithmetic and always correct.
+// The verdict is only offered once there's a month of history to measure
+// against — before that, observed pace is noise, and a confident "behind"
+// derived from three days of data would be worse than saying nothing.
+function goalPacing(g: { targetAmount: number; deadline?: string; createdAt: string }, saved: number) {
+  const remaining = Math.max(0, g.targetAmount - saved);
+  if (remaining <= 0 || !g.deadline) return null;
+
+  const now = Date.now();
+  const due = new Date(g.deadline).getTime();
+  if (!Number.isFinite(due)) return null;
+
+  const MS_MONTH = 30.44 * 86_400_000;
+  const monthsLeft = (due - now) / MS_MONTH;
+  if (monthsLeft <= 0) return { overdue: true as const };
+
+  const requiredPerMonth = remaining / monthsLeft;
+
+  const created = new Date(g.createdAt).getTime();
+  const monthsElapsed = Number.isFinite(created) ? (now - created) / MS_MONTH : 0;
+  // Under a month of history, or nothing saved yet, gives no usable rate.
+  if (monthsElapsed < 1 || saved <= 0) return { overdue: false as const, requiredPerMonth, behindMonths: null };
+
+  const observedPerMonth = saved / monthsElapsed;
+  const monthsNeeded = observedPerMonth > 0 ? remaining / observedPerMonth : Infinity;
+  const behindMonths = Math.round(monthsNeeded - monthsLeft);
+  return { overdue: false as const, requiredPerMonth, behindMonths };
+}
+
 export default function GoalsScreen() {
   const colors = useColors();
   const t = useT();
@@ -253,6 +283,28 @@ export default function GoalsScreen() {
                           {done && (
                             <Text style={[s.achieved, { color: colors.green }]}>{t.achieved}</Text>
                           )}
+                          {!done && (() => {
+                            const pace = goalPacing(g, saved);
+                            if (!pace) return null;
+                            if (pace.overdue) {
+                              return (
+                                <Text style={[s.pacing, { color: colors.red }]} numberOfLines={2}>
+                                  {t.goalDeadlinePassed}
+                                </Text>
+                              );
+                            }
+                            const behind = pace.behindMonths;
+                            const onTrack = behind !== null && behind <= 0;
+                            return (
+                              <Text
+                                style={[s.pacing, { color: onTrack ? colors.green : colors.mutedForeground }]}
+                                numberOfLines={2}
+                              >
+                                {t.goalNeedPerMonth(pace.requiredPerMonth.toLocaleString('en-EG', { maximumFractionDigits: 0 }))}
+                                {behind !== null && (onTrack ? ` · ${t.goalOnTrack}` : ` · ${t.goalBehindBy(behind)}`)}
+                              </Text>
+                            );
+                          })()}
 
                           {linkedAccount && (
                             <View style={s.syncedRow}>
@@ -487,6 +539,7 @@ const s = StyleSheet.create({
   numUnit:  { fontSize: 12, fontFamily: 'Inter_400Regular' },
   targetNum: { fontSize: 13, fontFamily: 'Inter_400Regular' },
   remaining: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 3 },
+  pacing:      { fontSize: 11, fontFamily: 'Inter_500Medium', marginTop: 4, lineHeight: 15 },
   achieved:  { fontSize: 13, fontFamily: 'Inter_700Bold', marginTop: 3 },
   syncedRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
   syncedText: { fontSize: 11.5, fontFamily: 'Inter_500Medium' },

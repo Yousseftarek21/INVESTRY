@@ -8,7 +8,7 @@
  * old approach (a hand-rolled Animated + PanResponder sheet inside a plain
  * transparent RN Modal) is what caused the open/close lag.
  */
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
@@ -17,6 +17,8 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
+import { useUser } from '@clerk/expo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { Holding, MarketPrices } from '@/types';
 import { getRECurrentValue } from '@/utils/rePrice';
@@ -140,11 +142,53 @@ const dis = StyleSheet.create({
 
 // ─── 1. Zakat Calculator ──────────────────────────────────────────────────────
 
+// Zakat is payable only after wealth has stayed at or above nisab for one
+// full lunar year (hawl) — 354 days, not 365. The calculator could say
+// whether you're above nisab today but never tracked that year, so it
+// couldn't tell you when anything was actually due.
+//
+// The date wealth first reached nisab is recorded locally and cleared the
+// moment it drops below, because falling under nisab restarts the hawl.
+// Deliberately local-only and per-account: it's a personal religious
+// obligation, not portfolio data to sync around.
+const HAWL_DAYS = 354;
+
+function useHawl(eligible: boolean, userId: string | null | undefined) {
+  const [since, setSince] = useState<string | null>(null);
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (!userId) { setSince(null); loaded.current = false; return; }
+    AsyncStorage.getItem(`@investry_hawl_${userId}`)
+      .then(v => { setSince(v); loaded.current = true; })
+      .catch(() => { loaded.current = true; });
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !loaded.current) return;
+    if (eligible && !since) {
+      const today = new Date().toISOString();
+      setSince(today);
+      AsyncStorage.setItem(`@investry_hawl_${userId}`, today).catch(() => null);
+    } else if (!eligible && since) {
+      setSince(null);
+      AsyncStorage.removeItem(`@investry_hawl_${userId}`).catch(() => null);
+    }
+  }, [eligible, since, userId]);
+
+  if (!since) return null;
+  const startMs = new Date(since).getTime();
+  if (!Number.isFinite(startMs)) return null;
+  const elapsedDays = Math.floor((Date.now() - startMs) / 86_400_000);
+  return { elapsedDays, daysLeft: Math.max(0, HAWL_DAYS - elapsedDays), due: elapsedDays >= HAWL_DAYS };
+}
+
 export function ZakatContent() {
   const colors = useColors();
   const t = useT();
   const { holdings } = useHoldings();
   const { data: prices } = useMarketPrices();
+  const { user } = useUser();
   const [nisabType, setNisabType] = useState<'gold' | 'silver'>('gold');
   const [includeStocks, setIncludeStocks] = useState(false);
   const [extraCash, setExtraCash] = useState('');
@@ -230,6 +274,7 @@ export function ZakatContent() {
         { label: t.zakatDueLabel, value: eligible ? `${fmt(zakatDue)} EGP` : '—', highlight: eligible },
       ]} />
 
+      <HawlRow eligible={eligible} userId={user?.id} />
       <Disclaimer text={t.zakatDisclaimer} />
     </>
   );
@@ -247,6 +292,24 @@ const zk = StyleSheet.create({
   toggle: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   toggleTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
 });
+
+// Separate component so the hook runs on every render of the calculator
+// without the parent needing to thread its state through.
+function HawlRow({ eligible, userId }: { eligible: boolean; userId: string | null | undefined }) {
+  const colors = useColors();
+  const t = useT();
+  const hawl = useHawl(eligible, userId);
+  if (!hawl) return null;
+  const tone = hawl.due ? colors.green : colors.mutedForeground;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, paddingHorizontal: 2 }}>
+      <Feather name={hawl.due ? 'bell' : 'clock'} size={12} color={tone} />
+      <Text style={{ flex: 1, fontSize: 11, fontFamily: 'Inter_500Medium', color: tone, lineHeight: 15 }}>
+        {hawl.due ? t.zakatHawlDue : t.zakatHawlCountdown(hawl.daysLeft)}
+      </Text>
+    </View>
+  );
+}
 
 // ─── 2. Gold Value Calculator ─────────────────────────────────────────────────
 
