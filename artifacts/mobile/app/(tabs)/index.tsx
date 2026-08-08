@@ -1003,31 +1003,24 @@ export default function HomeScreen() {
             </Text>
           ) : isMultiCurrencyCash ? (
             <View style={styles.cashRows}>
-              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt], i) => (
-                <View
+              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt]) => (
+                <Text
                   key={cur}
-                  style={[
-                    styles.cashRow,
-                    i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-                  ]}
+                  style={[styles.cashRowValue, { color: colors.text }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
                 >
-                  <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]} numberOfLines={1}>{cur}</Text>
-                  <Text
-                    style={[styles.cashRowValue, { color: colors.text }]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.8}
-                  >
-                    {hideValues ? '••••' : amt.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
-                  </Text>
-                </View>
+                  {hideValues ? '••••••' : amt.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+                  {!hideValues && (
+                    <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]}> {cur}</Text>
+                  )}
+                </Text>
               ))}
               {cashByCurrency.length > CASH_CURRENCY_CELLS && (
-                <View style={[styles.cashRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
-                  <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {t.cashMoreCurrencies(cashByCurrency.length - CASH_CURRENCY_CELLS)}
-                  </Text>
-                </View>
+                <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {t.cashMoreCurrencies(cashByCurrency.length - CASH_CURRENCY_CELLS)}
+                </Text>
               )}
             </View>
           ) : (
@@ -1365,13 +1358,15 @@ const styles = StyleSheet.create({
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   // Secondary currency lines: clearly subordinate to the first (largest)
   // balance, while still being real, readable figures rather than a footnote.
-  // Multi-currency rows. Every row is styled identically — no row is the
-  // "main" one — so they read as sibling entries rather than a headline
-  // figure with subordinate notes beneath it.
-  cashRows:      { marginTop: 2 },
-  cashRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 5 },
-  cashRowCur:    { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
-  cashRowValue:  { flexShrink: 1, fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
+  // Multi-currency rows. The currency code sits inline after its amount
+  // rather than in a left-hand column: a column of muted codes stacked
+  // directly under the muted "Cash" label read as three labels in a row,
+  // and pushed the amounts to the far edge leaving a dead gap between.
+  // Inline matches how the single-currency card already renders its value.
+  // Every row is styled identically so none reads as subordinate.
+  cashRows:      { gap: 3, marginTop: 1 },
+  cashRowCur:    { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  cashRowValue:  { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
 
   goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18 },
   goalRingCluster: { flexDirection: 'row' },
