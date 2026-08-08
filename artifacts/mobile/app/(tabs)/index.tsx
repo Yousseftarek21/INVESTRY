@@ -1002,8 +1002,14 @@ export default function HomeScreen() {
             </Text>
           ) : isMultiCurrencyCash ? (
             <View style={styles.cashRows}>
-              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt]) => (
-                <View key={cur} style={styles.cashRow}>
+              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt], i) => (
+                <View
+                  key={cur}
+                  style={[
+                    styles.cashRow,
+                    i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+                  ]}
+                >
                   <Text
                     style={[styles.cashRowValue, { color: colors.text }]}
                     numberOfLines={1}
@@ -1366,10 +1372,12 @@ const styles = StyleSheet.create({
   // to a shared right edge. Both columns align without needing a measured
   // width — space-between does the work, and the codes stay clear of the
   // amounts instead of trailing them at ragged offsets.
-  cashRows:      { gap: 3, marginTop: 1 },
+  // No gap: rows are separated by a hairline instead, which binds each
+  // amount to its code across the gap the ledger layout puts between them.
+  cashRows:      { marginTop: 1 },
   // Baseline-aligned so the small code sits on the same line as the digits
   // rather than centred against their full cap height.
-  cashRow:       { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 },
+  cashRow:       { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, paddingVertical: 4 },
   cashRowCur:    { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashRowValue:  { flexShrink: 1, fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
 
