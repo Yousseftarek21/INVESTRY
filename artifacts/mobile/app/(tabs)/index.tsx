@@ -1002,8 +1002,10 @@ export default function HomeScreen() {
             </Text>
           ) : isMultiCurrencyCash ? (
             <View style={styles.cashRows}>
-              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt]) => (
-                <View key={cur} style={styles.cashRow}>
+              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt], i) => (
+                <React.Fragment key={cur}>
+                  {i > 0 && <View style={[styles.cashRowSep, { backgroundColor: colors.border }]} />}
+                <View style={styles.cashRow}>
                   <Text
                     style={[styles.cashRowValue, { color: colors.text }]}
                     numberOfLines={1}
@@ -1014,6 +1016,7 @@ export default function HomeScreen() {
                     <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]}>{cur}</Text>
                   </View>
                 </View>
+                </React.Fragment>
               ))}
               {cashByCurrency.length > CASH_CURRENCY_CELLS && (
                 <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]} numberOfLines={1}>
@@ -1372,6 +1375,11 @@ const styles = StyleSheet.create({
   // register would read as heavier than this card wants. The chip gives
   // each row a right-hand anchor, which is what the separator was for.
   cashRows:      { gap: 7, marginTop: 3 },
+  // A View with a backgroundColor, matching how the portfolio card's own
+  // iDivider is drawn — a borderTopWidth hairline renders sub-pixel here and
+  // effectively disappears against the card, which is why the first attempt
+  // at this separator was invisible.
+  cashRowSep:    { height: StyleSheet.hairlineWidth },
   cashRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   cashCurChip:   { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2.5 },
   cashRowCur:    { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
