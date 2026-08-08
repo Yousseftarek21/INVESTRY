@@ -163,24 +163,35 @@ function summarizeEgxMovers(stocks: EGXStockResponse[]): string {
 // Full dataset, not just areas the user owns property in — lets the
 // assistant answer general "what's the going rate in X" questions. Prefers
 // live-scraped Property Finder averages (real_estate_prices, refreshed
-// twice a day by realEstatePriceCron.ts) per area, falling back to the
-// static RE_PRICES file for any area not yet scraped — same pattern as
-// GET /markets/real-estate in markets.ts.
+// twice a day by realEstatePriceCron.ts) per area.
+//
+// Only scraped areas are listed. The curated RE_PRICES figures this used to
+// fall back on measured ~4x below real listing prices, and stating them to
+// the assistant as fact meant it quoted them confidently to users — the
+// worst possible place for a wrong number. Areas without a scrape are named
+// as unknown so the assistant can say it doesn't know rather than guess.
 async function summarizeRealEstateMarket(): Promise<string> {
   const rows = await db.select().from(realEstatePricesTable);
   const byId = new Map(rows.map((r) => [r.id, r]));
 
-  const lines = RE_PRICES.map((a) => {
+  const known: string[] = [];
+  const unknown: string[] = [];
+  for (const a of RE_PRICES) {
     const scraped = byId.get(a.id);
-    if (scraped) {
-      const changeTxt = scraped.changePercent != null
-        ? `${scraped.changePercent >= 0 ? "+" : ""}${scraped.changePercent.toFixed(1)}% since last check`
-        : "no trend yet";
-      return `${a.area}, ${a.governorate}: ~${scraped.avgPricePerM2.toLocaleString()} EGP/m² (live, ${scraped.sampleSize} listings, ${changeTxt})`;
-    }
-    return `${a.area}, ${a.governorate}: ~${a.avgPricePerM2.toLocaleString()} EGP/m² (estimate, ${a.trend}, ${a.changePercent >= 0 ? "+" : ""}${a.changePercent}% YoY)`;
-  });
-  return `Egypt real estate price guide (EGP per m²):\n${lines.join("\n")}`;
+    if (!scraped) { unknown.push(a.area); continue; }
+    const changeTxt = scraped.changePercent != null
+      ? `${scraped.changePercent >= 0 ? "+" : ""}${scraped.changePercent.toFixed(1)}% since last check`
+      : "no trend yet";
+    known.push(`${a.area}, ${a.governorate}: ~${scraped.avgPricePerM2.toLocaleString()} EGP/m² (live, ${scraped.sampleSize} listings, ${changeTxt})`);
+  }
+
+  if (known.length === 0) {
+    return "Egypt real estate: no live price data available right now. Say you don't have current figures rather than estimating.";
+  }
+  const unknownNote = unknown.length
+    ? `\n\nNo current data for these areas — say so plainly if asked, do not estimate: ${unknown.join(", ")}`
+    : "";
+  return `Egypt real estate price guide (EGP per m², live scraped data only):\n${known.join("\n")}${unknownNote}`;
 }
 
 // Finds the snapshot closest to `daysAgo` days before today and describes

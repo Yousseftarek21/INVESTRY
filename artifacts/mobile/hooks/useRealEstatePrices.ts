@@ -8,9 +8,12 @@ export interface RealEstateAreaLive {
   id: string;
   governorate: string;
   area: string;
-  minPricePerM2: number;
-  maxPricePerM2: number;
-  avgPricePerM2: number;
+  // Null until this area has a completed scrape — the server no longer
+  // substitutes the curated per-area estimates, which ran ~4x below real
+  // listing prices. "No data yet" beats a confident wrong number.
+  minPricePerM2: number | null;
+  maxPricePerM2: number | null;
+  avgPricePerM2: number | null;
   changePercent: number | null;
   sampleSize: number;
   type: REPropertyType;

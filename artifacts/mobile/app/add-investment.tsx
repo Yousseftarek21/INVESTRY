@@ -19,6 +19,7 @@ import { EGX_COMPANIES } from '@/data/egx-companies';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { RE_PRICES, REAreaPrice, RE_COMPOUNDS, RECompound } from '@/data/egypt-real-estate-prices';
 import { useRealEstateCompoundPrices } from '@/hooks/useRealEstateCompoundPrices';
+import { useRealEstatePrices, RealEstateAreaLive } from '@/hooks/useRealEstatePrices';
 import { parseAmount, cleanAmountInput } from '@/utils/parseAmount';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
@@ -138,10 +139,14 @@ function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
-// ─── RE Price Lookup ──────────────────────────────────────────────────────────
-// Match a selected city/district to our curated RE_PRICES dataset.
+// ─── RE Area Lookup ───────────────────────────────────────────────────────────
+// Matches a selected city/district to a curated area's IDENTITY only (its id,
+// name and governorate, which are real). Prices come exclusively from the live
+// scrape — the curated per-area price fields ran ~4x below real listings, and
+// auto-filling them here wrote that wrong figure straight into the holding,
+// where it becomes its permanent valuation (see rePrice.ts).
 // District is more specific so it takes priority over city.
-function lookupREPrice(gov: string, cityName: string, districtName: string): REAreaPrice | null {
+function lookupREArea(gov: string, cityName: string, districtName: string): REAreaPrice | null {
   const norm = (s: string) => s.toLowerCase().replace(/['''\-–—]/g, '').replace(/\s+/g, ' ').trim();
   const govNorm = norm(gov);
   const candidates = RE_PRICES.filter(p =>
@@ -548,7 +553,9 @@ export default function AddInvestmentScreen() {
   const [districtPickerVisible, setDistrictPickerVisible] = useState(false);
   const [area, setArea] = useState('');
   const [currentMarketPricePerM2, setCurrentMarketPricePerM2] = useState('');
-  const [autoFilledArea, setAutoFilledArea] = useState<REAreaPrice | null>(null);
+  // Holds the LIVE scraped entry for the matched area (never the curated
+  // estimate), and only when that scrape produced a real price.
+  const [autoFilledArea, setAutoFilledArea] = useState<RealEstateAreaLive | null>(null);
   const [lastValuationDate, setLastValuationDate] = useState(new Date().toISOString().split('T')[0]);
   const [valuationSource, setValuationSource] = useState<ValuationSource>('manual');
   const [developer, setDeveloper] = useState('');
@@ -560,6 +567,13 @@ export default function AddInvestmentScreen() {
   // false shows the traditional governorate/city/district flow.
   const [isInCompound, setIsInCompound] = useState<boolean | null>(null);
   const { data: compoundPrices = [] } = useRealEstateCompoundPrices();
+  const { data: areaPrices = [] } = useRealEstatePrices();
+  // Live entry for a curated area id, only if it actually has a scraped price.
+  const liveAreaFor = (id?: string) => {
+    if (!id) return null;
+    const live = areaPrices.find(a => a.id === id);
+    return live && live.avgPricePerM2 != null ? live : null;
+  };
   const selectedCompoundPrice = reCompoundId ? compoundPrices.find(c => c.id === reCompoundId) : undefined;
   const [unitNumber, setUnitNumber] = useState('');
   const [hasInstallmentPlan, setHasInstallmentPlan] = useState(false);
@@ -626,10 +640,7 @@ export default function AddInvestmentScreen() {
       setDistrict(editingHolding.district);
       setArea(String(editingHolding.area ?? 0));
       // Restore auto-filled area from reAreaId if available
-      if (editingHolding.reAreaId) {
-        const found = RE_PRICES.find(p => p.id === editingHolding.reAreaId);
-        if (found) setAutoFilledArea(found);
-      } else if (editingHolding.currentMarketPricePerM2) {
+      if (editingHolding.currentMarketPricePerM2) {
         setCurrentMarketPricePerM2(String(editingHolding.currentMarketPricePerM2));
       }
       setLastValuationDate(editingHolding.lastValuationDate ?? new Date().toISOString().split('T')[0]);
@@ -1337,7 +1348,8 @@ export default function AddInvestmentScreen() {
                     <Text style={{ fontSize: 9, fontFamily: 'Inter_700Bold', color: colors.green, letterSpacing: 0.5 }}>LIVE DATA</Text>
                   </View>
                   <Text style={{ fontSize: 11, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, flex: 1 }}>
-                    {autoFilledArea.minPricePerM2.toLocaleString('en-EG')}–{autoFilledArea.maxPricePerM2.toLocaleString('en-EG')} EGP/m² · YoY {autoFilledArea.changePercent > 0 ? '+' : ''}{autoFilledArea.changePercent}%
+                    {autoFilledArea.minPricePerM2!.toLocaleString('en-EG')}–{autoFilledArea.maxPricePerM2!.toLocaleString('en-EG')} EGP/m²
+                    {autoFilledArea.changePercent != null ? ` · ${autoFilledArea.changePercent > 0 ? '+' : ''}${autoFilledArea.changePercent.toFixed(1)}%` : ''}
                   </Text>
                 </View>
               )}
@@ -1345,7 +1357,7 @@ export default function AddInvestmentScreen() {
                 style={inputStyle}
                 placeholder={selectedCompoundPrice?.avgPricePerM2 != null
                   ? `Market avg: ${selectedCompoundPrice.avgPricePerM2.toLocaleString('en-EG')} EGP/m²`
-                  : autoFilledArea
+                  : autoFilledArea?.avgPricePerM2 != null
                   ? `Market avg: ${autoFilledArea.avgPricePerM2.toLocaleString('en-EG')} EGP/m²`
                   : t.currentMarketPricePerM2Placeholder}
                 placeholderTextColor={colors.mutedForeground}
@@ -1661,11 +1673,14 @@ export default function AddInvestmentScreen() {
         onSelect={(v) => {
           setCity(v);
           setDistrict('');
-          const match = lookupREPrice(governorate, v, '');
-          if (match) {
-            setCurrentMarketPricePerM2(String(match.avgPricePerM2));
-            setAutoFilledArea(match);
+          const match = lookupREArea(governorate, v, '');
+          const live = liveAreaFor(match?.id);
+          if (live) {
+            setCurrentMarketPricePerM2(String(live.avgPricePerM2));
+            setAutoFilledArea(live);
           } else {
+            // No real scraped price for this area — leave the field for the
+            // user rather than seeding a figure we can't stand behind.
             setAutoFilledArea(null);
           }
         }}
@@ -1679,10 +1694,11 @@ export default function AddInvestmentScreen() {
         selected={district}
         onSelect={(v) => {
           setDistrict(v);
-          const match = lookupREPrice(governorate, city, v);
-          if (match) {
-            setCurrentMarketPricePerM2(String(match.avgPricePerM2));
-            setAutoFilledArea(match);
+          const match = lookupREArea(governorate, city, v);
+          const live = liveAreaFor(match?.id);
+          if (live) {
+            setCurrentMarketPricePerM2(String(live.avgPricePerM2));
+            setAutoFilledArea(live);
           } else {
             setAutoFilledArea(null);
           }
@@ -1709,8 +1725,8 @@ export default function AddInvestmentScreen() {
           // holdings do (see rePrice.ts) — without this a compound-based
           // holding would never update again after today.
           if (c.areaId) {
-            const area = RE_PRICES.find(a => a.id === c.areaId);
-            if (area) setAutoFilledArea(area);
+            const live = liveAreaFor(c.areaId);
+            if (live) setAutoFilledArea(live);
           }
         }}
         onFreeText={(text) => { setCompoundName(text); setReCompoundId(undefined); }}

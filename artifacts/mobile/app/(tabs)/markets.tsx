@@ -505,20 +505,21 @@ function RERow({ area, isLast }: { area: RealEstateAreaLive; isLast: boolean }) 
       <View style={rer.info}>
         <View style={rer.nameRow}>
           <Text style={[rer.name, { color: colors.text }]} numberOfLines={1}>{area.area}</Text>
-          {!area.isLive && (
-            <View style={[rer.estBadge, { backgroundColor: colors.muted }]}>
-              <Text style={[rer.estTxt, { color: colors.mutedForeground }]}>{t.estAbbrevLabel}</Text>
-            </View>
-          )}
         </View>
         <Text style={[rer.range, { color: colors.mutedForeground }]} numberOfLines={1}>
-          {fmtKEGP(area.minPricePerM2)}–{fmtKEGP(area.maxPricePerM2)} EGP/m²
+          {area.minPricePerM2 != null && area.maxPricePerM2 != null
+            ? `${fmtKEGP(area.minPricePerM2)}–${fmtKEGP(area.maxPricePerM2)} EGP/m²`
+            : t.reNoDataYet}
         </Text>
       </View>
       <View style={rer.right}>
-        <Text style={[rer.price, { color: colors.text }]}>
-          {fmtKEGP(area.avgPricePerM2)}{' '}
-          <Text style={[rer.unit, { color: colors.mutedForeground }]}>EGP/m²</Text>
+        <Text style={[rer.price, { color: area.avgPricePerM2 != null ? colors.text : colors.mutedForeground }]}>
+          {area.avgPricePerM2 != null ? (
+            <>
+              {fmtKEGP(area.avgPricePerM2)}{' '}
+              <Text style={[rer.unit, { color: colors.mutedForeground }]}>EGP/m²</Text>
+            </>
+          ) : '—'}
         </Text>
         {area.changePercent != null ? (
           <View style={[rer.badge, { backgroundColor: tc + '18' }]}>

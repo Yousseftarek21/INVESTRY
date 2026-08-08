@@ -1322,11 +1322,16 @@ router.get("/markets/global-stocks", async (req, res) => {
 });
 
 // GET /markets/real-estate — scraped Property Finder averages per area,
-// refreshed twice a day by realEstatePriceCron.ts. Falls back to the
-// static RE_PRICES file per-area for anything not yet scraped (a fresh
-// deploy before the cron's first run completes, or an area with too few
-// matched listings that run) — same "static file as last resort only"
-// pattern as EGX_STATIC_FALLBACK in the mobile app's useEGXMarket.ts.
+// refreshed twice a day by realEstatePriceCron.ts.
+//
+// Areas without a completed scrape return null prices, NOT the curated
+// RE_PRICES figures they used to fall back to. Those estimates measured
+// ~4x below reality (curated median ~13,000 EGP/m² against scraped New
+// Cairo 5th Settlement at ~62,000 from 296 real listings), so serving them
+// stated a confident, precise, wrong price — and, via the compound route's
+// area fallback, was the source of the "Palm Hills ≈ 16k" figure. A null
+// the client renders as "no data yet" is the honest answer; the curated
+// list still supplies each area's real id/name/governorate.
 router.get("/markets/real-estate", async (req, res) => {
   try {
     const rows = await db.select().from(realEstatePricesTable);
@@ -1353,10 +1358,10 @@ router.get("/markets/real-estate", async (req, res) => {
         id: area.id,
         governorate: area.governorate,
         area: area.area,
-        minPricePerM2: area.minPricePerM2,
-        maxPricePerM2: area.maxPricePerM2,
-        avgPricePerM2: area.avgPricePerM2,
-        changePercent: area.changePercent,
+        minPricePerM2: null,
+        maxPricePerM2: null,
+        avgPricePerM2: null,
+        changePercent: null,
         sampleSize: 0,
         type: area.type,
         isLive: false,
@@ -1409,12 +1414,15 @@ router.get("/markets/real-estate/compounds", async (req, res) => {
         };
       }
 
+      // Only a genuinely scraped parent area may stand in — the curated
+      // static estimates are ~4x below real listing prices and were exactly
+      // what made Palm Hills read ≈16k EGP/m². A compound with no live
+      // scrape and no live parent area now reports no number at all.
       const liveArea = c.areaId ? areaById.get(c.areaId) : undefined;
-      const staticArea = c.areaId ? RE_PRICES.find((a) => a.id === c.areaId) : undefined;
-      if (liveArea || staticArea) {
-        const avgPricePerM2 = liveArea?.avgPricePerM2 ?? staticArea!.avgPricePerM2;
-        const minPricePerM2 = liveArea?.minPricePerM2 ?? staticArea!.minPricePerM2;
-        const maxPricePerM2 = liveArea?.maxPricePerM2 ?? staticArea!.maxPricePerM2;
+      if (liveArea) {
+        const avgPricePerM2 = liveArea.avgPricePerM2;
+        const minPricePerM2 = liveArea.minPricePerM2;
+        const maxPricePerM2 = liveArea.maxPricePerM2;
         return {
           id: c.id,
           name: c.name,
@@ -1428,8 +1436,8 @@ router.get("/markets/real-estate/compounds", async (req, res) => {
           type: c.type,
           isLive: false,
           priceSource: "area_estimate" as const,
-          areaLabel: staticArea?.area ?? null,
-          updatedAt: null,
+          areaLabel: liveArea.area,
+          updatedAt: liveArea.updatedAt,
         };
       }
 
