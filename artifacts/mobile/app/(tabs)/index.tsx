@@ -372,7 +372,6 @@ export default function HomeScreen() {
     });
     return [...totals.entries()].sort((a, b) => b[1] - a[1]);
   }, [cashAccounts]);
-  const isMultiCurrencyCash = cashAccounts.length > 0 && cashByCurrency.length > 1;
   // A goal linked to a cash account tracks that account's live balance
   // instead of its own stored savedAmount — mirrors goals.tsx's own
   // effectiveSaved exactly, so this row's numbers always match that screen.
@@ -986,7 +985,9 @@ export default function HomeScreen() {
         <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
           <BanknoteIcon size={20} color={colors.green} />
         </View>
-        {/* Multi-currency lists one row per currency, and every row carries
+        {/* One row per currency held — the same treatment whether there is
+            one or several, so the card doesn't change shape as a second
+            currency appears. Every row carries
             identical weight: same size, same colour, its own currency label,
             amount aligned to a shared right edge. An earlier pass rendered
             the largest balance big and bold with the rest small and muted —
@@ -1000,14 +1001,18 @@ export default function HomeScreen() {
             <Text style={[styles.cashValue, { color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
               {t.noCashAccountsYet}
             </Text>
-          ) : isMultiCurrencyCash ? (
+          ) : (
             <View style={styles.cashRows}>
               {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt], i) => (
                 <React.Fragment key={cur}>
                   {i > 0 && <View style={[styles.cashRowSep, { backgroundColor: colors.border }]} />}
                 <View style={styles.cashRow}>
                   <Text
-                    style={[styles.cashRowValue, { color: colors.text }]}
+                    style={[
+                      styles.cashRowValue,
+                      cashByCurrency.length === 1 && styles.cashRowValueSolo,
+                      { color: colors.text },
+                    ]}
                     numberOfLines={1}
                   >
                     {hideValues ? '••••••' : amt.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
@@ -1024,12 +1029,6 @@ export default function HomeScreen() {
                 </Text>
               )}
             </View>
-          ) : (
-            <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1}>
-              {hideValues
-                ? '••••••'
-                : `${cashByCurrency[0][1].toLocaleString('en-EG', { maximumFractionDigits: 0 })} ${cashByCurrency[0][0]}`}
-            </Text>
           )}
         </View>
         <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
@@ -1383,7 +1382,14 @@ const styles = StyleSheet.create({
   cashRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   cashCurChip:   { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2.5 },
   cashRowCur:    { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
+  // List size: several balances are peers, and holding them here keeps a
+  // multi-currency card compact. Equal weight matters *within* that list —
+  // it never required a lone balance to shrink to match a list it isn't
+  // part of, which is what cashRowValueSolo restores.
   cashRowValue:  { flexShrink: 1, fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
+  // A single balance is the card's headline, not a list item, so it keeps
+  // the display size this card always used.
+  cashRowValueSolo: { fontSize: 19, letterSpacing: -0.4 },
 
   goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18 },
   goalRingCluster: { flexDirection: 'row' },
