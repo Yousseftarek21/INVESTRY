@@ -1017,14 +1017,12 @@ export default function HomeScreen() {
                   >
                     {hideValues ? '••••••' : amt.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
                   </Text>
-                  <View style={[styles.cashCurChip, { backgroundColor: colors.muted }]}>
-                    <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]}>{cur}</Text>
-                  </View>
+                  <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{cur}</Text>
                 </View>
                 </React.Fragment>
               ))}
               {cashByCurrency.length > CASH_CURRENCY_CELLS && (
-                <Text style={[styles.cashRowCur, { color: colors.mutedForeground }]} numberOfLines={1}>
+                <Text style={[styles.cashRowCur, { color: colors.mutedForeground, fontSize: 11 }]} numberOfLines={1}>
                   {t.cashMoreCurrencies(cashByCurrency.length - CASH_CURRENCY_CELLS)}
                 </Text>
               )}
@@ -1380,8 +1378,12 @@ const styles = StyleSheet.create({
   // at this separator was invisible.
   cashRowSep:    { height: StyleSheet.hairlineWidth },
   cashRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  cashCurChip:   { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2.5 },
-  cashRowCur:    { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5 },
+  // No chip: it was added to stand in for a separator, and once the real
+  // separator was drawn properly the box only boxed the code in at 10px
+  // against a barely-contrasting fill. Plain text at a readable size on
+  // textSecondary (#B8B8BC) rather than mutedForeground (#8E8E93) is
+  // legible on its own.
+  cashRowCur:    { fontSize: 13, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
   // List size: several balances are peers, and holding them here keeps a
   // multi-currency card compact. Equal weight matters *within* that list —
   // it never required a lone balance to shrink to match a list it isn't
