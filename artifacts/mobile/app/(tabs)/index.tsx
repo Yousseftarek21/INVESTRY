@@ -361,10 +361,10 @@ export default function HomeScreen() {
   // converted total above necessarily hides this, and someone holding
   // dollars thinks in dollars, not in an EGP equivalent. Largest first, and
   // only rendered when more than one currency is present.
-  // Cap on how many currency lines the Cash card renders before collapsing
-  // the rest into a "+N more" line — without a combined total the card would
-  // otherwise grow a row per currency held.
-  const CASH_CURRENCY_LINES = 3;
+  // Currency cells the Cash card shows side by side before collapsing the
+  // rest into a "+N". Two keeps each balance comfortably readable on the
+  // narrowest phones; a third would squeeze them below legibility.
+  const CASH_CURRENCY_CELLS = 2;
   const cashByCurrency = useMemo(() => {
     const totals = new Map<string, number>();
     cashAccounts.forEach(a => {
@@ -372,6 +372,7 @@ export default function HomeScreen() {
     });
     return [...totals.entries()].sort((a, b) => b[1] - a[1]);
   }, [cashAccounts]);
+  const isMultiCurrencyCash = cashAccounts.length > 0 && cashByCurrency.length > 1;
 
   // A goal linked to a cash account tracks that account's live balance
   // instead of its own stored savedAmount — mirrors goals.tsx's own
@@ -986,42 +987,52 @@ export default function HomeScreen() {
         <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
           <BanknoteIcon size={20} color={colors.green} />
         </View>
+        {/* Multi-currency splits the value line horizontally, borrowing the
+            divided-cell treatment from the Invested · Current · Return strip
+            on the portfolio card above. Side-by-side cells read as parallel,
+            equal items — which is what separate currency balances are —
+            where stacking them vertically kept reading as one figure
+            belonging to another.
+            The "Cash" label stays on its own line above (an icon alone left
+            the card unlabelled), and the whole block still measures ~33px
+            against the 42px icon that sets this row's height, so the card
+            does not grow no matter how many currencies are held. */}
         <View style={styles.cashInfo}>
           <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
-          {cashAccounts.length > 0 ? (
-            hideValues ? (
-              <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1}>••••••</Text>
-            ) : (
-              /* One line per currency actually held, at its real balance —
-                 no conversion and no combined figure, so nothing here can be
-                 misread as being "part of" a number above it. Largest first,
-                 and capped so the card can't grow without bound for someone
-                 holding many currencies. The combined total still exists
-                 where it's genuinely needed: the "Net Worth incl. cash" line
-                 above, and the Cash Accounts screen. */
-              <>
-                {cashByCurrency.slice(0, CASH_CURRENCY_LINES).map(([cur, amt], i) => (
-                  <Text
-                    key={cur}
-                    numberOfLines={1}
-                    style={[
-                      i === 0 ? styles.cashValue : styles.cashValueSecondary,
-                      { color: i === 0 ? colors.text : colors.mutedForeground },
-                    ]}
-                  >
-                    {amt.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {cur}
-                  </Text>
-                ))}
-                {cashByCurrency.length > CASH_CURRENCY_LINES && (
-                  <Text style={[styles.cashValueSecondary, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {t.cashMoreCurrencies(cashByCurrency.length - CASH_CURRENCY_LINES)}
-                  </Text>
-                )}
-              </>
-            )
-          ) : (
+          {cashAccounts.length === 0 ? (
             <Text style={[styles.cashValue, { color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
               {t.noCashAccountsYet}
+            </Text>
+          ) : isMultiCurrencyCash ? (
+            <View style={styles.cashSplitRow}>
+              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt], i) => (
+                <React.Fragment key={cur}>
+                  {i > 0 && <View style={[styles.cashCellDivider, { backgroundColor: colors.border }]} />}
+                  <Text
+                    style={[styles.cashCellValue, { color: colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
+                    {hideValues ? '••••' : `${amt.toLocaleString('en-EG', { maximumFractionDigits: 0 })} `}
+                    {!hideValues && <Text style={[styles.cashCellCur, { color: colors.mutedForeground }]}>{cur}</Text>}
+                  </Text>
+                </React.Fragment>
+              ))}
+              {cashByCurrency.length > CASH_CURRENCY_CELLS && (
+                <>
+                  <View style={[styles.cashCellDivider, { backgroundColor: colors.border }]} />
+                  <Text style={[styles.cashCellCur, { color: colors.mutedForeground }]} numberOfLines={1}>
+                    +{cashByCurrency.length - CASH_CURRENCY_CELLS}
+                  </Text>
+                </>
+              )}
+            </View>
+          ) : (
+            <Text style={[styles.cashValue, { color: colors.text }]} numberOfLines={1}>
+              {hideValues
+                ? '••••••'
+                : `${cashByCurrency[0][1].toLocaleString('en-EG', { maximumFractionDigits: 0 })} ${cashByCurrency[0][0]}`}
             </Text>
           )}
         </View>
@@ -1352,7 +1363,13 @@ const styles = StyleSheet.create({
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   // Secondary currency lines: clearly subordinate to the first (largest)
   // balance, while still being real, readable figures rather than a footnote.
-  cashValueSecondary: { fontSize: 14, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.2, fontVariant: ['tabular-nums'], marginTop: 1 },
+  // Multi-currency value line: cells share the row equally and shrink their
+  // own text before ever truncating, so a large balance can never push the
+  // chevron off the card.
+  cashSplitRow:     { flexDirection: 'row', alignItems: 'center' },
+  cashCellDivider:  { width: StyleSheet.hairlineWidth, height: 16, marginHorizontal: 9 },
+  cashCellValue:    { flexShrink: 1, fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
+  cashCellCur:      { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
 
   goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18 },
   goalRingCluster: { flexDirection: 'row' },
