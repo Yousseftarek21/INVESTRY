@@ -443,7 +443,7 @@ export default function HomeScreen() {
     const shown = cashByCurrency.slice(0, CASH_CURRENCY_CELLS);
     if (shown.length < 2) return undefined; // a lone row has nothing to align to
     const longest = Math.max(
-      ...shown.map(([, amt]) => amt.toLocaleString('en-EG', { maximumFractionDigits: 0 }).length),
+      ...shown.map(([, amt]) => fmtCompact(amt).length),
     );
     return Math.ceil(longest * 10.4);
   }, [cashByCurrency]);
@@ -1132,7 +1132,7 @@ export default function HomeScreen() {
                     ]}
                     numberOfLines={1}
                   >
-                    {hideValues ? '••••••' : amt.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+                    {hideValues ? '••••••' : fmtCompact(amt)}
                   </Text>
                   <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{cur}</Text>
                 </View>
