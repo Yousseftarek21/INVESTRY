@@ -12,14 +12,22 @@ function trimTrailingZeros(s: string): string {
   return s.includes('.') ? s.replace(/\.?0+$/, '') : s;
 }
 
+// Two decimals throughout, matching the convention these figures are read
+// against elsewhere (102,188 -> "102.19k", 244,439 -> "244.44k"): that is
+// 10 EGP of resolution, so a compact balance stays close enough to the real
+// one to be trusted rather than merely indicative. One decimal was tried
+// first and rounded 327,280 to "327.3k", still discarding 20 EGP for no
+// benefit — the string is the same width either way.
+//
+// Lowercase k, uppercase M, per that same convention and per SI (kilo is
+// lowercase, mega is uppercase).
+//
+// Detail screens deliberately do NOT use this — Cash Accounts' "Total Cash",
+// the balance-update history, and the edit form all print the exact figure.
+// Compact is for scannable rows; anywhere the number is the point, it stays
+// whole.
 export function fmtCompact(n: number): string {
-  if (n >= 1_000_000) return `${trimTrailingZeros((n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2))}M`;
-  // One decimal across the whole K range, not zero above 100K: dropping it
-  // there silently rounded 327,280 to a flat "327K", discarding 280 EGP of
-  // a figure the user typed in exactly. A tenth of a thousand is 100 EGP of
-  // resolution, which is the difference between "about right" and "that's
-  // my balance". Round values don't pay for it — trimTrailingZeros still
-  // collapses 300.0 to "300K".
-  if (n >= 1_000)     return `${trimTrailingZeros((n / 1_000).toFixed(1))}K`;
+  if (n >= 1_000_000) return `${trimTrailingZeros((n / 1_000_000).toFixed(2))}M`;
+  if (n >= 1_000)     return `${trimTrailingZeros((n / 1_000).toFixed(2))}k`;
   return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
