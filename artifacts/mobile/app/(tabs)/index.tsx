@@ -1067,6 +1067,24 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
+
+              {/* Why the longer periods are greyed out. isPeriodAvailable
+                  disables any window real history doesn't reach, which is
+                  correct but silent — a chart with 1M/3M/1Y dimmed and a 1W
+                  identical to ALL reads as broken rather than as young. Only
+                  shown while something is actually gated: once history is
+                  deep enough for every period, the line has nothing left to
+                  explain and disappears on its own. */}
+              {!!coverage.earliestDate && !CHART_PERIODS.every(p => isPeriodAvailable(p, coverage)) && (
+                <Text style={[styles.trackingSince, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {t.chartTrackingSince(
+                    new Date(coverage.earliestDate).toLocaleDateString(
+                      language === 'ar' ? 'ar-EG' : 'en-EG',
+                      { day: 'numeric', month: 'short', year: 'numeric' },
+                    ),
+                  )}
+                </Text>
+              )}
             </>
           )}
         </View>
@@ -1157,12 +1175,19 @@ export default function HomeScreen() {
                       already names it. Hidden along with the balances when
                       values are masked: a visible delta would leak the very
                       movement the mask exists to hide. */}
+                  {/* Same shape as HoldingCard's gainPill below in the
+                      investments list (icon + pill, 7/3 padding, 11px text)
+                      — this badge and that one are visible in the same
+                      scroll and read as two different UI languages if they
+                      don't match. */}
                   {!hideValues && !!cashTodayByCurrency.get(cur) && (() => {
                     const delta = cashTodayByCurrency.get(cur) as number;
                     const up = delta > 0;
+                    const c = up ? colors.green : colors.red;
                     return (
-                      <View style={[styles.cashTodayBadge, { backgroundColor: (up ? colors.green : colors.red) + '18' }]}>
-                        <Text style={[styles.cashTodayBadgeText, { color: up ? colors.green : colors.red }]} numberOfLines={1}>
+                      <View style={[styles.cashTodayBadge, { backgroundColor: c + '18' }]}>
+                        <Feather name={up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
+                        <Text style={[styles.cashTodayBadgeText, { color: c }]} numberOfLines={1}>
                           {t.todayChangeBadge(`${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
                         </Text>
                       </View>
@@ -1554,8 +1579,13 @@ const styles = StyleSheet.create({
   // distance from its currency code. Right-aligning restores the clean
   // money column tabular-nums is here to provide.
   cashRowValue:  { flexShrink: 1, textAlign: 'right', fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
-  cashTodayBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, flexShrink: 1 },
-  cashTodayBadgeText: { fontSize: 10.5, fontFamily: 'Inter_700Bold' },
+  // Matches HoldingCard's gainPill/gainText exactly (icon, 7/3 padding,
+  // radius 7, 11px text) — see the comment at the call site for why.
+  cashTodayBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, flexShrink: 1,
+  },
+  cashTodayBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
   // A single balance is the card's headline, not a list item, so it keeps
   // the display size this card always used.
   cashRowValueSolo: { fontSize: 19, letterSpacing: -0.4 },
@@ -1605,6 +1635,9 @@ const styles = StyleSheet.create({
   timeRow:    { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 10 },
   timePill:   { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   timePillText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
+  // Deliberately quieter than the pills it explains — a footnote about the
+  // data's age, not a control.
+  trackingSince: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: 7 },
 
   allocationStrip: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 24, paddingTop: 18, paddingBottom: 20, gap: 0 },
 

@@ -32,6 +32,7 @@ import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
 import { PerfChart } from '@/components/PerfChart';
 import { getHistoryCoverage, isPeriodAvailable } from '@/utils/chartUtils';
+import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar, AllocationSegment } from '@/components/AllocationBar';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -519,6 +520,9 @@ function PlanningToolCard({
 
 export default function AnalyticsScreen() {
   const t = useT();
+  // Only for date locale on the tracking-since line below — useT resolves
+  // the strings but doesn't expose which language produced them.
+  const { language } = useAppSettings();
   const colors = useColors();
   const router = useRouter();
   const { impact } = useHaptic();
@@ -1047,9 +1051,24 @@ export default function AnalyticsScreen() {
                   );
                 })}
               </View>
-              <Text style={[s.chartNote, { color: colors.mutedForeground }]}>
-                {t.simulatedTrendNote}
-              </Text>
+              {/* Replaces a "Simulated trend based on your portfolio's actual
+                  return" note that outlived the thing it described. This chart
+                  draws real snapshots, and where history is too short it falls
+                  back to two real points (cost basis -> current value) — sparse,
+                  but not invented. Calling that "simulated" told users their
+                  own tracked data was fake. What's actually worth saying is how
+                  far back the record goes, and only while some period is still
+                  gated by it. */}
+              {!!coverage.earliestDate && !PERIODS.every(p => isPeriodAvailable(p, coverage)) && (
+                <Text style={[s.chartNote, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {t.chartTrackingSince(
+                    new Date(coverage.earliestDate).toLocaleDateString(
+                      language === 'ar' ? 'ar-EG' : 'en-EG',
+                      { day: 'numeric', month: 'short', year: 'numeric' },
+                    ),
+                  )}
+                </Text>
+              )}
               {sm.totalCost > 0 && inflation && (
                 <View style={s.inflationRow}>
                   <Feather

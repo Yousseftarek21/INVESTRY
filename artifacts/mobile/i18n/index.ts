@@ -234,6 +234,11 @@ const en = {
   noCashAccounts: 'No cash accounts yet',
   noCashAccountsYet: 'No accounts yet · Tap to add',
   cashMoreCurrencies: (n: number) => `+${n} more ${n === 1 ? 'currency' : 'currencies'}` as string,
+  // Says why the longer periods are greyed out. Without it, a chart whose
+  // 1M/3M/1Y are disabled and whose 1W looks like ALL reads as broken
+  // rather than as young — the history is real, there just isn't much of
+  // it yet, and that only fixes itself with time.
+  chartTrackingSince: (date: string) => `Tracking since ${date}` as string,
   transferExceedsBalance: (bal: string, cur: string) => `Not enough balance — this account holds ${bal} ${cur}.` as string,
   activityTransferSubtitle: (amt: string, cur: string, from: string, to: string) => `${amt} ${cur} moved from ${from} to ${to}` as string,
   incomeNeedsAccountFirst: 'Add a cash account first — recurring income needs somewhere to deposit into.',
@@ -801,7 +806,6 @@ const en = {
   realAssetsLabel: 'Real Assets',
   informationalDisclaimer: 'Informational only — not financial advice.',
   performanceLabel: 'Performance',
-  simulatedTrendNote: "Simulated trend based on your portfolio's actual return",
   egpInflationBeating: (diff: string, rate: string) => `Beating EGP inflation · +${diff}% above ~${rate}%/yr` as string,
   egpInflationLagging: (ret: string, rate: string) => `EGP inflation ~${rate}%/yr · Your all-time return: ${ret}` as string,
   assetAllocationLabel: 'Asset Allocation',
@@ -1432,6 +1436,7 @@ const ar: typeof en = {
   noCashAccounts: 'لا توجد حسابات نقدية بعد',
   noCashAccountsYet: 'لا حسابات بعد · اضغط للإضافة',
   cashMoreCurrencies: (n: number) => `+${n} عملة أخرى` as string,
+  chartTrackingSince: (date: string) => `التتبع منذ ${date}` as string,
   transferExceedsBalance: (bal: string, cur: string) => `الرصيد غير كافٍ — هذا الحساب يحتوي على ${bal} ${cur}.` as string,
   activityTransferSubtitle: (amt: string, cur: string, from: string, to: string) => `تم تحويل ${amt} ${cur} من ${from} إلى ${to}` as string,
   incomeNeedsAccountFirst: 'أضف حساب نقدي أولاً — الدخل المتكرر يحتاج إلى حساب للإيداع فيه.',
@@ -1999,7 +2004,6 @@ const ar: typeof en = {
   realAssetsLabel: 'الأصول الحقيقية',
   informationalDisclaimer: 'للأغراض المعلوماتية فقط — وليست نصيحة مالية.',
   performanceLabel: 'الأداء',
-  simulatedTrendNote: 'اتجاه محاكى بناءً على عائد محفظتك الفعلي',
   egpInflationBeating: (diff: string, rate: string) => `تتفوق على التضخم · +${diff}% فوق ~${rate}٪/سنة` as string,
   egpInflationLagging: (ret: string, rate: string) => `التضخم في مصر ~${rate}٪/سنة · عائدك الكلي: ${ret}` as string,
   assetAllocationLabel: 'توزيع الأصول',

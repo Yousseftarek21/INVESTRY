@@ -869,19 +869,28 @@ export default function CashAccountsScreen() {
                           <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
                             {fmtCompact(Number(a.balance) || 0)} {a.currency}
                           </Text>
-                          {!!todayChanges[a.id] && (
-                            <View style={[styles.todayBadge, { backgroundColor: todayChanges[a.id] > 0 ? colors.green + '18' : colors.red + '18' }]}>
+                          {!!todayChanges[a.id] && (() => {
+                            const up = todayChanges[a.id] > 0;
+                            const c = up ? colors.green : colors.red;
+                            return (
+                            <View style={[styles.todayBadge, { backgroundColor: c + '18' }]}>
                               {/* No currency code here: the balance sitting
                                   immediately to the left already carries it,
                                   and repeating it pushed the badge past the
                                   row's width — "+317.3K EGP today" truncated
                                   to "+317.3K EGP tod…", losing the one word
-                                  that says what the number means. */}
-                              <Text style={[styles.todayBadgeText, { color: todayChanges[a.id] > 0 ? colors.green : colors.red }]} numberOfLines={1}>
-                                {t.todayChangeBadge(`${todayChanges[a.id] > 0 ? '+' : '−'}${fmtCompact(Math.abs(todayChanges[a.id]))}`)}
+                                  that says what the number means.
+                                  Icon + 7/3 padding + 11px text matches
+                                  HoldingCard's gainPill (the investment
+                                  list's own %-change pill) — same badge
+                                  language across the app, not a one-off. */}
+                              <Feather name={up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
+                              <Text style={[styles.todayBadgeText, { color: c }]} numberOfLines={1}>
+                                {t.todayChangeBadge(`${up ? '+' : '−'}${fmtCompact(Math.abs(todayChanges[a.id]))}`)}
                               </Text>
                             </View>
-                          )}
+                            );
+                          })()}
                         </View>
                         {a.lastBalanceUpdateAt && (
                           <Text style={[styles.lastUpdatedHint, { color: colors.mutedForeground }]} numberOfLines={1}>
@@ -1258,8 +1267,12 @@ const styles = StyleSheet.create({
   accountType: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   accountBalance: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: -0.2, marginTop: 1 },
   balanceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  todayBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, flexShrink: 1 },
-  todayBadgeText: { fontSize: 10.5, fontFamily: 'Inter_700Bold' },
+  // Matches HoldingCard's gainPill/gainText — see the comment at the call site.
+  todayBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, flexShrink: 1,
+  },
+  todayBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
   accountActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   actionBtn: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   pickerSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, gap: 8 },
