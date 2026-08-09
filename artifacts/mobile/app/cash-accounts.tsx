@@ -871,8 +871,14 @@ export default function CashAccountsScreen() {
                           </Text>
                           {!!todayChanges[a.id] && (
                             <View style={[styles.todayBadge, { backgroundColor: todayChanges[a.id] > 0 ? colors.green + '18' : colors.red + '18' }]}>
+                              {/* No currency code here: the balance sitting
+                                  immediately to the left already carries it,
+                                  and repeating it pushed the badge past the
+                                  row's width — "+317.3K EGP today" truncated
+                                  to "+317.3K EGP tod…", losing the one word
+                                  that says what the number means. */}
                               <Text style={[styles.todayBadgeText, { color: todayChanges[a.id] > 0 ? colors.green : colors.red }]} numberOfLines={1}>
-                                {t.todayChangeBadge(`${todayChanges[a.id] > 0 ? '+' : '−'}${fmtCompact(Math.abs(todayChanges[a.id]))} ${a.currency}`)}
+                                {t.todayChangeBadge(`${todayChanges[a.id] > 0 ? '+' : '−'}${fmtCompact(Math.abs(todayChanges[a.id]))}`)}
                               </Text>
                             </View>
                           )}

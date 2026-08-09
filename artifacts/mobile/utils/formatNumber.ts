@@ -2,8 +2,24 @@
 // monetary delta or total needs the same abbreviated style (Overview's
 // Today/Total P/L, Cash Accounts' today-change badge, etc.). Keeping this
 // in one place is what keeps those displays consistent with each other.
+// toFixed pads to a fixed width, so a round value picks up decimals that
+// carry no information — 10,000 rendered as "10.0K", 1,200,000 as "1.20M".
+// Next to the genuinely-precise figures these sit beside ("3.48M", "497K"),
+// that trailing zero reads as significance it doesn't have. Only strip
+// zeros that are pure padding: "3.48" and "1.2" keep every digit that says
+// something.
+function trimTrailingZeros(s: string): string {
+  return s.includes('.') ? s.replace(/\.?0+$/, '') : s;
+}
+
 export function fmtCompact(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(n >= 100_000 ? 0 : 1)}K`;
+  if (n >= 1_000_000) return `${trimTrailingZeros((n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2))}M`;
+  // One decimal across the whole K range, not zero above 100K: dropping it
+  // there silently rounded 327,280 to a flat "327K", discarding 280 EGP of
+  // a figure the user typed in exactly. A tenth of a thousand is 100 EGP of
+  // resolution, which is the difference between "about right" and "that's
+  // my balance". Round values don't pay for it — trimTrailingZeros still
+  // collapses 300.0 to "300K".
+  if (n >= 1_000)     return `${trimTrailingZeros((n / 1_000).toFixed(1))}K`;
   return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
