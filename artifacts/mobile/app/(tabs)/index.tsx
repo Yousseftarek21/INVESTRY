@@ -1159,27 +1159,29 @@ export default function HomeScreen() {
                 <React.Fragment key={cur}>
                   {i > 0 && <View style={[styles.cashRowSep, { backgroundColor: colors.border }]} />}
                 <View style={styles.cashRow}>
-                  <Text
-                    style={[
-                      styles.cashRowValue,
-                      cashByCurrency.length === 1 && styles.cashRowValueSolo,
-                      { color: colors.text, minWidth: cashAmountWidth },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {hideValues ? '••••••' : fmtCompact(amt)}
-                  </Text>
-                  <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{cur}</Text>
-                  {/* Same treatment as the per-account badge on the Cash
-                      Accounts screen, minus the currency code — the row
-                      already names it. Hidden along with the balances when
-                      values are masked: a visible delta would leak the very
-                      movement the mask exists to hide. */}
-                  {/* Same shape as HoldingCard's gainPill below in the
-                      investments list (icon + pill, 7/3 padding, 11px text)
-                      — this badge and that one are visible in the same
-                      scroll and read as two different UI languages if they
-                      don't match. */}
+                  <View style={styles.cashRowMain}>
+                    <Text
+                      style={[
+                        styles.cashRowValue,
+                        cashByCurrency.length === 1 && styles.cashRowValueSolo,
+                        { color: colors.text, minWidth: cashAmountWidth },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {hideValues ? '••••••' : fmtCompact(amt)}
+                    </Text>
+                    <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{cur}</Text>
+                  </View>
+                  {/* Stacked below the value, right-aligned — matches
+                      HoldingCard's `right` column exactly (value on top,
+                      gainPill directly under it). It used to sit inline
+                      next to the currency code instead: same badge shape as
+                      gainPill by then, but a different position on the row,
+                      which still read as a mismatch scrolling past both on
+                      the same screen. Minus the currency code — the line
+                      above already names it. Hidden along with the balances
+                      when values are masked: a visible delta would leak the
+                      very movement the mask exists to hide. */}
                   {!hideValues && !!cashTodayByCurrency.get(cur) && (() => {
                     const delta = cashTodayByCurrency.get(cur) as number;
                     const up = delta > 0;
@@ -1561,7 +1563,13 @@ const styles = StyleSheet.create({
   // effectively disappears against the card, which is why the first attempt
   // at this separator was invisible.
   cashRowSep:    { height: StyleSheet.hairlineWidth },
-  cashRow:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Column, not row: value+currency on top, the today badge stacked
+  // directly under it — same shape as HoldingCard's `right` column
+  // (alignItems: 'flex-end', gap: 5), which is what the badge needs to
+  // line up with. cashRowMain below is the inner row that used to be this
+  // whole thing before the badge moved to its own line.
+  cashRow:       { alignItems: 'flex-end', gap: 5 },
+  cashRowMain:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // No chip: it was added to stand in for a separator, and once the real
   // separator was drawn properly the box only boxed the code in at 10px
   // against a barely-contrasting fill. Plain text at a readable size on
