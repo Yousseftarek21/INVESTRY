@@ -517,6 +517,32 @@ async function fetchMetalsViaTradingView(): Promise<{
   };
 }
 
+// A TradingView scanner miss (timeout, rate limit, transient network error —
+// safeFetch's own comments confirm these happen occasionally, not
+// hypothetically) used to fall straight through to FALLBACK_GOLD/
+// FALLBACK_SILVER below — hardcoded constants that are only ever as fresh as
+// whenever someone last updated them. Every holding's value (and the
+// portfolio alert cron's ±1% check) is computed from goldUsd/silverUsd, so
+// one blip swapped in a stale fixed number for every gold/silver holder,
+// producing a portfolio "move" that was really just a fallback artifact —
+// same class of bug fetchUsdToEgp's memo below was built to prevent for FX.
+// A live quote from minutes ago is far closer to the truth than a
+// long-fixed constant, so remember the last real read and prefer it; the
+// hardcoded constant is now truly the last resort (a brand-new deploy that
+// has never once reached TradingView).
+const METALS_MEMO_TTL_MS = 24 * 60 * 60_000;
+let _metalsMemo: { xau: number; xag: number; at: number } | null = null;
+
+function rememberMetals(xau: number, xag: number): void {
+  _metalsMemo = { xau, xag, at: Date.now() };
+}
+
+function recentMetals(): { xau: number; xag: number; ageMs: number } | null {
+  if (!_metalsMemo) return null;
+  const ageMs = Date.now() - _metalsMemo.at;
+  return ageMs <= METALS_MEMO_TTL_MS ? { xau: _metalsMemo.xau, xag: _metalsMemo.xag, ageMs } : null;
+}
+
 // ─── USD → EGP exchange rate ───────────────────────────────────────────────────
 // CIB Egypt's own posted rate is the primary source (explicit product
 // decision, 2026-08-02, superseding the 2026-07-30 "Wise only" call) — it's
@@ -851,8 +877,18 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   ]);
   const fxRates = await fetchFxCrossRates(usdToEgp);
 
-  const goldUsd   = metals?.xau ?? FALLBACK_GOLD;
-  const silverUsd = metals?.xag ?? FALLBACK_SILVER;
+  if (metals) rememberMetals(metals.xau, metals.xag);
+  const metalsMemo = metals ? null : recentMetals();
+  if (!metals) {
+    if (metalsMemo) {
+      logger.warn({ xau: metalsMemo.xau, xag: metalsMemo.xag, ageMs: metalsMemo.ageMs },
+        "Metals: TradingView unreachable — reusing last remembered gold/silver prices instead of the hardcoded fallback");
+    } else {
+      logger.error("Metals: TradingView unreachable and no remembered price yet — using hardcoded fallback constants");
+    }
+  }
+  const goldUsd   = metals?.xau ?? metalsMemo?.xau ?? FALLBACK_GOLD;
+  const silverUsd = metals?.xag ?? metalsMemo?.xag ?? FALLBACK_SILVER;
   const metalsOpen = isMetalsMarketOpen(new Date());
 
   const price24k = round2((goldUsd * usdToEgp) / TROY_OZ);
