@@ -239,6 +239,30 @@ const en = {
   // rather than as young — the history is real, there just isn't much of
   // it yet, and that only fixes itself with time.
   chartTrackingSince: (date: string) => `Tracking since ${date}` as string,
+
+  // ── Portfolio tier ───────────────────────────────────────────────────
+  // Single tier: Pro, at 1M net worth. Deliberately not Gold/Silver: this
+  // app holds literal gold and silver as asset types, and a "Gold tier"
+  // badge beside a "Gold — 1.04M EGP" row is the same word meaning two
+  // different things.
+  tierProName: 'Pro',
+  tierLabel: 'Tier',
+  // Reached: the achievement is the point, so it's stated plainly.
+  tierReachedTitle: 'Tier unlocked',
+  tierReachedBody: (tier: string) => `You've reached ${tier}.` as string,
+  // Lost: same event, no scolding. Says what it takes to earn it back
+  // rather than dwelling on the drop — the number already speaks for
+  // itself and the user can see it. With a single tier, losing it always
+  // means dropping back to no tier at all, so there's no "{tier}" to name
+  // the way a multi-tier ladder's demotion copy would have.
+  tierLostTitle: 'Tier changed',
+  tierNoneBody: "You're below Pro for now.",
+  tierLostHint: (amount: string) => `${amount} to return to Pro` as string,
+  tierNextHint: (amount: string, tier: string) => `${amount} to reach ${tier}` as string,
+  tierTopReached: 'Highest tier reached',
+  // Card modal — "since" line, membership-card framing.
+  tierMemberSince: (date: string) => `Member since ${date}` as string,
+  tierCelebrateDismiss: 'Continue',
   transferExceedsBalance: (bal: string, cur: string) => `Not enough balance — this account holds ${bal} ${cur}.` as string,
   activityTransferSubtitle: (amt: string, cur: string, from: string, to: string) => `${amt} ${cur} moved from ${from} to ${to}` as string,
   incomeNeedsAccountFirst: 'Add a cash account first — recurring income needs somewhere to deposit into.',
@@ -1437,6 +1461,24 @@ const ar: typeof en = {
   noCashAccountsYet: 'لا حسابات بعد · اضغط للإضافة',
   cashMoreCurrencies: (n: number) => `+${n} عملة أخرى` as string,
   chartTrackingSince: (date: string) => `التتبع منذ ${date}` as string,
+
+  // ── الشرائح ──────────────────────────────────────────────────────────
+  // English by explicit product decision, in both languages — these are
+  // product-tier names (like "Pro" in any app's settings), not vocabulary to
+  // localize. An Arabic sentence with an English tier name dropped in reads
+  // completely naturally; a translated or transliterated one would read like
+  // it's trying too hard.
+  tierProName: 'Pro',
+  tierLabel: 'الشريحة',
+  tierReachedTitle: 'وصلت إلى شريحة جديدة',
+  tierReachedBody: (tier: string) => `أنت الآن في شريحة ${tier}.` as string,
+  tierLostTitle: 'تغيّرت شريحتك',
+  tierNoneBody: 'أنت الآن أقل من شريحة Pro.',
+  tierLostHint: (amount: string) => `${amount} للعودة إلى شريحة Pro` as string,
+  tierNextHint: (amount: string, tier: string) => `${amount} للوصول إلى ${tier}` as string,
+  tierTopReached: 'أعلى شريحة',
+  tierMemberSince: (date: string) => `عضو منذ ${date}` as string,
+  tierCelebrateDismiss: 'متابعة',
   transferExceedsBalance: (bal: string, cur: string) => `الرصيد غير كافٍ — هذا الحساب يحتوي على ${bal} ${cur}.` as string,
   activityTransferSubtitle: (amt: string, cur: string, from: string, to: string) => `تم تحويل ${amt} ${cur} من ${from} إلى ${to}` as string,
   incomeNeedsAccountFirst: 'أضف حساب نقدي أولاً — الدخل المتكرر يحتاج إلى حساب للإيداع فيه.',

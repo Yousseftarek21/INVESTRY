@@ -14,6 +14,11 @@ import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
+import { usePortfolioTier } from '@/hooks/usePortfolioTier';
+import { TierCelebration, tierName } from '@/components/TierCelebration';
+import { TierSeal } from '@/components/TierSeal';
+import { TierCard } from '@/components/TierCard';
+import { progressToNext, bandProgressPct } from '@/utils/portfolioTier';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
@@ -636,6 +641,15 @@ export default function HomeScreen() {
   React.useEffect(() => {
     if (!isPeriodAvailable(timeFilter, coverage)) setTimeFilter('1D');
   }, [coverage, timeFilter]);
+  // Tier runs on net worth (investments + cash) — the same figure rendered as
+  // "Net Worth incl. cash" under the hero, so the badge and that number can
+  // never disagree. Always EGP, never the display currency: switching to USD
+  // must not look like a demotion.
+  const netWorthEgp = summary.totalValue + cashTotalEGP;
+  const { tier, since: tierSince, change: tierChange, clearChange: clearTierChange } = usePortfolioTier(netWorthEgp);
+  const tierProgress = progressToNext(netWorthEgp, tier);
+  const [showTierCard, setShowTierCard] = useState(false);
+
   const startOfDayValue = summary.totalValue - summary.todayGain;
   const rawTodaySamples = useIntradaySamples(summary.totalValue, startOfDayValue);
   // The stored samples' own first/last points can be up to ~10 minutes
@@ -716,20 +730,37 @@ export default function HomeScreen() {
       />
       {/* ── Sticky Header — always visible while scrolling ─────── */}
       <View style={[styles.stickyHeader, { paddingTop: topPad + 16 }]}>
-        {/* Profile avatar — taps into Settings */}
-        <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/settings')}>
-          {user?.imageUrl ? (
-            <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: colors.primary + '22' }]}>
-              <Text style={[styles.avatarInitial, { color: colors.primary }]}>
-                {firstName ? firstName[0].toUpperCase() : (user?.primaryEmailAddress?.emailAddress?.[0] ?? '?').toUpperCase()}
-              </Text>
-            </View>
-          )}
+        {/* Profile avatar. Below Pro it's untouched — same tap it always
+            had, into Settings (also reachable from its own bottom tab, so
+            this isn't the only path there). Once Pro is actually held, a
+            seal pins to its corner and the tap instead opens the tier card
+            — there is nothing to show or tap into before the tier is real. */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => (tier ? setShowTierCard(true) : router.push('/settings'))}
+        >
+          <View>
+            {user?.imageUrl ? (
+              <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: colors.primary + '22' }]}>
+                <Text style={[styles.avatarInitial, { color: colors.primary }]}>
+                  {firstName ? firstName[0].toUpperCase() : (user?.primaryEmailAddress?.emailAddress?.[0] ?? '?').toUpperCase()}
+                </Text>
+              </View>
+            )}
+            {!!tier && (
+              <View style={styles.tierSealPin} pointerEvents="none">
+                <TierSeal size={20} />
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
 
-        {/* Two-line greeting */}
+        {/* Two-line greeting — the tier pill that used to live here moved
+            into the ring around the avatar and the card it opens. A ring
+            that's always visible, ambient, and ties to something already on
+            screen beats one more labelled pill next to the name. */}
         <View style={styles.greetingBlock}>
           <Text style={[styles.greetingHi, { color: colors.mutedForeground }]}>
             {(() => { const h = new Date().getHours(); return h < 12 ? t.greetingMorning : h < 18 ? t.greetingAfternoon : t.greetingEvening; })()}
@@ -898,6 +929,20 @@ export default function HomeScreen() {
                   : `${t.netWorthLabel}: ${fmtCompact(toDisp(summary.totalValue + cashTotalEGP))} ${displayCurrency}`}
               </Text>
             </View>
+          )}
+
+          {/* Progress to the next tier stays here, under the net worth it's
+              measured from — the badge itself moved up beside the greeting.
+              Splitting them is deliberate: the tier is identity and belongs
+              with the user's name, the distance to the next one is a fact
+              about the number and belongs with the number. */}
+          {!hideValues && !!tierProgress && tierProgress.remainingEgp > 0 && netWorthEgp > 0 && (
+            <Text style={[styles.tierNextTxt, { color: colors.mutedForeground }]} numberOfLines={1}>
+              {t.tierNextHint(
+                `${fmtCompact(toDisp(tierProgress.remainingEgp))} ${displayCurrency}`,
+                tierName(tierProgress.next.id, t),
+              )}
+            </Text>
           )}
 
           {/* Invested · Current · Return strip */}
@@ -1371,6 +1416,40 @@ export default function HomeScreen() {
       toDisp={toDisp}
       displayCurrency={displayCurrency}
     />
+
+    {/* Fires once per real tier change, in both directions. On a demotion it
+        also carries what it takes to get back — computed from the tier they
+        just left, not the one they landed in.
+        tierChange.from is typed nullable (it's null on a first-ever Core
+        unlock) but can't actually be null here: !promoted only happens when
+        `from` outranks `to`, and outranking requires `from` to exist — the
+        ?. is defensive, not expected to ever take the fallback. */}
+    <TierCelebration
+      change={tierChange}
+      onDismiss={clearTierChange}
+      returnHint={
+        tierChange && !tierChange.promoted && tierChange.from
+          ? t.tierLostHint(
+              `${fmtCompact(toDisp(Math.max(0, tierChange.from.minEgp - netWorthEgp)))} ${displayCurrency}`,
+            )
+          : undefined
+      }
+    />
+
+    {/* The membership-card view opened from tapping the ringed avatar. */}
+    {/* Only ever mounted with a real tier — the avatar's onPress only sets
+        showTierCard when `tier` is already truthy, and this guard covers
+        the edge case of net worth changing between that tap and this
+        render. TierCard itself takes a non-nullable `tier` on purpose:
+        there's no "not yet Pro" card to show. */}
+    {!!tier && (
+      <TierCard
+        visible={showTierCard}
+        onClose={() => setShowTierCard(false)}
+        tier={tier}
+        since={tierSince}
+      />
+    )}
     </View>
   );
 }
@@ -1502,6 +1581,9 @@ const styles = StyleSheet.create({
   avatar:          { width: 36, height: 36, borderRadius: 18 },
   avatarFallback:  { alignItems: 'center', justifyContent: 'center' },
   avatarInitial:   { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  // Pinned at the avatar's bottom-right, like a wax seal stamped on a
+  // corner — not wrapping the avatar the way a progress ring would.
+  tierSealPin:     { position: 'absolute', right: -5, bottom: -5 },
   greetingBlock:   { flex: 1, gap: 1, minWidth: 0 },
   greetingHi:      { fontSize: 11, fontFamily: 'Inter_400Regular' },
   greetingNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -1608,6 +1690,9 @@ const styles = StyleSheet.create({
   currencyTab:        { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 7 },
   currencyTabText:    { fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
+  // The "x to next tier" line is a hint, not a label — quiet, and centred
+  // under the net worth it's derived from.
+  tierNextTxt: { fontSize: 10.5, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: 5 },
   netWorthTxt:    { fontSize: 11.5, fontFamily: 'Inter_500Medium', fontVariant: ['tabular-nums'] },
 
   iStrip:         { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: -24, paddingHorizontal: 24 },
