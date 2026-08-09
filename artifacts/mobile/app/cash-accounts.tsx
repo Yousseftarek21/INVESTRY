@@ -867,7 +867,7 @@ export default function CashAccountsScreen() {
                         <Text style={[styles.accountType, { color: colors.mutedForeground }]}>{TYPE_LABELS[a.type]}</Text>
                         <View style={styles.balanceRow}>
                           <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
-                            {(Number(a.balance) || 0).toLocaleString('en-EG', { maximumFractionDigits: 0 })} {a.currency}
+                            {fmtCompact(Number(a.balance) || 0)} {a.currency}
                           </Text>
                           {!!todayChanges[a.id] && (
                             <View style={[styles.todayBadge, { backgroundColor: todayChanges[a.id] > 0 ? colors.green + '18' : colors.red + '18' }]}>
