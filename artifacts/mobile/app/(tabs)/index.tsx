@@ -9,7 +9,7 @@ import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
 import { fmtCompact } from '@/utils/formatNumber';
 import { PerfChart } from '@/components/PerfChart';
-import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable } from '@/utils/chartUtils';
+import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
@@ -450,10 +450,9 @@ export default function HomeScreen() {
     return totals;
   }, [cashAccounts, cashTodayByAccount]);
   // Width of the amount column, from the longest amount actually shown.
-  // Amounts sit right-aligned inside it (see cashRowValue), so both the
-  // digits and every currency code line up on their own edge while staying
-  // adjacent to each other — pushing codes to the card's right edge instead
-  // left a dead channel beside shorter balances.
+  // Amounts sit left-aligned inside it, so every currency code begins at the
+  // same x while staying adjacent to its number — pushing codes to the card's
+  // right edge instead left a dead channel beside shorter balances.
   // 10.4px is the advance of an Inter_700Bold digit at 17px, uniform here
   // because of fontVariant: tabular-nums.
   const cashAmountWidth = useMemo(() => {
@@ -1068,14 +1067,13 @@ export default function HomeScreen() {
                 })}
               </View>
 
-              {/* Why the longer periods are greyed out. isPeriodAvailable
-                  disables any window real history doesn't reach, which is
-                  correct but silent — a chart with 1M/3M/1Y dimmed and a 1W
-                  identical to ALL reads as broken rather than as young. Only
-                  shown while something is actually gated: once history is
-                  deep enough for every period, the line has nothing left to
-                  explain and disappears on its own. */}
-              {!!coverage.earliestDate && !CHART_PERIODS.every(p => isPeriodAvailable(p, coverage)) && (
+              {/* Only on periods this actually constrains — see
+                  periodLimitedByHistory. It used to show whenever *any*
+                  period was gated, which meant it sat under 1D too, where
+                  it's not just noise but misleading: 1D is live intraday
+                  data and doesn't touch snapshot history, so a date months
+                  back implies the day's line starts there. */}
+              {!!coverage.earliestDate && periodLimitedByHistory(timeFilter, coverage) && (
                 <Text style={[styles.trackingSince, { color: colors.mutedForeground }]} numberOfLines={1}>
                   {t.chartTrackingSince(
                     new Date(coverage.earliestDate).toLocaleDateString(
@@ -1159,29 +1157,25 @@ export default function HomeScreen() {
                 <React.Fragment key={cur}>
                   {i > 0 && <View style={[styles.cashRowSep, { backgroundColor: colors.border }]} />}
                 <View style={styles.cashRow}>
-                  <View style={styles.cashRowMain}>
-                    <Text
-                      style={[
-                        styles.cashRowValue,
-                        cashByCurrency.length === 1 && styles.cashRowValueSolo,
-                        { color: colors.text, minWidth: cashAmountWidth },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {hideValues ? '••••••' : fmtCompact(amt)}
-                    </Text>
-                    <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{cur}</Text>
-                  </View>
-                  {/* Stacked below the value, right-aligned — matches
-                      HoldingCard's `right` column exactly (value on top,
-                      gainPill directly under it). It used to sit inline
-                      next to the currency code instead: same badge shape as
-                      gainPill by then, but a different position on the row,
-                      which still read as a mismatch scrolling past both on
-                      the same screen. Minus the currency code — the line
-                      above already names it. Hidden along with the balances
-                      when values are masked: a visible delta would leak the
-                      very movement the mask exists to hide. */}
+                  <Text
+                    style={[
+                      styles.cashRowValue,
+                      cashByCurrency.length === 1 && styles.cashRowValueSolo,
+                      { color: colors.text, minWidth: cashAmountWidth },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {hideValues ? '••••••' : fmtCompact(amt)}
+                  </Text>
+                  <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{cur}</Text>
+                  {/* Same row as the amount — badge shape matches
+                      HoldingCard's gainPill (icon, 7/3 padding, 11px text),
+                      but this one stays inline next to the currency code
+                      rather than on its own line below. Minus the currency
+                      code — the text right before it already names it.
+                      Hidden along with the balances when values are masked:
+                      a visible delta would leak the very movement the mask
+                      exists to hide. */}
                   {!hideValues && !!cashTodayByCurrency.get(cur) && (() => {
                     const delta = cashTodayByCurrency.get(cur) as number;
                     const up = delta > 0;
@@ -1563,13 +1557,7 @@ const styles = StyleSheet.create({
   // effectively disappears against the card, which is why the first attempt
   // at this separator was invisible.
   cashRowSep:    { height: StyleSheet.hairlineWidth },
-  // Column, not row: value+currency on top, the today badge stacked
-  // directly under it — same shape as HoldingCard's `right` column
-  // (alignItems: 'flex-end', gap: 5), which is what the badge needs to
-  // line up with. cashRowMain below is the inner row that used to be this
-  // whole thing before the badge moved to its own line.
-  cashRow:       { alignItems: 'flex-end', gap: 5 },
-  cashRowMain:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cashRow:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // No chip: it was added to stand in for a separator, and once the real
   // separator was drawn properly the box only boxed the code in at 10px
   // against a barely-contrasting fill. Plain text at a readable size on
@@ -1580,18 +1568,17 @@ const styles = StyleSheet.create({
   // multi-currency card compact. Equal weight matters *within* that list —
   // it never required a lone balance to shrink to match a list it isn't
   // part of, which is what cashRowValueSolo restores.
-  // textAlign right, not left: the shared minWidth above reserves one column
-  // for every amount, and compact values vary in length ("500" vs "300K" vs
-  // "1.2M") where the old full-digit strings did not — left-aligning them
-  // inside that reserved column leaves each number floating a different
-  // distance from its currency code. Right-aligning restores the clean
-  // money column tabular-nums is here to provide.
-  cashRowValue:  { flexShrink: 1, textAlign: 'right', fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
+  cashRowValue:  { flexShrink: 1, fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
   // Matches HoldingCard's gainPill/gainText exactly (icon, 7/3 padding,
   // radius 7, 11px text) — see the comment at the call site for why.
   cashTodayBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, flexShrink: 1,
+    // marginStart auto eats the leftover space between the currency code and
+    // the badge, pushing only the badge to the row's right edge. The amount
+    // and currency stay exactly where they've always been — nothing else
+    // about the row changes.
+    marginStart: 'auto',
   },
   cashTodayBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
   // A single balance is the card's headline, not a list item, so it keeps

@@ -79,6 +79,28 @@ export function isPeriodAvailable(period: ChartPeriod, coverage: HistoryCoverage
 }
 
 /**
+ * Whether the *selected* period is actually constrained by how far back
+ * recorded history goes — i.e. whether a "tracking since" note has anything
+ * to say about the chart currently on screen.
+ *
+ * 1D is always exempt: it's live intraday data, not snapshot-derived, so
+ * snapshot history has no bearing on it. Labelling a 1D chart with a date
+ * months back implies the day's line starts there, which is false.
+ *
+ * ALL is always true: its window *is* "since tracking began", so the start
+ * date is a real property of what's drawn, however much history exists.
+ *
+ * Everything in between is limited only when its window reaches further back
+ * than the record does — a 1W chart on three weeks of history is a complete,
+ * honest week and needs no footnote.
+ */
+export function periodLimitedByHistory(period: ChartPeriod, coverage: HistoryCoverage): boolean {
+  if (period === '1D') return false;
+  if (period === 'ALL') return true;
+  return coverage.trackedDays < PERIOD_DAYS[period];
+}
+
+/**
  * Converts stored portfolio snapshots into chart points for the given
  * period. Returns null when there isn't enough real history to draw a
  * meaningful line. Keeps each point's real calendar date (rather than

@@ -31,7 +31,7 @@ import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
 import { PerfChart } from '@/components/PerfChart';
-import { getHistoryCoverage, isPeriodAvailable } from '@/utils/chartUtils';
+import { getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar, AllocationSegment } from '@/components/AllocationBar';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1057,9 +1057,9 @@ export default function AnalyticsScreen() {
                   back to two real points (cost basis -> current value) — sparse,
                   but not invented. Calling that "simulated" told users their
                   own tracked data was fake. What's actually worth saying is how
-                  far back the record goes, and only while some period is still
-                  gated by it. */}
-              {!!coverage.earliestDate && !PERIODS.every(p => isPeriodAvailable(p, coverage)) && (
+                  far back the record goes, and only on periods that depth
+                  actually constrains — see periodLimitedByHistory. */}
+              {!!coverage.earliestDate && periodLimitedByHistory(period, coverage) && (
                 <Text style={[s.chartNote, { color: colors.mutedForeground }]} numberOfLines={1}>
                   {t.chartTrackingSince(
                     new Date(coverage.earliestDate).toLocaleDateString(
