@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
   Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { backChevron } from '@/utils/rtl';
@@ -35,10 +35,16 @@ export default function NotificationsScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { events: recentEvents, markAllRead } = useNotificationHistory();
+  const { events: recentEvents, markAllRead, refetch } = useNotificationHistory();
 
   // Opening this screen is what "reads" recent alerts — clears the bell badge.
   useEffect(() => { markAllRead(); }, [markAllRead]);
+
+  // The underlying data only loads once per app session by default (see
+  // useNotificationHistory) — refetching on every focus means an alert that
+  // arrived while this screen wasn't open still shows up without needing a
+  // full app relaunch.
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;

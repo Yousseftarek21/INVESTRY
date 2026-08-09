@@ -61,6 +61,17 @@ export function useNotificationHistory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  // The effect above only ever runs once per userId (a whole app session,
+  // typically) — fine for the initial load, but it means a server-side
+  // alert that lands after that load (any push received while the app was
+  // already open) never shows up until the next relaunch. The bell screen
+  // calls this on every focus so what it displays is never older than "the
+  // last time this screen was opened."
+  const refetch = useCallback(() => {
+    if (!userId) return;
+    fetchActivity().then(setActivity);
+  }, [userId, fetchActivity]);
+
   const events = useMemo<NotificationEvent[]>(() => {
     const result: NotificationEvent[] = [];
 
@@ -94,5 +105,5 @@ export function useNotificationHistory() {
     AsyncStorage.setItem(seenKey(userId), String(now)).catch(() => null);
   }, [userId]);
 
-  return { events, unreadCount, markAllRead };
+  return { events, unreadCount, markAllRead, refetch };
 }

@@ -416,8 +416,6 @@ const PURITY: Record<string, number> = {
   "18k": 18 / 24,   // 75.0000%
 };
 
-const FALLBACK_GOLD   = 4018;
-const FALLBACK_SILVER = 58.5;
 const FALLBACK_EGP    = 51.0;
 
 // Generic browser identity, reused by Stooq's fetches — the only remaining caller.
@@ -877,18 +875,29 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   ]);
   const fxRates = await fetchFxCrossRates(usdToEgp);
 
-  if (metals) rememberMetals(metals.xau, metals.xag);
-  const metalsMemo = metals ? null : recentMetals();
-  if (!metals) {
-    if (metalsMemo) {
-      logger.warn({ xau: metalsMemo.xau, xag: metalsMemo.xag, ageMs: metalsMemo.ageMs },
-        "Metals: TradingView unreachable — reusing last remembered gold/silver prices instead of the hardcoded fallback");
-    } else {
-      logger.error("Metals: TradingView unreachable and no remembered price yet — using hardcoded fallback constants");
+  let goldUsd: number;
+  let silverUsd: number;
+  if (metals) {
+    rememberMetals(metals.xau, metals.xag);
+    goldUsd = metals.xau;
+    silverUsd = metals.xag;
+  } else {
+    const memo = recentMetals();
+    if (!memo) {
+      // Truly nothing to fall back to (a brand-new deploy that hasn't
+      // reached TradingView even once) — no hardcoded constant left to
+      // paper over this with. Every caller of fetchPrices()/getCachedPrices()
+      // already wraps its call in a try/catch that logs and degrades
+      // gracefully (skips this cron tick, returns a 500 to the client),
+      // so throwing here is safe and, unlike a fabricated number, honest.
+      logger.error("Metals: TradingView unreachable and no remembered price yet — refusing to fabricate a price");
+      throw new Error("Metals prices unavailable: TradingView unreachable and no prior successful fetch to fall back to");
     }
+    logger.warn({ xau: memo.xau, xag: memo.xag, ageMs: memo.ageMs },
+      "Metals: TradingView unreachable — reusing last remembered gold/silver prices");
+    goldUsd = memo.xau;
+    silverUsd = memo.xag;
   }
-  const goldUsd   = metals?.xau ?? metalsMemo?.xau ?? FALLBACK_GOLD;
-  const silverUsd = metals?.xag ?? metalsMemo?.xag ?? FALLBACK_SILVER;
   const metalsOpen = isMetalsMarketOpen(new Date());
 
   const price24k = round2((goldUsd * usdToEgp) / TROY_OZ);
