@@ -13,6 +13,7 @@ import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable } fro
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
+import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
@@ -433,10 +434,26 @@ export default function HomeScreen() {
     });
     return [...totals.entries()].sort((a, b) => b[1] - a[1]);
   }, [cashAccounts]);
+  // Today's manual balance-update deltas, re-bucketed from per-account (how
+  // the API returns them, and how the Cash Accounts screen's own badges read
+  // them) into per-currency, to match the rows this card actually renders.
+  // Without this the card was the only figure on Home standing still while
+  // every other one — hero, cost, value, today's gain — reports movement.
+  const { todayChanges: cashTodayByAccount } = useCashAccountsTodayChanges();
+  const cashTodayByCurrency = useMemo(() => {
+    const totals = new Map<string, number>();
+    cashAccounts.forEach(a => {
+      const delta = cashTodayByAccount[a.id];
+      if (!delta) return;
+      totals.set(a.currency, (totals.get(a.currency) ?? 0) + delta);
+    });
+    return totals;
+  }, [cashAccounts, cashTodayByAccount]);
   // Width of the amount column, from the longest amount actually shown.
-  // Amounts sit left-aligned inside it, so every currency code begins at the
-  // same x while staying adjacent to its number — pushing codes to the card's
-  // right edge instead left a dead channel beside shorter balances.
+  // Amounts sit right-aligned inside it (see cashRowValue), so both the
+  // digits and every currency code line up on their own edge while staying
+  // adjacent to each other — pushing codes to the card's right edge instead
+  // left a dead channel beside shorter balances.
   // 10.4px is the advance of an Inter_700Bold digit at 17px, uniform here
   // because of fontVariant: tabular-nums.
   const cashAmountWidth = useMemo(() => {
@@ -1135,6 +1152,22 @@ export default function HomeScreen() {
                     {hideValues ? '••••••' : fmtCompact(amt)}
                   </Text>
                   <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{cur}</Text>
+                  {/* Same treatment as the per-account badge on the Cash
+                      Accounts screen, minus the currency code — the row
+                      already names it. Hidden along with the balances when
+                      values are masked: a visible delta would leak the very
+                      movement the mask exists to hide. */}
+                  {!hideValues && !!cashTodayByCurrency.get(cur) && (() => {
+                    const delta = cashTodayByCurrency.get(cur) as number;
+                    const up = delta > 0;
+                    return (
+                      <View style={[styles.cashTodayBadge, { backgroundColor: (up ? colors.green : colors.red) + '18' }]}>
+                        <Text style={[styles.cashTodayBadgeText, { color: up ? colors.green : colors.red }]} numberOfLines={1}>
+                          {t.todayChangeBadge(`${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
+                        </Text>
+                      </View>
+                    );
+                  })()}
                 </View>
                 </React.Fragment>
               ))}
@@ -1514,7 +1547,15 @@ const styles = StyleSheet.create({
   // multi-currency card compact. Equal weight matters *within* that list —
   // it never required a lone balance to shrink to match a list it isn't
   // part of, which is what cashRowValueSolo restores.
-  cashRowValue:  { flexShrink: 1, fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
+  // textAlign right, not left: the shared minWidth above reserves one column
+  // for every amount, and compact values vary in length ("500" vs "300K" vs
+  // "1.2M") where the old full-digit strings did not — left-aligning them
+  // inside that reserved column leaves each number floating a different
+  // distance from its currency code. Right-aligning restores the clean
+  // money column tabular-nums is here to provide.
+  cashRowValue:  { flexShrink: 1, textAlign: 'right', fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
+  cashTodayBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, flexShrink: 1 },
+  cashTodayBadgeText: { fontSize: 10.5, fontFamily: 'Inter_700Bold' },
   // A single balance is the card's headline, not a list item, so it keeps
   // the display size this card always used.
   cashRowValueSolo: { fontSize: 19, letterSpacing: -0.4 },
