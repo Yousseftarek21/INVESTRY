@@ -12,7 +12,7 @@ router.use("/tts", clerkMiddleware(), (req, res, next) => {
   next();
 });
 
-// Each call is a real, paid Azure Speech request — capped the same way
+// Each call is a real, paid ElevenLabs request — capped the same way
 // /chat's Gemini calls are (see chatGenerationLimit in chat.ts), per user
 // rather than relying only on the app-wide IP limiter in app.ts.
 const ttsLimit = rateLimit({
@@ -23,63 +23,56 @@ const ttsLimit = rateLimit({
   keyGenerator: (req) => getAuth(req).userId ?? "anonymous",
 });
 
-// Egyptian Arabic specifically (not generic MSA/Gulf) — the whole point of
-// picking Azure here, see the voice-conversation plan for why this mattered
-// enough to be worth a dedicated provider decision.
-const VOICE_BY_LANG: Record<"en" | "ar", { voice: string; locale: string }> = {
-  en: { voice: "en-US-AriaNeural", locale: "en-US" },
-  ar: { voice: "ar-EG-SalmaNeural", locale: "ar-EG" },
-};
-
-function escapeSsml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+// Voice IDs are per-account (ElevenLabs' library changes and different
+// accounts have different voices cloned/saved) — deliberately not
+// hardcoded to a guessed default. Pick a voice you've actually listened to
+// in the ElevenLabs dashboard for each language and set these in Render.
+// ELEVENLABS_VOICE_ID_AR in particular should be picked by ear for Arabic
+// quality specifically — this provider has no dedicated Egyptian-dialect
+// voice the way Azure did, so it's worth comparing a couple of candidates.
+function voiceIdFor(lang: "en" | "ar"): string | undefined {
+  return lang === "ar" ? process.env.ELEVENLABS_VOICE_ID_AR : process.env.ELEVENLABS_VOICE_ID_EN;
 }
 
 // POST /api/tts — { text, language: 'en' | 'ar' } -> audio/mpeg bytes.
 // Streams straight back as the response body; nothing is stored server-side,
 // there's no reason to keep a copy of an AI reply's audio around.
 router.post("/tts", ttsLimit, async (req, res) => {
-  const key = process.env.AZURE_SPEECH_KEY;
-  const region = process.env.AZURE_SPEECH_REGION;
-  if (!key || !region) {
-    res.status(503).json({ error: "Voice replies are not available right now" });
-    return;
-  }
-
+  const key = process.env.ELEVENLABS_API_KEY;
   const body = req.body as { text?: string; language?: string };
   const text = body.text?.trim();
   if (!text) { res.status(400).json({ error: "text is required" }); return; }
   const lang = body.language === "ar" ? "ar" : "en";
-  const { voice, locale } = VOICE_BY_LANG[lang];
+  const voiceId = voiceIdFor(lang);
 
-  const ssml =
-    `<speak version='1.0' xml:lang='${locale}'>` +
-    `<voice name='${voice}'>${escapeSsml(text)}</voice>` +
-    `</speak>`;
+  if (!key || !voiceId) {
+    res.status(503).json({ error: "Voice replies are not available right now" });
+    return;
+  }
 
   try {
-    const azureRes = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+    const elevenRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
       method: "POST",
       headers: {
-        "Ocp-Apim-Subscription-Key": key,
-        "Content-Type": "application/ssml+xml",
-        "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+        "xi-api-key": key,
+        "Content-Type": "application/json",
+        Accept: "audio/mpeg",
       },
-      body: ssml,
+      body: JSON.stringify({
+        text,
+        // Multilingual v2 is the model with real Arabic support — the
+        // default English-only models silently mangle non-English text.
+        model_id: "eleven_multilingual_v2",
+      }),
     });
 
-    if (!azureRes.ok) {
-      logger.error({ status: azureRes.status, body: await azureRes.text() }, "Azure TTS request failed");
+    if (!elevenRes.ok) {
+      logger.error({ status: elevenRes.status, body: await elevenRes.text() }, "ElevenLabs TTS request failed");
       res.status(502).json({ error: "Could not generate voice reply" });
       return;
     }
 
-    const audio = Buffer.from(await azureRes.arrayBuffer());
+    const audio = Buffer.from(await elevenRes.arrayBuffer());
     res.setHeader("Content-Type", "audio/mpeg");
     res.send(audio);
   } catch (err) {
