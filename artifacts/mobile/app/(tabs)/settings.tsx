@@ -1121,6 +1121,9 @@ export default function SettingsScreen() {
               })}
             </View>
           </View>
+          <Div />
+          <NavRow icon="award" iconBg="#8b5cf6" label={t.tiersPageTitle} sublabel={t.tiersRowSublabel}
+            onPress={() => { haptic(); router.push('/tiers' as any); }} last />
         </Sect>
 
         {/* ── HOW CALCULATIONS WORK ────────────────────────── */}

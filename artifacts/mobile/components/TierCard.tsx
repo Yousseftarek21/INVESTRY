@@ -3,6 +3,7 @@ import { Animated, Easing, Modal, Platform, StyleSheet, Text, TouchableOpacity, 
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useAppSettings } from '@/context/AppSettingsContext';
@@ -14,7 +15,10 @@ import { tierName } from '@/components/TierCelebration';
 // shouldn't outshine the two above it), Plus vivid indigo/violet, Wealth an
 // obsidian "black card" background that lets its gold text carry the
 // premium read instead of a bright gold panel.
-const TIER_GRADIENT: Record<TierId, [string, string, string]> = {
+// Exported so the Tiers explainer screen's mini previews use these exact
+// values instead of a hand-copied approximation — one palette, not two
+// that can drift apart.
+export const TIER_GRADIENT: Record<TierId, [string, string, string]> = {
   core: ['#94A3B8', '#7E8B9B', '#3f4a58'],
   plus: ['#a78bfa', '#6d28d9', '#1e1147'],
   wealth: ['#3a3a3f', '#1a1a1d', '#000000'],
@@ -25,7 +29,7 @@ const TIER_GRADIENT: Record<TierId, [string, string, string]> = {
 // one text treatment. Wealth is the one exception — gold on its obsidian
 // ground is the actual point of that tier's design (a black card with gold
 // engraving, not a gold card with white print).
-const TIER_TEXT: Record<TierId, string> = {
+export const TIER_TEXT: Record<TierId, string> = {
   core: '#ffffff',
   plus: '#ffffff',
   wealth: '#f0cf7a',
@@ -36,7 +40,7 @@ const TIER_TEXT: Record<TierId, string> = {
 // Amex Centurion's foil edge does. Tier-specific, not a general treatment:
 // Core and Plus already carry their identity in the background color, and
 // a line does nothing there but clutter.
-const WEALTH_ACCENT_LINE: [string, string, string] = ['#8a6a1c', '#D4AF37', '#8a6a1c'];
+export const WEALTH_ACCENT_LINE: [string, string, string] = ['#8a6a1c', '#D4AF37', '#8a6a1c'];
 
 /**
  * A membership card, not a badge — tapping the sealed avatar opens this.
@@ -63,6 +67,7 @@ export function TierCard({
 }) {
   const colors = useColors();
   const t = useT();
+  const router = useRouter();
   const { language } = useAppSettings();
   const scale = useRef(new Animated.Value(0.92)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -159,6 +164,14 @@ export function TierCard({
             </LinearGradient>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            onPress={() => { onClose(); router.push('/tiers' as any); }}
+            activeOpacity={0.7}
+            style={s.seeAllLink}
+          >
+            <Text style={[s.seeAllTxt, { color: colors.mutedForeground }]}>{t.tiersSeeAllLink}</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={onClose} activeOpacity={0.8} style={[s.closeBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[s.closeTxt, { color: colors.text }]}>{t.tierCelebrateDismiss}</Text>
           </TouchableOpacity>
@@ -186,8 +199,10 @@ const s = StyleSheet.create({
   accentLine: { height: 2, borderRadius: 1, opacity: 0.9, marginBottom: 8 },
   tierName: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
   since: { fontSize: 11.5, fontFamily: 'Inter_500Medium', marginTop: -6 },
+  seeAllLink: { alignSelf: 'center', marginTop: 16, paddingVertical: 4 },
+  seeAllTxt: { fontSize: 13, fontFamily: 'Inter_500Medium', textDecorationLine: 'underline' },
   closeBtn: {
-    alignSelf: 'center', marginTop: 16, paddingHorizontal: 20, paddingVertical: 11,
+    alignSelf: 'center', marginTop: 10, paddingHorizontal: 20, paddingVertical: 11,
     borderRadius: 14, borderWidth: 1,
   },
   closeTxt: { fontSize: 13.5, fontFamily: 'Inter_600SemiBold' },

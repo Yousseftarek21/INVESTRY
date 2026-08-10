@@ -15,10 +15,9 @@ import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 import { usePortfolioTier } from '@/hooks/usePortfolioTier';
-import { TierCelebration, tierName } from '@/components/TierCelebration';
+import { TierCelebration } from '@/components/TierCelebration';
 import { TierSeal } from '@/components/TierSeal';
 import { TierCard } from '@/components/TierCard';
-import { progressToNext, bandProgressPct } from '@/utils/portfolioTier';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
@@ -647,7 +646,6 @@ export default function HomeScreen() {
   // must not look like a demotion.
   const netWorthEgp = summary.totalValue + cashTotalEGP;
   const { tier, since: tierSince, change: tierChange, clearChange: clearTierChange } = usePortfolioTier(netWorthEgp);
-  const tierProgress = progressToNext(netWorthEgp, tier);
   const [showTierCard, setShowTierCard] = useState(false);
 
   const startOfDayValue = summary.totalValue - summary.todayGain;
@@ -730,14 +728,14 @@ export default function HomeScreen() {
       />
       {/* ── Sticky Header — always visible while scrolling ─────── */}
       <View style={[styles.stickyHeader, { paddingTop: topPad + 16 }]}>
-        {/* Profile avatar. Below Core it's untouched — same tap it always
-            had, into Settings (also reachable from its own bottom tab, so
-            this isn't the only path there). Once any tier is actually held, a
-            seal pins to its corner and the tap instead opens the tier card
-            — there is nothing to show or tap into before a tier is real. */}
+        {/* Profile avatar. Below Core, tapping it opens the Tiers explainer
+            instead of Settings — a motivational "here's what you're working
+            toward" moment rather than a dead end. Once any tier is actually
+            held, a seal pins to its corner and the tap instead opens that
+            tier's own membership card. */}
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => (tier ? setShowTierCard(true) : router.push('/settings'))}
+          onPress={() => (tier ? setShowTierCard(true) : router.push({ pathname: '/tiers', params: { netWorthEgp: String(netWorthEgp) } } as any))}
         >
           <View>
             {user?.imageUrl ? (
@@ -929,20 +927,6 @@ export default function HomeScreen() {
                   : `${t.netWorthLabel}: ${fmtCompact(toDisp(summary.totalValue + cashTotalEGP))} ${displayCurrency}`}
               </Text>
             </View>
-          )}
-
-          {/* Progress to the next tier stays here, under the net worth it's
-              measured from — the badge itself moved up beside the greeting.
-              Splitting them is deliberate: the tier is identity and belongs
-              with the user's name, the distance to the next one is a fact
-              about the number and belongs with the number. */}
-          {!hideValues && !!tierProgress && tierProgress.remainingEgp > 0 && netWorthEgp > 0 && (
-            <Text style={[styles.tierNextTxt, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {t.tierNextHint(
-                `${fmtCompact(toDisp(tierProgress.remainingEgp))} ${displayCurrency}`,
-                tierName(tierProgress.next.id, t),
-              )}
-            </Text>
           )}
 
           {/* Invested · Current · Return strip */}
@@ -1690,9 +1674,6 @@ const styles = StyleSheet.create({
   currencyTab:        { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 7 },
   currencyTabText:    { fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
-  // The "x to next tier" line is a hint, not a label — quiet, and centred
-  // under the net worth it's derived from.
-  tierNextTxt: { fontSize: 10.5, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: 5 },
   netWorthTxt:    { fontSize: 11.5, fontFamily: 'Inter_500Medium', fontVariant: ['tabular-nums'] },
 
   iStrip:         { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: -24, paddingHorizontal: 24 },

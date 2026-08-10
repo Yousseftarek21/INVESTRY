@@ -169,6 +169,10 @@ function RootLayoutNav() {
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
+        name="tiers"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
         name="stock-financials"
         options={{ presentation: "modal", headerShown: false }}
       />
