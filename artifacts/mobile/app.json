@@ -104,6 +104,22 @@
           "autoLogAppEventsEnabled": false,
           "advertiserIDCollectionEnabled": true
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "INVESTRY needs access to your microphone so you can speak your question to the AI Assistant instead of typing it.",
+          "speechRecognitionPermission": "INVESTRY needs speech recognition access to turn what you say into text for the AI Assistant.",
+          "androidSpeechRecognitionServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

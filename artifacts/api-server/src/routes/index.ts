@@ -17,6 +17,7 @@ import priceAlertsRouter from "./priceAlerts";
 import stripeCheckoutRouter from "./stripeCheckout";
 import chatRouter from "./chat";
 import activityRouter from "./activity";
+import ttsRouter from "./tts";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(priceAlertsRouter);
 router.use(stripeCheckoutRouter);
 router.use(chatRouter);
 router.use(activityRouter);
+router.use(ttsRouter);
 
 export default router;

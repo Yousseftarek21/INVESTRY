@@ -498,8 +498,11 @@ router.post("/chat", chatGenerationLimit, async (req, res) => {
   const appLanguageName = body.language === "ar" ? "Arabic" : "English";
   const languageInstruction =
     "\n\nLANGUAGE: Reply in the same language the user wrote their latest message in. " +
-    "If they write in Arabic, reply in Arabic — Egyptian colloquial or Modern Standard, whichever reads more naturally for the question. " +
     "If they write in English, reply in English. " +
+    "If they write in Arabic, reply in genuine Egyptian colloquial Arabic (مصري) — the way a Cairo finance person actually talks, not a formal or literal translation of an English sentence. " +
+    "Default to everyday spoken word order and vocabulary (e.g. \"فلوسك\" not \"أموالك\", \"محفظتك زادت\" not \"لقد ارتفعت محفظتك\") — reach for Modern Standard Arabic only for genuinely formal/technical terms that don't have a natural colloquial equivalent (e.g. official fund or regulatory names), not as the default register. " +
+    "Keep numbers, percentages, and currency the way Egyptians actually say them out loud (e.g. \"مليون وميتين ألف جنيه\", not a stiff digit-by-digit reading), since replies are sometimes read aloud by text-to-speech and need to sound natural spoken, not just correct written. " +
+    "If a reply reads like it was translated rather than originally thought in Arabic, rewrite it before answering. " +
     `Only when the message is too short or ambiguous to tell (a bare number, a ticker symbol, "ok"), reply in ${appLanguageName}, which is the app's current language. ` +
     "Never answer in a different language from the one the user just used.";
 
