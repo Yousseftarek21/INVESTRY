@@ -1082,10 +1082,26 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
 // one trusted provider, no other source silently standing in for it. There
 // is no fallback tier left; if TradingView's Egypt scanner fails, EGX prices
 // come back empty rather than from a different, unvetted source.
+//
+// That degrade-to-empty was the stated intent but wasn't actually wired up:
+// fetchEGXViaTradingView() throws on a scanner error (e.g. a 429 during a
+// rate-limit window), and nothing here caught it — the throw reached the
+// /markets/stocks route uncaught and came back as a 500, taking the whole
+// EGX Stocks feature down instead of degrading to "no data right now."
+// Metals has the equivalent problem solved via a remembered-last-good-value
+// memo (see recentMetals) instead of empty — deliberately not doing that
+// here too, since this comment's policy already chose empty over a stale
+// number for stocks specifically; this fix only makes that policy actually
+// happen instead of crashing before it can.
 export async function fetchStocks(): Promise<EGXStockResponse[]> {
-  const tvData = await fetchEGXViaTradingView();
-  logger.info({ count: tvData.length }, "EGX stocks via TradingView scanner");
-  return tvData;
+  try {
+    const tvData = await fetchEGXViaTradingView();
+    logger.info({ count: tvData.length }, "EGX stocks via TradingView scanner");
+    return tvData;
+  } catch (err) {
+    logger.warn({ err }, "EGX stocks: TradingView scanner unreachable — returning empty rather than a fabricated or crashed response");
+    return [];
+  }
 }
 
 // Cache-aware wrappers around fetchPrices/fetchStocks — any caller that just
