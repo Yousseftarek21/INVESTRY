@@ -24,16 +24,21 @@ export interface TierChange {
  * Resolves the user's current tier from net worth and reports the moment it
  * changes, so the change can be celebrated once and then not again.
  *
- * `held` is `null` for two different reasons that both display identically
- * (no badge) but must NOT be conflated when deciding whether to celebrate:
- * "storage hasn't loaded yet" and "confirmed: this user has no tier, net
- * worth is under Core's 100k floor." `seededRef` is what actually separates
- * them — it flips true the first time this hook resolves anything for the
- * current user, seed or not, and only changes observed *after* that are
- * real enough to celebrate. Without it, a user who has genuinely never
- * reached 100k would get "congratulated" into Core the instant they cross
- * it for real, indistinguishable from every prior render that also read as
- * "held is null."
+ * By explicit product decision, *every* resolved tier is celebration-
+ * worthy the first time this hook notices it for a given stored value —
+ * including someone who already qualified for a tier before ever opening
+ * the app on this build. Reaching Plus overnight, or already sitting above
+ * a tier the moment this feature (or a new tier) ships, still shows the
+ * unlock the next time the app opens. The only thing that produces no
+ * celebration is `nextId === held`: the currently-resolved tier matching
+ * what's already on record, i.e. genuinely nothing changed.
+ *
+ * This is a deliberate reversal of an earlier version of this hook, which
+ * suppressed the celebration on the first resolution of every session —
+ * meant to avoid congratulating someone for a tier they'd had for a while,
+ * but it also meant a real overnight crossing (or a tier reached just
+ * before this code ever ran) was never celebrated at all, only silently
+ * reflected. Product call: show it.
  *
  * The held tier is persisted per user (AsyncStorage, same convention as the
  * snapshot/intraday hooks) so the celebration survives relaunches instead
@@ -53,7 +58,6 @@ export function usePortfolioTier(netWorthEgp: number) {
   const [loaded, setLoaded] = useState(false);
   const [change, setChange] = useState<TierChange | null>(null);
   const loadedUserRef = useRef<string | null>(null);
-  const seededRef = useRef(false);
 
   useEffect(() => {
     if (!userId) {
@@ -62,12 +66,10 @@ export function usePortfolioTier(netWorthEgp: number) {
       setLoaded(false);
       setChange(null);
       loadedUserRef.current = null;
-      seededRef.current = false;
       return;
     }
     if (loadedUserRef.current === userId) return;
     loadedUserRef.current = userId;
-    seededRef.current = false;
 
     Promise.all([AsyncStorage.getItem(heldKey(userId)), AsyncStorage.getItem(sinceKey(userId))])
       .then(([raw, sinceRaw]) => {
@@ -90,6 +92,7 @@ export function usePortfolioTier(netWorthEgp: number) {
 
     const next = resolveTier(netWorthEgp, held);
     const nextId = next?.id ?? null;
+    if (nextId === held) return;
 
     const persist = () => {
       const nowIso = new Date().toISOString();
@@ -102,16 +105,10 @@ export function usePortfolioTier(netWorthEgp: number) {
       }
     };
 
-    if (!seededRef.current) {
-      // First resolution this session for this user — seed at whatever
-      // they qualify for (which may itself be "no tier"), never celebrate.
-      seededRef.current = true;
-      if (nextId !== held) persist();
-      return;
-    }
-
-    if (nextId === held) return;
-
+    // Any change from what's on record celebrates — including from `null`
+    // (nothing recorded yet, whether a fresh user or a tier id invalidated
+    // by a rename). `from` stays null in that case; TierCelebration reads
+    // that as "no previous tier to name," not "nothing happened."
     const from = held ? tierById(held) : null;
     setChange({ from, to: next, promoted: (next?.level ?? -1) > (from?.level ?? -1) });
     persist();

@@ -6,13 +6,37 @@ import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useAppSettings } from '@/context/AppSettingsContext';
-import { Tier } from '@/utils/portfolioTier';
+import { Tier, TierId } from '@/utils/portfolioTier';
 import { tierName } from '@/components/TierCelebration';
 
-// Same struck-gold stops as TierSeal — the card's whole background carries
-// the seal's metal rather than a generic accent color, so the two read as
-// the same object at two sizes, not two different treatments of "gold".
-const GOLD_GRADIENT: [string, string, string] = ['#fff3c4', '#DDB94A', '#7a5c12'];
+// Each tier's own color family, same as TierSeal's disc — Core a quiet,
+// desaturated slate (recessive on purpose: it's the entry tier, it
+// shouldn't outshine the two above it), Plus vivid indigo/violet, Wealth an
+// obsidian "black card" background that lets its gold text carry the
+// premium read instead of a bright gold panel.
+const TIER_GRADIENT: Record<TierId, [string, string, string]> = {
+  core: ['#94A3B8', '#7E8B9B', '#3f4a58'],
+  plus: ['#a78bfa', '#6d28d9', '#1e1147'],
+  wealth: ['#3a3a3f', '#1a1a1d', '#000000'],
+};
+
+// Text color per tier: white reads cleanly on all three grounds now that
+// Core is a mid-toned slate rather than a pale one, so every card shares
+// one text treatment. Wealth is the one exception — gold on its obsidian
+// ground is the actual point of that tier's design (a black card with gold
+// engraving, not a gold card with white print).
+const TIER_TEXT: Record<TierId, string> = {
+  core: '#ffffff',
+  plus: '#ffffff',
+  wealth: '#f0cf7a',
+};
+
+// Wealth's foil stripe: a thin metallic accent line, the same detail a
+// real black card carries near its face — reads as premium the same way an
+// Amex Centurion's foil edge does. Tier-specific, not a general treatment:
+// Core and Plus already carry their identity in the background color, and
+// a line does nothing there but clutter.
+const WEALTH_ACCENT_LINE: [string, string, string] = ['#8a6a1c', '#D4AF37', '#8a6a1c'];
 
 /**
  * A membership card, not a badge — tapping the sealed avatar opens this.
@@ -23,7 +47,7 @@ const GOLD_GRADIENT: [string, string, string] = ['#fff3c4', '#DDB94A', '#7a5c12'
  * about them.
  *
  * Only ever mounted with a real tier (see index.tsx, which gates both the
- * seal and this card on actually holding Pro) — there's no "not yet Pro"
+ * seal and this card on actually holding one) — there's no "not yet Core"
  * version of a card that represents something you don't have.
  */
 export function TierCard({
@@ -62,9 +86,7 @@ export function TierCard({
 
   if (!visible) return null;
 
-  // White text over the gold gradient — the scrim below guarantees this
-  // stays legible against the gradient's lighter end, not just its darker one.
-  const onCard = '#FFFFFF';
+  const onCard = TIER_TEXT[tier.id];
   const sinceDate = since
     ? new Date(since).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-EG', { month: 'short', year: 'numeric' })
     : null;
@@ -75,13 +97,12 @@ export function TierCard({
         <Animated.View style={{ opacity, transform: [{ scale }], width: '100%', maxWidth: 380 }}>
           <TouchableOpacity activeOpacity={1} onPress={() => {}}>
             <LinearGradient
-              colors={GOLD_GRADIENT}
+              colors={TIER_GRADIENT[tier.id]}
               start={{ x: 0.05, y: 0 }}
               end={{ x: 0.95, y: 1 }}
               style={s.card}
             >
-              {/* Scrim: keeps white text legible over the gradient's pale
-                  gold end, not just its darker one. */}
+              {/* Scrim: keeps white text legible over each gradient's paler end. */}
               <LinearGradient
                 colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.32)']}
                 style={StyleSheet.absoluteFillObject}
@@ -119,6 +140,15 @@ export function TierCard({
                 </View>
               </View>
 
+              {tier.id === 'wealth' && (
+                <LinearGradient
+                  colors={WEALTH_ACCENT_LINE}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.accentLine}
+                />
+              )}
+
               <Text style={[s.tierName, { color: onCard }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                 {tierName(tier.id, t)}
               </Text>
@@ -153,6 +183,7 @@ const s = StyleSheet.create({
     padding: 4, justifyContent: 'space-evenly',
   },
   chipLine: { height: 1.5, borderRadius: 1 },
+  accentLine: { height: 2, borderRadius: 1, opacity: 0.9, marginBottom: 8 },
   tierName: { fontSize: 34, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
   since: { fontSize: 11.5, fontFamily: 'Inter_500Medium', marginTop: -6 },
   closeBtn: {

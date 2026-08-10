@@ -240,24 +240,29 @@ const en = {
   // it yet, and that only fixes itself with time.
   chartTrackingSince: (date: string) => `Tracking since ${date}` as string,
 
-  // ── Portfolio tier ───────────────────────────────────────────────────
-  // Single tier: Pro, at 1M net worth. Deliberately not Gold/Silver: this
-  // app holds literal gold and silver as asset types, and a "Gold tier"
-  // badge beside a "Gold — 1.04M EGP" row is the same word meaning two
-  // different things.
-  tierProName: 'Pro',
+  // ── Portfolio tiers ──────────────────────────────────────────────────
+  // Three bands: Core (100k), Plus (1M), Wealth (10M). Deliberately not
+  // Gold/Silver: this app holds literal gold and silver as asset types, and
+  // a "Gold tier" badge beside a "Gold — 1.04M EGP" row is the same word
+  // meaning two different things.
+  tierCoreName: 'Core',
+  tierPlusName: 'Plus',
+  tierWealthName: 'Wealth',
   tierLabel: 'Tier',
   // Reached: the achievement is the point, so it's stated plainly.
   tierReachedTitle: 'Tier unlocked',
   tierReachedBody: (tier: string) => `You've reached ${tier}.` as string,
   // Lost: same event, no scolding. Says what it takes to earn it back
   // rather than dwelling on the drop — the number already speaks for
-  // itself and the user can see it. With a single tier, losing it always
-  // means dropping back to no tier at all, so there's no "{tier}" to name
-  // the way a multi-tier ladder's demotion copy would have.
+  // itself and the user can see it.
   tierLostTitle: 'Tier changed',
-  tierNoneBody: "You're below Pro for now.",
-  tierLostHint: (amount: string) => `${amount} to return to Pro` as string,
+  // Landed on a real lower tier (Wealth -> Plus, Plus -> Core) — names it,
+  // same as a promotion would, just without the celebratory framing.
+  tierLostBody: (tier: string) => `You're now in ${tier}.` as string,
+  // Distinct from tierLostBody: net worth dropped all the way back under
+  // Core's own 100k floor, so there's no tier name left to land on.
+  tierNoneBody: "You're below Core for now.",
+  tierLostHint: (amount: string) => `${amount} to return to your previous tier` as string,
   tierNextHint: (amount: string, tier: string) => `${amount} to reach ${tier}` as string,
   tierTopReached: 'Highest tier reached',
   // Card modal — "since" line, membership-card framing.
@@ -1468,13 +1473,16 @@ const ar: typeof en = {
   // localize. An Arabic sentence with an English tier name dropped in reads
   // completely naturally; a translated or transliterated one would read like
   // it's trying too hard.
-  tierProName: 'Pro',
+  tierCoreName: 'Core',
+  tierPlusName: 'Plus',
+  tierWealthName: 'Wealth',
   tierLabel: 'الشريحة',
   tierReachedTitle: 'وصلت إلى شريحة جديدة',
   tierReachedBody: (tier: string) => `أنت الآن في شريحة ${tier}.` as string,
   tierLostTitle: 'تغيّرت شريحتك',
-  tierNoneBody: 'أنت الآن أقل من شريحة Pro.',
-  tierLostHint: (amount: string) => `${amount} للعودة إلى شريحة Pro` as string,
+  tierLostBody: (tier: string) => `أنت الآن في شريحة ${tier}.` as string,
+  tierNoneBody: 'أنت الآن أقل من شريحة Core.',
+  tierLostHint: (amount: string) => `${amount} للعودة إلى شريحتك السابقة` as string,
   tierNextHint: (amount: string, tier: string) => `${amount} للوصول إلى ${tier}` as string,
   tierTopReached: 'أعلى شريحة',
   tierMemberSince: (date: string) => `عضو منذ ${date}` as string,

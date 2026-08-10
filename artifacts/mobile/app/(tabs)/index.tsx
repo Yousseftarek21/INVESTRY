@@ -730,11 +730,11 @@ export default function HomeScreen() {
       />
       {/* ── Sticky Header — always visible while scrolling ─────── */}
       <View style={[styles.stickyHeader, { paddingTop: topPad + 16 }]}>
-        {/* Profile avatar. Below Pro it's untouched — same tap it always
+        {/* Profile avatar. Below Core it's untouched — same tap it always
             had, into Settings (also reachable from its own bottom tab, so
-            this isn't the only path there). Once Pro is actually held, a
+            this isn't the only path there). Once any tier is actually held, a
             seal pins to its corner and the tap instead opens the tier card
-            — there is nothing to show or tap into before the tier is real. */}
+            — there is nothing to show or tap into before a tier is real. */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => (tier ? setShowTierCard(true) : router.push('/settings'))}
@@ -751,7 +751,7 @@ export default function HomeScreen() {
             )}
             {!!tier && (
               <View style={styles.tierSealPin} pointerEvents="none">
-                <TierSeal size={20} />
+                <TierSeal size={20} tier={tier.id} />
               </View>
             )}
           </View>
@@ -1441,7 +1441,7 @@ export default function HomeScreen() {
         showTierCard when `tier` is already truthy, and this guard covers
         the edge case of net worth changing between that tap and this
         render. TierCard itself takes a non-nullable `tier` on purpose:
-        there's no "not yet Pro" card to show. */}
+        there's no "not yet a tier" card to show. */}
     {!!tier && (
       <TierCard
         visible={showTierCard}

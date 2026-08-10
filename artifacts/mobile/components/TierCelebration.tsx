@@ -1,18 +1,27 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { TierChange } from '@/hooks/usePortfolioTier';
 import { TierId } from '@/utils/portfolioTier';
-import { TierSeal } from '@/components/TierSeal';
+import { TierSeal, TIER_ACCENT } from '@/components/TierSeal';
 
-// Single tier, so this is a formality rather than a real lookup — kept as a
-// function (not a bare string) so every call site reads the same way it
-// would if a second tier ever came back.
 export function tierName(id: TierId, t: ReturnType<typeof useT>): string {
-  return t.tierProName;
+  switch (id) {
+    case 'core': return t.tierCoreName;
+    case 'plus': return t.tierPlusName;
+    case 'wealth': return t.tierWealthName;
+  }
+}
+
+// Core's ice blue and Plus's violet are dark/medium enough for white text;
+// Wealth's accent is the bright gold itself, which needs dark text the same
+// way the membership card's black-and-gold treatment does.
+function btnTextOnAccent(id: TierId | undefined): string {
+  return id === 'wealth' ? '#241a02' : '#ffffff';
 }
 
 const BURST_SIZE = 160;
@@ -98,10 +107,12 @@ export function TierCelebration({
   const burstReveal = useRef(new Animated.Value(0)).current;
 
   const promoted = change?.promoted ?? false;
-  // Promotions carry the app's gold accent; a demotion is deliberately
-  // neutral — muted, not red. Red is for losses the user needs to act on,
-  // and this isn't one.
-  const accent = promoted ? colors.primary : colors.mutedForeground;
+  // A promotion glows in the *new* tier's own color — ice blue, violet, or
+  // gold — so the burst and the seal it surrounds read as one object, not
+  // a generic gold flourish stamped on every tier. A demotion is
+  // deliberately neutral instead — muted, not red. Red is for losses the
+  // user needs to act on, and this isn't one.
+  const accent = promoted ? (change?.to ? TIER_ACCENT[change.to.id] : colors.primary) : colors.mutedForeground;
 
   useEffect(() => {
     if (!change) return;
@@ -140,10 +151,12 @@ export function TierCelebration({
 
   if (!change) return null;
 
-  // `to` is null when net worth has dropped back under Pro's own 1M floor —
-  // there's no tier name left to show. With a single tier, that's the only
-  // way `!promoted` ever happens (there's no lower tier to land on), so
-  // `name` is truthy exactly when this is a promotion.
+  // `to` is a real tier both on a promotion and on a demotion that still
+  // lands on one (Wealth -> Plus, Plus -> Core) — either way the user
+  // genuinely holds it now, so its seal shows in that tier's own true
+  // colors, not a diminished version of the one before it. `to` is only
+  // null when net worth has dropped back under Core's 100k floor entirely,
+  // the one case with no tier — and no seal — to show.
   const name = change.to ? tierName(change.to.id, t) : null;
 
   return (
@@ -167,7 +180,7 @@ export function TierCelebration({
               style={[
                 s.sweep,
                 {
-                  backgroundColor: colors.primary + '1F',
+                  backgroundColor: accent + '1F',
                   transform: [
                     { rotate: '18deg' },
                     { translateX: shine.interpolate({ inputRange: [0, 1], outputRange: [-220, 260] }) },
@@ -179,12 +192,19 @@ export function TierCelebration({
 
           <View style={s.sealStage}>
             <Burst color={accent} reveal={burstReveal} />
-            {/* The exact same seal the avatar and the card show — gold when
-                held, the same disc tarnished when it's lost. One visual
-                object across every place the tier appears, not a different
-                icon system for the down moment. */}
+            {/* The exact same seal the avatar and the card show for
+                whichever tier `to` actually is — real colors either way,
+                since landing here means genuinely holding it. Only when
+                there's no tier left at all does a seal give way to a plain
+                neutral mark. */}
             <Animated.View style={{ transform: [{ scale: sealPop }] }}>
-              <TierSeal size={76} muted={!promoted} />
+              {change.to ? (
+                <TierSeal size={76} tier={change.to.id} />
+              ) : (
+                <View style={[s.noTierMark, { borderColor: colors.mutedForeground + '55' }]}>
+                  <Feather name="circle" size={30} color={colors.mutedForeground} />
+                </View>
+              )}
             </Animated.View>
           </View>
 
@@ -197,7 +217,7 @@ export function TierCelebration({
             </Text>
           )}
           <Text style={[s.body, { color: colors.textSecondary }]}>
-            {name ? t.tierReachedBody(name) : t.tierNoneBody}
+            {promoted && name ? t.tierReachedBody(name) : name ? t.tierLostBody(name) : t.tierNoneBody}
           </Text>
 
           {!promoted && !!returnHint && (
@@ -209,9 +229,9 @@ export function TierCelebration({
           <TouchableOpacity
             onPress={onDismiss}
             activeOpacity={0.85}
-            style={[s.btn, { backgroundColor: promoted ? colors.primary : colors.muted }]}
+            style={[s.btn, { backgroundColor: promoted ? accent : colors.muted }]}
           >
-            <Text style={[s.btnTxt, { color: promoted ? colors.primaryForeground : colors.text }]}>
+            <Text style={[s.btnTxt, { color: promoted ? btnTextOnAccent(change.to?.id) : colors.text }]}>
               {t.tierCelebrateDismiss}
             </Text>
           </TouchableOpacity>
@@ -230,6 +250,7 @@ const s = StyleSheet.create({
   },
   sweep: { position: 'absolute', top: -60, bottom: -60, width: 70 },
   sealStage: { width: BURST_SIZE, height: BURST_SIZE, alignItems: 'center', justifyContent: 'center', marginBottom: -6 },
+  noTierMark: { width: 76, height: 76, borderRadius: 38, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   eyebrow: { fontSize: 11.5, fontFamily: 'Inter_700Bold', letterSpacing: 1.6, textTransform: 'uppercase' },
   tierName: { fontSize: 32, fontFamily: 'Inter_700Bold', letterSpacing: -0.6 },
   body: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20, paddingHorizontal: 8 },
