@@ -93,11 +93,19 @@ function computeCost(h: Holding, prices?: MarketPrices): number {
 
 // ─── Animated number display ──────────────────────────────────────────────────
 
-function useCounterDisplay(target: number): { text: string; tint: Animated.AnimatedInterpolation<string> | null } {
+const defaultCounterFormatter = (n: number) => n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
+
+// `flashOnChange` is off for values whose change isn't a gain/loss — e.g. the
+// cash card's total re-tweening because the display currency was switched,
+// not because the underlying balance moved. Flashing that green/red would
+// read as "you just made/lost money" for what's actually just a unit change.
+function useCounterDisplay(
+  target: number,
+  formatter: (n: number) => string = defaultCounterFormatter,
+  flashOnChange: boolean = true,
+): { text: string; tint: Animated.AnimatedInterpolation<string> | null } {
   const anim = useRef(new Animated.Value(target)).current;
-  const [text, setText] = useState(
-    target.toLocaleString('en-EG', { maximumFractionDigits: 0 })
-  );
+  const [text, setText] = useState(formatter(target));
   const prev = useRef(target);
   const colors = useColors();
   // Direction of the last change, held so the flash colour stays correct for
@@ -106,22 +114,21 @@ function useCounterDisplay(target: number): { text: string; tint: Animated.Anima
   const flash = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const id = anim.addListener(({ value }) =>
-      setText(Math.round(value).toLocaleString('en-EG', { maximumFractionDigits: 0 }))
-    );
+    const id = anim.addListener(({ value }) => setText(formatter(value)));
     return () => anim.removeListener(id);
-  }, []);
+  }, [formatter]);
 
   useEffect(() => {
     if (prev.current === target) return;
     const rising = target > prev.current;
     prev.current = target;
-    setDir(rising ? 'up' : 'down');
     Animated.timing(anim, { toValue: target, duration: 700, useNativeDriver: false }).start();
+    if (!flashOnChange) return;
     // The counter tween alone is direction-blind — it looks identical
     // whether the portfolio just rose or fell. Flashing the figure's colour
     // and settling it back makes a live price tick something you can see,
     // so the LIVE badge describes something visible rather than asserted.
+    setDir(rising ? 'up' : 'down');
     flash.stopAnimation();
     flash.setValue(0);
     Animated.sequence([
@@ -130,7 +137,7 @@ function useCounterDisplay(target: number): { text: string; tint: Animated.Anima
     ]).start();
   }, [target]);
 
-  const tint = dir
+  const tint = flashOnChange && dir
     ? flash.interpolate({
         inputRange: [0, 1],
         outputRange: [colors.text, dir === 'up' ? colors.green : colors.red],
@@ -424,8 +431,8 @@ export default function HomeScreen() {
 
   const cashTotalEGP = useMemo(() => computeCashTotalEGP(cashAccounts, prices), [cashAccounts, prices]);
   // Real balances in the currencies they're actually held in — the single
-  // converted total above necessarily hides this, and someone holding
-  // dollars thinks in dollars, not in an EGP equivalent. Largest first, and
+  // converted total necessarily hides this, and someone holding dollars
+  // thinks in dollars, not in a converted equivalent. Largest first, and
   // only rendered when more than one currency is present.
   // Currency rows the Cash card lists before collapsing the rest into a
   // "+N more". Three covers realistic holdings while keeping the card from
@@ -441,8 +448,6 @@ export default function HomeScreen() {
   // Today's manual balance-update deltas, re-bucketed from per-account (how
   // the API returns them, and how the Cash Accounts screen's own badges read
   // them) into per-currency, to match the rows this card actually renders.
-  // Without this the card was the only figure on Home standing still while
-  // every other one — hero, cost, value, today's gain — reports movement.
   const { todayChanges: cashTodayByAccount } = useCashAccountsTodayChanges();
   const cashTodayByCurrency = useMemo(() => {
     const totals = new Map<string, number>();
@@ -453,6 +458,18 @@ export default function HomeScreen() {
     });
     return totals;
   }, [cashAccounts, cashTodayByAccount]);
+  // Same today's-delta figure, but as one EGP total rather than bucketed by
+  // currency — only needed for the single-currency card, which shows one
+  // converted row instead of a per-currency list.
+  const cashTodayEGP = useMemo(() => {
+    const deltaAccounts = cashAccounts.map(a => ({ ...a, balance: cashTodayByAccount[a.id] ?? 0 }));
+    return computeCashTotalEGP(deltaAccounts, prices);
+  }, [cashAccounts, cashTodayByAccount, prices]);
+  // Tweens through the intermediate values (rather than jumping straight to
+  // the new number) whenever it changes — including when it changes purely
+  // because the display currency was switched, not just when a balance
+  // moves. No flash colour: a currency switch isn't a gain or a loss.
+  const { text: cashTotalDispText } = useCounterDisplay(toDisp(cashTotalEGP), fmtCompact, false);
   // Width of the amount column, from the longest amount actually shown.
   // Amounts sit left-aligned inside it, so every currency code begins at the
   // same x while staying adjacent to its number — pushing codes to the card's
@@ -1166,20 +1183,44 @@ export default function HomeScreen() {
         </View>
         {/* One row per currency held — the same treatment whether there is
             one or several, so the card doesn't change shape as a second
-            currency appears. Every row carries
-            identical weight: same size, same colour, its own currency label,
-            amount aligned to a shared right edge. An earlier pass rendered
-            the largest balance big and bold with the rest small and muted —
-            that hierarchy is precisely what made the smaller ones read as
-            belonging to the first rather than standing alongside it.
-            Rows scale where a horizontal split could not: each additional
-            currency adds a row instead of squeezing every balance narrower. */}
+            currency appears. Every row carries identical weight: same size,
+            same colour, its own currency label, amount aligned to a shared
+            right edge. Below the native rows, a single muted line converts
+            the whole total into the portfolio card's selected display
+            currency — same toDisp() conversion used everywhere else on this
+            screen — so switching that selector visibly reaches cash too,
+            without hiding what each account is actually held in. */}
         <View style={styles.cashInfo}>
           <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
           {cashAccounts.length === 0 ? (
             <Text style={[styles.cashValue, { color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
               {t.noCashAccountsYet}
             </Text>
+          ) : cashByCurrency.length === 1 ? (
+            // Only one currency held — there's nothing to total, so it's
+            // just shown converted directly instead of alongside a
+            // redundant "Total" line repeating the same single number.
+            <View style={styles.cashRows}>
+              <View style={styles.cashRow}>
+                <Text style={[styles.cashRowValue, styles.cashRowValueSolo, { color: colors.text }]} numberOfLines={1}>
+                  {hideValues ? '••••••' : cashTotalDispText}
+                </Text>
+                <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{displayCurrency}</Text>
+                {!hideValues && !!cashTodayEGP && (() => {
+                  const delta = toDisp(cashTodayEGP);
+                  const up = delta > 0;
+                  const c = up ? colors.green : colors.red;
+                  return (
+                    <View style={[styles.cashTodayBadge, { backgroundColor: c + '18' }]}>
+                      <Feather name={up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
+                      <Text style={[styles.cashTodayBadgeText, { color: c }]} numberOfLines={1}>
+                        {t.todayChangeBadge(`${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
+                      </Text>
+                    </View>
+                  );
+                })()}
+              </View>
+            </View>
           ) : (
             <View style={styles.cashRows}>
               {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt], i) => (
@@ -1189,7 +1230,6 @@ export default function HomeScreen() {
                   <Text
                     style={[
                       styles.cashRowValue,
-                      cashByCurrency.length === 1 && styles.cashRowValueSolo,
                       { color: colors.text, minWidth: cashAmountWidth },
                     ]}
                     numberOfLines={1}
@@ -1225,6 +1265,19 @@ export default function HomeScreen() {
                 <Text style={[styles.cashRowCur, { color: colors.mutedForeground, fontSize: 11 }]} numberOfLines={1}>
                   {t.cashMoreCurrencies(cashByCurrency.length - CASH_CURRENCY_CELLS)}
                 </Text>
+              )}
+              {!hideValues && (
+                <>
+                  <View style={[styles.cashRowSep, { backgroundColor: colors.border }]} />
+                  <View style={styles.cashTotalRow}>
+                    <Text style={[styles.cashTotalLabel, { color: colors.mutedForeground }]}>
+                      {t.cashConvertedTotalLabel}
+                    </Text>
+                    <Text style={[styles.cashTotalValue, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {`${cashTotalDispText} ${displayCurrency}`}
+                    </Text>
+                  </View>
+                </>
               )}
             </View>
           )}
@@ -1596,27 +1649,6 @@ const styles = StyleSheet.create({
   cashInfo: { flex: 1, gap: 2 },
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
-  // Secondary currency lines: clearly subordinate to the first (largest)
-  // balance, while still being real, readable figures rather than a footnote.
-  // Multi-currency rows. The currency code sits inline after its amount
-  // rather than in a left-hand column: a column of muted codes stacked
-  // directly under the muted "Cash" label read as three labels in a row,
-  // and pushed the amounts to the far edge leaving a dead gap between.
-  // Inline matches how the single-currency card already renders its value.
-  // Every row is styled identically so none reads as subordinate.
-  // Ledger layout: amounts sit on a shared left edge, currency codes pushed
-  // to a shared right edge. Both columns align without needing a measured
-  // width — space-between does the work, and the codes stay clear of the
-  // amounts instead of trailing them at ragged offsets.
-  // Rows are separated by spacing and by each code's chip rather than a
-  // rule: on dark theme the card is #161616 against a #2E2E30 border, two
-  // shades apart, so a hairline is invisible — and a line bright enough to
-  // register would read as heavier than this card wants. The chip gives
-  // each row a right-hand anchor, which is what the separator was for.
-  // Full width, not alignSelf: 'flex-start' — the separator is a child here,
-  // so shrinking this container to its content made the rule stop mid-card.
-  // The rows pack left on their own (no flex on their children), so hugging
-  // was never needed to keep amounts at the left edge.
   cashRows:      { gap: 7, marginTop: 3 },
   // A View with a backgroundColor, matching how the portfolio card's own
   // iDivider is drawn — a borderTopWidth hairline renders sub-pixel here and
@@ -1650,6 +1682,13 @@ const styles = StyleSheet.create({
   // A single balance is the card's headline, not a list item, so it keeps
   // the display size this card always used.
   cashRowValueSolo: { fontSize: 19, letterSpacing: -0.4 },
+  // Labeled summary row beneath the native-currency rows and their
+  // separator — reads as a real "Total" line (like the card's own rows do)
+  // rather than a bare parenthetical, while staying visually lighter than
+  // them: smaller label, secondary-not-primary text colour.
+  cashTotalRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 },
+  cashTotalLabel: { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
+  cashTotalValue: { fontSize: 12, fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] },
 
   goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18 },
   goalRingCluster: { flexDirection: 'row' },

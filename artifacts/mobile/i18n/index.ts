@@ -234,6 +234,7 @@ const en = {
   noCashAccounts: 'No cash accounts yet',
   noCashAccountsYet: 'No accounts yet · Tap to add',
   cashMoreCurrencies: (n: number) => `+${n} more ${n === 1 ? 'currency' : 'currencies'}` as string,
+  cashConvertedTotalLabel: 'Total',
   // Says why the longer periods are greyed out. Without it, a chart whose
   // 1M/3M/1Y are disabled and whose 1W looks like ALL reads as broken
   // rather than as young — the history is real, there just isn't much of
@@ -1482,6 +1483,7 @@ const ar: typeof en = {
   noCashAccounts: 'لا توجد حسابات نقدية بعد',
   noCashAccountsYet: 'لا حسابات بعد · اضغط للإضافة',
   cashMoreCurrencies: (n: number) => `+${n} عملة أخرى` as string,
+  cashConvertedTotalLabel: 'الإجمالي',
   chartTrackingSince: (date: string) => `التتبع منذ ${date}` as string,
 
   // ── الشرائح ──────────────────────────────────────────────────────────
