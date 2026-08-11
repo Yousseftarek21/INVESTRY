@@ -3,7 +3,7 @@ import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, cashAccountsTable, cashBalanceUpdatesTable, activityLogTable } from "@workspace/db";
 import { eq, and, gte, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
-import { cairoDateString } from "../lib/cairoDate";
+import { getCurrentTradingSessionStart } from "../lib/tradingSession";
 
 function generateUpdateId(): string {
   return `cbu_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -203,32 +203,33 @@ router.post("/cash-accounts/:id/balance-updates", async (req, res) => {
 });
 
 // GET /api/cash-accounts/today-changes — sum of each account's manual
-// balance-update deltas for the current Cairo calendar day, keyed by
-// cashAccountId. Cash isn't a live market instrument with its own
-// start-of-day snapshot, so "today's change" is simply whatever was
-// manually added/subtracted today — no baseline value needed the way
-// market prices require one.
+// balance-update deltas since the current metals-aligned trading session
+// started, keyed by cashAccountId. Cash isn't a live market instrument with
+// its own start-of-day snapshot, so "today's change" is simply whatever was
+// manually added/subtracted since the session began — no baseline value
+// needed the way market prices require one.
+//
+// Session-aligned (via getCurrentTradingSessionStart, ../lib/tradingSession)
+// rather than a Cairo calendar-date filter — matches gold/silver's own
+// %-change reset and USD/EGP's (markets.ts), which both reset when
+// TradingView's own metals session rolls over, not at a fixed Cairo midnight
+// unrelated to either market's actual clock.
 router.get("/cash-accounts/today-changes", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    // A 2-day lookback comfortably covers the Cairo-vs-UTC offset without
-    // scanning the whole table as history accumulates over months.
-    const since = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const sessionStart = await getCurrentTradingSessionStart();
     const rows = await db
       .select({
         cashAccountId: cashBalanceUpdatesTable.cashAccountId,
         delta: cashBalanceUpdatesTable.delta,
-        createdAt: cashBalanceUpdatesTable.createdAt,
       })
       .from(cashBalanceUpdatesTable)
-      .where(and(eq(cashBalanceUpdatesTable.userId, userId), gte(cashBalanceUpdatesTable.createdAt, since)));
+      .where(and(eq(cashBalanceUpdatesTable.userId, userId), gte(cashBalanceUpdatesTable.createdAt, sessionStart)));
 
-    const today = cairoDateString();
     const totals: Record<string, number> = {};
     for (const r of rows) {
-      if (cairoDateString(new Date(r.createdAt)) !== today) continue;
       totals[r.cashAccountId] = (totals[r.cashAccountId] ?? 0) + r.delta;
     }
     res.json(totals);
