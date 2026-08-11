@@ -13,13 +13,21 @@ export async function ensureTradingSessionTable(): Promise<void> {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS "trading_session_state" (
         "id" text PRIMARY KEY NOT NULL,
-        "metals_prev_close_marker" real NOT NULL,
+        "metals_prev_close_marker" double precision NOT NULL,
         "session_start_at" timestamp with time zone NOT NULL,
         "session_open_usd_to_egp" real NOT NULL,
         "prev_session_close_usd_to_egp" real,
         "current_usd_to_egp" real NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       )
+    `);
+    // Covers a boot that already ran CREATE TABLE with the old `real` type
+    // for this column before it was corrected to `double precision` (see
+    // the comment on it in tradingSessionState.ts) — safe/idempotent to
+    // repeat on every boot even once it's already the right type.
+    await db.execute(sql`
+      ALTER TABLE "trading_session_state"
+      ALTER COLUMN "metals_prev_close_marker" TYPE double precision
     `);
   } catch (err) {
     // Fails open, not closed: recordAndGetSessionAlignedUsdToEgp already

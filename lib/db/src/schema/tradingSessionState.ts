@@ -1,4 +1,4 @@
-import { pgTable, text, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, real, doublePrecision, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -16,7 +16,14 @@ import { z } from "zod/v4";
 // that's this table's only reset trigger.
 export const tradingSessionStateTable = pgTable("trading_session_state", {
   id:                       text("id").primaryKey(), // fixed singleton row: "current"
-  metalsPrevCloseMarker:    real("metals_prev_close_marker").notNull(),
+  // doublePrecision, not real: this column is compared with strict !==, and
+  // real (32-bit) doesn't round-trip a JS double (64-bit) exactly — storing
+  // then reading back a gold price like 4402.86 through a real column can
+  // come back as a subtly different double, which would make the !== check
+  // spuriously "detect a rollover" on nearly every tick. Every other column
+  // here is only ever used in tolerant subtraction/percentage math, where
+  // real's precision is fine — this is the one exception.
+  metalsPrevCloseMarker:    doublePrecision("metals_prev_close_marker").notNull(),
   sessionStartAt:           timestamp("session_start_at", { withTimezone: true }).notNull(),
   sessionOpenUsdToEgp:      real("session_open_usd_to_egp").notNull(),
   // Null until a 2nd session has ever been observed (brand new deployment) —
