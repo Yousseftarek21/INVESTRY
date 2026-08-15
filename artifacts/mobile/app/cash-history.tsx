@@ -10,15 +10,12 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useCash } from '@/context/CashContext';
 import { useRecentCashUpdates } from '@/hooks/useRecentCashUpdates';
+import { cairoDayKey, cairoDateLabel, cairoTimeLabel } from '@/utils/cairoDate';
 
 // Well above what any personal cash-account history realistically reaches —
 // "View all" just means "stop artificially capping it at the inline
 // preview's 8", not true unbounded pagination.
 const HISTORY_LIMIT = 200;
-
-function dayKey(d: Date): string {
-  return d.toLocaleDateString('en-CA');
-}
 
 export default function CashHistoryScreen() {
   const colors = useColors();
@@ -27,11 +24,14 @@ export default function CashHistoryScreen() {
   const { cashAccounts } = useCash();
   const { updates, isLoading } = useRecentCashUpdates(cashAccounts, HISTORY_LIMIT);
 
+  // Grouped and labelled on Cairo's clock, not the device's — these headings
+  // sit above the same updates the "today" badge sums, and that sum is
+  // computed Cairo-side. See utils/cairoDate.
   const dayLabel = (d: Date): string => {
-    const key = dayKey(d);
-    if (key === dayKey(new Date())) return t.todayLabel;
-    if (key === dayKey(new Date(Date.now() - 86_400_000))) return t.aiHistoryYesterday;
-    return d.toLocaleDateString('en-EG', { month: 'short', day: 'numeric', year: 'numeric' });
+    const key = cairoDayKey(d);
+    if (key === cairoDayKey(new Date())) return t.todayLabel;
+    if (key === cairoDayKey(new Date(Date.now() - 86_400_000))) return t.aiHistoryYesterday;
+    return cairoDateLabel(d, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
@@ -66,7 +66,7 @@ export default function CashHistoryScreen() {
           ) : (
             updates.map((u, i) => {
               const created = new Date(u.createdAt);
-              const key = dayKey(created);
+              const key = cairoDayKey(created);
               const showDivider = key !== lastDayKey;
               lastDayKey = key;
               const isUp = u.delta > 0;
@@ -85,7 +85,7 @@ export default function CashHistoryScreen() {
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={[s.accountName, { color: colors.text }]} numberOfLines={1}>{u.accountName}</Text>
                       <Text style={[s.time, { color: colors.mutedForeground }]}>
-                        {created.toLocaleTimeString('en-EG', { hour: 'numeric', minute: '2-digit' })}
+                        {cairoTimeLabel(created, { hour: 'numeric', minute: '2-digit' })}
                       </Text>
                     </View>
                     <Text style={[s.delta, { color: isUp ? colors.green : colors.red }]} numberOfLines={1}>
