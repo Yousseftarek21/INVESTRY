@@ -22,7 +22,30 @@ function todayStr(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
 }
 
-interface StoredIntraday { date: string; samples: number[]; lastSampleAt: number; }
+interface StoredIntraday { date: string; samples: number[]; lastSampleAt: number; startOfDay?: number; }
+
+// startOfDayValue (totalValue - todayGain) is meant to hold still all day:
+// as prices move, totalValue and todayGain move together and cancel out. So
+// if it *does* shift materially, the samples already stored were measured
+// against a baseline that no longer exists, and replaying them draws a shape
+// that never happened. Two ways that occurs in practice:
+//   - holdings are added/edited/removed, so the total jumps for a reason
+//     that isn't a price move at all;
+//   - the server's definition of "today" changes under the app (exactly what
+//     happened when today's FX baseline moved from the trading session to
+//     Cairo midnight — todayGain dropped to 0 mid-day, both chart endpoints
+//     collapsed onto the same number, and the pre-existing middle samples
+//     were left drawing a hump between them while the badge read 0.00%).
+// Either way the right move is to drop the day's samples and start over.
+// 0.5% relative, so ordinary float drift never triggers a reset.
+const BASELINE_DRIFT_TOLERANCE = 0.005;
+
+function baselineChanged(stored: StoredIntraday, startOfDayValue: number): boolean {
+  // Written before this field existed — no baseline on record to trust.
+  if (stored.startOfDay == null) return true;
+  if (startOfDayValue <= 0) return false; // nothing meaningful to compare against yet
+  return Math.abs(stored.startOfDay - startOfDayValue) / startOfDayValue > BASELINE_DRIFT_TOLERANCE;
+}
 
 /**
  * Tracks real total-portfolio-value samples across today, so the 1D chart
@@ -60,13 +83,23 @@ export function useIntradaySamples(totalValue: number, startOfDayValue: number):
           }
         }
         const stored: StoredIntraday | null = raw ? JSON.parse(raw) : null;
-        setSamples(stored && stored.date === todayStr() ? stored.samples : null);
+        // Baseline checked here too, not just on write: otherwise a stale
+        // series renders for the moment between mount and the write effect
+        // resetting it — long enough to see the wrong curve.
+        const usable = stored && stored.date === todayStr() && !baselineChanged(stored, startOfDayValue);
+        setSamples(usable ? stored.samples : null);
       } catch {
         setSamples(null);
       } finally {
         loadedRef.current = userId;
       }
     })();
+    // startOfDayValue is read above but deliberately not a dependency: this
+    // effect hits AsyncStorage, and re-running it on every price tick would
+    // mean a storage read per tick. It only needs the baseline as it stands
+    // at mount; the write effect below re-checks it on every change and is
+    // the authority for resetting the series.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   useEffect(() => {
@@ -78,11 +111,16 @@ export function useIntradaySamples(totalValue: number, startOfDayValue: number):
         const stored: StoredIntraday | null = raw ? JSON.parse(raw) : null;
         const today = todayStr();
 
-        if (!stored || stored.date !== today) {
+        // A new day, or the same day measured from a baseline that has since
+        // moved — see baselineChanged. Both mean the stored samples describe
+        // a portfolio/day that no longer exists, so start the series over
+        // rather than draw a curve out of them.
+        if (!stored || stored.date !== today || baselineChanged(stored, startOfDayValue)) {
           const fresh: StoredIntraday = {
             date: today,
             samples: startOfDayValue > 0 ? [startOfDayValue, totalValue] : [totalValue],
             lastSampleAt: Date.now(),
+            startOfDay: startOfDayValue,
           };
           await AsyncStorage.setItem(storageKey(userId), JSON.stringify(fresh));
           setSamples(fresh.samples);
@@ -92,7 +130,12 @@ export function useIntradaySamples(totalValue: number, startOfDayValue: number):
         if (Date.now() - stored.lastSampleAt < MIN_INTERVAL_MS) return;
 
         const nextSamples = [...stored.samples, totalValue].slice(-MAX_SAMPLES);
-        const next: StoredIntraday = { date: today, samples: nextSamples, lastSampleAt: Date.now() };
+        const next: StoredIntraday = {
+          date: today,
+          samples: nextSamples,
+          lastSampleAt: Date.now(),
+          startOfDay: stored.startOfDay,
+        };
         await AsyncStorage.setItem(storageKey(userId), JSON.stringify(next));
         setSamples(nextSamples);
       } catch { /* ignore */ }
