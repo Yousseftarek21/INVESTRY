@@ -4,7 +4,6 @@ import { db, marketCloseSnapshotsTable, realEstatePricesTable, realEstateCompoun
 import { RE_PRICES, RE_COMPOUNDS } from "@workspace/shared-data";
 import { logger } from "../lib/logger";
 import { cairoDateString } from "../lib/cairoDate";
-import { recordAndGetSessionAlignedUsdToEgp } from "../lib/tradingSession";
 
 const router: IRouter = Router();
 
@@ -793,17 +792,13 @@ function isMetalsMarketOpen(now: Date): boolean {
   return true;
 }
 
-// ─── Daily EGP close snapshot (historical record only) ────────────────────────
-// Kept purely as a Cairo-calendar-day archive — e.g. to answer "what was
-// gold's EGP open/close on a given date" later — NOT as the live reference
-// for usdToEgpChangePercent below anymore. It used to be: gold/silver's own
-// %-change resets whenever TradingView's own trading session rolls over
-// (its own clock), but this table's usdToEgp reset on Cairo midnight — a
-// different, unrelated clock — so a gold/silver holding's combined
-// EGP %-change (which compounds the two) silently changed composition at a
-// moment neither market actually moved. usdToEgpChangePercent now comes from
-// recordAndGetSessionAlignedUsdToEgp() (../lib/tradingSession.ts) instead,
-// which resets in lockstep with TradingView's own session.
+// ─── Daily EGP close snapshot ─────────────────────────────────────────────────
+// For an EGP-held investment, "today's change" should mean exactly one thing:
+// today's EGP price vs. yesterday's EGP price — the same numbers this API
+// displays in Markets, diffed against themselves. Reconstructing that change
+// from a separate USD move and a separate historical FX lookup (below, kept
+// only as a bootstrap fallback for a brand-new deployment with no history
+// yet) leaves room for the two sources to disagree on timing.
 //
 // This used to be an in-memory Map, which seemed fine but silently broke:
 // any server restart (a redeploy, or the host recycling an idle instance)
@@ -820,8 +815,8 @@ interface MarketCloseSnapshot { goldEgp24k: number; silverEgp: number; usdToEgp:
 // Keeps "today"'s row continuously updated to the latest live price (so
 // whatever was last written before the Cairo day rolls over becomes that
 // day's fixed close in the database), and returns:
-//  - prevClose: the most recent *prior* day's close, if one is on record.
-//    Historical only now — see the block comment above.
+//  - prevClose: the most recent *prior* day's close, if one is on record —
+//    the real, correct "today vs. yesterday" reference.
 //  - todayOpen: whatever today's own first-ever recorded value was — used
 //    only when prevClose doesn't exist yet (a brand new day, or the first
 //    day this table has any data at all), so there's still something real
@@ -931,21 +926,22 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
     ? round2((silverChange / metals.xagPrevClose) * 100)
     : 0;
 
-  // Historical archive write only (see the block comment above
-  // recordAndGetPrevClose) — result intentionally unused here now.
-  await recordAndGetPrevClose(cairoDateString(), {
-    goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
-  });
-
   // USD/EGP has no equivalent reliable "own previous close" the way
   // TradingView gives metals — Wise (the live-rate source) doesn't expose
   // one, and the free daily-snapshot APIs previously used to reconstruct it
   // turned out to be unreliably stale (see the removed fetchUsdToEgpPrevClose
-  // — a response with no way to tell it was ~24h+ old). So this is anchored
-  // to this endpoint's own recorded session state instead (see
-  // ../lib/tradingSession.ts), reset in lockstep with TradingView's own
-  // metals session rather than Cairo midnight, and honestly shows 0% until a
-  // real prior session's close exists.
+  // — a response with no way to tell it was ~24h+ old). So this one alone is
+  // anchored to this endpoint's own recorded history instead, and honestly
+  // shows 0% until a real prior-day close exists.
+  //
+  // Anchored to the Cairo calendar day, NOT the metals trading session:
+  // Egypt's banking week is Sun-Thu and CIB (the primary source above) posts
+  // a fresh rate on Sunday, while metals stay shut Fri 22:00-Sun 22:00 UTC.
+  // Tying this to the metals session left USD/EGP's "today" spanning three
+  // days every weekend and hid a real Sunday rate move until Monday. The
+  // tradeoff, accepted deliberately: goldChangePercentEgp below compounds
+  // this with the metal's own session-clocked move, so the two legs reset at
+  // different moments.
   //
   // A same-day "opening value" fallback was tried and reverted: by the time
   // that tracking could be added, the real early-morning rate was already
@@ -956,13 +952,12 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   // that didn't reflect the actual overnight move. Same principle as
   // removing the third-party fallback: a plausible-looking wrong number is
   // worse than an honest 0.
-  const { prevClose: sessionPrevCloseUsdToEgp } = await recordAndGetSessionAlignedUsdToEgp(
-    metals ? metals.xauPrevClose : null,
-    usdToEgpDisplay,
-  );
+  const { prevClose } = await recordAndGetPrevClose(cairoDateString(), {
+    goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
+  });
 
-  const usdToEgpChangePercent = sessionPrevCloseUsdToEgp && sessionPrevCloseUsdToEgp > 0
-    ? round2(((usdToEgpDisplay - sessionPrevCloseUsdToEgp) / sessionPrevCloseUsdToEgp) * 100)
+  const usdToEgpChangePercent = prevClose && prevClose.usdToEgp > 0
+    ? round2(((usdToEgpDisplay - prevClose.usdToEgp) / prevClose.usdToEgp) * 100)
     : 0;
 
   // goldChangePercent/silverChangePercent above are deliberately raw-USD
