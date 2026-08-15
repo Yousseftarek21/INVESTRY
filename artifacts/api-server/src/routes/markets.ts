@@ -1006,6 +1006,17 @@ const EGX_SYMBOL_SET: Set<string>        = new Set(EGX_TICKERS.map(t => t.symbol
 // Batch size kept at 150 — TradingView accepts it in one call with no rate issues.
 const TV_BATCH_SIZE = 150;
 
+// Does this bar belong to a session that ran today (Cairo)? TradingView's
+// "time" column is unix seconds for the row's bar; between sessions it keeps
+// serving the previous one, so its date is what separates a live change from
+// a stale one. Missing/zero is treated as stale rather than assumed live —
+// reporting 0% costs nothing, reporting a stale move as today's is the bug
+// this exists to prevent.
+function isEgxSessionToday(barTime: number | null | undefined): boolean {
+  if (!barTime) return false;
+  return cairoDateString(new Date(barTime * 1000)) === cairoDateString();
+}
+
 // Columns returned per ticker: [close, change_abs, change%, volume, market_cap, 52w_high, 52w_low,
 // P/E, div_yield, sector, EPS (TTM), revenue growth YoY (TTM), net margin (TTM), ROE (TTM),
 // debt/equity (MRQ), price/book (FY)]
@@ -1013,6 +1024,7 @@ type TVRow = [
   number, number, number, number | null, number | null, number | null, number | null,
   number | null, number | null, string | null, number | null, number | null,
   number | null, number | null, number | null, number | null,
+  number | null, // time — unix seconds of this row's bar (see isEgxSessionToday)
 ];
 
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
@@ -1032,6 +1044,14 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
         "price_earnings_ttm", "dividends_yield_current", "sector", "earnings_per_share_basic_ttm",
         "total_revenue_yoy_growth_ttm", "after_tax_margin", "return_on_equity", "debt_to_equity",
         "price_book_ratio",
+        // Unix seconds for the bar this row describes — i.e. which session
+        // "change" is measured over. Appended last on purpose: the columns
+        // array is positional, so adding anywhere else shifts every index
+        // in the destructure below. Verified live (not guessed) — returns
+        // the session open, e.g. 1786604400 = 13/08/2026 10:00 Cairo, EGX's
+        // Thursday open. "market_status" and "is_market_open" were tried
+        // first and both return null for EGX tickers.
+        "time",
       ],
       symbols: { tickers: batch.map(s => `EGX:${s}`) },
     });
@@ -1059,15 +1079,28 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
     const [
       close, changeAbs, changePct, volume, marketCap, high52w, low52w, pe, divYield,
       sector, epsTtm, revenueGrowthYoy, netMargin, roe, debtToEquity, priceToBook,
+      barTime,
     ] = d;
     if (!close) continue;                              // skip if TV returned no price
+    // Only report a change when the bar actually belongs to today's session.
+    // Between sessions TradingView keeps serving the last one's numbers, so
+    // without this the app folded Thursday's move into "today" all through
+    // Friday, Saturday, and Sunday morning — the same mistake metals avoid
+    // via isMetalsMarketOpen, which EGX had no equivalent of.
+    //
+    // Comparing the bar's own Cairo date beats hardcoding EGX's hours: it
+    // costs nothing on public holidays or Ramadan's shortened session, both
+    // of which a Sun-Thu 10:00-14:30 rule would wrongly call "open".
+    const tradedToday = isEgxSessionToday(barTime);
+    const change      = tradedToday ? round2(changeAbs) : 0;
+    const changePct2  = tradedToday ? round2(changePct) : 0;
     results.push({
       symbol,
       name:          EGX_NAMES[symbol] ?? name,
       price:         round2(close),
-      previousClose: round2(close - changeAbs),
-      change:        round2(changeAbs),
-      changePercent: round2(changePct),
+      previousClose: round2(close - change),
+      change,
+      changePercent: changePct2,
       volume:        volume ?? undefined,
       marketCap:     marketCap ?? undefined,
       high52w:       high52w ?? undefined,
@@ -1149,6 +1182,9 @@ export async function getCachedStocks(): Promise<EGXStockResponse[]> {
 // single-symbol quote endpoint too. Rather than guess at another symbol
 // string or fabricate a number, it's left out entirely — shipping a fake or
 // stale Shariah figure would be worse than not having the chip.
+// [close, change_abs, change%, volume, time]
+type IndexRow = [number, number, number, number | null, number | null];
+
 const EGX_INDICES = [
   { symbol: "EGX30", name: "EGX 30" },
   { symbol: "EGX70EWI", name: "EGX 70 EWI" },
@@ -1156,7 +1192,8 @@ const EGX_INDICES = [
 
 async function fetchEGXIndices(): Promise<EGXStockResponse[]> {
   const body = JSON.stringify({
-    columns: ["close", "change_abs", "change", "volume"],
+    // "time" last — same session-freshness check as individual stocks.
+    columns: ["close", "change_abs", "change", "volume", "time"],
     symbols: { tickers: EGX_INDICES.map(i => `EGX:${i.symbol}`) },
   });
   const res = await safeFetch("https://scanner.tradingview.com/egypt/scan", {
@@ -1164,24 +1201,26 @@ async function fetchEGXIndices(): Promise<EGXStockResponse[]> {
     headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
     body,
   });
-  const data = await safeJson<{ data: Array<{ s: string; d: [number, number, number, number | null] }> }>(
+  const data = await safeJson<{ data: Array<{ s: string; d: IndexRow }> }>(
     res, "EGX indices TradingView"
   );
   if (!data?.data) return [];
 
-  const bySymbol: Record<string, [number, number, number, number | null]> = {};
+  const bySymbol: Record<string, IndexRow> = {};
   for (const item of data.data) bySymbol[item.s.replace(/^EGX:/, "")] = item.d;
 
   const results: EGXStockResponse[] = [];
   for (const { symbol, name } of EGX_INDICES) {
     const d = bySymbol[symbol];
     if (!d) continue;
-    const [close, changeAbs, changePct, volume] = d;
+    const [close, changeAbs, changePct, volume, barTime] = d;
     if (!close) continue;
+    const tradedToday = isEgxSessionToday(barTime);
+    const change = tradedToday ? round2(changeAbs) : 0;
     results.push({
       symbol, name,
-      price: round2(close), previousClose: round2(close - changeAbs),
-      change: round2(changeAbs), changePercent: round2(changePct),
+      price: round2(close), previousClose: round2(close - change),
+      change, changePercent: tradedToday ? round2(changePct) : 0,
       volume: volume ?? undefined,
     });
   }
