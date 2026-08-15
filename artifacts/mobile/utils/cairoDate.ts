@@ -35,6 +35,26 @@ export function cairoTimeLabel(
   return d.toLocaleTimeString(locale, { ...options, timeZone: CAIRO });
 }
 
+// The instant Cairo's current day began. Used as the "start of today"
+// baseline for anything that accrues continuously (fixed income), so it
+// ramps up from zero over the day the way a market-priced holding's change
+// does, instead of measuring a rolling 24h window that never resets.
+//
+// Reads Cairo's wall clock and subtracts it, rather than parsing a formatted
+// date string back into a Date the way the server's cairoMidnightUtc does:
+// `new Date("8/16/2026, 2:17:00 AM")` is implementation-defined and not
+// dependable on Hermes. toLocaleTimeString with an explicit timeZone is the
+// pattern already proven across this codebase, and the rest is arithmetic.
+export function cairoMidnight(now: Date = new Date()): Date {
+  const [h, m, s] = now
+    .toLocaleTimeString('en-GB', { timeZone: CAIRO, hour12: false })
+    .split(':')
+    .map(Number);
+  // Some engines render midnight as 24:00:00 rather than 00:00:00.
+  const elapsedMs = ((((h % 24) * 60 + m) * 60 + s) * 1000) + now.getMilliseconds();
+  return new Date(now.getTime() - elapsedMs);
+}
+
 // Whole Cairo calendar days between two instants — 0 means "same day", 1
 // "yesterday". Deliberately NOT elapsed-milliseconds / 86_400_000: that
 // measures a rolling 24h window, so something done at 20:00 yesterday still

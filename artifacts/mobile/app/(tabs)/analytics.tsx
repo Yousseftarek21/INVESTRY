@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
+import { cairoMidnight } from '@/utils/cairoDate';
 import Svg, {
   Defs, LinearGradient, Stop, Path,
 } from 'react-native-svg';
@@ -59,7 +60,6 @@ function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>, 
   return h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
 }
 
-const ONE_DAY_MS = 86400000;
 function computeValue(h: Holding, prices?: MarketPrices): number {
   if (h.type === 'fixed_income') return fixedIncomeAccruedValue(h);
   if (h.type === 'real_estate') return getRECurrentValue(h);
@@ -578,8 +578,9 @@ export default function AnalyticsScreen() {
       else if (h.type === 'personal_asset') { paV += v; paCount++; }
       else if (h.type === 'fixed_income') {
         fiV += v;
-        const yesterday = new Date(Date.now() - ONE_DAY_MS);
-        todayFI += v - fixedIncomeAccruedValue(h, yesterday);
+        // Since today's Cairo midnight, matching index.tsx — see the comment
+        // there for why a rolling 24h window was wrong.
+        todayFI += v - fixedIncomeAccruedValue(h, cairoMidnight());
       }
       else { reV += v; reCount++; }
     }
