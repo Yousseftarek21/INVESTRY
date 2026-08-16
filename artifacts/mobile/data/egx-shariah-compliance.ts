@@ -55,29 +55,42 @@ export interface ShariaCompliance {
 // 2026-02-01) removed it from EGX33 Shariah — no reason was published, so
 // it's left unscreened rather than marked non-compliant on a guess. CIRA
 // was added in that same rebalance and is included below.
-const VERIFIED_COMPLIANT = new Set([
+export const EGX33_SHARIAH_FALLBACK = [
   'TMGH', 'PHDC', 'MASR', 'OCDI', 'ORHD', 'ORWE', 'MTIE', 'ORAS', 'ATQA',
   'MCQE', 'EGAL', 'ABUK', 'SKPC', 'MFPC', 'AMOC', 'EGAS', 'ARCC', 'LCSW',
   'ISPH', 'RMDA', 'JUFO', 'EFID', 'OLFI', 'IFAP', 'EFIH', 'RACC',
   'FWRY', 'ACGC', 'CIRA', 'ETRS', 'ETEL', 'MPCO', 'ICFC',
-]);
+];
 
 // Tickers whose sector/industry tag in egx-companies.ts doesn't match their
 // real underlying business closely enough to trust the categorical rules
 // below (e.g. tagged "Financial Services" but the actual company is an
 // engineering consultancy) — left unscreened rather than guessed either way.
-const SECTOR_TAG_UNRELIABLE = new Set(['DAPH']);
+export const SECTOR_TAG_UNRELIABLE_FALLBACK = ['DAPH'];
 
-function classify(ticker: string, sector: string, industry: string): ShariaCompliance {
+/** AAOIFI states 30%, S&P/Dow Jones 33%; 30% is the stricter reading. */
+export const DEBT_TO_MARKET_CAP_MAX_FALLBACK = 0.30;
+
+// The screening reference now comes from the server (see
+// hooks/useShariahScreening) so a semi-annual EGX33 rebalance is a redeploy
+// rather than an app release. The constants above remain as the offline
+// fallback. classify() therefore takes the list rather than closing over it.
+function classify(
+  ticker: string,
+  sector: string,
+  industry: string,
+  verifiedCompliant: Set<string>,
+  unreliableTags: Set<string>,
+): ShariaCompliance {
   if (industry === 'Islamic Banking') {
     return { ticker, verdict: 'compliant', reasonKey: 'islamicBank', guidanceKey: 'purification', hasSource: true };
   }
 
-  if (VERIFIED_COMPLIANT.has(ticker)) {
+  if (verifiedCompliant.has(ticker)) {
     return { ticker, verdict: 'compliant', reasonKey: 'egx33', guidanceKey: 'purification', hasSource: true };
   }
 
-  if (SECTOR_TAG_UNRELIABLE.has(ticker)) {
+  if (unreliableTags.has(ticker)) {
     return { ticker, verdict: 'unscreened', reasonKey: 'unreliableTag', guidanceKey: 'unscreened', hasSource: false };
   }
 
@@ -100,10 +113,28 @@ function classify(ticker: string, sector: string, industry: string): ShariaCompl
   return { ticker, verdict: 'unscreened', reasonKey: 'genericUnscreened', guidanceKey: 'unscreened', hasSource: false };
 }
 
-export const EGX_SHARIA_COMPLIANCE: Record<string, ShariaCompliance> = Object.fromEntries(
-  EGX_COMPANIES.map(c => [c.ticker, classify(c.ticker, c.sector, c.industry)])
-);
+export function buildShariaCompliance(
+  egx33: string[] = EGX33_SHARIAH_FALLBACK,
+  unreliable: string[] = SECTOR_TAG_UNRELIABLE_FALLBACK,
+): Record<string, ShariaCompliance> {
+  const verified = new Set(egx33);
+  const tags = new Set(unreliable);
+  return Object.fromEntries(
+    EGX_COMPANIES.map(c => [c.ticker, classify(c.ticker, c.sector, c.industry, verified, tags)]),
+  );
+}
 
-export function getShariaCompliance(ticker: string): ShariaCompliance | null {
-  return EGX_SHARIA_COMPLIANCE[ticker.toUpperCase()] ?? null;
+/** AAOIFI screen 2: interest-bearing debt against market cap. Returns null
+ *  when either figure is missing — a stock that can't be measured is reported
+ *  as unmeasured, never as a pass. */
+export interface DebtScreen { ratio: number; passes: boolean; }
+
+export function debtScreen(
+  totalDebt: number | undefined,
+  marketCap: number | undefined,
+  max: number,
+): DebtScreen | null {
+  if (!marketCap || marketCap <= 0 || totalDebt == null || totalDebt < 0) return null;
+  const ratio = totalDebt / marketCap;
+  return { ratio, passes: ratio < max };
 }

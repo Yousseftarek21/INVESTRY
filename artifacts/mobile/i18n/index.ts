@@ -716,6 +716,20 @@ const en = {
   listedLabel: 'listed',
   inLabel: 'in',
   estimatedLabel: 'ESTIMATED',
+  shariahCriteriaTitle: 'Screening criteria',
+  shariahCriterionActivity: 'Business activity',
+  shariahCriterionDebt: 'Debt ÷ market cap',
+  shariahCriterionLiquidity: 'Cash & interest-bearing',
+  shariahCriterionIncome: 'Non-permissible income',
+  shariahCriterionNoData: 'Not screened',
+  shariahCriterionNoSource: 'No data source',
+  shariahLimitLabel: (max: string) => `limit ${max}%` as string,
+  shariahFinancialsTitle: 'Financial reference',
+  shariahDebtContextNote: 'Shown for context, not as a verdict. EGX screens on a trailing average market cap and a narrower definition of interest-bearing debt, so this figure will not always agree with the official listing.',
+  // Says plainly that passing what we can measure is not compliance. Two of
+  // AAOIFI's four screens have no data source for EGX, so only EGX33
+  // membership represents a full screen.
+  shariahPartialNote: 'Only 2 of AAOIFI\u2019s 4 screens can be applied here \u2014 the other two need financial statements no available data source publishes for EGX. Passing these is not full compliance. Stocks listed in the official EGX 33 Shariah index have been screened against all four by the exchange\u2019s own Shariah board.',
   // EGX quotes come from TradingView's delayed tier (update_mode
   // "delayed_streaming_900" = 900s). Stated plainly rather than implied.
   egxDelayedChip: '15-MIN DELAYED',
@@ -1954,6 +1968,17 @@ const ar: typeof en = {
   listedLabel: 'مدرجة',
   inLabel: 'في',
   estimatedLabel: 'تقديري',
+  shariahCriteriaTitle: 'معايير الفحص',
+  shariahCriterionActivity: 'نشاط الشركة',
+  shariahCriterionDebt: 'الديون ÷ القيمة السوقية',
+  shariahCriterionLiquidity: 'النقد والأوراق ذات الفائدة',
+  shariahCriterionIncome: 'الإيرادات غير المشروعة',
+  shariahCriterionNoData: 'لم يُفحص',
+  shariahCriterionNoSource: 'لا يوجد مصدر بيانات',
+  shariahLimitLabel: (max: string) => `الحد ${max}%` as string,
+  shariahFinancialsTitle: 'بيانات مالية للاستئناس',
+  shariahDebtContextNote: 'يُعرض للاستئناس فقط وليس كحكم. تعتمد البورصة على متوسط القيمة السوقية وتعريف أضيق للديون ذات الفائدة، لذا قد لا يتطابق هذا الرقم مع القائمة الرسمية.',
+  shariahPartialNote: 'يمكن تطبيق معيارين فقط من معايير أيوفي الأربعة هنا \u2014 المعياران الآخران يحتاجان قوائم مالية لا ينشرها أي مصدر بيانات متاح للبورصة المصرية. اجتياز هذين المعيارين لا يعني التوافق الكامل. الأسهم المدرجة في مؤشر إيجي إكس 33 الشرعي الرسمي تم فحصها وفق المعايير الأربعة من هيئة الرقابة الشرعية بالبورصة.',
   egxDelayedChip: 'متأخر ١٥ دقيقة',
   estAbbrevLabel: 'تقديري',
   reNoDataYet: 'لا توجد بيانات بعد',

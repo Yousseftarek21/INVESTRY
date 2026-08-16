@@ -10,7 +10,9 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { EGX_COMPANIES, EGXCompany } from '@/data/egx-companies';
-import { getShariaCompliance, ShariaCompliance } from '@/data/egx-shariah-compliance';
+import { buildShariaCompliance, debtScreen, ShariaCompliance } from '@/data/egx-shariah-compliance';
+import { useShariahScreening } from '@/hooks/useShariahScreening';
+import { useEGXMarket, EGXStockLive } from '@/hooks/useEGXMarket';
 import type { Translations } from '@/i18n';
 
 const REASON_KEY_MAP: Record<ShariaCompliance['reasonKey'], keyof Translations> = {
@@ -29,6 +31,41 @@ const GUIDANCE_KEY_MAP: Record<ShariaCompliance['guidanceKey'], keyof Translatio
   avoid:        'shariahGuidanceAvoid',
   unscreened:   'shariahGuidanceUnscreened',
 };
+
+// One row of the AAOIFI criteria breakdown. 'unknown' is a first-class state,
+// not an error: two of the four screens have no data source for EGX, and a
+// grey dash says that far more honestly than omitting the row.
+function CriterionRow({ label, state, value }: {
+  label: string;
+  state: 'pass' | 'fail' | 'unknown';
+  value?: string;
+}) {
+  const colors = useColors();
+  const cfg = {
+    pass:    { icon: 'check-circle' as const, color: colors.green },
+    fail:    { icon: 'x-circle' as const,     color: colors.red },
+    unknown: { icon: 'minus-circle' as const, color: colors.mutedForeground },
+  }[state];
+  return (
+    <View style={cr.row}>
+      <Feather name={cfg.icon} size={14} color={cfg.color} />
+      <Text style={[cr.label, { color: colors.text }]} numberOfLines={1}>{label}</Text>
+      {!!value && (
+        <Text style={[cr.value, { color: state === 'unknown' ? colors.mutedForeground : cfg.color }]} numberOfLines={1}>
+          {value}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const cr = StyleSheet.create({
+  row:   { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 7 },
+  label: { fontSize: 13, fontFamily: 'Inter_500Medium', flexShrink: 1 },
+  // marginStart auto pushes only the value to the right edge, leaving the
+  // icon and label packed together on the left.
+  value: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginStart: 'auto', fontVariant: ['tabular-nums'] },
+});
 
 function VerdictBadge({ verdict }: { verdict: ShariaCompliance['verdict'] }) {
   const colors = useColors();
@@ -86,7 +123,23 @@ export default function ShariaScreeningScreen() {
     );
   }, [query]);
 
-  const compliance = selected ? getShariaCompliance(selected.ticker) : null;
+  // Reference list comes from the server so a semi-annual EGX33 rebalance
+  // doesn't need an app release; falls back to the bundled copy offline.
+  const { reference } = useShariahScreening();
+  const { data: egxStocks } = useEGXMarket();
+
+  const complianceByTicker = useMemo(
+    () => buildShariaCompliance(reference.egx33Shariah, reference.sectorTagUnreliable),
+    [reference.egx33Shariah, reference.sectorTagUnreliable],
+  );
+  const compliance = selected ? complianceByTicker[selected.ticker] ?? null : null;
+
+  // AAOIFI screen 2, computed live rather than asserted.
+  const debt = useMemo(() => {
+    if (!selected) return null;
+    const s = egxStocks?.find((x: EGXStockLive) => x.ticker === selected.ticker);
+    return debtScreen(s?.totalDebt, s?.marketCap, reference.debtToMarketCapMax);
+  }, [selected, egxStocks, reference.debtToMarketCapMax]);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -142,6 +195,51 @@ export default function ShariaScreeningScreen() {
                     </>
                   )}
                 </View>
+
+                {/* Per-criterion breakdown. AAOIFI defines four screens and
+                    this app can only apply two — activity, and debt against
+                    market cap. Listing all four with the unavailable ones
+                    marked is the honest presentation: a stock passing what we
+                    can measure is not thereby compliant, and hiding the two
+                    we can't check would imply it was. */}
+                <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Text style={[s.criteriaTitle, { color: colors.mutedForeground }]}>{t.shariahCriteriaTitle}</Text>
+
+                  <CriterionRow
+                    label={t.shariahCriterionActivity}
+                    state={compliance.verdict === 'non_compliant' ? 'fail' : compliance.verdict === 'compliant' ? 'pass' : 'unknown'}
+                    value={compliance.verdict === 'unscreened' ? t.shariahCriterionNoData : undefined}
+                  />
+                  {/* Deliberately NOT a pass/fail. Checked against real
+                      constituents: TMGH 38%, ORWE 48%, PHDC 77% of market cap
+                      — all three certified by EGX's own Shariah board. Against
+                      total assets instead, JUFO and EFID fail while those
+                      three pass. Neither denominator reproduces the official
+                      verdicts, because EGX screens on a trailing average
+                      market cap and a narrower interest-bearing debt figure
+                      than TradingView's total_debt. Stamping a red cross on a
+                      certified stock would be worse than showing nothing, so
+                      the ratio is reported as context and the verdict is left
+                      to the official list. */}
+                  <CriterionRow label={t.shariahCriterionLiquidity} state="unknown" value={t.shariahCriterionNoSource} />
+                  <CriterionRow label={t.shariahCriterionIncome} state="unknown" value={t.shariahCriterionNoSource} />
+
+                  <Text style={[s.criteriaNote, { color: colors.mutedForeground }]}>{t.shariahPartialNote}</Text>
+                </View>
+
+                {/* Real figures, shown as reference rather than as a verdict —
+                    see the comment above on why they can't be scored. */}
+                {!!debt && (
+                  <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[s.criteriaTitle, { color: colors.mutedForeground }]}>{t.shariahFinancialsTitle}</Text>
+                    <View style={cr.row}>
+                      <Feather name="bar-chart-2" size={14} color={colors.mutedForeground} />
+                      <Text style={[cr.label, { color: colors.text }]}>{t.shariahCriterionDebt}</Text>
+                      <Text style={[cr.value, { color: colors.text }]}>{(debt.ratio * 100).toFixed(1)}%</Text>
+                    </View>
+                    <Text style={[s.criteriaNote, { color: colors.mutedForeground }]}>{t.shariahDebtContextNote}</Text>
+                  </View>
+                )}
 
                 <TouchableOpacity
                   style={[s.changeBtn, { backgroundColor: colors.muted }]}
@@ -246,5 +344,7 @@ const s = StyleSheet.create({
   changeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 13 },
   changeBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 
+  criteriaTitle: { fontSize: 10.5, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 },
+  criteriaNote:  { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16, marginTop: 8 },
   disclaimer: { fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 16, opacity: 0.7, marginTop: 4 },
 });

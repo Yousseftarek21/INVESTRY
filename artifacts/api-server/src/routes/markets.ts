@@ -4,6 +4,7 @@ import { db, marketCloseSnapshotsTable, realEstatePricesTable, realEstateCompoun
 import { RE_PRICES, RE_COMPOUNDS } from "@workspace/shared-data";
 import { logger } from "../lib/logger";
 import { cairoDateString, tradingDayKey } from "../lib/cairoDate";
+import { shariahScreeningReference } from "../lib/shariahScreening";
 
 const router: IRouter = Router();
 
@@ -55,6 +56,10 @@ export interface EGXStockResponse {
   previousClose: number;
   change: number;
   changePercent: number;
+  // Total interest-bearing debt, for the Shariah debt screen (AAOIFI: debt
+  // must stay under ~33% of market cap). Absent for some tickers — the
+  // screener treats missing as "can't screen", never as a pass.
+  totalDebt?: number;
   // Is this row from a session that traded today, or is the exchange shut and
   // TradingView still serving the last one's bar? The client can't tell from
   // price/change alone once a stale change has been zeroed, and without it a
@@ -1017,6 +1022,7 @@ type TVRow = [
   number | null, number | null, string | null, number | null, number | null,
   number | null, number | null, number | null, number | null,
   number | null, // time — unix seconds of this row's bar (see isEgxSessionToday)
+  number | null, // total_debt
 ];
 
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
@@ -1044,6 +1050,8 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
         // Thursday open. "market_status" and "is_market_open" were tried
         // first and both return null for EGX tickers.
         "time",
+        // Appended after "time" for the same positional reason.
+        "total_debt",
       ],
       symbols: { tickers: batch.map(s => `EGX:${s}`) },
     });
@@ -1071,7 +1079,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
     const [
       close, changeAbs, changePct, volume, marketCap, high52w, low52w, pe, divYield,
       sector, epsTtm, revenueGrowthYoy, netMargin, roe, debtToEquity, priceToBook,
-      barTime,
+      barTime, totalDebt,
     ] = d;
     if (!close) continue;                              // skip if TV returned no price
     // Only report a change when the bar actually belongs to today's session.
@@ -1094,6 +1102,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       change,
       changePercent: changePct2,
       sessionLive:   tradedToday,
+      totalDebt:     totalDebt ?? undefined,
       volume:        volume ?? undefined,
       marketCap:     marketCap ?? undefined,
       high52w:       high52w ?? undefined,
@@ -1380,6 +1389,15 @@ router.get("/markets/prices", async (req, res) => {
     req.log.error({ err }, "Failed to fetch market prices");
     res.status(500).json({ error: "Failed to fetch prices" });
   }
+});
+
+// Shariah screening reference data — the EGX33 constituent list and the
+// screening thresholds. Served rather than bundled so a rebalance is a
+// redeploy instead of an app release; see lib/shariahScreening.ts for why it
+// is hand-maintained and which AAOIFI screens are and aren't possible here.
+// Static per deploy, so no cache and no upstream call.
+router.get("/markets/shariah", (_req, res) => {
+  res.json(shariahScreeningReference());
 });
 
 router.get("/markets/stocks", async (req, res) => {
