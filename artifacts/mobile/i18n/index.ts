@@ -716,6 +716,9 @@ const en = {
   listedLabel: 'listed',
   inLabel: 'in',
   estimatedLabel: 'ESTIMATED',
+  // EGX quotes come from TradingView's delayed tier (update_mode
+  // "delayed_streaming_900" = 900s). Stated plainly rather than implied.
+  egxDelayedChip: '15-min delayed',
   estAbbrevLabel: 'Est.',
   reNoDataYet: 'No data yet',
   weekRange52: '52W Range',
@@ -1951,6 +1954,7 @@ const ar: typeof en = {
   listedLabel: 'مدرجة',
   inLabel: 'في',
   estimatedLabel: 'تقديري',
+  egxDelayedChip: 'متأخر ١٥ دقيقة',
   estAbbrevLabel: 'تقديري',
   reNoDataYet: 'لا توجد بيانات بعد',
   weekRange52: 'نطاق 52 أسبوع',

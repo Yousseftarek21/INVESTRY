@@ -28,6 +28,7 @@ interface ServerEGXStock {
   previousClose: number;
   change: number;
   changePercent: number;
+  sessionLive?: boolean;
   volume?: number;
   marketCap?: number;
   high52w?: number;
@@ -92,7 +93,13 @@ async function fetchFromServer(): Promise<EGXStockLive[]> {
       roe:               s.roe,
       debtToEquity:      s.debtToEquity,
       priceToBook:       s.priceToBook,
-      isLive:        true,
+      // Only "live" when the exchange actually traded today. A price always
+      // comes back — TradingView keeps serving the last session's bar while
+      // EGX is shut — so asserting true here made the pulsing green LIVE dot
+      // claim a closed market was trading, all weekend and every night after
+      // the daily reset zeroed the change. Older servers omit the field;
+      // treated as live so a stale deploy can't wrongly grey the dot out.
+      isLive:        s.sessionLive !== false,
     };
   });
 }

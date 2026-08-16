@@ -55,6 +55,11 @@ export interface EGXStockResponse {
   previousClose: number;
   change: number;
   changePercent: number;
+  // Is this row from a session that traded today, or is the exchange shut and
+  // TradingView still serving the last one's bar? The client can't tell from
+  // price/change alone once a stale change has been zeroed, and without it a
+  // pulsing green LIVE dot kept claiming a closed market was trading.
+  sessionLive?: boolean;
   volume?: number;
   marketCap?: number;
   high52w?: number;
@@ -1088,6 +1093,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       previousClose: round2(close - change),
       change,
       changePercent: changePct2,
+      sessionLive:   tradedToday,
       volume:        volume ?? undefined,
       marketCap:     marketCap ?? undefined,
       high52w:       high52w ?? undefined,
@@ -1208,6 +1214,7 @@ async function fetchEGXIndices(): Promise<EGXStockResponse[]> {
       symbol, name,
       price: round2(close), previousClose: round2(close - change),
       change, changePercent: tradedToday ? round2(changePct) : 0,
+      sessionLive: tradedToday,
       volume: volume ?? undefined,
     });
   }
