@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, usersTable } from "@workspace/db";
-import { eq, count } from "drizzle-orm";
+import { and, eq, count, isNull } from "drizzle-orm";
 import crypto from "crypto";
 
 const router: IRouter = Router();
@@ -123,14 +123,37 @@ router.post("/referral/redeem", async (req, res) => {
     const meNewExpiry = new Date(meBase);
     meNewExpiry.setMonth(meNewExpiry.getMonth() + 1);
 
-    await db.transaction(async (tx) => {
-      await tx.update(usersTable).set({
+    // The "already redeemed?" check above reads the row, but two network
+    // round-trips pass before anything is written — so two requests fired
+    // together both saw referredByUserId as null, both passed, and both
+    // granted a month. Firing the same redeem twice was free credit.
+    //
+    // The claim is now the guard: isNull() makes the redeemer's UPDATE match
+    // only while the row is still unclaimed, so exactly one of any number of
+    // racing requests updates a row. The earlier check stays as the fast,
+    // friendly path for the ordinary case; this is what actually enforces it.
+    const claimed = await db.transaction(async (tx) => {
+      const rows = await tx.update(usersTable).set({
         referredByUserId: referrer.id,
         proCreditExpiresAt: meNewExpiry,
         updatedAt: new Date(),
-      }).where(eq(usersTable.id, userId));
-      await tx.update(usersTable).set({ proCreditExpiresAt: referrerNewExpiry, updatedAt: new Date() }).where(eq(usersTable.id, referrer.id));
+      })
+        .where(and(eq(usersTable.id, userId), isNull(usersTable.referredByUserId)))
+        .returning({ id: usersTable.id });
+
+      // Lost the race — leave the referrer's credit alone and roll back.
+      if (rows.length === 0) return false;
+
+      await tx.update(usersTable)
+        .set({ proCreditExpiresAt: referrerNewExpiry, updatedAt: new Date() })
+        .where(eq(usersTable.id, referrer.id));
+      return true;
     });
+
+    if (!claimed) {
+      res.status(409).json({ error: "A referral code has already been redeemed on this account" });
+      return;
+    }
 
     res.json({ success: true });
   } catch (err) {
