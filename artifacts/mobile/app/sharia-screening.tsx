@@ -65,7 +65,50 @@ const cr = StyleSheet.create({
   // marginStart auto pushes only the value to the right edge, leaving the
   // icon and label packed together on the left.
   value: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginStart: 'auto', fontVariant: ['tabular-nums'] },
+  dot:   { width: 8, height: 8, borderRadius: 4 },
+
+  gaugeWrap:   { gap: 6, marginTop: 10 },
+  gaugeTrack:  { height: 6, borderRadius: 3, overflow: 'hidden', position: 'relative' },
+  gaugeFill:   { position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 3 },
+  // The AAOIFI ceiling, drawn as a tick the fill can visibly cross.
+  gaugeMark:   { position: 'absolute', top: -2, bottom: -2, width: 2, borderRadius: 1 },
+  gaugeLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  gaugeVal:    { fontSize: 15, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
+  gaugeMax:    { fontSize: 10.5, fontFamily: 'Inter_500Medium', fontVariant: ['tabular-nums'] },
 });
+
+// Verdict as a colour on every browse row, so compliance is readable while
+// scanning the list instead of only after tapping into a stock.
+function VerdictDot({ verdict }: { verdict: ShariaCompliance['verdict'] }) {
+  const colors = useColors();
+  const c = { compliant: colors.green, non_compliant: colors.red, unscreened: colors.mutedForeground }[verdict];
+  return <View style={[cr.dot, { backgroundColor: c }]} />;
+}
+
+// The debt ratio against AAOIFI's ceiling, drawn rather than stated. A bare
+// "38.0%" means nothing without the 30% line to read it against; the marker
+// makes over/under legible at a glance. Deliberately not coloured pass/fail —
+// see the call site for why this ratio can't be scored against EGX's verdict.
+function DebtGauge({ ratio, max }: { ratio: number; max: number }) {
+  const colors = useColors();
+  // Scaled so the threshold sits at 60% of the width: the interesting range is
+  // around the limit, and a raw 0-100% scale buries every low-debt stock in
+  // the first third of the bar.
+  const pct = Math.min(100, (ratio / max) * 60);
+  const over = ratio >= max;
+  return (
+    <View style={cr.gaugeWrap}>
+      <View style={[cr.gaugeTrack, { backgroundColor: colors.muted }]}>
+        <View style={[cr.gaugeFill, { width: `${pct}%`, backgroundColor: over ? colors.red : colors.green }]} />
+        <View style={[cr.gaugeMark, { left: '60%', backgroundColor: colors.textSecondary }]} />
+      </View>
+      <View style={cr.gaugeLabels}>
+        <Text style={[cr.gaugeVal, { color: over ? colors.red : colors.green }]}>{(ratio * 100).toFixed(1)}%</Text>
+        <Text style={[cr.gaugeMax, { color: colors.mutedForeground }]}>{(max * 100).toFixed(0)}%</Text>
+      </View>
+    </View>
+  );
+}
 
 function VerdictBadge({ verdict }: { verdict: ShariaCompliance['verdict'] }) {
   const colors = useColors();
@@ -114,14 +157,7 @@ export default function ShariaScreeningScreen() {
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<EGXCompany | null>(null);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toUpperCase();
-    if (!q) return EGX_COMPANIES;
-    return EGX_COMPANIES.filter(
-      c => c.ticker.includes(q) || c.nameEn.toUpperCase().includes(q)
-    );
-  }, [query]);
+  const [verdictFilter, setVerdictFilter] = useState<'all' | ShariaCompliance['verdict']>('all');
 
   // Reference list comes from the server so a semi-annual EGX33 rebalance
   // doesn't need an app release; falls back to the bundled copy offline.
@@ -132,6 +168,27 @@ export default function ShariaScreeningScreen() {
     () => buildShariaCompliance(reference.egx33Shariah, reference.sectorTagUnreliable),
     [reference.egx33Shariah, reference.sectorTagUnreliable],
   );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toUpperCase();
+    return EGX_COMPANIES.filter(c => {
+      if (verdictFilter !== 'all' && complianceByTicker[c.ticker]?.verdict !== verdictFilter) return false;
+      if (!q) return true;
+      return c.ticker.includes(q) || c.nameEn.toUpperCase().includes(q);
+    });
+  }, [query, verdictFilter, complianceByTicker]);
+
+  // Counts come from the whole list, not the filtered one, so the chips keep
+  // showing the full picture while a filter is active.
+  const counts = useMemo(() => {
+    const c = { all: EGX_COMPANIES.length, compliant: 0, non_compliant: 0, unscreened: 0 };
+    for (const co of EGX_COMPANIES) {
+      const v = complianceByTicker[co.ticker]?.verdict;
+      if (v) c[v]++;
+    }
+    return c;
+  }, [complianceByTicker]);
+
   const compliance = selected ? complianceByTicker[selected.ticker] ?? null : null;
 
   // AAOIFI screen 2, computed live rather than asserted.
@@ -191,7 +248,13 @@ export default function ShariaScreeningScreen() {
                   {compliance.hasSource && (
                     <>
                       <View style={[s.divider, { backgroundColor: colors.border }]} />
-                      <InfoBlock icon="link" title={t.shariahSourceLabel} body={t.shariahSourceEgx33} />
+                      <InfoBlock
+                        icon="link"
+                        title={t.shariahSourceLabel}
+                        body={reference.listVerifiedOn
+                          ? `${t.shariahSourceEgx33} ${t.shariahListVerified(reference.listVerifiedOn)}`
+                          : t.shariahSourceEgx33}
+                      />
                     </>
                   )}
                 </View>
@@ -235,8 +298,8 @@ export default function ShariaScreeningScreen() {
                     <View style={cr.row}>
                       <Feather name="bar-chart-2" size={14} color={colors.mutedForeground} />
                       <Text style={[cr.label, { color: colors.text }]}>{t.shariahCriterionDebt}</Text>
-                      <Text style={[cr.value, { color: colors.text }]}>{(debt.ratio * 100).toFixed(1)}%</Text>
                     </View>
+                    <DebtGauge ratio={debt.ratio} max={reference.debtToMarketCapMax} />
                     <Text style={[s.criteriaNote, { color: colors.mutedForeground }]}>{t.shariahDebtContextNote}</Text>
                   </View>
                 )}
@@ -275,6 +338,36 @@ export default function ShariaScreeningScreen() {
                   </TouchableOpacity>
                 )}
               </View>
+              {/* Filter by verdict. The whole point of a screener is "show me
+                  the compliant ones" — without this you had to open all 280
+                  stocks one at a time to find them. Counts are of the full
+                  list, so the breakdown stays visible while filtered. */}
+              <View style={s.filterRow}>
+                {([
+                  ['all', t.shariahFilterAll, counts.all, colors.textSecondary],
+                  ['compliant', t.shariahCompliant, counts.compliant, colors.green],
+                  ['non_compliant', t.shariahNonCompliant, counts.non_compliant, colors.red],
+                  ['unscreened', t.shariahUnscreened, counts.unscreened, colors.mutedForeground],
+                ] as const).map(([key, label, count, tint]) => {
+                  const active = verdictFilter === key;
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      onPress={() => { impact(); setVerdictFilter(key); }}
+                      activeOpacity={0.7}
+                      style={[s.filterChip, {
+                        backgroundColor: active ? tint + '1F' : colors.muted,
+                        borderColor: active ? tint + '55' : 'transparent',
+                      }]}
+                    >
+                      <Text style={[s.filterTxt, { color: active ? tint : colors.mutedForeground }]} numberOfLines={1}>
+                        {label} {count}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               <Text style={[s.countLabel, { color: colors.mutedForeground }]}>
                 {filtered.length} {t.stocksListedCount}
               </Text>
@@ -297,7 +390,10 @@ export default function ShariaScreeningScreen() {
                       <Text style={[s.avatarText, { color: colors.mutedForeground }]}>{item.ticker.substring(0, 4)}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[s.rowTicker, { color: colors.text }]}>{item.ticker}</Text>
+                      <View style={s.rowTickerLine}>
+                        <VerdictDot verdict={complianceByTicker[item.ticker]?.verdict ?? 'unscreened'} />
+                        <Text style={[s.rowTicker, { color: colors.text }]}>{item.ticker}</Text>
+                      </View>
                       <Text style={[s.rowName, { color: colors.mutedForeground }]} numberOfLines={1}>{item.nameEn}</Text>
                       <Text style={[s.rowNameAr, { color: colors.mutedForeground }]} numberOfLines={1}>{item.nameAr}</Text>
                     </View>
@@ -344,6 +440,10 @@ const s = StyleSheet.create({
   changeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, paddingVertical: 13 },
   changeBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 
+  filterRow:   { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' },
+  filterChip:  { paddingHorizontal: 10, paddingVertical: 5.5, borderRadius: 999, borderWidth: 1 },
+  filterTxt:   { fontSize: 11.5, fontFamily: 'Inter_600SemiBold' },
+  rowTickerLine: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   criteriaTitle: { fontSize: 10.5, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 },
   criteriaNote:  { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16, marginTop: 8 },
   disclaimer: { fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 16, opacity: 0.7, marginTop: 4 },

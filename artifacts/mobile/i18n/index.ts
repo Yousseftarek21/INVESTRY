@@ -725,6 +725,8 @@ const en = {
   shariahCriterionNoSource: 'No data source',
   shariahLimitLabel: (max: string) => `limit ${max}%` as string,
   shariahFinancialsTitle: 'Financial reference',
+  shariahFilterAll: 'All',
+  shariahListVerified: (date: string) => `Verified ${date}.` as string,
   shariahDebtContextNote: 'Shown for context, not as a verdict. EGX screens on a trailing average market cap and a narrower definition of interest-bearing debt, so this figure will not always agree with the official listing.',
   // Says plainly that passing what we can measure is not compliance. Two of
   // AAOIFI's four screens have no data source for EGX, so only EGX33
@@ -1977,6 +1979,8 @@ const ar: typeof en = {
   shariahCriterionNoSource: 'لا يوجد مصدر بيانات',
   shariahLimitLabel: (max: string) => `الحد ${max}%` as string,
   shariahFinancialsTitle: 'بيانات مالية للاستئناس',
+  shariahFilterAll: 'الكل',
+  shariahListVerified: (date: string) => `تم التحقق في ${date}.` as string,
   shariahDebtContextNote: 'يُعرض للاستئناس فقط وليس كحكم. تعتمد البورصة على متوسط القيمة السوقية وتعريف أضيق للديون ذات الفائدة، لذا قد لا يتطابق هذا الرقم مع القائمة الرسمية.',
   shariahPartialNote: 'يمكن تطبيق معيارين فقط من معايير أيوفي الأربعة هنا \u2014 المعياران الآخران يحتاجان قوائم مالية لا ينشرها أي مصدر بيانات متاح للبورصة المصرية. اجتياز هذين المعيارين لا يعني التوافق الكامل. الأسهم المدرجة في مؤشر إيجي إكس 33 الشرعي الرسمي تم فحصها وفق المعايير الأربعة من هيئة الرقابة الشرعية بالبورصة.',
   egxDelayedChip: 'متأخر ١٥ دقيقة',
