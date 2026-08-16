@@ -777,20 +777,12 @@ async function fetchFxCrossRates(_usdToEgp: number): Promise<Record<string, numb
   return out;
 }
 
-// ─── Metals market hours ──────────────────────────────────────────────────────
-// Gold/silver CFDs trade continuously Sun 22:00 UTC – Fri 22:00 UTC (standard
-// forex-hours approximation). Outside that window the market is closed, so
-// "today's change" reads 0% instead of carrying over the last completed
-// session's change — clearer than a frozen non-zero number over the weekend.
-
-function isMetalsMarketOpen(now: Date): boolean {
-  const day  = now.getUTCDay();  // 0=Sun, 5=Fri, 6=Sat
-  const hour = now.getUTCHours();
-  if (day === 6) return false;               // Saturday: always closed
-  if (day === 0 && hour < 22) return false;   // Sunday before 22:00 UTC: not yet open
-  if (day === 5 && hour >= 22) return false;  // Friday from 22:00 UTC: closed
-  return true;
-}
+// A hardcoded metals-hours gate (Sun 22:00 - Fri 22:00 UTC) used to force
+// gold/silver to 0% while the market was shut. It is gone: now that both
+// metals measure from yesterday's stored Cairo-day close, a shut market
+// yields 0.00% on its own — the live price is frozen at the very value that
+// close was derived from — with no approximated calendar to drift from
+// reality.
 
 // ─── Daily EGP close snapshot ─────────────────────────────────────────────────
 // For an EGP-held investment, "today's change" should mean exactly one thing:
@@ -898,7 +890,6 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
     goldUsd = memo.xau;
     silverUsd = memo.xag;
   }
-  const metalsOpen = isMetalsMarketOpen(new Date());
 
   const price24k = round2((goldUsd * usdToEgp) / TROY_OZ);
   const goldEgpPerGram: Record<string, number> = {
@@ -910,38 +901,49 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   const silverEgpPerGram = round2((silverUsd * usdToEgp) / TROY_OZ);
   const usdToEgpDisplay  = Math.round(usdToEgp * 10000) / 10000;
 
-  // Gold/silver's own previous close comes straight from TradingView on
-  // every request — real, live, resets with TradingView's own session, no
-  // fabrication and no dependency on this endpoint's own recorded history.
-  // This is deliberately back to matching TradingView's own % change
-  // directly, same reference point a user would see checking the metal
-  // itself there.
-  const goldChange    = metals && metalsOpen ? round2(goldUsd   - metals.xauPrevClose) : 0;
-  const goldChangePct = metals && metalsOpen && metals.xauPrevClose > 0
-    ? round2((goldChange / metals.xauPrevClose) * 100)
-    : 0;
-
-  const silverChange    = metals && metalsOpen ? round2(silverUsd - metals.xagPrevClose) : 0;
-  const silverChangePct = metals && metalsOpen && metals.xagPrevClose > 0
-    ? round2((silverChange / metals.xagPrevClose) * 100)
-    : 0;
-
-  // USD/EGP has no equivalent reliable "own previous close" the way
-  // TradingView gives metals — Wise (the live-rate source) doesn't expose
-  // one, and the free daily-snapshot APIs previously used to reconstruct it
-  // turned out to be unreliably stale (see the removed fetchUsdToEgpPrevClose
-  // — a response with no way to tell it was ~24h+ old). So this one alone is
-  // anchored to this endpoint's own recorded history instead, and honestly
-  // shows 0% until a real prior-day close exists.
+  // One baseline for every figure below: yesterday's Cairo-day close, from
+  // this endpoint's own recorded history. Every "today" in the app —
+  // cash, USD/EGP, fixed income, EGX, and now the metals — therefore resets
+  // at the same instant, Cairo midnight.
   //
-  // Anchored to the Cairo calendar day, NOT the metals trading session:
-  // Egypt's banking week is Sun-Thu and CIB (the primary source above) posts
-  // a fresh rate on Sunday, while metals stay shut Fri 22:00-Sun 22:00 UTC.
-  // Tying this to the metals session left USD/EGP's "today" spanning three
-  // days every weekend and hid a real Sunday rate move until Monday. The
-  // tradeoff, accepted deliberately: goldChangePercentEgp below compounds
-  // this with the metal's own session-clocked move, so the two legs reset at
-  // different moments.
+  // Metals used to read TradingView's own xauPrevClose instead, so they
+  // reset on its session clock while everything else reset on Cairo's. That
+  // meant a gold holding's EGP change compounded two differently-clocked
+  // legs and silently changed composition at moments neither market moved.
+  // The tradeoff accepted in exchange: the % here no longer matches what
+  // TradingView displays for gold, since it is now measured from Cairo
+  // midnight rather than from TradingView's session.
+  const { prevClose } = await recordAndGetPrevClose(cairoDateString(), {
+    goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
+  });
+
+  // Yesterday's close in USD, recovered from the stored EGP close and the
+  // stored rate — the exact inverse of how price24k was built from them, so
+  // no separate USD history has to be kept in step with the EGP one.
+  const prevUsd = (egpClose: number): number =>
+    prevClose && prevClose.usdToEgp > 0 ? (egpClose * TROY_OZ) / prevClose.usdToEgp : 0;
+  const pctFrom = (now: number, before: number): number =>
+    before > 0 ? round2(((now - before) / before) * 100) : 0;
+
+  // No market-open gate needed any more, and none is applied: while metals
+  // are shut goldUsd is frozen at the same value yesterday's close was
+  // derived from, so this falls out as 0.00% on its own.
+  const prevGoldUsd   = prevUsd(prevClose?.goldEgp24k ?? 0);
+  const prevSilverUsd = prevUsd(prevClose?.silverEgp ?? 0);
+
+  const goldChange    = prevGoldUsd > 0 ? round2(goldUsd - prevGoldUsd) : 0;
+  const goldChangePct = pctFrom(goldUsd, prevGoldUsd);
+
+  const silverChange    = prevSilverUsd > 0 ? round2(silverUsd - prevSilverUsd) : 0;
+  const silverChangePct = pctFrom(silverUsd, prevSilverUsd);
+
+  // Same Cairo-midnight baseline as the metals above. USD/EGP has no
+  // reliable "own previous close" the way TradingView gives metals — Wise
+  // doesn't expose one, and the free daily-snapshot APIs previously used to
+  // reconstruct it turned out to be unreliably stale (see the removed
+  // fetchUsdToEgpPrevClose — a response with no way to tell it was ~24h+
+  // old) — so this endpoint's own recorded history is the reference, and it
+  // honestly shows 0% until a real prior-day close exists.
   //
   // A same-day "opening value" fallback was tried and reverted: by the time
   // that tracking could be added, the real early-morning rate was already
@@ -952,29 +954,14 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   // that didn't reflect the actual overnight move. Same principle as
   // removing the third-party fallback: a plausible-looking wrong number is
   // worse than an honest 0.
-  const { prevClose } = await recordAndGetPrevClose(cairoDateString(), {
-    goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
-  });
+  const usdToEgpChangePercent = pctFrom(usdToEgpDisplay, prevClose?.usdToEgp ?? 0);
 
-  const usdToEgpChangePercent = prevClose && prevClose.usdToEgp > 0
-    ? round2(((usdToEgpDisplay - prevClose.usdToEgp) / prevClose.usdToEgp) * 100)
-    : 0;
-
-  // goldChangePercent/silverChangePercent above are deliberately raw-USD
-  // (matching TradingView's own display, per explicit product decision) —
-  // but a portfolio holding is valued in EGP, so applying that raw-USD %
-  // straight to an EGP value silently drops the FX leg (the original
-  // "gold shows +1.25% while the portfolio actually fell" bug, just
-  // reachable again from this angle). These two fields compound the metal's
-  // own USD move with today's USD/EGP move to give the metal's *real*
-  // EGP-denominated change — this is what portfolio "today's gain" math
-  // should read, never goldChangePercent/silverChangePercent directly.
-  const goldChangePercentEgp = round2(
-    ((1 + goldChangePct / 100) * (1 + usdToEgpChangePercent / 100) - 1) * 100
-  );
-  const silverChangePercentEgp = round2(
-    ((1 + silverChangePct / 100) * (1 + usdToEgpChangePercent / 100) - 1) * 100
-  );
+  // What portfolio "today's gain" reads. Measured straight off the stored
+  // EGP close rather than compounding the USD and FX legs: all three now
+  // share one baseline, so the direct diff is exact and cannot drift from
+  // its own parts the way the compounded form could.
+  const goldChangePercentEgp   = pctFrom(price24k, prevClose?.goldEgp24k ?? 0);
+  const silverChangePercentEgp = pctFrom(silverEgpPerGram, prevClose?.silverEgp ?? 0);
 
   return {
     goldUsd:             round2(goldUsd),
@@ -1085,8 +1072,8 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
     // Only report a change when the bar actually belongs to today's session.
     // Between sessions TradingView keeps serving the last one's numbers, so
     // without this the app folded Thursday's move into "today" all through
-    // Friday, Saturday, and Sunday morning — the same mistake metals avoid
-    // via isMetalsMarketOpen, which EGX had no equivalent of.
+    // Friday, Saturday, and Sunday morning. EGX has real daily open/close
+    // times, so unlike the metals it does need an explicit freshness check.
     //
     // Comparing the bar's own Cairo date beats hardcoding EGX's hours: it
     // costs nothing on public holidays or Ramadan's shortened session, both
