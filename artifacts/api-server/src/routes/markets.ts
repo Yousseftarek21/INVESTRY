@@ -3,7 +3,7 @@ import { lt, desc, eq } from "drizzle-orm";
 import { db, marketCloseSnapshotsTable, realEstatePricesTable, realEstateCompoundPricesTable } from "@workspace/db";
 import { RE_PRICES, RE_COMPOUNDS } from "@workspace/shared-data";
 import { logger } from "../lib/logger";
-import { cairoDateString } from "../lib/cairoDate";
+import { cairoDateString, tradingDayKey } from "../lib/cairoDate";
 
 const router: IRouter = Router();
 
@@ -913,7 +913,7 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
   // The tradeoff accepted in exchange: the % here no longer matches what
   // TradingView displays for gold, since it is now measured from Cairo
   // midnight rather than from TradingView's session.
-  const { prevClose } = await recordAndGetPrevClose(cairoDateString(), {
+  const { prevClose } = await recordAndGetPrevClose(tradingDayKey(), {
     goldEgp24k: price24k, silverEgp: silverEgpPerGram, usdToEgp: usdToEgpDisplay,
   });
 
@@ -1001,7 +1001,7 @@ const TV_BATCH_SIZE = 150;
 // this exists to prevent.
 function isEgxSessionToday(barTime: number | null | undefined): boolean {
   if (!barTime) return false;
-  return cairoDateString(new Date(barTime * 1000)) === cairoDateString();
+  return tradingDayKey(new Date(barTime * 1000)) === tradingDayKey();
 }
 
 // Columns returned per ticker: [close, change_abs, change%, volume, market_cap, 52w_high, 52w_low,

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
+import { tradingDayKey } from '@/utils/cairoDate';
 import { apiFetch } from '@/utils/api';
 
 const MAX_DAYS = 730;
@@ -21,12 +22,10 @@ function snapshotKey(userId: string) {
 // Pre-namespacing key — one-time migration only, see load effect below.
 const LEGACY_KEY = '@investry_portfolio_snapshots';
 
-// Africa/Cairo, not UTC — must match the server's cairoDateString() in
-// portfolioAlertCron.ts exactly, or the local cache's date key can be a
-// day behind the server's for the ~3 hours after every Cairo midnight
-// (Egypt is UTC+3), causing a mismatched entry when the two get merged.
+// The app's trading day (22:00 UTC boundary) — must match the server's
+// tradingDayKey() so client and server agree on which day a value belongs to.
 function todayStr(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
+  return tradingDayKey();
 }
 
 /**

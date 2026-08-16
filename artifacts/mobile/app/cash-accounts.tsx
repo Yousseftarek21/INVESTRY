@@ -21,7 +21,7 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
 import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { fmtCompact } from '@/utils/formatNumber';
-import { cairoDateLabel, cairoDaysAgo } from '@/utils/cairoDate';
+import { tradingDayLabel, tradingDaysAgo } from '@/utils/cairoDate';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
@@ -895,7 +895,7 @@ export default function CashAccountsScreen() {
                         </View>
                         {a.lastBalanceUpdateAt && (
                           <Text style={[styles.lastUpdatedHint, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {t.updatedDaysAgo(String(cairoDaysAgo(new Date(a.lastBalanceUpdateAt))))}
+                            {t.updatedDaysAgo(String(tradingDaysAgo(new Date(a.lastBalanceUpdateAt))))}
                           </Text>
                         )}
                       </View>
@@ -985,7 +985,7 @@ export default function CashAccountsScreen() {
                             {u.accountName}
                           </Text>
                           <Text style={[styles.recentDate, { color: colors.mutedForeground }]}>
-                            {cairoDateLabel(new Date(u.createdAt), { month: 'short', day: 'numeric' })}
+                            {tradingDayLabel(new Date(u.createdAt), { month: 'short', day: 'numeric' })}
                           </Text>
                         </View>
                         <Text style={[styles.recentDelta, { color: isUp ? colors.green : colors.red }]} numberOfLines={1}>

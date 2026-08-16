@@ -1,3 +1,4 @@
+import { tradingDayKey } from '@/utils/cairoDate';
 export const CHART_PERIODS = ['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const;
 export type ChartPeriod = typeof CHART_PERIODS[number];
 
@@ -26,12 +27,11 @@ const PERIOD_DAYS: Record<ChartPeriod, number> = {
 /** Minimum real snapshots needed before we show real data (not the seeded curve). */
 const MIN_REAL_PTS = 2;
 
-// Africa/Cairo, not UTC — must match the server's cairoDateString() and the
-// two snapshot hooks (usePortfolioSnapshots, useIntradaySamples), or a
-// UTC-based cutoff/today comparison can be a day off for ~3h after every
-// Cairo midnight (Egypt is UTC+3).
+// The app's trading day (22:00 UTC boundary) — must match the server's
+// tradingDayKey() and the two snapshot hooks (usePortfolioSnapshots,
+// useIntradaySamples), or a cutoff/today comparison can land a day off.
 function cairoDateStr(d: Date): string {
-  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
+  return tradingDayKey(d);
 }
 
 /** Real recorded coverage: how far back tracked history actually reaches. */

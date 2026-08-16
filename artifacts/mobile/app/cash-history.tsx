@@ -10,7 +10,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useCash } from '@/context/CashContext';
 import { useRecentCashUpdates } from '@/hooks/useRecentCashUpdates';
-import { cairoDayKey, cairoDateLabel, cairoTimeLabel } from '@/utils/cairoDate';
+import { tradingDayKey, tradingDayLabel, cairoTimeLabel } from '@/utils/cairoDate';
 
 // Well above what any personal cash-account history realistically reaches —
 // "View all" just means "stop artificially capping it at the inline
@@ -24,14 +24,14 @@ export default function CashHistoryScreen() {
   const { cashAccounts } = useCash();
   const { updates, isLoading } = useRecentCashUpdates(cashAccounts, HISTORY_LIMIT);
 
-  // Grouped and labelled on Cairo's clock, not the device's — these headings
-  // sit above the same updates the "today" badge sums, and that sum is
-  // computed Cairo-side. See utils/cairoDate.
+  // Grouped on the trading day, not the device's calendar — these headings
+  // sit above the same updates the "today" badge sums, and that sum uses the
+  // same boundary server-side. See utils/cairoDate.
   const dayLabel = (d: Date): string => {
-    const key = cairoDayKey(d);
-    if (key === cairoDayKey(new Date())) return t.todayLabel;
-    if (key === cairoDayKey(new Date(Date.now() - 86_400_000))) return t.aiHistoryYesterday;
-    return cairoDateLabel(d, { month: 'short', day: 'numeric', year: 'numeric' });
+    const key = tradingDayKey(d);
+    if (key === tradingDayKey(new Date())) return t.todayLabel;
+    if (key === tradingDayKey(new Date(Date.now() - 86_400_000))) return t.aiHistoryYesterday;
+    return tradingDayLabel(d, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
@@ -66,7 +66,7 @@ export default function CashHistoryScreen() {
           ) : (
             updates.map((u, i) => {
               const created = new Date(u.createdAt);
-              const key = cairoDayKey(created);
+              const key = tradingDayKey(created);
               const showDivider = key !== lastDayKey;
               lastDayKey = key;
               const isUp = u.delta > 0;

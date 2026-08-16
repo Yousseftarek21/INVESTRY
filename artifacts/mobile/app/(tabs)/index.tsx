@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
-import { cairoMidnight } from '@/utils/cairoDate';
+import { tradingDayStart } from '@/utils/cairoDate';
 import { fmtCompact } from '@/utils/formatNumber';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
@@ -571,11 +571,11 @@ export default function HomeScreen() {
         paV += v; paCount++;
       } else if (h.type === 'fixed_income') {
         fiV += v;
-        // Accrual since today's Cairo midnight, not since 24h ago. A rolling
-        // window never resets: right after midnight it still showed a whole
-        // day's interest while every other bucket had just gone to zero, so
-        // "Today" could never read flat on a portfolio holding any.
-        todayFI += v - fixedIncomeAccruedValue(h, cairoMidnight());
+        // Accrual since the trading day began, not since 24h ago. A rolling
+        // window never resets: right after the boundary it still showed a
+        // whole day's interest while every other bucket had just gone to
+        // zero, so "Today" could never read flat on a portfolio holding any.
+        todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
       } else {
         reV += v; reCount++;
       }

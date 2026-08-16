@@ -3,7 +3,7 @@ import { db, usersTable, portfolioSnapshotsTable, activityLogTable } from "@work
 import { computeUserPortfolioValue } from "./portfolioValue";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
-import { cairoDateString } from "./cairoDate";
+import { tradingDayKey } from "./cairoDate";
 
 // Checked every 5 minutes throughout the day — each check compares
 // today's live value against yesterday's close and may push again if the
@@ -129,7 +129,7 @@ async function checkAllUsers(): Promise<void> {
   if (running) return; // guard against overlap if a prior run is still in flight
   running = true;
   try {
-    const today = cairoDateString();
+    const today = tradingDayKey();
     const users = await db
       .select({ id: usersTable.id, pushToken: usersTable.pushToken, alertsEnabled: usersTable.portfolioAlertsEnabled })
       .from(usersTable);

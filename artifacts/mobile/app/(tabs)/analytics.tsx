@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
-import { cairoMidnight } from '@/utils/cairoDate';
+import { tradingDayStart } from '@/utils/cairoDate';
 import Svg, {
   Defs, LinearGradient, Stop, Path,
 } from 'react-native-svg';
@@ -578,9 +578,9 @@ export default function AnalyticsScreen() {
       else if (h.type === 'personal_asset') { paV += v; paCount++; }
       else if (h.type === 'fixed_income') {
         fiV += v;
-        // Since today's Cairo midnight, matching index.tsx — see the comment
+        // Since the trading day began, matching index.tsx — see the comment
         // there for why a rolling 24h window was wrong.
-        todayFI += v - fixedIncomeAccruedValue(h, cairoMidnight());
+        todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
       }
       else { reV += v; reCount++; }
     }

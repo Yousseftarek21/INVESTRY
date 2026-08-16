@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
+import { tradingDayKey } from '@/utils/cairoDate';
 
 // Namespaced per-user, matching every other local data store — without
 // this, one account's intraday samples would stay readable by (and get
@@ -13,13 +14,10 @@ const LEGACY_KEY = '@investry_intraday_samples';
 const MIN_INTERVAL_MS = 10 * 60 * 1000; // don't sample more than once per 10 minutes
 const MAX_SAMPLES = 60;
 
-// Africa/Cairo, not UTC — must match the server's cairoDateString() in
-// portfolioAlertCron.ts exactly. Egypt is UTC+3, so a raw UTC date string
-// disagreed with the server for ~3 hours after every Cairo midnight (the
-// server had already rolled to the new day; the client hadn't), which
-// could keep yesterday's intraday samples around into a "new" 1D chart.
+// The app's trading day (22:00 UTC boundary) — must match the server's
+// tradingDayKey() so client and server agree on which day a value belongs to.
 function todayStr(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
+  return tradingDayKey();
 }
 
 interface StoredIntraday { date: string; samples: number[]; lastSampleAt: number; startOfDay?: number; }
