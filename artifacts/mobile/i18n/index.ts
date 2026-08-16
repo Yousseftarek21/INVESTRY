@@ -554,10 +554,13 @@ const en = {
   greetingEvening: 'Good Evening',
 
   // Auth — welcome onboarding slides
+  allFeaturesNoticeTitle: 'All features unlocked',
+  allFeaturesNoticeBody: 'Every part of INVESTRY is yours to use \u2014 free for now, with nothing to buy.',
+  dismiss: 'Dismiss',
   onboardSlide1Title: 'Track Gold & Silver',
-  onboardSlide1Sub: 'Live prices for 24K, 21K & 18K gold and sterling silver — all in Egyptian pounds.',
-  onboardSlide2Title: 'EGX Stocks & Real Estate',
-  onboardSlide2Sub: 'Monitor your Egyptian Exchange stocks and property investments in one unified view.',
+  onboardSlide1Sub: 'Live prices for 24K, 22K, 21K and 18K gold and for silver, priced per gram in Egyptian pounds.',
+  onboardSlide2Title: 'Stocks, Property & Savings',
+  onboardSlide2Sub: 'Egyptian Exchange stocks, property, T-bills and cash in one view — with Shariah screening built in.',
   onboardSlide3Title: 'Your Complete Portfolio',
   onboardSlide3Sub: 'See your total net worth, allocation breakdown, and gain/loss at a glance — always up to date.',
   onboardSlide4Title: 'Your Data Stays Private',
@@ -1815,10 +1818,13 @@ const ar: typeof en = {
   greetingEvening: 'مساء النور',
 
   // Auth — welcome onboarding slides
+  allFeaturesNoticeTitle: 'كل المزايا متاحة',
+  allFeaturesNoticeBody: 'استمتع بكل ما في إنفستري \u2014 مجانًا في الوقت الحالي، بدون أي شراء.',
+  dismiss: 'إغلاق',
   onboardSlide1Title: 'تتبع الذهب والفضة',
-  onboardSlide1Sub: 'أسعار حية لعيارات 24 و21 و18 بالجنيه المصري.',
-  onboardSlide2Title: 'أسهم البورصة والعقارات',
-  onboardSlide2Sub: 'راقب أسهمك في البورصة المصرية واستثماراتك العقارية في مكان واحد.',
+  onboardSlide1Sub: 'أسعار حية لعيارات الذهب 24 و22 و21 و18 وللفضة، بالجرام وبالجنيه المصري.',
+  onboardSlide2Title: 'الأسهم والعقارات والمدخرات',
+  onboardSlide2Sub: 'أسهم البورصة المصرية والعقارات وأذون الخزانة والنقد في مكان واحد — مع فحص شرعي مدمج.',
   onboardSlide3Title: 'محفظتك الكاملة',
   onboardSlide3Sub: 'اطّلع على صافي ثروتك وتوزيع الأصول والأرباح في لمحة واحدة.',
   onboardSlide4Title: 'بياناتك تبقى خاصة',

@@ -9,6 +9,7 @@ import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
 import { tradingDayStart } from '@/utils/cairoDate';
 import { fmtCompact } from '@/utils/formatNumber';
+import { AllFeaturesNotice } from '@/components/AllFeaturesNotice';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -821,6 +822,10 @@ export default function HomeScreen() {
       <View style={styles.titleRow}>
         <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
       </View>
+
+      {/* Shown once per account, then dismissed for good. Renders nothing at
+          all once dismissed, so it costs no layout after the first read. */}
+      <AllFeaturesNotice />
 
       {/* ── Hero Card ───────────────────────────────────────────── */}
       <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
