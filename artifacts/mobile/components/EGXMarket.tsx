@@ -671,28 +671,24 @@ export function EGXMarket({
                 {displayed.length} {displayed.length === 1 ? t.companyLabel : t.companiesLabel}
                 {resultSuffix}
               </Text>
-              {/* Delay chip sits beside the live/estimated pill rather than
-                  replacing it: the two say different things. That one is
-                  whether the exchange is trading right now, this one is how
-                  far behind the feed runs while it is. EGX quotes come from
-                  TradingView's delayed tier — the scanner reports
-                  update_mode "delayed_streaming_900", i.e. 900s. */}
-              <View style={em.statusGroup}>
-                <View style={[em.delayChip, { backgroundColor: colors.muted }]}>
-                  <Feather name="info" size={9.5} color={colors.mutedForeground} />
+              {/* One indicator, not two. A "LIVE" pill beside a "15-min
+                  delayed" chip states two opposite things at once — and
+                  "LIVE" was never accurate here anyway: EGX publishes no
+                  public API, so quotes come from TradingView's delayed tier
+                  (its scanner reports update_mode "delayed_streaming_900",
+                  i.e. 900s). The dot still carries whether the exchange is
+                  trading right now; the label states what the data actually
+                  is. Muted, not green, so nothing claims real-time. */}
+              {hasLive ? (
+                <View style={[em.livePill, { backgroundColor: colors.muted }]}>
+                  <View style={[em.liveDot, { backgroundColor: colors.green }]} />
                   <Text style={[em.delayTxt, { color: colors.mutedForeground }]}>{t.egxDelayedChip}</Text>
                 </View>
-                {hasLive ? (
-                  <View style={[em.livePill, { backgroundColor: colors.green + '18' }]}>
-                    <View style={[em.liveDot, { backgroundColor: colors.green }]} />
-                    <Text style={[em.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
-                  </View>
-                ) : (
-                  <View style={[em.livePill, { backgroundColor: colors.muted }]}>
-                    <Text style={[em.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
-                  </View>
-                )}
-              </View>
+              ) : (
+                <View style={[em.livePill, { backgroundColor: colors.muted }]}>
+                  <Text style={[em.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
+                </View>
+              )}
             </View>
           </>
         )}
@@ -777,10 +773,6 @@ const em = StyleSheet.create({
   livePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   liveDot: { width: 6, height: 6, borderRadius: 3 },
   liveTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 1 },
-  statusGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  // Quieter than the live pill on purpose — it's a standing fact about the
-  // feed, not a changing status, so it shouldn't compete for attention.
-  delayChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10 },
   delayTxt: { fontSize: 9.5, fontFamily: 'Inter_600SemiBold' },
   empty: { borderRadius: 20, borderWidth: 1, borderStyle: 'dashed', padding: 32, alignItems: 'center', gap: 10 },
   emptyTxt: { fontSize: 14, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },

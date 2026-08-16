@@ -718,7 +718,7 @@ const en = {
   estimatedLabel: 'ESTIMATED',
   // EGX quotes come from TradingView's delayed tier (update_mode
   // "delayed_streaming_900" = 900s). Stated plainly rather than implied.
-  egxDelayedChip: '15-min delayed',
+  egxDelayedChip: '15-MIN DELAYED',
   estAbbrevLabel: 'Est.',
   reNoDataYet: 'No data yet',
   weekRange52: '52W Range',
