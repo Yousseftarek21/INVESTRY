@@ -24,12 +24,17 @@ const REASON_KEY_MAP: Record<ShariaCompliance['reasonKey'], keyof Translations> 
   tobacco:           'shariahReasonTobacco',
   financial:         'shariahReasonFinancial',
   genericUnscreened: 'shariahReasonGenericUnscreened',
+  ratioPass:         'shariahReasonRatioPass',
+  ratioHighDebt:     'shariahReasonRatioHighDebt',
+  noFinancials:      'shariahReasonNoFinancials',
 };
 
 const GUIDANCE_KEY_MAP: Record<ShariaCompliance['guidanceKey'], keyof Translations> = {
   purification: 'shariahGuidancePurification',
   avoid:        'shariahGuidanceAvoid',
   unscreened:   'shariahGuidanceUnscreened',
+  likely:       'shariahGuidanceLikely',
+  review:       'shariahGuidanceReview',
 };
 
 // One row of the AAOIFI criteria breakdown. 'unknown' is a first-class state,
@@ -81,7 +86,11 @@ const cr = StyleSheet.create({
 // scanning the list instead of only after tapping into a stock.
 function VerdictDot({ verdict }: { verdict: ShariaCompliance['verdict'] }) {
   const colors = useColors();
-  const c = { compliant: colors.green, non_compliant: colors.red, unscreened: colors.mutedForeground }[verdict];
+  const c = {
+    compliant: colors.green, likely_compliant: colors.green,
+    review: colors.primary, non_compliant: colors.red,
+    unscreened: colors.mutedForeground,
+  }[verdict];
   return <View style={[cr.dot, { backgroundColor: c }]} />;
 }
 
@@ -114,7 +123,9 @@ function VerdictBadge({ verdict }: { verdict: ShariaCompliance['verdict'] }) {
   const colors = useColors();
   const t = useT();
   const cfg = {
-    compliant:     { color: colors.green,           icon: 'check-circle' as const, label: t.shariahCompliant },
+    compliant:        { color: colors.green,   icon: 'check-circle' as const, label: t.shariahCompliant },
+    likely_compliant: { color: colors.green,   icon: 'check'        as const, label: t.shariahLikelyCompliant },
+    review:           { color: colors.primary, icon: 'alert-circle' as const, label: t.shariahReview },
     non_compliant: { color: colors.red,              icon: 'x-circle'     as const, label: t.shariahNonCompliant },
     unscreened:    { color: colors.mutedForeground,  icon: 'help-circle'  as const, label: t.shariahUnscreened },
   }[verdict];
@@ -164,9 +175,21 @@ export default function ShariaScreeningScreen() {
   const { reference } = useShariahScreening();
   const { data: egxStocks } = useEGXMarket();
 
+  // Live debt ratios, so the screen can give a verdict on the ~70% of EGX
+  // with published figures instead of only the 35% on an official list.
+  const debtRatios = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const s of egxStocks ?? []) {
+      if (s.totalDebt != null && s.marketCap && s.marketCap > 0) m[s.ticker] = s.totalDebt / s.marketCap;
+    }
+    return m;
+  }, [egxStocks]);
+
   const complianceByTicker = useMemo(
-    () => buildShariaCompliance(reference.egx33Shariah, reference.sectorTagUnreliable),
-    [reference.egx33Shariah, reference.sectorTagUnreliable],
+    () => buildShariaCompliance(
+      reference.egx33Shariah, reference.sectorTagUnreliable, debtRatios, reference.debtToMarketCapMax,
+    ),
+    [reference.egx33Shariah, reference.sectorTagUnreliable, debtRatios, reference.debtToMarketCapMax],
   );
 
   const filtered = useMemo(() => {
@@ -181,7 +204,7 @@ export default function ShariaScreeningScreen() {
   // Counts come from the whole list, not the filtered one, so the chips keep
   // showing the full picture while a filter is active.
   const counts = useMemo(() => {
-    const c = { all: EGX_COMPANIES.length, compliant: 0, non_compliant: 0, unscreened: 0 };
+    const c = { all: EGX_COMPANIES.length, compliant: 0, likely_compliant: 0, review: 0, non_compliant: 0, unscreened: 0 };
     for (const co of EGX_COMPANIES) {
       const v = complianceByTicker[co.ticker]?.verdict;
       if (v) c[v]++;
@@ -270,7 +293,8 @@ export default function ShariaScreeningScreen() {
 
                   <CriterionRow
                     label={t.shariahCriterionActivity}
-                    state={compliance.verdict === 'non_compliant' ? 'fail' : compliance.verdict === 'compliant' ? 'pass' : 'unknown'}
+                    state={compliance.verdict === 'non_compliant' ? 'fail'
+                      : compliance.verdict === 'unscreened' ? 'unknown' : 'pass'}
                     value={compliance.verdict === 'unscreened' ? t.shariahCriterionNoData : undefined}
                   />
                   {/* Deliberately NOT a pass/fail. Checked against real
@@ -284,6 +308,11 @@ export default function ShariaScreeningScreen() {
                       certified stock would be worse than showing nothing, so
                       the ratio is reported as context and the verdict is left
                       to the official list. */}
+                  <CriterionRow
+                    label={t.shariahCriterionDebt}
+                    state={!debt ? 'unknown' : compliance.verdict === 'compliant' ? 'pass' : debt.passes ? 'pass' : 'fail'}
+                    value={debt ? `${(debt.ratio * 100).toFixed(1)}%` : t.shariahCriterionNoData}
+                  />
                   <CriterionRow label={t.shariahCriterionLiquidity} state="unknown" value={t.shariahCriterionNoSource} />
                   <CriterionRow label={t.shariahCriterionIncome} state="unknown" value={t.shariahCriterionNoSource} />
 
@@ -346,6 +375,8 @@ export default function ShariaScreeningScreen() {
                 {([
                   ['all', t.shariahFilterAll, counts.all, colors.textSecondary],
                   ['compliant', t.shariahCompliant, counts.compliant, colors.green],
+                  ['likely_compliant', t.shariahLikelyCompliant, counts.likely_compliant, colors.green],
+                  ['review', t.shariahReview, counts.review, colors.primary],
                   ['non_compliant', t.shariahNonCompliant, counts.non_compliant, colors.red],
                   ['unscreened', t.shariahUnscreened, counts.unscreened, colors.mutedForeground],
                 ] as const).map(([key, label, count, tint]) => {

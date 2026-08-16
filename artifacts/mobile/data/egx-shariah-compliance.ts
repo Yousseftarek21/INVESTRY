@@ -31,13 +31,29 @@
 
 import { EGX_COMPANIES } from './egx-companies';
 
-export type ShariaVerdict = 'compliant' | 'non_compliant' | 'unscreened';
+// Five states, not three, because confidence genuinely differs:
+//  compliant        — EGX33 certified, or an Islamic bank. All four AAOIFI
+//                     screens applied by the exchange's own Shariah board.
+//  non_compliant    — fails on business activity. Definitive and needs no
+//                     financials: a conventional bank is a bank.
+//  likely_compliant — permissible activity, and passes the debt screen we
+//                     can compute. Not certified: the liquidity and
+//                     non-permissible-income screens have no data source.
+//  review           — permissible activity but debt above the ceiling.
+//                     Deliberately NOT non_compliant: TMGH is certified by
+//                     EGX at 38% of market cap, so this ratio alone
+//                     demonstrably disagrees with the official screen, and
+//                     wrongly calling a halal stock haram is the worse error.
+//  unscreened       — no financial data published for the ticker at all.
+export type ShariaVerdict =
+  | 'compliant' | 'likely_compliant' | 'review' | 'non_compliant' | 'unscreened';
 
 export type ShariaReasonKey =
   | 'islamicBank' | 'egx33' | 'unreliableTag'
-  | 'bank' | 'insurance' | 'tobacco' | 'financial' | 'genericUnscreened';
+  | 'bank' | 'insurance' | 'tobacco' | 'financial' | 'genericUnscreened'
+  | 'ratioPass' | 'ratioHighDebt' | 'noFinancials';
 
-export type ShariaGuidanceKey = 'purification' | 'avoid' | 'unscreened';
+export type ShariaGuidanceKey = 'purification' | 'avoid' | 'unscreened' | 'likely' | 'review';
 
 export interface ShariaCompliance {
   ticker: string;
@@ -81,6 +97,8 @@ function classify(
   industry: string,
   verifiedCompliant: Set<string>,
   unreliableTags: Set<string>,
+  debtRatio: number | null,
+  debtMax: number,
 ): ShariaCompliance {
   if (industry === 'Islamic Banking') {
     return { ticker, verdict: 'compliant', reasonKey: 'islamicBank', guidanceKey: 'purification', hasSource: true };
@@ -110,17 +128,32 @@ function classify(
     return { ticker, verdict: 'non_compliant', reasonKey: 'financial', guidanceKey: 'avoid', hasSource: false };
   }
 
-  return { ticker, verdict: 'unscreened', reasonKey: 'genericUnscreened', guidanceKey: 'unscreened', hasSource: false };
+  // Activity is permissible. Apply the one financial screen the data supports
+  // rather than giving up — this is the difference between a verdict on 35% of
+  // the exchange and 70% of it. Falls back to unscreened only when the company
+  // publishes no usable figures at all.
+  if (debtRatio != null) {
+    return debtRatio < debtMax
+      ? { ticker, verdict: 'likely_compliant', reasonKey: 'ratioPass', guidanceKey: 'likely', hasSource: false }
+      : { ticker, verdict: 'review', reasonKey: 'ratioHighDebt', guidanceKey: 'review', hasSource: false };
+  }
+
+  return { ticker, verdict: 'unscreened', reasonKey: 'noFinancials', guidanceKey: 'unscreened', hasSource: false };
 }
 
 export function buildShariaCompliance(
   egx33: string[] = EGX33_SHARIAH_FALLBACK,
   unreliable: string[] = SECTOR_TAG_UNRELIABLE_FALLBACK,
+  debtRatios: Record<string, number> = {},
+  debtMax: number = DEBT_TO_MARKET_CAP_MAX_FALLBACK,
 ): Record<string, ShariaCompliance> {
   const verified = new Set(egx33);
   const tags = new Set(unreliable);
   return Object.fromEntries(
-    EGX_COMPANIES.map(c => [c.ticker, classify(c.ticker, c.sector, c.industry, verified, tags)]),
+    EGX_COMPANIES.map(c => [
+      c.ticker,
+      classify(c.ticker, c.sector, c.industry, verified, tags, debtRatios[c.ticker] ?? null, debtMax),
+    ]),
   );
 }
 
