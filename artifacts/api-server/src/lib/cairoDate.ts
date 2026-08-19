@@ -73,3 +73,13 @@ export function cairoDateString(d: Date = new Date()): string {
   // en-CA gives YYYY-MM-DD directly.
   return d.toLocaleDateString("en-CA", { timeZone: "Africa/Cairo" });
 }
+
+// The date key (YYYY-MM-DD, Africa/Cairo) of the most recent Sunday at or
+// before `d` — the start of the current week, Egypt's Sun-Thu banking week
+// convention (see dailySummaryCron.ts's WEEKLY_WEEKDAY). Used as the
+// leaderboard's weekly reset boundary in routes/competition.ts.
+export function cairoWeekStart(d: Date = new Date()): string {
+  const today = cairoDateString(d);
+  const weekday = new Date(`${today}T00:00:00Z`).getUTCDay(); // 0=Sunday
+  return new Date(Date.parse(`${today}T00:00:00Z`) - weekday * 86_400_000).toISOString().slice(0, 10);
+}

@@ -26,6 +26,13 @@ export const usersTable = pgTable("users", {
   // send, since neither writes anything the other's check would see.
   lastDailySummaryDate:   text("last_daily_summary_date"),
   lastWeeklySummaryDate:  text("last_weekly_summary_date"),
+  // Weekly % return leaderboard (routes/competition.ts). Opt-in, off by
+  // default — a portfolio-return ranking is still real financial signal
+  // even without an absolute EGP figure attached, so nobody appears on it
+  // without deliberately choosing to. Nickname is separate from the
+  // account's real name on purpose, for the same reason.
+  competitionOptedIn:     boolean("competition_opted_in").notNull().default(false),
+  competitionNickname:    text("competition_nickname"),
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -1012,6 +1012,11 @@ export default function SettingsScreen() {
               icon="gift" iconBg={colors.primary}
               label={t.inviteFriendsNav} sublabel={t.inviteFriendsNavSub}
               onPress={() => { haptic(); router.push('/invite-friends' as any); }}
+            />
+            <NavRow
+              icon="trending-up" iconBg="#00D4AA"
+              label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
+              onPress={() => { haptic(); router.push('/leaderboard' as any); }}
               last
             />
           </Sect>

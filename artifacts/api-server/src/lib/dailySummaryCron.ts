@@ -1,8 +1,9 @@
-import { and, desc, eq, lt, lte } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { db, usersTable, portfolioSnapshotsTable } from "@workspace/db";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
 import { cairoDateString } from "./cairoDate";
+import { snapshotOnOrBefore } from "./portfolioSnapshotHelpers";
 
 // Replaces a client-scheduled local notification that fired every morning
 // with hardcoded, content-free text ("Good morning! Check your portfolio
@@ -57,16 +58,6 @@ function pctBody(current: number, baseline: number): string {
   return `${dir}${pct.toFixed(1)}% · ${fmtCompact(current)} EGP`;
 }
 
-async function latestSnapshot(userId: string, onOrBefore: string): Promise<number | null> {
-  const [row] = await db
-    .select({ totalValue: portfolioSnapshotsTable.totalValue })
-    .from(portfolioSnapshotsTable)
-    .where(and(eq(portfolioSnapshotsTable.userId, userId), lte(portfolioSnapshotsTable.date, onOrBefore)))
-    .orderBy(desc(portfolioSnapshotsTable.date))
-    .limit(1);
-  return row && row.totalValue > 0 ? row.totalValue : null;
-}
-
 async function priorSnapshot(userId: string, before: string): Promise<number | null> {
   const [row] = await db
     .select({ totalValue: portfolioSnapshotsTable.totalValue })
@@ -89,7 +80,7 @@ interface User {
 async function sendDaily(u: User, today: string): Promise<void> {
   if (!u.dailyEnabled || !u.pushToken || u.lastDaily === today) return;
 
-  const current = await latestSnapshot(u.id, today);
+  const current = await snapshotOnOrBefore(u.id, today);
   const baseline = await priorSnapshot(u.id, today);
   if (current == null || baseline == null) return; // nothing real to report yet
 
@@ -104,8 +95,8 @@ async function sendWeekly(u: User, today: string): Promise<void> {
   if (!u.weeklyEnabled || !u.pushToken || u.lastWeekly === today) return;
   if (cairoWeekday() !== WEEKLY_WEEKDAY) return;
 
-  const current = await latestSnapshot(u.id, today);
-  const baseline = await latestSnapshot(u.id, daysBeforeKey(today, 7));
+  const current = await snapshotOnOrBefore(u.id, today);
+  const baseline = await snapshotOnOrBefore(u.id, daysBeforeKey(today, 7));
   if (current == null || baseline == null) return;
 
   await db.update(usersTable).set({ lastWeeklySummaryDate: today }).where(eq(usersTable.id, u.id));

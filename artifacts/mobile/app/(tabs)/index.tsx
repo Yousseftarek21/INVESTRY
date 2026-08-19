@@ -10,6 +10,8 @@ import { pctDelta } from '@/utils/pctDelta';
 import { tradingDayStart } from '@/utils/cairoDate';
 import { fmtCompact } from '@/utils/formatNumber';
 import { AllFeaturesNotice } from '@/components/AllFeaturesNotice';
+import { UpdateAvailableBanner } from '@/components/UpdateAvailableBanner';
+import { CompetitionInviteBanner } from '@/components/CompetitionInviteBanner';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -823,8 +825,13 @@ export default function HomeScreen() {
         <Text style={[styles.screenTitle, { color: colors.text }]}>{t.portfolio}</Text>
       </View>
 
-      {/* Shown once per account, then dismissed for good. Renders nothing at
-          all once dismissed, so it costs no layout after the first read. */}
+      {/* Each renders nothing once dismissed/inapplicable, so this costs no
+          layout beyond the first read — order matters only while more than
+          one is visible at once (a first-ever launch could show all three):
+          an update nudge first (acts on the app itself), then the
+          low-friction competition ask, then the standing features notice. */}
+      <UpdateAvailableBanner />
+      <CompetitionInviteBanner />
       <AllFeaturesNotice />
 
       {/* ── Hero Card ───────────────────────────────────────────── */}

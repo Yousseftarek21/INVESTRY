@@ -18,6 +18,7 @@ import stripeCheckoutRouter from "./stripeCheckout";
 import chatRouter from "./chat";
 import activityRouter from "./activity";
 import ttsRouter from "./tts";
+import competitionRouter from "./competition";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(stripeCheckoutRouter);
 router.use(chatRouter);
 router.use(activityRouter);
 router.use(ttsRouter);
+router.use(competitionRouter);
 
 export default router;

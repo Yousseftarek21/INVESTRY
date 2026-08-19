@@ -5,7 +5,7 @@ import { startUserPriceAlertCron } from "./lib/userPriceAlertCron";
 import { startPortfolioDriftCron } from "./lib/portfolioDriftCron";
 import { startRealEstatePriceCron } from "./lib/realEstatePriceCron";
 import { startDailySummaryCron } from "./lib/dailySummaryCron";
-import { ensureNotificationColumns } from "./lib/ensureNotificationColumns";
+import { ensureUserColumns } from "./lib/ensureUserColumns";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
 const rawPort = process.env["PORT"];
@@ -31,7 +31,7 @@ app.listen(port, async (err) => {
   }
 
   logger.info({ port }, "Server listening");
-  await ensureNotificationColumns();
+  await ensureUserColumns();
   startPortfolioAlertCron();
   startUserPriceAlertCron();
   startPortfolioDriftCron();

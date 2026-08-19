@@ -14,10 +14,31 @@ const router: IRouter = Router();
 // the domain encoded in the publishable key. The proxy (still available
 // at CLERK_PROXY_PATH for web use if ever needed) was only a workaround
 // for instances without a real custom domain.
+// Bumped by hand alongside app.json's own "version" whenever a new native
+// build (not an OTA update) actually ships — comparing this against
+// Constants.nativeApplicationVersion, which reads the installed binary's own
+// Info.plist/AndroidManifest and is NOT affected by an OTA update, is what
+// lets the app tell "an old binary" apart from "just hasn't pulled the
+// latest JS yet". Constants.expoConfig?.version would be wrong for this: an
+// OTA update can freely rewrite that value without the binary itself having
+// changed at all.
+const LATEST_APP_VERSION = "1.0.3";
+// App Store Connect's numeric app id (eas.json's own submit.production.ios.ascAppId)
+// and the Android package name (app.json's android.package) — both already
+// fixed identifiers elsewhere in this project, not new values invented here.
+const IOS_APP_STORE_ID = "6787447052";
+const ANDROID_PACKAGE = "com.investry.app";
+
 router.get("/config", (req, res) => {
   const clerkPublishableKey = process.env.CLERK_PUBLISHABLE_KEY ?? null;
 
-  res.json({ clerkPublishableKey, clerkProxyUrl: null });
+  res.json({
+    clerkPublishableKey,
+    clerkProxyUrl: null,
+    latestAppVersion: LATEST_APP_VERSION,
+    iosAppStoreId: IOS_APP_STORE_ID,
+    androidPackage: ANDROID_PACKAGE,
+  });
 });
 
 export default router;
