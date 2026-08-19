@@ -4,6 +4,8 @@ import { startPortfolioAlertCron } from "./lib/portfolioAlertCron";
 import { startUserPriceAlertCron } from "./lib/userPriceAlertCron";
 import { startPortfolioDriftCron } from "./lib/portfolioDriftCron";
 import { startRealEstatePriceCron } from "./lib/realEstatePriceCron";
+import { startDailySummaryCron } from "./lib/dailySummaryCron";
+import { ensureNotificationColumns } from "./lib/ensureNotificationColumns";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
 const rawPort = process.env["PORT"];
@@ -22,15 +24,17 @@ if (Number.isNaN(port) || port <= 0) {
 
 assertEncryptionKeyConfigured();
 
-app.listen(port, (err) => {
+app.listen(port, async (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
 
   logger.info({ port }, "Server listening");
+  await ensureNotificationColumns();
   startPortfolioAlertCron();
   startUserPriceAlertCron();
   startPortfolioDriftCron();
   startRealEstatePriceCron();
+  startDailySummaryCron();
 });

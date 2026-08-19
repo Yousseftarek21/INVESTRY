@@ -40,27 +40,27 @@ router.post("/push/register", async (req, res) => {
 // portfolioAlertsEnabled gates the daily ±1% portfolio-value push (see
 // lib/portfolioAlertCron.ts); priceAlertsEnabled gates custom target-price
 // pushes (see lib/userPriceAlertCron.ts); activityAlertsEnabled gates the
-// "you just added/edited X" push (see routes/activity.ts). All optional so
-// any one can be updated independently.
+// "you just added/edited X" push (see routes/activity.ts);
+// dailySummaryEnabled/weeklySummaryEnabled gate the morning/weekly recap push
+// (see lib/dailySummaryCron.ts). All optional so any one can be updated
+// independently.
 router.put("/push/preferences", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const body = req.body as Record<string, unknown>;
-  const { portfolioAlertsEnabled, priceAlertsEnabled, activityAlertsEnabled } = body;
-  if (portfolioAlertsEnabled !== undefined && typeof portfolioAlertsEnabled !== "boolean") {
-    res.status(400).json({ error: "portfolioAlertsEnabled must be a boolean" });
-    return;
+  const {
+    portfolioAlertsEnabled, priceAlertsEnabled, activityAlertsEnabled,
+    dailySummaryEnabled, weeklySummaryEnabled,
+  } = body;
+  const bools = { portfolioAlertsEnabled, priceAlertsEnabled, activityAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled };
+  for (const [key, val] of Object.entries(bools)) {
+    if (val !== undefined && typeof val !== "boolean") {
+      res.status(400).json({ error: `${key} must be a boolean` });
+      return;
+    }
   }
-  if (priceAlertsEnabled !== undefined && typeof priceAlertsEnabled !== "boolean") {
-    res.status(400).json({ error: "priceAlertsEnabled must be a boolean" });
-    return;
-  }
-  if (activityAlertsEnabled !== undefined && typeof activityAlertsEnabled !== "boolean") {
-    res.status(400).json({ error: "activityAlertsEnabled must be a boolean" });
-    return;
-  }
-  if (portfolioAlertsEnabled === undefined && priceAlertsEnabled === undefined && activityAlertsEnabled === undefined) {
+  if (Object.values(bools).every(v => v === undefined)) {
     res.status(400).json({ error: "at least one preference is required" });
     return;
   }
@@ -69,6 +69,8 @@ router.put("/push/preferences", async (req, res) => {
   if (portfolioAlertsEnabled !== undefined) set.portfolioAlertsEnabled = portfolioAlertsEnabled;
   if (priceAlertsEnabled !== undefined) set.priceAlertsEnabled = priceAlertsEnabled;
   if (activityAlertsEnabled !== undefined) set.activityAlertsEnabled = activityAlertsEnabled;
+  if (dailySummaryEnabled !== undefined) set.dailySummaryEnabled = dailySummaryEnabled;
+  if (weeklySummaryEnabled !== undefined) set.weeklySummaryEnabled = weeklySummaryEnabled;
 
   try {
     await db

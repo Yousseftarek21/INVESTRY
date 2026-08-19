@@ -30,7 +30,6 @@ import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
-import { useNotifications } from "@/hooks/useNotifications";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { getApiBaseUrl } from "@/utils/api";
 import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled } from "@/hooks/usePrices";
@@ -194,8 +193,12 @@ function RootLayoutNav() {
 
 function NotificationsInitializer() {
   const { notifications } = useAppSettings();
-  useNotifications();
-  usePushRegistration(notifications.portfolioAlerts, notifications.priceAlerts);
+  usePushRegistration(
+    notifications.portfolioAlerts,
+    notifications.priceAlerts,
+    notifications.dailySummary,
+    notifications.weeklySummary,
+  );
   return null;
 }
 

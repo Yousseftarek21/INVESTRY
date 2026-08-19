@@ -16,6 +16,16 @@ export const usersTable = pgTable("users", {
   portfolioAlertsEnabled: boolean("portfolio_alerts_enabled").notNull().default(true), // gates the daily ±1% portfolio-value push
   priceAlertsEnabled:     boolean("price_alerts_enabled").notNull().default(true), // gates the custom target-price push
   activityAlertsEnabled:  boolean("activity_alerts_enabled").notNull().default(true), // gates the "you just added/edited X" push
+  // Opt-in, default false — matches the client's own default before this
+  // existed server-side. See lib/dailySummaryCron.ts.
+  dailySummaryEnabled:    boolean("daily_summary_enabled").notNull().default(false),
+  weeklySummaryEnabled:   boolean("weekly_summary_enabled").notNull().default(false),
+  // Trading-day key (see cairoDate.ts) of the last summary actually sent —
+  // the idempotency guard for a poll-interval cron: without this, two ticks
+  // inside the same send window would each pass their own check and both
+  // send, since neither writes anything the other's check would see.
+  lastDailySummaryDate:   text("last_daily_summary_date"),
+  lastWeeklySummaryDate:  text("last_weekly_summary_date"),
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

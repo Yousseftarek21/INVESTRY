@@ -14,10 +14,11 @@ import { useStableGetToken } from './useStableGetToken';
  * sign-in; harmless to re-run since the backend just upserts the latest
  * token for the user.
  *
- * Also keeps the server's portfolioAlertsEnabled/priceAlertsEnabled flags in
- * sync with the user's local "Portfolio Alerts"/"Price Alerts" toggles in
- * Settings — without this, the toggles would only affect a since-removed
- * local notification path and do nothing to the server-driven one.
+ * Also keeps the server's portfolioAlertsEnabled/priceAlertsEnabled/
+ * dailySummaryEnabled/weeklySummaryEnabled flags in sync with the user's
+ * local Settings toggles — without this, the toggles would only affect a
+ * since-removed local notification path and do nothing to the server-driven
+ * one (see hooks/useNotifications.ts and lib/dailySummaryCron.ts).
  *
  * Called from the root layout, which re-renders often. Two layers of
  * protection against duplicate requests, confirmed necessary in production
@@ -30,7 +31,12 @@ import { useStableGetToken } from './useStableGetToken';
  * re-fire every render too), and the in-flight refs are a second line of
  * defense in case anything else ever re-triggers these effects rapidly.
  */
-export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlertsEnabled: boolean) {
+export function usePushRegistration(
+  portfolioAlertsEnabled: boolean,
+  priceAlertsEnabled: boolean,
+  dailySummaryEnabled: boolean,
+  weeklySummaryEnabled: boolean,
+) {
   const { isSignedIn, userId } = useAuth();
   const getToken = useStableGetToken();
   const registeredForUserId = useRef<string | null>(null);
@@ -39,6 +45,10 @@ export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlerts
   const syncingPortfolioInFlight = useRef(false);
   const lastSyncedPriceAlertsPref = useRef<boolean | null>(null);
   const syncingPriceAlertsInFlight = useRef(false);
+  const lastSyncedDailySummaryPref = useRef<boolean | null>(null);
+  const syncingDailySummaryInFlight = useRef(false);
+  const lastSyncedWeeklySummaryPref = useRef<boolean | null>(null);
+  const syncingWeeklySummaryInFlight = useRef(false);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -122,4 +132,52 @@ export function usePushRegistration(portfolioAlertsEnabled: boolean, priceAlerts
       }
     })();
   }, [isSignedIn, userId, getToken, priceAlertsEnabled]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (!isSignedIn || !userId) return;
+    if (lastSyncedDailySummaryPref.current === dailySummaryEnabled) return;
+    if (syncingDailySummaryInFlight.current) return;
+
+    syncingDailySummaryInFlight.current = true;
+    (async () => {
+      try {
+        const authToken = await getToken();
+        if (!authToken) return;
+        const res = await apiFetch('/api/push/preferences', authToken, {
+          method: 'PUT',
+          body: JSON.stringify({ dailySummaryEnabled }),
+        });
+        if (res.ok) lastSyncedDailySummaryPref.current = dailySummaryEnabled;
+      } catch {
+        // Silent — will retry next time this value changes or the app restarts.
+      } finally {
+        syncingDailySummaryInFlight.current = false;
+      }
+    })();
+  }, [isSignedIn, userId, getToken, dailySummaryEnabled]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (!isSignedIn || !userId) return;
+    if (lastSyncedWeeklySummaryPref.current === weeklySummaryEnabled) return;
+    if (syncingWeeklySummaryInFlight.current) return;
+
+    syncingWeeklySummaryInFlight.current = true;
+    (async () => {
+      try {
+        const authToken = await getToken();
+        if (!authToken) return;
+        const res = await apiFetch('/api/push/preferences', authToken, {
+          method: 'PUT',
+          body: JSON.stringify({ weeklySummaryEnabled }),
+        });
+        if (res.ok) lastSyncedWeeklySummaryPref.current = weeklySummaryEnabled;
+      } catch {
+        // Silent — will retry next time this value changes or the app restarts.
+      } finally {
+        syncingWeeklySummaryInFlight.current = false;
+      }
+    })();
+  }, [isSignedIn, userId, getToken, weeklySummaryEnabled]);
 }
