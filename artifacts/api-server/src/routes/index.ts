@@ -19,6 +19,7 @@ import chatRouter from "./chat";
 import activityRouter from "./activity";
 import ttsRouter from "./tts";
 import competitionRouter from "./competition";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(chatRouter);
 router.use(activityRouter);
 router.use(ttsRouter);
 router.use(competitionRouter);
+router.use(adminRouter);
 
 export default router;
