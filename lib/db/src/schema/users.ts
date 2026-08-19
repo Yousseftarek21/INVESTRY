@@ -33,6 +33,10 @@ export const usersTable = pgTable("users", {
   // account's real name on purpose, for the same reason.
   competitionOptedIn:     boolean("competition_opted_in").notNull().default(false),
   competitionNickname:    text("competition_nickname"),
+  // One-time broadcast tracking, not a preference — set the first time each
+  // user is sent the "leaderboard launched" push so a redeploy/restart of
+  // the boot-time sender (see competitionAnnouncement.ts) can't resend it.
+  competitionAnnouncementSentAt: timestamp("competition_announcement_sent_at", { withTimezone: true }),
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

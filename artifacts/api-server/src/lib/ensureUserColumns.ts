@@ -20,7 +20,8 @@ export async function ensureUserColumns(): Promise<void> {
         ADD COLUMN IF NOT EXISTS "last_daily_summary_date" text,
         ADD COLUMN IF NOT EXISTS "last_weekly_summary_date" text,
         ADD COLUMN IF NOT EXISTS "competition_opted_in" boolean NOT NULL DEFAULT false,
-        ADD COLUMN IF NOT EXISTS "competition_nickname" text
+        ADD COLUMN IF NOT EXISTS "competition_nickname" text,
+        ADD COLUMN IF NOT EXISTS "competition_announcement_sent_at" timestamptz
     `);
   } catch (err) {
     // Fails open, not closed: every caller of these columns already treats a
