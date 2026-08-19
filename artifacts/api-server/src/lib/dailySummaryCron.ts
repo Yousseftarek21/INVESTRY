@@ -21,7 +21,10 @@ import { cairoDateString } from "./cairoDate";
 // after the target time rather than continuously.
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const SEND_HOUR_CAIRO = 9; // 09:00-09:59 Cairo, both daily and weekly
-const WEEKLY_WEEKDAY = 1; // Monday, Africa/Cairo
+// Sunday, not Monday: Egypt's week (and this app's own FX-source logic,
+// isCairoSunday in cairoDate.ts) runs Sun-Thu, so Sunday is the start of the
+// week here, not the end of the prior one.
+const WEEKLY_WEEKDAY = 0; // Sunday, Africa/Cairo
 
 function cairoHour(d: Date = new Date()): number {
   return Number(d.toLocaleString("en-US", { timeZone: "Africa/Cairo", hour: "2-digit", hour12: false }));
