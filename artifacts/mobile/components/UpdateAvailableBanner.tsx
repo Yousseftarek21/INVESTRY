@@ -10,25 +10,32 @@ export function UpdateAvailableBanner() {
   const colors = useColors();
   const t = useT();
   const { impact } = useHaptic();
-  const { updateAvailable, storeUrl, dismiss } = useAppUpdateCheck();
+  const { updateAvailable, kind, storeUrl, reload, reloading, dismiss } = useAppUpdateCheck();
 
   if (!updateAvailable) return null;
+
+  const isOta = kind === 'ota';
 
   return (
     <View style={[s.wrap, { backgroundColor: colors.primary + '14', borderColor: colors.primary + '33' }]}>
       <View style={[s.iconWrap, { backgroundColor: colors.primary + '1F' }]}>
-        <Feather name="download" size={15} color={colors.primary} />
+        <Feather name={isOta ? 'refresh-cw' : 'download'} size={15} color={colors.primary} />
       </View>
       <View style={s.textWrap}>
-        <Text style={[s.title, { color: colors.text }]}>{t.updateAvailableTitle}</Text>
-        <Text style={[s.body, { color: colors.mutedForeground }]}>{t.updateAvailableBody}</Text>
+        <Text style={[s.title, { color: colors.text }]}>{isOta ? t.otaUpdateTitle : t.updateAvailableTitle}</Text>
+        <Text style={[s.body, { color: colors.mutedForeground }]}>{isOta ? t.otaUpdateBody : t.updateAvailableBody}</Text>
       </View>
       <TouchableOpacity
-        onPress={() => { impact(); if (storeUrl) Linking.openURL(storeUrl).catch(() => null); }}
-        style={[s.updateBtn, { backgroundColor: colors.primary }]}
+        onPress={() => {
+          impact();
+          if (isOta) { reload(); return; }
+          if (storeUrl) Linking.openURL(storeUrl).catch(() => null);
+        }}
+        disabled={reloading}
+        style={[s.updateBtn, { backgroundColor: colors.primary, opacity: reloading ? 0.6 : 1 }]}
         activeOpacity={0.8}
       >
-        <Text style={s.updateBtnTxt}>{t.updateNow}</Text>
+        <Text style={s.updateBtnTxt}>{isOta ? t.reloadNow : t.updateNow}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => { impact(); dismiss(); }} hitSlop={10} accessibilityLabel={t.dismiss}>
         <Feather name="x" size={16} color={colors.mutedForeground} />
