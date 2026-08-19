@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '@clerk/expo';
+import { useAuth, useUser } from '@clerk/expo';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -10,11 +11,16 @@ import { useLeaderboard } from '@/hooks/useLeaderboard';
 
 // A one-tap "want to join?" ask, separate from the deliberate nickname-entry
 // flow on the Leaderboard screen itself: that screen is still how someone
-// arrives on purpose (via Settings) and picks their own name. This is the
-// low-friction path — accept auto-joins under a generated nickname (never
-// anything tied to the real account), decline is a firm no that doesn't ask
-// again. Either way, nothing about a real name or portfolio value is ever
-// shown to anyone unless the user explicitly changes their nickname later.
+// arrives on purpose (via Settings) and can change what they're shown as.
+// This is the low-friction path — accept auto-joins immediately, decline is
+// a firm no that doesn't ask again.
+//
+// Shown under the account's real name (same source as the Home greeting:
+// unsafeMetadata.displayName, falling back to Clerk's firstName) rather
+// than an anonymous nickname — an earlier version used a randomly generated
+// one specifically for privacy, deliberately reversed on direct request.
+// Kept as a last-resort fallback only for the edge case of no name being
+// set on the account at all.
 const ADJECTIVES = ['Swift', 'Bold', 'Sharp', 'Steady', 'Bright', 'Prime', 'Sound', 'Keen'];
 const NOUNS = ['Trader', 'Investor', 'Builder', 'Holder', 'Grower', 'Saver'];
 
@@ -29,8 +35,17 @@ function dismissKey(userId: string) {
   return `@investry_competition_invite_declined_${userId}`;
 }
 
+// The app's own established gold — already used for the gold-holding icon
+// throughout (HoldingCard, FinancialTools, onboarding slide 1). Reused here
+// deliberately rather than introducing a new accent: gold already reads as
+// "prize/achievement" in this app's own visual language, which is exactly
+// what a competition banner should borrow instead of the generic teal a
+// plain notice card would use.
+const GOLD = '#C9A227';
+
 export function CompetitionInviteBanner() {
   const { userId } = useAuth();
+  const { user } = useUser();
   const colors = useColors();
   const t = useT();
   const { impact } = useHaptic();
@@ -66,7 +81,8 @@ export function CompetitionInviteBanner() {
   const accept = async () => {
     impact();
     setJoining(true);
-    await join(randomNickname());
+    const realName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
+    await join(realName || randomNickname());
     setJoining(false);
     // No local dismiss write here: isOptedIn flips true from the server
     // response itself, which already satisfies the `visible` condition
@@ -80,48 +96,74 @@ export function CompetitionInviteBanner() {
       style={[
         s.wrap,
         {
-          backgroundColor: colors.card, borderColor: colors.border,
           opacity: anim,
           transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] }) }],
         },
       ]}
     >
-      <View style={[s.iconWrap, { backgroundColor: '#00D4AA18' }]}>
-        <Feather name="trending-up" size={15} color="#00D4AA" />
-      </View>
-      <View style={s.textWrap}>
+      <LinearGradient
+        colors={[GOLD + '26', GOLD + '0A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[s.card, { borderColor: GOLD + '40' }]}
+      >
+        <TouchableOpacity onPress={decline} hitSlop={10} style={s.closeBtn} accessibilityLabel={t.competitionInviteNo}>
+          <Feather name="x" size={15} color={colors.mutedForeground} />
+        </TouchableOpacity>
+
+        <View style={s.headerRow}>
+          <View style={[s.trophyWrap, { backgroundColor: GOLD + '22' }]}>
+            <Feather name="award" size={20} color={GOLD} />
+          </View>
+          <Text style={[s.eyebrow, { color: GOLD }]}>{t.competitionEyebrow}</Text>
+        </View>
+
         <Text style={[s.title, { color: colors.text }]}>{t.competitionInviteTitle}</Text>
         <Text style={[s.body, { color: colors.mutedForeground }]}>{t.competitionInviteBody}</Text>
-      </View>
-      <View style={s.actions}>
-        <TouchableOpacity onPress={decline} hitSlop={8} style={s.declineBtn}>
-          <Text style={[s.declineTxt, { color: colors.mutedForeground }]}>{t.competitionInviteNo}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={accept}
-          disabled={joining}
-          style={[s.joinBtn, { backgroundColor: '#00D4AA', opacity: joining ? 0.6 : 1 }]}
-          activeOpacity={0.85}
-        >
-          <Text style={s.joinBtnTxt}>{t.competitionInviteYes}</Text>
-        </TouchableOpacity>
-      </View>
+
+        <View style={s.actionsRow}>
+          <TouchableOpacity onPress={decline} hitSlop={8} style={s.declineBtn}>
+            <Text style={[s.declineTxt, { color: colors.mutedForeground }]}>{t.competitionInviteNo}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={accept}
+            disabled={joining}
+            style={[s.joinBtn, { backgroundColor: GOLD, opacity: joining ? 0.6 : 1 }]}
+            activeOpacity={0.85}
+          >
+            {joining ? (
+              <ActivityIndicator size="small" color="#000" />
+            ) : (
+              <>
+                <Text style={s.joinBtnTxt}>{t.competitionInviteYes}</Text>
+                <Feather name="arrow-right" size={14} color="#000" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
     </Animated.View>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 11,
-    borderRadius: 16, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 12,
+  wrap: { borderRadius: 18 },
+  card: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 10 },
+  closeBtn: { position: 'absolute', top: 10, right: 10, zIndex: 1, padding: 4 },
+
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  trophyWrap: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  eyebrow: { fontSize: 10.5, fontFamily: 'Inter_800ExtraBold', letterSpacing: 1.1, textTransform: 'uppercase' },
+
+  title: { fontSize: 16.5, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.2 },
+  body:  { fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 18, paddingEnd: 18 },
+
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 },
+  declineBtn: { paddingVertical: 6 },
+  declineTxt: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
+  joinBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderRadius: 12, paddingVertical: 12,
   },
-  iconWrap: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  textWrap: { flex: 1, gap: 2, minWidth: 0 },
-  title: { fontSize: 13.5, fontFamily: 'Inter_600SemiBold' },
-  body:  { fontSize: 11.5, fontFamily: 'Inter_400Regular', lineHeight: 16 },
-  actions: { gap: 6, alignItems: 'flex-end' },
-  declineBtn: { paddingHorizontal: 4, paddingVertical: 4 },
-  declineTxt: { fontSize: 11, fontFamily: 'Inter_500Medium' },
-  joinBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
-  joinBtnTxt: { fontSize: 12, fontFamily: 'Inter_700Bold', color: '#000' },
+  joinBtnTxt: { fontSize: 14, fontFamily: 'Inter_800ExtraBold', color: '#000' },
 });

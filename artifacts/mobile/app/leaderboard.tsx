@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
+import { useUser } from '@clerk/expo';
 import { useLeaderboard, LeaderboardEntry } from '@/hooks/useLeaderboard';
 
 const NICKNAME_MAX = 24;
@@ -52,13 +53,23 @@ function Row({ entry, isLast }: { entry: LeaderboardEntry; isLast: boolean }) {
 export default function LeaderboardScreen() {
   const colors = useColors();
   const t = useT();
+  const { user } = useUser();
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
   const { top, me, isLoading, isOptedIn, join, leave } = useLeaderboard();
 
-  const [nickname, setNickname] = useState('');
+  const realName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
+  // Reusing the same nickname state for both first-time join and a later
+  // edit (see `editing` below) — join() upserts either way, so there's no
+  // separate "update" endpoint needed.
+  const [nickname, setNickname] = useState(realName);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // An already-opted-in user could otherwise only fix a wrong nickname by
+  // leaving and rejoining — this reopens the same form pre-filled with
+  // whatever they're currently shown as, so a correction is one edit rather
+  // than a full leave/rejoin round trip.
+  const [editing, setEditing] = useState(false);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -71,7 +82,14 @@ export default function LeaderboardScreen() {
     impact();
     const ok = await join(trimmed);
     setJoining(false);
-    if (!ok) setError(t.leaderboardJoinFailed);
+    if (ok) setEditing(false); else setError(t.leaderboardJoinFailed);
+  };
+
+  const startEditing = () => {
+    impact();
+    setNickname(me?.nickname ?? realName);
+    setError(null);
+    setEditing(true);
   };
 
   const handleLeave = async () => {
@@ -95,14 +113,16 @@ export default function LeaderboardScreen() {
           <View style={s.empty}>
             <ActivityIndicator size="small" color={colors.mutedForeground} />
           </View>
-        ) : !isOptedIn ? (
+        ) : !isOptedIn || editing ? (
           <View style={[s.content, { paddingBottom: botPad + 24 }]}>
             <View style={[s.joinCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[s.joinIcon, { backgroundColor: colors.primary + '18' }]}>
                 <Feather name="trending-up" size={22} color={colors.primary} />
               </View>
-              <Text style={[s.joinTitle, { color: colors.text }]}>{t.leaderboardJoinTitle}</Text>
-              <Text style={[s.joinBody, { color: colors.mutedForeground }]}>{t.leaderboardJoinBody}</Text>
+              <Text style={[s.joinTitle, { color: colors.text }]}>
+                {editing ? t.leaderboardEditNickname : t.leaderboardJoinTitle}
+              </Text>
+              {!editing && <Text style={[s.joinBody, { color: colors.mutedForeground }]}>{t.leaderboardJoinBody}</Text>}
 
               <TextInput
                 style={[s.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.muted }]}
@@ -124,10 +144,16 @@ export default function LeaderboardScreen() {
               >
                 {joining
                   ? <ActivityIndicator size="small" color="#000" />
-                  : <Text style={s.joinBtnTxt}>{t.leaderboardJoinCta}</Text>}
+                  : <Text style={s.joinBtnTxt}>{editing ? t.leaderboardSaveCta : t.leaderboardJoinCta}</Text>}
               </TouchableOpacity>
 
-              <Text style={[s.joinFootnote, { color: colors.mutedForeground }]}>{t.leaderboardPrivacyNote}</Text>
+              {editing ? (
+                <TouchableOpacity onPress={() => { impact(); setError(null); setEditing(false); }} hitSlop={8}>
+                  <Text style={[s.joinFootnote, { color: colors.mutedForeground, marginTop: 12 }]}>{t.cancel}</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={[s.joinFootnote, { color: colors.mutedForeground }]}>{t.leaderboardPrivacyNote}</Text>
+              )}
             </View>
           </View>
         ) : (
@@ -136,11 +162,20 @@ export default function LeaderboardScreen() {
               <View style={[s.pendingBanner, { backgroundColor: colors.muted }]}>
                 <Feather name="clock" size={13} color={colors.mutedForeground} />
                 <Text style={[s.pendingTxt, { color: colors.mutedForeground }]}>{t.leaderboardPending}</Text>
+                <TouchableOpacity onPress={startEditing} hitSlop={8}>
+                  <Feather name="edit-2" size={13} color={colors.mutedForeground} />
+                </TouchableOpacity>
               </View>
             )}
             {!!me && (
               <View style={[s.meCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[s.meLabel, { color: colors.mutedForeground }]}>{t.leaderboardYourRank}</Text>
+                <View style={s.meLabelRow}>
+                  <Text style={[s.meLabel, { color: colors.mutedForeground }]}>{t.leaderboardYourRank}</Text>
+                  <TouchableOpacity onPress={startEditing} hitSlop={8} style={s.editBtn}>
+                    <Feather name="edit-2" size={11} color={colors.mutedForeground} />
+                    <Text style={[s.editBtnTxt, { color: colors.mutedForeground }]}>{me.nickname}</Text>
+                  </TouchableOpacity>
+                </View>
                 <View style={s.meRow}>
                   <Text style={[s.meRank, { color: colors.text }]}>#{me.rank}</Text>
                   <Text style={[s.mePct, { color: pctColor(colors, me.pctReturn) }]}>
@@ -198,7 +233,10 @@ const s = StyleSheet.create({
   pendingTxt: { flex: 1, fontSize: 12, fontFamily: 'Inter_500Medium', lineHeight: 17 },
 
   meCard: { margin: 16, marginBottom: 4, borderRadius: 16, borderWidth: 1, padding: 16, gap: 6 },
+  meLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   meLabel: { fontSize: 10.5, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase' },
+  editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  editBtnTxt: { fontSize: 11, fontFamily: 'Inter_500Medium' },
   meRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   meRank: { fontSize: 24, fontFamily: 'Inter_800ExtraBold' },
   mePct: { fontSize: 18, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
