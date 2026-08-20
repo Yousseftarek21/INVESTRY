@@ -701,6 +701,9 @@ function RealEstateTab() {
               <Text style={[reh.label, { color: colors.mutedForeground }]} numberOfLines={1}>
                 {t.rePropertyMarketTitle}
               </Text>
+              <View style={[reh.betaChip, { backgroundColor: '#F59E0B1F', borderColor: '#F59E0B40' }]}>
+                <Text style={[reh.betaChipTxt, { color: '#F59E0B' }]}>{t.reBetaChip}</Text>
+              </View>
             </View>
             <View style={[reh.pill, { backgroundColor: colors.muted }]}>
               <Text style={[reh.pillTxt, { color: colors.mutedForeground }]}>{freshnessLabel}</Text>
@@ -753,6 +756,8 @@ const reh = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 },
   iconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   label: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, flexShrink: 1 },
+  betaChip: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, flexShrink: 0 },
+  betaChipTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
   pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexShrink: 0 },
   pillTxt: { fontSize: 9, fontFamily: 'Inter_600SemiBold' },
   title: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.4 },

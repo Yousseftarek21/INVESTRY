@@ -17,7 +17,7 @@ import { eq, asc, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 import {
   getCachedPrices, getCachedStocks, getCachedGlobalStocks, getCachedStockNews,
-  type EGXStockResponse, type StockNewsItem,
+  type EGXStockResponse, type StockNewsItem, type MarketPricesResponse,
 } from "./markets";
 import { computeHoldingValue, type StoredHolding } from "../lib/portfolioValue";
 import { fetchInflation } from "./inflation";
@@ -163,6 +163,22 @@ function summarizeEgxMovers(stocks: EGXStockResponse[]): string {
   return `EGX market today (${stocks.length} stocks tracked) — top gainers: ${gainers.join(", ")}. Top losers: ${losers.join(", ")}.`;
 }
 
+// Unconditional, like summarizeEgxMovers above — previously this only
+// reached the assistant indirectly, inside a gold/silver holding's own line
+// in summarizeHoldings. A user with no metal holdings asking "what's the
+// gold price today" had nothing to ground an answer in at all. Same fetch
+// already happening for holding valuation, so this is free.
+function summarizeMetals(prices: MarketPricesResponse): string {
+  const goldLine = Object.entries(prices.goldEgpPerGram)
+    .map(([karat, egp]) => `${karat}: ${egp.toLocaleString()} EGP/g`)
+    .join(", ");
+  return [
+    `Gold spot: ${prices.goldUsd.toFixed(2)} USD/oz (${prices.goldChangePercent >= 0 ? "+" : ""}${prices.goldChangePercent.toFixed(2)}% today). Egypt gold by purity — ${goldLine}.`,
+    `Silver spot: ${prices.silverUsd.toFixed(2)} USD/oz (${prices.silverChangePercent >= 0 ? "+" : ""}${prices.silverChangePercent.toFixed(2)}% today). Egypt: ${prices.silverEgpPerGram.toLocaleString()} EGP/g.`,
+    `USD/EGP: ${prices.usdToEgp.toFixed(2)} (${prices.usdToEgpChangePercent >= 0 ? "+" : ""}${prices.usdToEgpChangePercent.toFixed(2)}% today).`,
+  ].join(" ");
+}
+
 // Full dataset, not just areas the user owns property in — lets the
 // assistant answer general "what's the going rate in X" questions. Prefers
 // live-scraped Property Finder averages (real_estate_prices, refreshed
@@ -188,13 +204,21 @@ async function summarizeRealEstateMarket(): Promise<string> {
     known.push(`${a.area}, ${a.governorate}: ~${scraped.avgPricePerM2.toLocaleString()} EGP/m² (live, ${scraped.sampleSize} listings, ${changeTxt})`);
   }
 
+  // Real estate is explicitly a beta feature in the product right now (see
+  // the "Beta" badge on the Real Estate section itself) — the assistant
+  // should say so plainly whenever real estate comes up, not just when data
+  // happens to be missing for a given area. Coverage is real but partial,
+  // and framing it as beta is more honest than answering as if it were as
+  // complete as the EGX/metals coverage above.
+  const betaNote = "\n\nNote: INVESTRY's real estate tracking is still in beta testing — coverage is limited to the areas listed above, and figures are directional averages, not appraisals. Say this plainly whenever real estate comes up in the conversation.";
+
   if (known.length === 0) {
-    return "Egypt real estate: no live price data available right now. Say you don't have current figures rather than estimating.";
+    return `Egypt real estate: no live price data available right now. Say you don't have current figures rather than estimating.${betaNote}`;
   }
   const unknownNote = unknown.length
     ? `\n\nNo current data for these areas — say so plainly if asked, do not estimate: ${unknown.join(", ")}`
     : "";
-  return `Egypt real estate price guide (EGP per m², live scraped data only):\n${known.join("\n")}${unknownNote}`;
+  return `Egypt real estate price guide (EGP per m², live scraped data only):\n${known.join("\n")}${unknownNote}${betaNote}`;
 }
 
 // Finds the snapshot closest to `daysAgo` days before today and describes
@@ -272,6 +296,7 @@ async function buildPortfolioContext(
     summarizePriceAlerts(alerts),
     summarizeRecurringIncome(income),
     `Egypt annual inflation rate: ${inflation.rate}% (${inflation.year}, World Bank/CAPMAS CPI data).`,
+    summarizeMetals(prices),
     summarizeEgxMovers(egxStocks),
     realEstateSummary,
   ].join("\n\n");
