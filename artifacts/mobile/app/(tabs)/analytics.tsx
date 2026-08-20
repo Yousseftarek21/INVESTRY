@@ -32,6 +32,7 @@ import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
+import { BetaChip } from '@/components/BetaChip';
 import { PerfChart } from '@/components/PerfChart';
 import { getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { useAppSettings } from '@/context/AppSettingsContext';
@@ -880,9 +881,7 @@ export default function AnalyticsScreen() {
             <View style={{ flex: 1 }}>
               <View style={s.aiTitleRow}>
                 <Text style={[s.sectionTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
-                <View style={[s.freeChip, { backgroundColor: colors.green + '1C', borderColor: colors.green + '40' }]}>
-                  <Text style={[s.freeChipTxt, { color: colors.green }]}>{t.aiAssistantFreeChip}</Text>
-                </View>
+                <BetaChip label={t.aiAssistantFreeChip} />
               </View>
               <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.aiAssistantDesc}</Text>
             </View>
@@ -1282,8 +1281,6 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   aiTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
-  freeChip: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2 },
-  freeChipTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.2 },
   sectionTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
   sectionSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
 
