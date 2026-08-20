@@ -1249,6 +1249,33 @@ export async function getCachedStocks(): Promise<EGXStockResponse[]> {
   return data;
 }
 
+// Used by the AI Assistant's lookup tool so it can answer about non-EGX
+// names too, without duplicating the multi-provider fallback chain
+// (Twelve Data -> TradingView -> Stooq) that GET /markets/global-stocks
+// already has.
+export async function getCachedGlobalStocks(): Promise<EGXStockResponse[]> {
+  const cached = globalStocksCache.get();
+  if (cached) return cached;
+  const data = await fetchGlobalStocks();
+  globalStocksCache.set(data);
+  return data;
+}
+
+// Used by the AI Assistant's news tool — same cache the HTTP route reads,
+// just called in-process instead of round-tripping through fetch().
+export async function getCachedStockNews(symbol: string): Promise<StockNewsItem[]> {
+  const cache = stockNewsCache(symbol);
+  const cached = cache.get();
+  if (cached) return cached;
+  const data = await fetchStockNews(symbol);
+  cache.set(data);
+  return data;
+}
+
+export function isKnownEgxSymbol(symbol: string): boolean {
+  return EGX_SYMBOL_SET.has(symbol.toUpperCase());
+}
+
 // ─── EGX indices (EGX30, EGX70 EWI) ────────────────────────────────────────────
 // Same TradingView Egypt scanner as individual stocks, just a different pair
 // of tickers, shown as their own chips above the stock list. EGX 33 Shariah

@@ -15,7 +15,10 @@ import {
 } from "@workspace/db";
 import { eq, asc, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
-import { getCachedPrices, getCachedStocks, type EGXStockResponse } from "./markets";
+import {
+  getCachedPrices, getCachedStocks, getCachedGlobalStocks, getCachedStockNews,
+  type EGXStockResponse, type StockNewsItem,
+} from "./markets";
 import { computeHoldingValue, type StoredHolding } from "../lib/portfolioValue";
 import { fetchInflation } from "./inflation";
 import { RE_PRICES } from "@workspace/shared-data";
@@ -221,8 +224,8 @@ function summarizeTrend(
 // user edits a holding mid-conversation.
 async function buildPortfolioContext(
   userId: string,
-): Promise<{ context: string; egxStocks: EGXStockResponse[] }> {
-  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, inflation, realEstateSummary] =
+): Promise<{ context: string; egxStocks: EGXStockResponse[]; globalStocks: EGXStockResponse[] }> {
+  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, globalStocks, inflation, realEstateSummary] =
     await Promise.all([
       db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
       db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
@@ -236,6 +239,7 @@ async function buildPortfolioContext(
         .orderBy(asc(portfolioSnapshotsTable.date)),
       getCachedPrices(),
       getCachedStocks().catch(() => []),
+      getCachedGlobalStocks().catch(() => []),
       fetchInflation(),
       summarizeRealEstateMarket(),
     ]);
@@ -272,7 +276,7 @@ async function buildPortfolioContext(
     realEstateSummary,
   ].join("\n\n");
 
-  return { context, egxStocks };
+  return { context, egxStocks, globalStocks };
 }
 
 const SYSTEM_PREAMBLE = `You are the INVESTRY AI Financial Assistant, built into the INVESTRY portfolio-tracking app. You help the user understand their own portfolio and general investing/personal-finance concepts.
@@ -281,12 +285,17 @@ INVESTRY tracks: investment holdings (gold, silver, EGX stocks, real estate, per
 
 Beyond the user's own data, you also have: Egypt's current annual inflation rate, today's EGX market movers (top gainers/losers across the whole exchange, not just what the user holds), and a curated Egypt-wide real estate price-per-m² guide covering dozens of areas — so you can answer general market questions (e.g. "what's the going rate in Sheikh Zayed", "is EGX up today", "how does my return compare to inflation") even about things the user doesn't personally own.
 
-You also have a lookup_egx_company tool — use it whenever asked about a specific EGX company's fundamentals (P/E, dividend yield, sector, EPS, revenue growth, margins, ROE, debt/equity, price/book) or whether it looks financially strong, even if the user doesn't own it. It covers every company on the exchange, not just what's already summarized above.
+You also have three tools, and should use them freely for ANY stock the user asks about, whether they own it or not — don't limit yourself to what's already summarized above:
+- lookup_egx_company: full fundamentals for any EGX-listed company — price, P/E, dividend yield, price/book, sector, EPS, revenue growth, net margin, ROE, debt/equity, current ratio, quick ratio, return on assets, free cash flow, cash & equivalents, employee count, market cap, 52-week range. Use it whenever asked about a specific EGX company's fundamentals, financial health, or for an analysis of one — this is real, live, comprehensive data, not a guess.
+- lookup_global_stock: live price and today's change for a non-EGX ticker (e.g. AAPL, TSLA).
+- get_egx_stock_news: recent real news headlines and regulatory disclosures for a specific EGX company — use it whenever asked what's going on with a company, why a stock moved, or for recent news.
+
+When asked to "analyze" a stock or for your "take" on one, use these tools and give a genuine, thorough qualitative analysis — valuation, profitability, leverage, liquidity, recent news, how it compares to the sector — don't hedge into vagueness or refuse just because it's outside the user's holdings. The one hard line is the rules below: describe and explain, never issue a specific buy/sell/allocate instruction.
 
 Rules:
-- You are not a licensed financial advisor. Never recommend a specific trade, a specific security to buy or sell, or a specific allocation change as advice — explain tradeoffs and considerations instead, and let the user decide.
-- Ground your answers in the data provided below when the question relates to it — it includes live pricing and broad market context, so don't claim you lack live data for anything covered there. Only say you lack data for things genuinely outside this snapshot (breaking news, assets/areas not covered here, markets outside EGX/gold/silver/Egypt real estate).
-- Be concise and direct — this is a mobile chat, not a report.
+- You are not a licensed financial advisor. Never recommend a specific trade, a specific security to buy or sell, or a specific allocation change as advice — explain tradeoffs and considerations instead, and let the user decide. This applies to analysis depth, not analysis existence: go deep on the data and the reasoning, just stop short of the directive "buy/sell/hold this."
+- Ground your answers in the data provided below and from your tools when the question relates to it — it includes live pricing and broad market context, so don't claim you lack live data for anything covered there or reachable via a tool. Only say you lack data for things genuinely outside this snapshot and these tools (breaking news outside what get_egx_stock_news returns, assets/areas not covered here, markets outside EGX/US-tickers/gold/silver/Egypt real estate).
+- Be concise and direct — this is a mobile chat, not a report — but don't cut a genuine analysis short just to be brief; thoroughness matters more than length when the user explicitly asked for analysis.
 - If asked for something that would cross into specific financial advice, say so plainly and explain why, then offer general education on the topic instead.`;
 
 // Gemini's free tier is scoped to our own API key/project — unlike
@@ -308,10 +317,12 @@ const LOOKUP_TOOL = {
     {
       name: "lookup_egx_company",
       description:
-        "Look up live price, valuation ratios (P/E, dividend yield, price/book), and fundamentals " +
-        "(sector, EPS, revenue growth, net margin, ROE, debt/equity) for any company listed on the " +
-        "Egyptian Exchange (EGX) — not just ones the user owns. Use this whenever asked about a " +
-        "specific EGX company's fundamentals or whether it looks strong.",
+        "Look up live price and full fundamentals (P/E, dividend yield, price/book, sector, EPS, " +
+        "revenue growth, net margin, ROE, debt/equity, current ratio, quick ratio, return on assets, " +
+        "free cash flow, cash & equivalents, employee count, market cap, 52-week range) for any " +
+        "company listed on the Egyptian Exchange (EGX) — not just ones the user owns. Use this " +
+        "whenever asked about a specific EGX company's fundamentals, financial health, or for an " +
+        "analysis of a stock the user doesn't hold.",
       parameters: {
         type: "object",
         properties: {
@@ -321,6 +332,39 @@ const LOOKUP_TOOL = {
           },
         },
         required: ["query"],
+      },
+    },
+    {
+      name: "lookup_global_stock",
+      description:
+        "Look up live price and change for a non-EGX (US/international) stock by ticker, e.g. AAPL, " +
+        "TSLA, MSFT. Use this when asked about a company outside the Egyptian Exchange.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: {
+            type: "string",
+            description: "The stock ticker symbol, e.g. AAPL.",
+          },
+        },
+        required: ["symbol"],
+      },
+    },
+    {
+      name: "get_egx_stock_news",
+      description:
+        "Get recent real news headlines and regulatory disclosures (Reuters, exchange filings, " +
+        "earnings releases) for a specific EGX-listed company. Use this when asked what's going on " +
+        "with a company, why a stock moved, or for recent news/announcements about it.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: {
+            type: "string",
+            description: "The EGX ticker symbol, e.g. COMI.",
+          },
+        },
+        required: ["symbol"],
       },
     },
   ],
@@ -346,9 +390,31 @@ function lookupEgxCompany(query: string, stocks: EGXStockResponse[]): string {
     s.netMargin != null ? `net margin: ${s.netMargin}%` : null,
     s.roe != null ? `ROE: ${s.roe}%` : null,
     s.debtToEquity != null ? `debt/equity: ${s.debtToEquity}` : null,
+    s.currentRatio != null ? `current ratio: ${s.currentRatio}` : null,
+    s.quickRatio != null ? `quick ratio: ${s.quickRatio}` : null,
+    s.returnOnAssets != null ? `return on assets: ${s.returnOnAssets}%` : null,
+    s.freeCashFlowTtm != null ? `free cash flow (TTM): ${s.freeCashFlowTtm.toLocaleString()} EGP` : null,
+    s.cashAndEquivalents != null ? `cash & equivalents: ${s.cashAndEquivalents.toLocaleString()} EGP` : null,
+    s.employees != null ? `employees: ${s.employees.toLocaleString()}` : null,
     s.marketCap != null ? `market cap: ${s.marketCap.toLocaleString()} EGP` : null,
     s.high52w != null && s.low52w != null ? `52-week range: ${s.low52w}–${s.high52w} EGP` : null,
   ].filter(Boolean).join(", ")).join("\n");
+}
+
+function lookupGlobalStock(symbol: string, stocks: EGXStockResponse[]): string {
+  const q = symbol.trim().toUpperCase();
+  const match = stocks.find((s) => s.symbol.toUpperCase() === q);
+  if (!match) return `No live data found for global ticker "${symbol}".`;
+  return `${match.name} (${match.symbol}): price ${match.price} (${match.changePercent >= 0 ? "+" : ""}${match.changePercent}% today).`;
+}
+
+async function getEgxStockNews(symbol: string): Promise<string> {
+  const q = symbol.trim().toUpperCase();
+  const items: StockNewsItem[] = await getCachedStockNews(q).catch(() => []);
+  if (items.length === 0) return `No recent news found for ${q}.`;
+  return items.slice(0, 8)
+    .map((n) => `- [${new Date(n.publishedAt * 1000).toISOString().slice(0, 10)}] ${n.title} (${n.source})`)
+    .join("\n");
 }
 
 type GeminiPart =
@@ -357,7 +423,10 @@ type GeminiPart =
   | { functionResponse: { name: string; id?: string; response: Record<string, unknown> } };
 type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };
 
-const MAX_TOOL_ROUNDS = 3;
+// Bumped from 3: a thorough "analyze this stock" question now realistically
+// calls lookup_egx_company AND get_egx_stock_news in the same turn before
+// producing final text, and needs headroom for both plus a follow-up call.
+const MAX_TOOL_ROUNDS = 5;
 
 // Reverted from a streamed (SSE) implementation — it shipped broken (every
 // reply fell straight to the "couldn't come up with a response" fallback,
@@ -369,6 +438,7 @@ async function callGemini(
   systemPrompt: string,
   messages: ChatTurn[],
   egxStocks: EGXStockResponse[],
+  globalStocks: EGXStockResponse[],
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
@@ -390,7 +460,10 @@ async function callGemini(
         body: JSON.stringify({
           contents,
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { maxOutputTokens: 1024 },
+          // Raised from 1024: a genuine "analyze this stock" answer covering
+          // valuation, profitability, leverage, liquidity, and recent news
+          // needs more headroom than a quick portfolio-value question does.
+          generationConfig: { maxOutputTokens: 2048 },
           tools: [LOOKUP_TOOL],
         }),
       },
@@ -416,10 +489,16 @@ async function callGemini(
     }
 
     const { name, id, args } = functionCallPart.functionCall;
-    const result =
-      name === "lookup_egx_company"
-        ? lookupEgxCompany(String(args.query ?? ""), egxStocks)
-        : `Unknown tool: ${name}`;
+    let result: string;
+    if (name === "lookup_egx_company") {
+      result = lookupEgxCompany(String(args.query ?? ""), egxStocks);
+    } else if (name === "lookup_global_stock") {
+      result = lookupGlobalStock(String(args.symbol ?? ""), globalStocks);
+    } else if (name === "get_egx_stock_news") {
+      result = await getEgxStockNews(String(args.symbol ?? ""));
+    } else {
+      result = `Unknown tool: ${name}`;
+    }
 
     contents.push({ role: "model", parts: [functionCallPart] });
     contents.push({ role: "user", parts: [{ functionResponse: { name, id, response: { result } } }] });
@@ -508,8 +587,9 @@ router.post("/chat", chatGenerationLimit, async (req, res) => {
 
   let portfolioContext: string;
   let egxStocks: EGXStockResponse[];
+  let globalStocks: EGXStockResponse[];
   try {
-    ({ context: portfolioContext, egxStocks } = await buildPortfolioContext(userId));
+    ({ context: portfolioContext, egxStocks, globalStocks } = await buildPortfolioContext(userId));
   } catch (err) {
     req.log.error({ err }, "POST /chat failed to build portfolio context");
     res.status(500).json({ error: "Failed to get a response from the assistant" });
@@ -518,7 +598,7 @@ router.post("/chat", chatGenerationLimit, async (req, res) => {
   const systemPrompt = `${SYSTEM_PREAMBLE}${languageInstruction}\n\nHere is the user's current portfolio:\n\n${portfolioContext}`;
 
   try {
-    const reply = await callGemini(systemPrompt, messages, egxStocks);
+    const reply = await callGemini(systemPrompt, messages, egxStocks, globalStocks);
     const finalReply = reply || "I couldn't come up with a response — try rephrasing your question.";
     res.json({ reply: finalReply });
 
