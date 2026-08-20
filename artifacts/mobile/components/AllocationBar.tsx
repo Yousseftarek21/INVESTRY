@@ -60,30 +60,54 @@ function OverviewBar({ segments, total }: { segments: AllocationSegment[]; total
     ).start();
   }, [segments.map(s => s.value).join(',')]);
 
+  const activeCount = segments.filter(s => s.value > 0).length;
+
   return (
-    <View style={[bar.track, { backgroundColor: colors.muted }]}>
-      {segments.map(seg => {
-        if (total === 0 || seg.value <= 0) return null;
-        if (!animsRef.current[seg.label]) {
-          animsRef.current[seg.label] = new Animated.Value(0);
-        }
-        const width = animsRef.current[seg.label].interpolate({
-          inputRange: [0, 100],
-          outputRange: ['0%', `${((seg.value / total) * 100).toFixed(4)}%`],
-        });
-        return (
-          <Animated.View
-            key={seg.label}
-            style={[bar.segment, { backgroundColor: seg.color, width }]}
-          />
-        );
-      })}
+    <View style={[bar.wrap, { shadowColor: colors.text }]}>
+      <View style={[bar.track, { backgroundColor: colors.muted }]}>
+        {segments.map((seg, i) => {
+          if (total === 0 || seg.value <= 0) return null;
+          if (!animsRef.current[seg.label]) {
+            animsRef.current[seg.label] = new Animated.Value(0);
+          }
+          const width = animsRef.current[seg.label].interpolate({
+            inputRange: [0, 100],
+            outputRange: ['0%', `${((seg.value / total) * 100).toFixed(4)}%`],
+          });
+          // A hairline separator (not a margin-based gap) so the Animated
+          // percentage widths still sum to exactly 100% of the track —
+          // gaps via margin would eat into that and leave a visible sliver
+          // of the track background showing through at the end.
+          const isLast = i === segments.filter(s => s.value > 0).length - 1
+            || segments.slice(i + 1).every(s => s.value <= 0);
+          return (
+            <Animated.View
+              key={seg.label}
+              style={[
+                bar.segment,
+                {
+                  backgroundColor: seg.color,
+                  width,
+                  borderRightWidth: activeCount > 1 && !isLast ? 2 : 0,
+                  borderRightColor: colors.background,
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const bar = StyleSheet.create({
-  track:   { height: 6, borderRadius: 3, flexDirection: 'row', overflow: 'hidden' },
+  wrap: {
+    borderRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+  },
+  track:   { height: 10, borderRadius: 6, flexDirection: 'row', overflow: 'hidden' },
   segment: { height: '100%' },
 });
 
@@ -112,22 +136,34 @@ function AllocationRow({
 
   return (
     <View style={row.wrap}>
-      {/* Icon */}
-      <View style={[row.iconCircle, { backgroundColor: seg.color + '1E' }]}>
-        <SegIcon icon={seg.icon} size={12} color={seg.color} />
+      {/* Icon — tinted fill plus a colored ring, reads as a small badge
+          rather than a flat circle */}
+      <View style={[row.iconCircle, { backgroundColor: seg.color + '17', borderColor: seg.color + '4A' }]}>
+        <SegIcon icon={seg.icon} size={13} color={seg.color} />
       </View>
 
       {/* Middle: label + bar */}
       <View style={row.mid}>
-        <Text style={[row.label, { color: colors.text }]} numberOfLines={1}>
-          {seg.label}
-        </Text>
-        <View style={[row.trackBg, { backgroundColor: colors.muted }]}>
-          <Animated.View style={[row.fill, { backgroundColor: seg.color, width: barAnim }]} />
+        <View style={row.labelRow}>
+          <Text style={[row.label, { color: colors.text }]} numberOfLines={1}>
+            {seg.label}
+          </Text>
+          {seg.quantity ? (
+            <Text style={[row.qty, { color: colors.mutedForeground }]}>{seg.quantity}</Text>
+          ) : null}
         </View>
-        {seg.quantity ? (
-          <Text style={[row.qty, { color: colors.mutedForeground }]}>{seg.quantity}</Text>
-        ) : null}
+        <View style={[row.trackBg, { backgroundColor: colors.muted }]}>
+          <Animated.View
+            style={[
+              row.fill,
+              {
+                backgroundColor: seg.color,
+                width: barAnim,
+                shadowColor: seg.color,
+              },
+            ]}
+          />
+        </View>
       </View>
 
       {/* Right: percentage + value */}
@@ -142,15 +178,22 @@ function AllocationRow({
 }
 
 const row = StyleSheet.create({
-  wrap:       { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 8 },
-  iconCircle: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  mid:        { flex: 1, gap: 5 },
-  label:      { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  trackBg:    { height: 4, borderRadius: 2, overflow: 'hidden' },
-  fill:       { height: '100%', borderRadius: 2 },
+  wrap:       { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 9 },
+  iconCircle: {
+    width: 32, height: 32, borderRadius: 10, borderWidth: 1.3,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  mid:        { flex: 1, gap: 6 },
+  labelRow:   { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  label:      { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
+  trackBg:    { height: 5, borderRadius: 2.5, overflow: 'hidden' },
+  fill:       {
+    height: '100%', borderRadius: 2.5,
+    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.55, shadowRadius: 3,
+  },
   qty:        { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  right:      { alignItems: 'flex-end', gap: 3, minWidth: 64 },
-  pct:        { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  right:      { alignItems: 'flex-end', gap: 3, minWidth: 66 },
+  pct:        { fontSize: 13.5, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.2 },
   val:        { fontSize: 10, fontFamily: 'Inter_400Regular' },
 });
 
