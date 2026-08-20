@@ -144,6 +144,25 @@ export interface IncomeTransaction {
   creditedAt: string;  // ISO timestamp
 }
 
+// A manually logged cash distribution received on a stock holding — dividends,
+// not the recurring/salary-style income above. holdingId links it to a stock
+// holding when the user picked one from their portfolio; symbol/companyName
+// are captured alongside it (not just looked up via holdingId) so the record
+// still reads correctly after that holding is later sold and removed.
+export interface Dividend {
+  id: string;
+  holdingId?: string;
+  symbol: string;
+  companyName?: string;
+  amount: number;
+  currency: string;
+  date: string;        // "2026-07-15"
+  note?: string;
+  /** Cash account the amount was added to, if the user chose to (one-time bump, not tracked ongoing). */
+  cashAccountId?: string;
+  createdAt: string;
+}
+
 export interface RecurringIncome {
   id: string;
   name: string;

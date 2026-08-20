@@ -32,6 +32,7 @@ export default function AddChooseScreen() {
   const goInvestment = () => router.push('/add-investment?mode=investment' as any);
   const goCash = () => router.push('/cash-accounts?openAdd=1' as any);
   const goRecurringIncome = () => router.push('/recurring-income' as any);
+  const goDividends = () => router.push('/dividends' as any);
 
   const bottomPad = insets.bottom + (Platform.OS === 'android' ? 16 : 8);
 
@@ -94,6 +95,21 @@ export default function AddChooseScreen() {
           <View style={s.cardSmText}>
             <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addRecurringIncomeOption}</Text>
             <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.addRecurringIncomeOptionDesc}</Text>
+          </View>
+          <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.cardSm, { backgroundColor: colors.background, borderColor: colors.border }]}
+          onPress={goDividends}
+          activeOpacity={0.72}
+        >
+          <View style={[s.iconWrapSm, { backgroundColor: '#22C55E1A' }]}>
+            <Feather name="pie-chart" size={18} color="#22C55E" />
+          </View>
+          <View style={s.cardSmText}>
+            <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addDividendOption}</Text>
+            <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.addDividendOptionDesc}</Text>
           </View>
           <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
         </TouchableOpacity>

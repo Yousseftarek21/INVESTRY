@@ -1017,6 +1017,11 @@ export default function SettingsScreen() {
               icon="trending-up" iconBg="#00D4AA"
               label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
               onPress={() => { haptic(); router.push('/leaderboard' as any); }}
+            />
+            <NavRow
+              icon="pie-chart" iconBg="#22C55E"
+              label={t.dividendsTitle} sublabel={t.noDividendsHint}
+              onPress={() => { haptic(); router.push('/dividends' as any); }}
               last
             />
           </Sect>

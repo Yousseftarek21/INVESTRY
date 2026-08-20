@@ -6,6 +6,7 @@ import { startPortfolioDriftCron } from "./lib/portfolioDriftCron";
 import { startRealEstatePriceCron } from "./lib/realEstatePriceCron";
 import { startDailySummaryCron } from "./lib/dailySummaryCron";
 import { ensureUserColumns } from "./lib/ensureUserColumns";
+import { ensureDividendsTable } from "./lib/ensureDividendsTable";
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
@@ -33,6 +34,7 @@ app.listen(port, async (err) => {
 
   logger.info({ port }, "Server listening");
   await ensureUserColumns();
+  await ensureDividendsTable();
   await sendCompetitionAnnouncement();
   startPortfolioAlertCron();
   startUserPriceAlertCron();

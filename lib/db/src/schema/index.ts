@@ -5,6 +5,7 @@ export * from "./portfolioSnapshots";
 export * from "./marketCloseSnapshots";
 export * from "./goals";
 export * from "./recurringIncome";
+export * from "./dividends";
 export * from "./priceAlerts";
 export * from "./portfolioTargets";
 export * from "./cashBalanceUpdates";

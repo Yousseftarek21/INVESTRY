@@ -25,6 +25,7 @@ import { NoNetworkScreen } from "@/components/NoNetworkScreen";
 import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
 import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
+import { DividendsProvider } from "@/context/DividendsContext";
 import { GoalsProvider } from "@/context/GoalsContext";
 import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
@@ -473,11 +474,13 @@ export default function RootLayout() {
                           <CashProvider>
                             <GoalsProvider>
                             <RecurringIncomeProvider>
+                            <DividendsProvider>
                             <PriceAlertsProvider>
                               <AppWithPaywall>
                                 <RootLayoutNav />
                               </AppWithPaywall>
                             </PriceAlertsProvider>
+                            </DividendsProvider>
                             </RecurringIncomeProvider>
                           </GoalsProvider>
                           </CashProvider>
