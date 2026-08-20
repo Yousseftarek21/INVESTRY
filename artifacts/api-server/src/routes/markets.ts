@@ -28,6 +28,15 @@ const historicalCache = makeCache<HistoricalRates>(86_400_000);   // 24 h
 const stocksCache    = makeCache<EGXStockResponse[]>(10_000);     // 10 s — matches useEGXMarket.ts's client poll; shorter than metals' 30s to compensate for the bigger 281-company scan taking longer to visibly refresh
 const globalStocksCache = makeCache<EGXStockResponse[]>(5 * 60_000); // 5 min (Twelve Data free tier)
 const egxIndicesCache = makeCache<EGXStockResponse[]>(30_000);    // 30 s
+// Per-symbol, not one shared entry — a Map of independent 5-min caches.
+// News doesn't move on a 10s clock like price does, so a much longer TTL is
+// correct here, not just tolerable.
+const stockNewsCaches = new Map<string, ReturnType<typeof makeCache<StockNewsItem[]>>>();
+function stockNewsCache(symbol: string) {
+  let c = stockNewsCaches.get(symbol);
+  if (!c) { c = makeCache<StockNewsItem[]>(5 * 60_000); stockNewsCaches.set(symbol, c); }
+  return c;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,6 +87,17 @@ export interface EGXStockResponse {
   roe?: number;
   debtToEquity?: number;
   priceToBook?: number;
+  // Added for deeper per-stock financials — verified live against
+  // TradingView's Egypt scanner (not guessed), same as every other column
+  // here. Sparser than the core set above: several EGX tickers return null
+  // for these even when the core set is populated, so all four stay
+  // optional and the client already renders "—" for a missing field.
+  currentRatio?: number;
+  quickRatio?: number;
+  returnOnAssets?: number;
+  freeCashFlowTtm?: number;
+  cashAndEquivalents?: number;
+  employees?: number;
 }
 
 interface HistoricalRates {
@@ -1023,6 +1043,12 @@ type TVRow = [
   number | null, number | null, number | null, number | null,
   number | null, // time — unix seconds of this row's bar (see isEgxSessionToday)
   number | null, // total_debt
+  number | null, // current_ratio
+  number | null, // quick_ratio
+  number | null, // return_on_assets
+  number | null, // free_cash_flow_ttm
+  number | null, // cash_n_short_term_invest_fq
+  number | null, // number_of_employees
 ];
 
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
@@ -1052,6 +1078,14 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
         "time",
         // Appended after "time" for the same positional reason.
         "total_debt",
+        // Deeper financials, appended last again for the same reason.
+        // Verified live: "current_ratio"/"quick_ratio"/"return_on_assets"/
+        // "free_cash_flow_ttm"/"cash_n_short_term_invest_fq"/
+        // "number_of_employees" all return real values for at least some EGX
+        // tickers (COMI, HRHO, SWDY spot-checked) — sparser than the core
+        // set, never guessed.
+        "current_ratio", "quick_ratio", "return_on_assets", "free_cash_flow_ttm",
+        "cash_n_short_term_invest_fq", "number_of_employees",
       ],
       symbols: { tickers: batch.map(s => `EGX:${s}`) },
     });
@@ -1080,6 +1114,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       close, changeAbs, changePct, volume, marketCap, high52w, low52w, pe, divYield,
       sector, epsTtm, revenueGrowthYoy, netMargin, roe, debtToEquity, priceToBook,
       barTime, totalDebt,
+      currentRatio, quickRatio, returnOnAssets, freeCashFlowTtm, cashAndEquivalents, employees,
     ] = d;
     if (!close) continue;                              // skip if TV returned no price
     // Only report a change when the bar actually belongs to today's session.
@@ -1116,9 +1151,49 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       roe:               roe != null ? round2(roe) : undefined,
       debtToEquity:      debtToEquity != null ? round2(debtToEquity) : undefined,
       priceToBook:       priceToBook != null ? round2(priceToBook) : undefined,
+      currentRatio:      currentRatio != null ? round2(currentRatio) : undefined,
+      quickRatio:        quickRatio != null ? round2(quickRatio) : undefined,
+      returnOnAssets:    returnOnAssets != null ? round2(returnOnAssets) : undefined,
+      freeCashFlowTtm:   freeCashFlowTtm ?? undefined,
+      cashAndEquivalents: cashAndEquivalents ?? undefined,
+      employees:         employees ?? undefined,
     });
   }
   return results;
+}
+
+// ─── Per-stock news via TradingView's headlines API ──────────────────────────
+// Same unauthenticated-but-real-provider pattern already relied on for prices
+// above (scanner.tradingview.com) and metals (TVC:GOLD/SILVER) — this is
+// TradingView's own news feed (Reuters, LSE regulatory releases, etc.),
+// verified live against EGX:COMI, not guessed. Chosen over scraping EGX's or
+// any other site directly per explicit product decision (2026-08-21): those
+// sit behind active anti-bot protection (Cloudflare/F5 WAF, blocked
+// robots.txt) that signals they don't want automated access — this endpoint
+// doesn't.
+export interface StockNewsItem {
+  id: string;
+  title: string;
+  source: string;
+  publishedAt: number; // unix seconds
+  url: string;
+}
+
+async function fetchStockNews(symbol: string): Promise<StockNewsItem[]> {
+  const res = await safeFetch(
+    `https://news-headlines.tradingview.com/v2/headlines?client=web&lang=en&symbol=EGX:${symbol}&streaming=false`,
+    { headers: { "Origin": "https://www.tradingview.com", "Referer": "https://www.tradingview.com/" } },
+  );
+  if (!res?.ok) throw new Error(`TV news ${res?.status}`);
+  const data = await res.json() as { items?: Array<{ id: string; title: string; source: string; published: number; storyPath: string }> };
+  if (!data?.items) return [];
+  return data.items.slice(0, 15).map(item => ({
+    id: item.id,
+    title: item.title,
+    source: item.source,
+    publishedAt: item.published,
+    url: `https://www.tradingview.com${item.storyPath}`,
+  }));
 }
 
 // TradingView only. Yahoo Finance is removed by explicit product decision
@@ -1411,6 +1486,26 @@ router.get("/markets/stocks", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch EGX stocks");
     res.status(500).json({ error: "Failed to fetch stocks" });
+  }
+});
+
+router.get("/markets/stock-news", async (req, res) => {
+  const symbol = String(req.query.symbol ?? "").toUpperCase();
+  if (!EGX_SYMBOL_SET.has(symbol)) {
+    res.status(400).json({ error: "Unknown or missing symbol" });
+    return;
+  }
+  const cache = stockNewsCache(symbol);
+  const cached = cache.get();
+  if (cached) { res.setHeader("X-Cache", "HIT"); res.json(cached); return; }
+  try {
+    const data = await fetchStockNews(symbol);
+    cache.set(data);
+    res.setHeader("X-Cache", "MISS");
+    res.json(data);
+  } catch (err) {
+    req.log.error({ err, symbol }, "Failed to fetch stock news");
+    res.status(500).json({ error: "Failed to fetch stock news" });
   }
 });
 

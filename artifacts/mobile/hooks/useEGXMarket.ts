@@ -20,6 +20,12 @@ export interface EGXStockLive extends EGXCompany {
   priceToBook?: number;
   /** Total interest-bearing debt — the Shariah debt screen's numerator. */
   totalDebt?: number;
+  currentRatio?: number;
+  quickRatio?: number;
+  returnOnAssets?: number;
+  freeCashFlowTtm?: number;
+  cashAndEquivalents?: number;
+  employees?: number;
   isLive: boolean;
 }
 
@@ -44,6 +50,12 @@ interface ServerEGXStock {
   roe?: number;
   debtToEquity?: number;
   priceToBook?: number;
+  currentRatio?: number;
+  quickRatio?: number;
+  returnOnAssets?: number;
+  freeCashFlowTtm?: number;
+  cashAndEquivalents?: number;
+  employees?: number;
 }
 
 const YF_HEADERS = {
@@ -97,6 +109,12 @@ async function fetchFromServer(): Promise<EGXStockLive[]> {
       debtToEquity:      s.debtToEquity,
       priceToBook:       s.priceToBook,
       totalDebt:         s.totalDebt,
+      currentRatio:      s.currentRatio,
+      quickRatio:        s.quickRatio,
+      returnOnAssets:    s.returnOnAssets,
+      freeCashFlowTtm:   s.freeCashFlowTtm,
+      cashAndEquivalents: s.cashAndEquivalents,
+      employees:         s.employees,
       // Only "live" when the exchange actually traded today. A price always
       // comes back — TradingView keeps serving the last session's bar while
       // EGX is shut — so asserting true here made the pulsing green LIVE dot
