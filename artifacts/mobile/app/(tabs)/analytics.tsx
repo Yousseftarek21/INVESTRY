@@ -9,6 +9,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
 import { tradingDayStart } from '@/utils/cairoDate';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Svg, {
   Defs, LinearGradient, Stop, Path,
 } from 'react-native-svg';
@@ -863,21 +864,30 @@ export default function AnalyticsScreen() {
         feature={t.aiAssistantTitle}
         description={t.aiAssistantDesc}
       >
-        <Pressable
-          onPress={() => router.push('/ai-assistant' as any)}
-          style={[s.aiAssistantCard, { backgroundColor: '#8B5CF612', borderColor: '#8B5CF640' }]}
-        >
-          <View style={[s.aiAssistantIcon, { backgroundColor: '#8B5CF622' }]}>
-            <Feather name="cpu" size={22} color="#8B5CF6" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.sectionTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
-            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.aiAssistantDesc}</Text>
-          </View>
-          <View style={[s.aiAssistantBadge, { backgroundColor: '#8B5CF622' }]}>
-            <Text style={[s.aiAssistantBadgeTxt, { color: '#8B5CF6' }]}>AI</Text>
-          </View>
-          <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
+        <Pressable onPress={() => router.push('/ai-assistant' as any)}>
+          <ExpoLinearGradient
+            colors={['#8B5CF61C', '#6366F110']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[s.aiAssistantCard, { borderColor: '#8B5CF63A' }]}
+          >
+            <View style={[s.aiAssistantIcon, { backgroundColor: '#8B5CF622' }]}>
+              <Feather name="cpu" size={22} color="#8B5CF6" />
+              <View style={[s.aiSparkle, { backgroundColor: colors.card }]}>
+                <Feather name="zap" size={9} color="#8B5CF6" />
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={s.aiTitleRow}>
+                <Text style={[s.sectionTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
+                <View style={[s.freeChip, { backgroundColor: colors.green + '1C', borderColor: colors.green + '40' }]}>
+                  <Text style={[s.freeChipTxt, { color: colors.green }]}>{t.aiAssistantFreeChip}</Text>
+                </View>
+              </View>
+              <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.aiAssistantDesc}</Text>
+            </View>
+            <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
+          </ExpoLinearGradient>
         </Pressable>
       </PremiumGate>
 
@@ -1267,8 +1277,13 @@ const s = StyleSheet.create({
   sectionIconWrap: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   aiAssistantCard: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 18, borderWidth: 1, padding: 16 },
   aiAssistantIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  aiAssistantBadge: { borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 },
-  aiAssistantBadgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
+  aiSparkle: {
+    position: 'absolute', top: -3, right: -3, width: 16, height: 16, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  aiTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' },
+  freeChip: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2 },
+  freeChipTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.2 },
   sectionTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
   sectionSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
 
