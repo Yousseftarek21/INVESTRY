@@ -88,7 +88,7 @@ function OverviewBar({ segments, total }: { segments: AllocationSegment[]; total
                 {
                   backgroundColor: seg.color,
                   width,
-                  borderRightWidth: activeCount > 1 && !isLast ? 2 : 0,
+                  borderRightWidth: activeCount > 1 && !isLast ? 1.5 : 0,
                   borderRightColor: colors.background,
                 },
               ]}
@@ -102,12 +102,12 @@ function OverviewBar({ segments, total }: { segments: AllocationSegment[]; total
 
 const bar = StyleSheet.create({
   wrap: {
-    borderRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
+    borderRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  track:   { height: 10, borderRadius: 6, flexDirection: 'row', overflow: 'hidden' },
+  track:   { height: 7, borderRadius: 4, flexDirection: 'row', overflow: 'hidden' },
   segment: { height: '100%' },
 });
 
