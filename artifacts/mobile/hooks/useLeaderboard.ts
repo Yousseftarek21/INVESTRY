@@ -1,8 +1,7 @@
+import { useAuth } from '@clerk/expo';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/utils/api';
 import { useStableGetToken } from './useStableGetToken';
-
-const QUERY_KEY = ['competition-leaderboard'];
 
 export interface LeaderboardEntry {
   nickname: string;
@@ -24,11 +23,22 @@ const EMPTY: LeaderboardResponse = { weekStart: '', top: [], me: null, optedIn: 
 // staleTime rather than no cache at all, so reopening the screen doesn't
 // show a blank list for a beat every time.
 export function useLeaderboard() {
+  const { userId, isSignedIn } = useAuth();
   const getToken = useStableGetToken();
   const queryClient = useQueryClient();
+  // Scoped by userId, not a flat key: a flat key would keep serving the
+  // previous account's cached opted-in status (from before sign-out, or
+  // from a fetch that raced the sign-out and got a token-less EMPTY) to
+  // whoever's session mounts next, for up to staleTime — surfacing the
+  // "join" banner right after re-signing into an account that had already
+  // joined, or leaking one account's status into the next on a shared
+  // device. Every user-scoped context in this app (Holdings, Cash, Goals,
+  // Subscription, …) clears its own cache on account change for the same
+  // reason; this is the react-query-native way to get the same guarantee.
+  const queryKey = ['competition-leaderboard', userId] as const;
 
   const query = useQuery<LeaderboardResponse>({
-    queryKey: QUERY_KEY,
+    queryKey,
     queryFn: async () => {
       const token = await getToken();
       if (!token) return EMPTY;
@@ -36,6 +46,7 @@ export function useLeaderboard() {
       if (!res.ok) return EMPTY;
       return res.json();
     },
+    enabled: !!isSignedIn && !!userId,
     staleTime: 30_000,
   });
 
@@ -46,7 +57,7 @@ export function useLeaderboard() {
       method: 'PUT',
       body: JSON.stringify({ nickname }),
     });
-    if (res.ok) await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    if (res.ok) await queryClient.invalidateQueries({ queryKey });
     return res.ok;
   };
 
@@ -54,7 +65,7 @@ export function useLeaderboard() {
     const token = await getToken();
     if (!token) return false;
     const res = await apiFetch('/api/competition/leave', token, { method: 'POST' });
-    if (res.ok) await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    if (res.ok) await queryClient.invalidateQueries({ queryKey });
     return res.ok;
   };
 
