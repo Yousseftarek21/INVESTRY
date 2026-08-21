@@ -798,13 +798,13 @@ export default function AddInvestmentScreen() {
   const Chip = ({ value, selected, onPress, label }: { value: string; selected: boolean; onPress: () => void; label?: string }) => (
     <TouchableOpacity
       style={[styles.chip, {
-        backgroundColor: selected ? colors.primary + '10' : colors.card,
+        backgroundColor: selected ? colors.primary : colors.card,
         borderColor: selected ? colors.primary : colors.border,
       }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <Text style={[styles.chipText, { color: selected ? colors.primary : colors.text }]}>
+      <Text style={[styles.chipText, { color: selected ? colors.primaryForeground : colors.text }]}>
         {label ?? value}
       </Text>
     </TouchableOpacity>
@@ -1022,18 +1022,21 @@ export default function AddInvestmentScreen() {
                   >
                     <TouchableOpacity
                       style={[styles.typeCard, {
-                        backgroundColor: isActive ? tp.color + '18' : colors.card,
+                        backgroundColor: isActive ? tp.color + '14' : colors.card,
                         borderColor: isActive ? tp.color : colors.border,
                       }]}
                       onPress={() => selectType(tp.key)}
                       activeOpacity={isEditing ? 1 : 0.85}
                     >
+                      <View style={[styles.typeAccent, { backgroundColor: tp.color, opacity: isActive ? 1 : 0.5 }]} />
                       {isActive && (
                         <View style={[styles.checkmark, { backgroundColor: tp.color }]}>
                           <Feather name="check" size={9} color="#fff" />
                         </View>
                       )}
-                      {tp.renderIcon(20, isActive ? tp.color : colors.mutedForeground)}
+                      <View style={[styles.typeIconBadge, { backgroundColor: tp.color + '1F' }]}>
+                        {tp.renderIcon(19, tp.color)}
+                      </View>
                       <Text style={[styles.typeLabel, { color: isActive ? tp.color : colors.text }]}>{tp.label}</Text>
                     </TouchableOpacity>
                   </Animated.View>
@@ -1748,7 +1751,9 @@ const styles = StyleSheet.create({
   section: { marginBottom: 16 },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 8, letterSpacing: 0.3 },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  typeCard: { borderRadius: 12, borderWidth: 1.5, padding: 14, alignItems: 'center', gap: 6, position: 'relative' },
+  typeCard: { borderRadius: 16, borderWidth: 1.5, padding: 16, paddingTop: 18, alignItems: 'center', gap: 8, position: 'relative', overflow: 'hidden' },
+  typeAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
+  typeIconBadge: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   typeLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   checkmark: {
     position: 'absolute', top: 8, end: 8,
@@ -1757,7 +1762,7 @@ const styles = StyleSheet.create({
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipsScroll: { flexDirection: 'row', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1 },
   iconOption: { width: 40, height: 40, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
