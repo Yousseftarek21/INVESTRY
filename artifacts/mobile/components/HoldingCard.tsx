@@ -146,13 +146,10 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      {/* Left accent */}
-      <View style={[styles.leftAccent, { backgroundColor: iconColor }]} />
-
-      <View style={[styles.iconWrap, { backgroundColor: iconColor + '20' }]}>
+      <View style={[styles.iconWrap, { backgroundColor: iconColor + '17', borderColor: iconColor + '4A' }]}>
         {holding.type === 'personal_asset'
-          ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={17} color={iconColor} />
-          : <AssetIcon type={holding.type} size={17} color={iconColor} />
+          ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={18} color={iconColor} />
+          : <AssetIcon type={holding.type} size={18} color={iconColor} />
         }
       </View>
 
@@ -192,28 +189,30 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
         )}
       </View>
 
-      <View style={styles.actions}>
-        {onEdit && (
-          <TouchableOpacity
-            onPress={onEdit}
-            style={[styles.actionBtn, { backgroundColor: colors.primary + '14' }]}
-            hitSlop={8}
-            activeOpacity={0.7}
-          >
-            <Feather name="edit-2" size={13} color={colors.primary} />
-          </TouchableOpacity>
-        )}
-        {onDelete && (
-          <TouchableOpacity
-            onPress={onDelete}
-            style={[styles.actionBtn, { backgroundColor: colors.red + '12' }]}
-            hitSlop={8}
-            activeOpacity={0.7}
-          >
-            <Feather name="trash-2" size={13} color={colors.red} />
-          </TouchableOpacity>
-        )}
-      </View>
+      {(onEdit || onDelete) && (
+        <View style={styles.actions}>
+          {onEdit && (
+            <TouchableOpacity
+              onPress={onEdit}
+              style={styles.actionBtn}
+              hitSlop={10}
+              activeOpacity={0.6}
+            >
+              <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+          {onDelete && (
+            <TouchableOpacity
+              onPress={onDelete}
+              style={styles.actionBtn}
+              hitSlop={10}
+              activeOpacity={0.6}
+            >
+              <Feather name="trash-2" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -224,23 +223,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 16,
     paddingVertical: 14,
-    paddingRight: 14,
-    paddingLeft: 6,
+    paddingHorizontal: 14,
     borderWidth: 1,
     gap: 12,
     overflow: 'hidden',
   },
-  leftAccent: {
-    width: 3,
-    alignSelf: 'stretch',
-    borderRadius: 2,
-    marginLeft: 2,
-    opacity: 0.7,
-  },
   iconWrap: {
     width: 42,
     height: 42,
-    borderRadius: 12,
+    borderRadius: 13,
+    borderWidth: 1.3,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -298,15 +290,16 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 6,
   },
+  // Stacked, unfilled and muted rather than two chunky tinted squares side by
+  // side — they were competing with the value for attention and squeezing it.
   actions: {
-    flexDirection: 'row',
-    gap: 6,
+    gap: 10,
     alignItems: 'center',
+    marginLeft: 2,
   },
   actionBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },

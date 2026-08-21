@@ -375,7 +375,6 @@ export default function HoldingsScreen() {
                       <HoldingCard
                         holding={h}
                         prices={prices}
-                        hideSubtitle
                         onEdit={() => handleEdit(h.id)}
                         onDelete={() => handleDelete(h.id)}
                       />
