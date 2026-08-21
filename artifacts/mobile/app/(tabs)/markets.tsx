@@ -180,7 +180,7 @@ function MetalHeroCard({
   const priceStr = price.toLocaleString('en-EG', { maximumFractionDigits: price < 10 ? 2 : 0 });
 
   const refs: string[] = [];
-  if (usdPrice && usdPrice > 0) refs.push(`$${usdPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD`);
+  if (usdPrice && usdPrice > 0) refs.push(`$${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`);
   if (troyEgp && troyEgp > 0) refs.push(`Troy ${troyEgp.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`);
 
   return (
@@ -269,7 +269,7 @@ function MetalRow({
         </Text>
         {usdPrice !== undefined && usdPrice > 0 && (
           <Text style={[mr.usdLine, { color: colors.mutedForeground }]}>
-            ${usdPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
+            ${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
           </Text>
         )}
         {changePercent !== undefined && <ChangeBadge changePct={changePercent} />}
