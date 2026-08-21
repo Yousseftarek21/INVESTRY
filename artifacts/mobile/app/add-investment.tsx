@@ -693,7 +693,7 @@ export default function AddInvestmentScreen() {
     if (match) setAssetIcon(match.icon);
   }, [assetCategory, assetIconTouched]);
 
-  const inputStyle = [styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }];
+  const inputStyle = [styles.input, { backgroundColor: colors.cardSecondary, borderColor: colors.border, color: colors.text }];
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
 
   const KARATS: GoldKarat[] = ['24k', '22k', '21k', '18k'];
@@ -798,7 +798,7 @@ export default function AddInvestmentScreen() {
   const Chip = ({ value, selected, onPress, label }: { value: string; selected: boolean; onPress: () => void; label?: string }) => (
     <TouchableOpacity
       style={[styles.chip, {
-        backgroundColor: selected ? colors.primary : colors.card,
+        backgroundColor: selected ? colors.primary : colors.cardSecondary,
         borderColor: selected ? colors.primary : colors.border,
       }]}
       onPress={onPress}
@@ -1018,26 +1018,18 @@ export default function AddInvestmentScreen() {
                 return (
                   <Animated.View
                     key={tp.key}
-                    style={{ flex: 1, minWidth: '40%', transform: [{ scale: typeCardAnims[tp.key] }], opacity: isDisabled ? 0.35 : 1 }}
+                    style={{ transform: [{ scale: typeCardAnims[tp.key] }], opacity: isDisabled ? 0.35 : 1 }}
                   >
                     <TouchableOpacity
-                      style={[styles.typeCard, {
-                        backgroundColor: isActive ? tp.color + '14' : colors.card,
+                      style={[styles.typeChip, {
+                        backgroundColor: isActive ? tp.color : colors.card,
                         borderColor: isActive ? tp.color : colors.border,
                       }]}
                       onPress={() => selectType(tp.key)}
                       activeOpacity={isEditing ? 1 : 0.85}
                     >
-                      <View style={[styles.typeAccent, { backgroundColor: tp.color, opacity: isActive ? 1 : 0.5 }]} />
-                      {isActive && (
-                        <View style={[styles.checkmark, { backgroundColor: tp.color }]}>
-                          <Feather name="check" size={9} color="#fff" />
-                        </View>
-                      )}
-                      <View style={[styles.typeIconBadge, { backgroundColor: tp.color + '1F' }]}>
-                        {tp.renderIcon(19, tp.color)}
-                      </View>
-                      <Text style={[styles.typeLabel, { color: isActive ? tp.color : colors.text }]}>{tp.label}</Text>
+                      {tp.renderIcon(15, isActive ? colors.primaryForeground : tp.color)}
+                      <Text style={[styles.typeChipLabel, { color: isActive ? colors.primaryForeground : colors.text }]}>{tp.label}</Text>
                     </TouchableOpacity>
                   </Animated.View>
                 );
@@ -1046,7 +1038,7 @@ export default function AddInvestmentScreen() {
           </View>
 
           {/* Gold */}
-          {type === 'gold' && (<>
+          {type === 'gold' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.karat}</Text>
               <View style={styles.chips}>
@@ -1074,13 +1066,13 @@ export default function AddInvestmentScreen() {
               <AmountInput style={inputStyle} placeholder="e.g. 3900" placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
             </View>
-            <View style={styles.section}>
+            <View style={[styles.section, { marginBottom: 0 }]}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
-          </>)}
+          </View>)}
 
           {/* Silver */}
-          {type === 'silver' && (<>
+          {type === 'silver' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.form}</Text>
               <View style={styles.chips}>
@@ -1100,19 +1092,19 @@ export default function AddInvestmentScreen() {
               <AmountInput style={inputStyle} placeholder="e.g. 52" placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
             </View>
-            <View style={styles.section}>
+            <View style={[styles.section, { marginBottom: 0 }]}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
-          </>)}
+          </View>)}
 
           {/* Stock */}
-          {type === 'stock' && (<>
+          {type === 'stock' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.stockSymbol}</Text>
 
               {/* Dropdown trigger */}
               <TouchableOpacity
-                style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
                 onPress={() => { impact(); setStockPickerVisible(true); }}
                 activeOpacity={0.75}
               >
@@ -1155,13 +1147,13 @@ export default function AddInvestmentScreen() {
               <AmountInput style={inputStyle} placeholder="e.g. 95.50" placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerShare} onChangeText={setPurchasePricePerShare} />
             </View>
-            <View style={styles.section}>
+            <View style={[styles.section, { marginBottom: 0 }]}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
-          </>)}
+          </View>)}
 
           {/* Real Estate */}
-          {type === 'real_estate' && (<>
+          {type === 'real_estate' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.propertyName}</Text>
               <TextInput style={inputStyle} placeholder={t.propertyNamePlaceholder} placeholderTextColor={colors.mutedForeground}
@@ -1202,7 +1194,7 @@ export default function AddInvestmentScreen() {
                 <Text style={labelStyle}>{t.compoundName}</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
-                    style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border, flex: 1 }]}
+                    style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border, flex: 1 }]}
                     onPress={() => setCompoundPickerVisible(true)}
                     activeOpacity={0.7}
                   >
@@ -1214,7 +1206,7 @@ export default function AddInvestmentScreen() {
                   {!!compoundName && (
                     <TouchableOpacity
                       onPress={() => { setCompoundName(''); setReCompoundId(undefined); }}
-                      style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border, flex: 0, paddingHorizontal: 12 }]}
+                      style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border, flex: 0, paddingHorizontal: 12 }]}
                       activeOpacity={0.7}
                       accessibilityLabel={t.clearCompoundSelection}
                     >
@@ -1243,7 +1235,7 @@ export default function AddInvestmentScreen() {
                 <View style={{ marginTop: 12 }}>
                   <Text style={labelStyle}>{t.governorate}</Text>
                   <TouchableOpacity
-                    style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
                     onPress={() => setGovernoratePickerVisible(true)}
                     activeOpacity={0.7}
                   >
@@ -1260,7 +1252,7 @@ export default function AddInvestmentScreen() {
               <View style={styles.section}>
                 <Text style={labelStyle}>{t.governorate}</Text>
                 <TouchableOpacity
-                  style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
                   onPress={() => setGovernoratePickerVisible(true)}
                   activeOpacity={0.7}
                 >
@@ -1273,7 +1265,7 @@ export default function AddInvestmentScreen() {
               <View style={styles.section}>
                 <Text style={labelStyle}>{t.city}</Text>
                 <TouchableOpacity
-                  style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
                   onPress={() => setCityPickerVisible(true)}
                   activeOpacity={0.7}
                 >
@@ -1286,7 +1278,7 @@ export default function AddInvestmentScreen() {
               <View style={styles.section}>
                 <Text style={labelStyle}>{t.district}</Text>
                 <TouchableOpacity
-                  style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  style={[styles.dropdownTrigger, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
                   onPress={() => setDistrictPickerVisible(true)}
                   activeOpacity={0.7}
                 >
@@ -1516,10 +1508,10 @@ export default function AddInvestmentScreen() {
                 </View>
               </View>
             )}
-          </>)}
+          </View>)}
 
           {/* Personal Asset */}
-          {type === 'personal_asset' && (<>
+          {type === 'personal_asset' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.assetName}</Text>
               <TextInput style={inputStyle} placeholder="e.g. Rolex Submariner" placeholderTextColor={colors.mutedForeground}
@@ -1573,13 +1565,13 @@ export default function AddInvestmentScreen() {
                 ))}
               </View>
             </View>
-            <View style={styles.section}>
+            <View style={[styles.section, { marginBottom: 0 }]}>
               <DatePickerField label={t.purchaseDate} value={assetPurchaseDate} onChange={setAssetPurchaseDate} />
             </View>
-          </>)}
+          </View>)}
 
           {/* Fixed Income */}
-          {type === 'fixed_income' && (<>
+          {type === 'fixed_income' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.fiSubtype}</Text>
               <View style={styles.chips}>
@@ -1637,13 +1629,15 @@ export default function AddInvestmentScreen() {
                 ))}
               </View>
             </View>
-          </>)}
+          </View>)}
 
           {/* Notes */}
-          <View style={styles.section}>
-            <Text style={labelStyle}>{t.notes}</Text>
-            <TextInput style={[inputStyle, styles.notesInput]} placeholder={t.addNote}
-              placeholderTextColor={colors.mutedForeground} value={notes} onChangeText={setNotes} multiline />
+          <View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.section, { marginBottom: 0 }]}>
+              <Text style={labelStyle}>{t.notes}</Text>
+              <TextInput style={[inputStyle, styles.notesInput]} placeholder={t.addNote}
+                placeholderTextColor={colors.mutedForeground} value={notes} onChangeText={setNotes} multiline />
+            </View>
           </View>
 
           </>)}
@@ -1749,17 +1743,14 @@ const styles = StyleSheet.create({
   saveBtnText: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
   content: { paddingHorizontal: 20, paddingTop: 20, gap: 4 },
   section: { marginBottom: 16 },
+  formCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 8, letterSpacing: 0.3 },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  typeCard: { borderRadius: 16, borderWidth: 1.5, padding: 16, paddingTop: 18, alignItems: 'center', gap: 8, position: 'relative', overflow: 'hidden' },
-  typeAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
-  typeIconBadge: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  typeLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
-  checkmark: {
-    position: 'absolute', top: 8, end: 8,
-    width: 18, height: 18, borderRadius: 9,
-    alignItems: 'center', justifyContent: 'center',
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  typeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 13, paddingVertical: 10,
   },
+  typeChipLabel: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipsScroll: { flexDirection: 'row', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1 },
