@@ -42,13 +42,10 @@ export function usePushRegistration(
   const registeredForUserId = useRef<string | null>(null);
   const registeringInFlight = useRef(false);
   const lastSyncedPortfolioPref = useRef<boolean | null>(null);
-  const syncingPortfolioInFlight = useRef(false);
   const lastSyncedPriceAlertsPref = useRef<boolean | null>(null);
-  const syncingPriceAlertsInFlight = useRef(false);
   const lastSyncedDailySummaryPref = useRef<boolean | null>(null);
-  const syncingDailySummaryInFlight = useRef(false);
   const lastSyncedWeeklySummaryPref = useRef<boolean | null>(null);
-  const syncingWeeklySummaryInFlight = useRef(false);
+  const syncingPrefsInFlight = useRef(false);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -85,99 +82,45 @@ export function usePushRegistration(
     })();
   }, [isSignedIn, userId, getToken]);
 
+  // One combined effect for all four preferences: on cold mount every
+  // lastSynced* ref starts null, so without batching each of the four
+  // preferences would fire its own independent PUT within the same instant
+  // (a real, observed pattern in production request logs). Batching into a
+  // single request cuts that to one call while keeping each preference's
+  // own last-synced tracking, so a later change to just one toggle still
+  // only sends that one field (plus any other field still pending sync).
   useEffect(() => {
     if (Platform.OS === 'web') return;
     if (!isSignedIn || !userId) return;
-    if (lastSyncedPortfolioPref.current === portfolioAlertsEnabled) return;
-    if (syncingPortfolioInFlight.current) return;
+    if (syncingPrefsInFlight.current) return;
 
-    syncingPortfolioInFlight.current = true;
+    const body: Record<string, boolean> = {};
+    if (lastSyncedPortfolioPref.current !== portfolioAlertsEnabled) body.portfolioAlertsEnabled = portfolioAlertsEnabled;
+    if (lastSyncedPriceAlertsPref.current !== priceAlertsEnabled) body.priceAlertsEnabled = priceAlertsEnabled;
+    if (lastSyncedDailySummaryPref.current !== dailySummaryEnabled) body.dailySummaryEnabled = dailySummaryEnabled;
+    if (lastSyncedWeeklySummaryPref.current !== weeklySummaryEnabled) body.weeklySummaryEnabled = weeklySummaryEnabled;
+    if (Object.keys(body).length === 0) return;
+
+    syncingPrefsInFlight.current = true;
     (async () => {
       try {
         const authToken = await getToken();
         if (!authToken) return;
         const res = await apiFetch('/api/push/preferences', authToken, {
           method: 'PUT',
-          body: JSON.stringify({ portfolioAlertsEnabled }),
+          body: JSON.stringify(body),
         });
-        if (res.ok) lastSyncedPortfolioPref.current = portfolioAlertsEnabled;
+        if (res.ok) {
+          if ('portfolioAlertsEnabled' in body) lastSyncedPortfolioPref.current = portfolioAlertsEnabled;
+          if ('priceAlertsEnabled' in body) lastSyncedPriceAlertsPref.current = priceAlertsEnabled;
+          if ('dailySummaryEnabled' in body) lastSyncedDailySummaryPref.current = dailySummaryEnabled;
+          if ('weeklySummaryEnabled' in body) lastSyncedWeeklySummaryPref.current = weeklySummaryEnabled;
+        }
       } catch {
-        // Silent — will retry next time this value changes or the app restarts.
+        // Silent — will retry next time any of these values change or the app restarts.
       } finally {
-        syncingPortfolioInFlight.current = false;
+        syncingPrefsInFlight.current = false;
       }
     })();
-  }, [isSignedIn, userId, getToken, portfolioAlertsEnabled]);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    if (!isSignedIn || !userId) return;
-    if (lastSyncedPriceAlertsPref.current === priceAlertsEnabled) return;
-    if (syncingPriceAlertsInFlight.current) return;
-
-    syncingPriceAlertsInFlight.current = true;
-    (async () => {
-      try {
-        const authToken = await getToken();
-        if (!authToken) return;
-        const res = await apiFetch('/api/push/preferences', authToken, {
-          method: 'PUT',
-          body: JSON.stringify({ priceAlertsEnabled }),
-        });
-        if (res.ok) lastSyncedPriceAlertsPref.current = priceAlertsEnabled;
-      } catch {
-        // Silent — will retry next time this value changes or the app restarts.
-      } finally {
-        syncingPriceAlertsInFlight.current = false;
-      }
-    })();
-  }, [isSignedIn, userId, getToken, priceAlertsEnabled]);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    if (!isSignedIn || !userId) return;
-    if (lastSyncedDailySummaryPref.current === dailySummaryEnabled) return;
-    if (syncingDailySummaryInFlight.current) return;
-
-    syncingDailySummaryInFlight.current = true;
-    (async () => {
-      try {
-        const authToken = await getToken();
-        if (!authToken) return;
-        const res = await apiFetch('/api/push/preferences', authToken, {
-          method: 'PUT',
-          body: JSON.stringify({ dailySummaryEnabled }),
-        });
-        if (res.ok) lastSyncedDailySummaryPref.current = dailySummaryEnabled;
-      } catch {
-        // Silent — will retry next time this value changes or the app restarts.
-      } finally {
-        syncingDailySummaryInFlight.current = false;
-      }
-    })();
-  }, [isSignedIn, userId, getToken, dailySummaryEnabled]);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    if (!isSignedIn || !userId) return;
-    if (lastSyncedWeeklySummaryPref.current === weeklySummaryEnabled) return;
-    if (syncingWeeklySummaryInFlight.current) return;
-
-    syncingWeeklySummaryInFlight.current = true;
-    (async () => {
-      try {
-        const authToken = await getToken();
-        if (!authToken) return;
-        const res = await apiFetch('/api/push/preferences', authToken, {
-          method: 'PUT',
-          body: JSON.stringify({ weeklySummaryEnabled }),
-        });
-        if (res.ok) lastSyncedWeeklySummaryPref.current = weeklySummaryEnabled;
-      } catch {
-        // Silent — will retry next time this value changes or the app restarts.
-      } finally {
-        syncingWeeklySummaryInFlight.current = false;
-      }
-    })();
-  }, [isSignedIn, userId, getToken, weeklySummaryEnabled]);
+  }, [isSignedIn, userId, getToken, portfolioAlertsEnabled, priceAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled]);
 }

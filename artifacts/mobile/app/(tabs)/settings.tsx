@@ -21,7 +21,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { DetailModal } from '@/components/DetailModal';
-import { useAppSettings, ThemeMode, WeightUnit, DisplayCurrency, ALL_DISPLAY_CURRENCIES } from '@/context/AppSettingsContext';
+import { useAppSettings, ThemeMode, DisplayCurrency, ALL_DISPLAY_CURRENCIES } from '@/context/AppSettingsContext';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { useMarketPrices } from '@/hooks/usePrices';
@@ -774,10 +774,10 @@ export default function SettingsScreen() {
   const { user } = useUser();
   const { getToken } = useAuth();
   const {
-    themeMode, language, weightUnit, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
+    themeMode, language, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
     biometricLock, setBiometricLock, displayCurrency, setDisplayCurrency,
     visibleCurrencies, setVisibleCurrencies,
-    setThemeMode, setLanguage, setWeightUnit, setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
+    setThemeMode, setLanguage, setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
   } = useAppSettings();
   const { holdings, removeHolding } = useHoldings();
   const { cashAccounts } = useCash();
@@ -968,14 +968,6 @@ export default function SettingsScreen() {
               imageUrl={user.imageUrl ?? undefined}
               onPress={() => { haptic(); setEditProfileOpen(true); }}
             />
-            <TouchableOpacity
-              onPress={handleSignOut}
-              activeOpacity={0.7}
-              style={[sc.switchAccountBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <Feather name="log-out" size={14} color={colors.mutedForeground} />
-              <Text style={[sc.switchAccountTxt, { color: colors.mutedForeground }]}>{t.signOutBtn}</Text>
-            </TouchableOpacity>
           </>
         )}
 
@@ -1004,8 +996,8 @@ export default function SettingsScreen() {
         {/* ── ACCOUNT & SECURITY ─────────────────────────── */}
         <Sect label={t.settingsSectAccount}>
           <NavRow icon="lock"    iconBg="#1D4ED8" label={t.changePassword}    onPress={() => showModal(t.changePassword, 'To change your password, sign out and use "Forgot Password" on the sign-in screen. Password management is handled securely by Clerk authentication.')} />
-          <NavRow icon="link"    iconBg="#6366F1" label={t.connectedAccounts} value={t.betaLabel}
-            onPress={() => showModal(t.connectedAccounts, 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments. This feature is currently in beta testing.')} />
+          <NavRow icon="link"    iconBg="#6366F1" label={t.connectedAccounts} value={t.comingSoonLabel}
+            onPress={() => showModal(t.connectedAccounts, 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments — planned for a future update, not yet available.')} />
           <Div />
           <ToggleRow icon="lock" iconBg="#6366F1" label={t.biometricLock} sublabel={t.biometricLockDesc} value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last />
         </Sect>
@@ -1080,32 +1072,6 @@ export default function SettingsScreen() {
 
         {/* ── PORTFOLIO PREFERENCES ────────────────────────── */}
         <Sect label={t.settingsSectPortfolio}>
-          <View style={rw.row}>
-            <Bdg icon="sliders" bg="#059669" />
-            <View style={rw.body}>
-              <Text style={[rw.label, { color: colors.text }]}>{t.weightUnit}</Text>
-              <Text style={[rw.sub, { color: colors.mutedForeground }]}>{t.goldSilverUnit}</Text>
-            </View>
-            <View style={sc.segRow}>
-              {(['g', 'oz'] as WeightUnit[]).map(u => {
-                const active = weightUnit === u;
-                return (
-                  <TouchableOpacity
-                    key={u}
-                    style={[sc.segChip, { backgroundColor: active ? colors.primary : colors.muted }]}
-                    onPress={() => { haptic(); setWeightUnit(u); }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[sc.segLabel, {
-                      color: active ? colors.primaryForeground : colors.mutedForeground,
-                      fontFamily: active ? 'Inter_700Bold' : 'Inter_500Medium',
-                    }]}>{u}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-          <Div />
           <NavRow icon="award" iconBg="#8b5cf6" label={t.tiersPageTitle} sublabel={t.tiersRowSublabel}
             onPress={() => { haptic(); router.push('/tiers' as any); }} last />
         </Sect>
@@ -1150,7 +1116,9 @@ export default function SettingsScreen() {
           <NavRow icon="flag"   iconBg="#F59E0B" label={t.reportBug}         onPress={() => openURL(`mailto:bugs@investry.app?subject=Bug Report — INVESTRY v${APP_VERSION}`)} />
           <NavRow icon="edit-2" iconBg="#8B5CF6" label={t.requestFeature}    onPress={() => openURL('mailto:feedback@investry.app?subject=Feature Request')} />
           <NavRow icon="star"   iconBg="#EF4444" label={t.rateAppStore}       onPress={() =>
-            showModal(t.rateAppStore, 'Thank you for your support! App Store rating will be available once the app is published.')} last />
+            openURL(Platform.OS === 'ios'
+              ? 'https://apps.apple.com/app/id6787447052?action=write-review'
+              : 'https://play.google.com/store/apps/details?id=com.investry.app')} last />
         </Sect>
 
         {/* ── LEGAL ────────────────────────────────────────── */}
@@ -1160,9 +1128,7 @@ export default function SettingsScreen() {
           <NavRow icon="lock"         iconBg="#4B5563" label={t.privacyPolicy}   onPress={() =>
             showModal(t.privacyPolicy, t.privacyPolicyBody)} />
           <NavRow icon="alert-circle" iconBg="#7C3AED" label={t.regulatoryDisclaimer} onPress={() =>
-            showModal(t.regulatoryDisclaimer, 'INVESTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nAlways verify prices with a certified financial professional before making investment decisions.')} />
-          <NavRow icon="code"         iconBg="#6B7280" label={t.openSourceLicenses} onPress={() =>
-            showModal(t.openSourceLicenses, 'Built with open source software:\n\n• Expo SDK 54 (MIT)\n• React Native 0.81 (MIT)\n• @tanstack/react-query (MIT)\n• AsyncStorage (MIT)\n• expo-haptics (MIT)\n• Inter font (OFL)\n• @expo/vector-icons (MIT)\n• Clerk SDK (Commercial)\n• react-native-svg (MIT)')} last />
+            showModal(t.regulatoryDisclaimer, 'INVESTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nAlways verify prices with a certified financial professional before making investment decisions.')} last />
         </Sect>
 
         {/* ── SIGN OUT ─────────────────────────────────────── */}
@@ -1238,19 +1204,8 @@ const sc = StyleSheet.create({
   themeLabel: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
   themeLabelIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 
-  segRow: { flexDirection: 'row', gap: 5 },
-  segChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
-  segLabel: { fontSize: 13 },
-
   signOut: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 17, gap: 10 },
   signOutTxt: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-
-  switchAccountBtn: {
-    alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderRadius: 10, borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12, paddingVertical: 7, marginTop: 8,
-  },
-  switchAccountTxt: { fontSize: 12, fontFamily: 'Inter_500Medium' },
 
   signInCard: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
   signInIconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#C9A22718', alignItems: 'center', justifyContent: 'center' },

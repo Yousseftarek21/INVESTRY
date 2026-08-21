@@ -11,7 +11,6 @@ export type GlobalCategory = typeof GLOBAL_CATEGORIES[number];
 
 export interface GlobalCompany {
   ticker: string;
-  yahoo: string;
   name: string;
   category: Exclude<GlobalCategory, 'All'>;
   fallbackPrice: number;
@@ -19,16 +18,16 @@ export interface GlobalCompany {
 
 export const GLOBAL_COMPANIES: GlobalCompany[] = [
   // ─── Indices (via tracking ETFs) ─────────────────────────────────────────
-  { ticker: 'SPY',   yahoo: 'SPY',   name: 'S&P 500 (SPDR ETF)',       category: 'Indices',    fallbackPrice: 560.00 },
-  { ticker: 'QQQ',   yahoo: 'QQQ',   name: 'NASDAQ 100 (Invesco ETF)', category: 'Indices',    fallbackPrice: 480.00 },
+  { ticker: 'SPY',   name: 'S&P 500 (SPDR ETF)',       category: 'Indices',    fallbackPrice: 560.00 },
+  { ticker: 'QQQ',   name: 'NASDAQ 100 (Invesco ETF)', category: 'Indices',    fallbackPrice: 480.00 },
 
   // ─── Technology / Large Cap ───────────────────────────────────────────────
-  { ticker: 'AAPL',  yahoo: 'AAPL',  name: 'Apple Inc.',               category: 'Technology', fallbackPrice: 225.00 },
-  { ticker: 'MSFT',  yahoo: 'MSFT',  name: 'Microsoft Corp.',          category: 'Technology', fallbackPrice: 420.00 },
-  { ticker: 'NVDA',  yahoo: 'NVDA',  name: 'NVIDIA Corp.',             category: 'Technology', fallbackPrice: 135.00 },
-  { ticker: 'GOOGL', yahoo: 'GOOGL', name: 'Alphabet Inc.',            category: 'Technology', fallbackPrice: 170.00 },
-  { ticker: 'AMZN',  yahoo: 'AMZN',  name: 'Amazon.com Inc.',          category: 'Technology', fallbackPrice: 185.00 },
-  { ticker: 'TSLA',  yahoo: 'TSLA',  name: 'Tesla Inc.',               category: 'Technology', fallbackPrice: 250.00 },
+  { ticker: 'AAPL',  name: 'Apple Inc.',               category: 'Technology', fallbackPrice: 225.00 },
+  { ticker: 'MSFT',  name: 'Microsoft Corp.',          category: 'Technology', fallbackPrice: 420.00 },
+  { ticker: 'NVDA',  name: 'NVIDIA Corp.',             category: 'Technology', fallbackPrice: 135.00 },
+  { ticker: 'GOOGL', name: 'Alphabet Inc.',            category: 'Technology', fallbackPrice: 170.00 },
+  { ticker: 'AMZN',  name: 'Amazon.com Inc.',          category: 'Technology', fallbackPrice: 185.00 },
+  { ticker: 'TSLA',  name: 'Tesla Inc.',               category: 'Technology', fallbackPrice: 250.00 },
 ];
 
 export function getCategoryCounts(): Record<string, number> {

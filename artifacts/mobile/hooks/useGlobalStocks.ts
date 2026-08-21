@@ -59,57 +59,11 @@ async function fetchGlobalStocksViaApi(): Promise<GlobalStockLive[]> {
   });
 }
 
-// Direct client-side fallback — Yahoo Finance is free, no key needed.
-// Works on native; CORS-blocked on web preview (expected, same as EGX).
-const YF_HEADERS = {
-  Accept: 'application/json',
-  'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-};
-
-async function fetchGlobalStocksDirect(): Promise<GlobalStockLive[]> {
-  const symbols = GLOBAL_COMPANIES.map(c => encodeURIComponent(c.yahoo)).join('%2C');
-  const res = await fetch(
-    `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&lang=en-US&region=US`,
-    { headers: YF_HEADERS }
-  );
-  if (!res.ok) throw new Error(`YF ${res.status}`);
-  const data = await res.json();
-  const results: any[] = data?.quoteResponse?.result ?? [];
-  if (results.length === 0) throw new Error('empty');
-
-  const byTicker = new Map<string, any>(results.map((r: any) => [r.symbol as string, r]));
-
-  return GLOBAL_COMPANIES.map(company => {
-    const r = byTicker.get(company.yahoo);
-    if (!r) return { ...company, price: company.fallbackPrice, change: 0, changePercent: 0, isLive: false };
-    return {
-      ...company,
-      price: parseFloat((r.regularMarketPrice ?? company.fallbackPrice).toFixed(2)),
-      change: parseFloat((r.regularMarketChange ?? 0).toFixed(2)),
-      changePercent: parseFloat((r.regularMarketChangePercent ?? 0).toFixed(2)),
-      volume:        r.regularMarketVolume ?? undefined,
-      marketCap:     r.marketCap          ?? undefined,
-      high52w:       r.fiftyTwoWeekHigh   ?? undefined,
-      low52w:        r.fiftyTwoWeekLow    ?? undefined,
-      pe:            r.trailingPE         ?? undefined,
-      dividendYield: r.trailingAnnualDividendYield != null
-                       ? parseFloat((r.trailingAnnualDividendYield * 100).toFixed(2))
-                       : undefined,
-      isLive: true,
-    };
-  });
-}
-
 async function fetchAllGlobalStocks(): Promise<GlobalStockLive[]> {
   try {
     return await fetchGlobalStocksViaApi();
   } catch {
-    // API server unreachable — fall through to direct CORS-open fetch
-    try {
-      return await fetchGlobalStocksDirect();
-    } catch {
-      return placeholderStocks();
-    }
+    return placeholderStocks();
   }
 }
 
