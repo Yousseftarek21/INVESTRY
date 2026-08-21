@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, gt } from "drizzle-orm";
+import { and, desc, eq, lt, gt, sql } from "drizzle-orm";
 import { db, usersTable, portfolioSnapshotsTable, activityLogTable } from "@workspace/db";
 import { computeUserPortfolioValue } from "./portfolioValue";
 import { sendPushToTokens } from "./expoPush";
@@ -58,6 +58,35 @@ async function checkUser(userId: string, today: string, pushToken: string | null
       target: [portfolioSnapshotsTable.userId, portfolioSnapshotsTable.date],
       set: { totalValue },
     });
+
+  // Append this tick to the day's intraday series, so the 1D chart can draw
+  // real movement across the whole day rather than a straight line between
+  // start-of-day and now. Capped at 288 points (one per 5-minute tick = 24h)
+  // so a long day can't grow the row unbounded.
+  //
+  // Deliberately a separate statement after the upsert above, inside its own
+  // try/catch: this is the newest and most intricate piece of SQL here, and a
+  // failure in it must never take down the value tracking and push alerts
+  // that were working long before it existed.
+  try {
+    await db.execute(sql`
+      UPDATE "portfolio_snapshots"
+      SET "intraday" = (
+        SELECT jsonb_agg(pt ORDER BY ord)
+        FROM (
+          SELECT pt, ord
+          FROM jsonb_array_elements(
+            COALESCE("intraday", '[]'::jsonb) || ${JSON.stringify([{ t: Math.floor(Date.now() / 1000), v: totalValue }])}::jsonb
+          ) WITH ORDINALITY AS x(pt, ord)
+          ORDER BY ord DESC
+          LIMIT 288
+        ) recent
+      )
+      WHERE "user_id" = ${userId} AND "date" = ${today}
+    `);
+  } catch (err) {
+    logger.warn({ err, userId }, "Intraday series append failed — value tracking unaffected");
+  }
 
   if (!pushToken) return;
 

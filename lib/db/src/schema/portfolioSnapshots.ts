@@ -1,4 +1,4 @@
-import { pgTable, text, real, integer, timestamp, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, timestamp, unique, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -12,6 +12,12 @@ export const portfolioSnapshotsTable = pgTable("portfolio_snapshots", {
   userId:                text("user_id").notNull(),
   date:                  text("date").notNull(), // "YYYY-MM-DD" in Africa/Cairo
   totalValue:            real("total_value").notNull(),
+  // The day's intraday series: [{ t: unix seconds, v: total value }, ...],
+  // appended by portfolioAlertCron every 5 minutes. This is what lets the
+  // 1D chart draw real movement across the day even when the app was never
+  // opened — the client-side sampler can only record what it observed while
+  // open, so on its own it collapses to a straight start-to-now line.
+  intraday:              jsonb("intraday").$type<{ t: number; v: number }[]>(),
   lastNotifiedMilestone: integer("last_notified_milestone").notNull().default(0), // signed whole-percent, e.g. -2 or 3
   createdAt:             timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({

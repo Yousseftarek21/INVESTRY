@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, portfolioSnapshotsTable, portfolioTargetsTable } from "@workspace/db";
-import { eq, gte } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
-import { cairoDateString } from "../lib/cairoDate";
+import { cairoDateString, tradingDayKey } from "../lib/cairoDate";
 
 const router: IRouter = Router();
 
@@ -30,6 +30,31 @@ router.get("/portfolio/snapshots", clerkMiddleware(), async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "GET /portfolio/snapshots failed");
     res.status(500).json({ error: "Failed to fetch portfolio snapshots" });
+  }
+});
+
+// GET /api/portfolio/intraday — today's intraday series for the 1D chart,
+// appended every 5 minutes by portfolioAlertCron for every user regardless
+// of whether the app was ever opened. The client's own sampler can only
+// record what it saw while open, so without this 1D collapses to a straight
+// start-of-day-to-now line on any day the app wasn't left running.
+router.get("/portfolio/intraday", clerkMiddleware(), async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [row] = await db
+      .select({ intraday: portfolioSnapshotsTable.intraday })
+      .from(portfolioSnapshotsTable)
+      .where(and(
+        eq(portfolioSnapshotsTable.userId, userId),
+        eq(portfolioSnapshotsTable.date, tradingDayKey()),
+      ));
+
+    res.json({ points: row?.intraday ?? [] });
+  } catch (err) {
+    req.log.error({ err }, "GET /portfolio/intraday failed");
+    res.status(500).json({ error: "Failed to fetch intraday series" });
   }
 });
 

@@ -21,3 +21,17 @@ export async function ensureDividendsTable(): Promise<void> {
     logger.error({ err }, "ensureDividendsTable: failed to create table — dividend tracking will be inert until this is resolved");
   }
 }
+
+// Same self-bootstrapping pattern for the intraday series column added to
+// portfolio_snapshots (see lib/db/src/schema/portfolioSnapshots.ts) — it
+// backs the 1D chart's real intraday movement.
+export async function ensureIntradayColumn(): Promise<void> {
+  try {
+    await db.execute(sql`
+      ALTER TABLE "portfolio_snapshots"
+        ADD COLUMN IF NOT EXISTS "intraday" jsonb
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureIntradayColumn: failed to add column — the 1D chart will fall back to client-side samples only");
+  }
+}

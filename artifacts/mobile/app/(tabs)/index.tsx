@@ -16,6 +16,7 @@ import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useIntradaySamples } from '@/hooks/useIntradaySamples';
+import { useServerIntraday } from '@/hooks/useServerIntraday';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 import { usePortfolioTier } from '@/hooks/usePortfolioTier';
@@ -676,6 +677,7 @@ export default function HomeScreen() {
 
   const startOfDayValue = summary.totalValue - summary.todayGain;
   const rawTodaySamples = useIntradaySamples(summary.totalValue, startOfDayValue);
+  const { data: serverIntraday } = useServerIntraday();
   // The stored samples' own first/last points can be up to ~10 minutes
   // stale (they're debounced to avoid flooding storage), while the "Today"
   // badge above always recomputes live on every render. Using stale
@@ -686,11 +688,19 @@ export default function HomeScreen() {
   // for real texture *in between* those two fresh, guaranteed-consistent
   // points.
   const todaySamples = useMemo(() => {
-    const middle = rawTodaySamples && rawTodaySamples.length > 2
-      ? rawTodaySamples.slice(1, -1)
-      : [];
+    // Server-recorded points win: the cron samples every 5 minutes for
+    // everyone regardless of whether the app was ever opened, so it captures
+    // the day's real ups and downs. The on-device sampler only sees what
+    // happened while the app was running, which on most days is nothing —
+    // leaving 1D as a straight start-to-now line. Fall back to it only when
+    // the server has nothing yet (first run after deploy, brand-new user).
+    const serverMiddle = serverIntraday && serverIntraday.length > 0
+      ? serverIntraday.map(p => p.v)
+      : null;
+    const middle = serverMiddle
+      ?? (rawTodaySamples && rawTodaySamples.length > 2 ? rawTodaySamples.slice(1, -1) : []);
     return [startOfDayValue, ...middle, summary.totalValue];
-  }, [rawTodaySamples, startOfDayValue, summary.totalValue]);
+  }, [serverIntraday, rawTodaySamples, startOfDayValue, summary.totalValue]);
 
   const isGain = summary.gain >= 0;
   const isTodayGain = summary.todayGain >= 0;

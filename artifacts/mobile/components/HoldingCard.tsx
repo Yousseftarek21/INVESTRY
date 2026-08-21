@@ -198,7 +198,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
               hitSlop={10}
               activeOpacity={0.6}
             >
-              <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+              <Feather name="edit-2" size={14} color={colors.primary} />
             </TouchableOpacity>
           )}
           {onDelete && (
@@ -208,7 +208,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
               hitSlop={10}
               activeOpacity={0.6}
             >
-              <Feather name="trash-2" size={14} color={colors.mutedForeground} />
+              <Feather name="trash-2" size={14} color={colors.red} />
             </TouchableOpacity>
           )}
         </View>
