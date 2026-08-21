@@ -183,7 +183,11 @@ function MetalHeroCard({
   changePercent?: number;
 }) {
   const colors = useColors();
-  const { text: priceStr, tint } = useCounterDisplay(price, metalPriceFormatter);
+  // No flash-on-change here (unlike the Home hero value) — this is a live
+  // market reference price, not the user's own gain/loss, so a green/red
+  // flash would read as "you just made/lost money" when nothing of theirs
+  // moved. Just the smooth count-up, deliberately calmer than the hero.
+  const { text: priceStr } = useCounterDisplay(price, metalPriceFormatter, false);
 
   const refs: string[] = [];
   if (usdPrice && usdPrice > 0) refs.push(`$${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`);
@@ -206,7 +210,7 @@ function MetalHeroCard({
         {/* Price */}
         <View style={mh.priceRow}>
           <Animated.Text
-            style={[mh.price, { color: tint ?? colors.text }]}
+            style={[mh.price, { color: colors.text }]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.6}
@@ -254,7 +258,8 @@ function MetalRow({
   changePercent?: number; isLast?: boolean; bold?: boolean;
 }) {
   const colors = useColors();
-  const { text: priceStr, tint } = useCounterDisplay(price, metalPriceFormatter);
+  // No flash-on-change — see MetalHeroCard's comment above.
+  const { text: priceStr } = useCounterDisplay(price, metalPriceFormatter, false);
   return (
     <View style={[
       mr.row,
@@ -270,7 +275,7 @@ function MetalRow({
         </View>
       </View>
       <View style={mr.right}>
-        <Animated.Text style={[mr.price, { color: tint ?? colors.text }, bold && mr.priceBold]}>
+        <Animated.Text style={[mr.price, { color: colors.text }, bold && mr.priceBold]}>
           {priceStr}
           <Text style={[mr.unit, { color: colors.mutedForeground }]}> {unit}</Text>
         </Animated.Text>
