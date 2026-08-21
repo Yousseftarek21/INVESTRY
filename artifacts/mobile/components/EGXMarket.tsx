@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { forwardArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
+import { useCounterDisplay } from '@/hooks/useCounterDisplay';
 import { useT } from '@/hooks/useTranslation';
 import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data/egx-companies';
 import { useEGXMarket, EGXStockLive, EGX_STATIC_FALLBACK, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
@@ -101,17 +102,22 @@ const est = StyleSheet.create({
 // search, but every quote/scan endpoint returns "not found" for it) — left
 // out rather than shown with a fabricated or stale number.
 
+const indexPriceFormatter = (n: number) => n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
+
 function IndexHalf({ index }: { index: EGXIndex }) {
   const colors = useColors();
   const isFlat = Math.abs(index.changePercent) < 0.005;
   const isPos = index.changePercent >= 0;
   const color = isFlat ? colors.mutedForeground : (isPos ? colors.green : colors.red);
+  // No flash-on-change — this is a live market reference price, not the
+  // user's own gain/loss (same reasoning as the Metals tab's counters).
+  const { text: priceStr } = useCounterDisplay(index.price, indexPriceFormatter, false);
   return (
     <View style={ix.half}>
       <Text style={[ix.name, { color: colors.mutedForeground }]}>{index.name}</Text>
-      <Text style={[ix.price, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-        {index.price.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
-      </Text>
+      <Animated.Text style={[ix.price, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {priceStr}
+      </Animated.Text>
       <View style={[ix.badge, { backgroundColor: color + '18' }]}>
         <Feather name={isFlat ? 'minus' : isPos ? 'arrow-up-right' : 'arrow-down-right'} size={10} color={color} />
         <Text style={[ix.badgeTxt, { color }]}>
@@ -304,6 +310,8 @@ const sp = StyleSheet.create({
 
 // ─── Stock Card ───────────────────────────────────────────────────────────────
 
+const stockPriceFormatter = (n: number) => n.toFixed(2);
+
 function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) {
   const colors = useColors();
   const t = useT();
@@ -311,6 +319,8 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
   const isPos = stock.changePercent >= 0;
   const changeColor = stock.change === 0 && !stock.isLive ? colors.mutedForeground
     : isPos ? colors.green : colors.red;
+  // No flash-on-change — see IndexHalf's comment above.
+  const { text: priceStr } = useCounterDisplay(stock.price, stockPriceFormatter, false);
 
   const initials = stock.ticker.length <= 4 ? stock.ticker : stock.ticker.slice(0, 4);
 
@@ -350,9 +360,9 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
 
         {/* Price */}
         <View style={sc.priceCol}>
-          <Text style={[sc.price, { color: colors.text }]}>
-            {stock.price.toFixed(2)}
-          </Text>
+          <Animated.Text style={[sc.price, { color: colors.text }]}>
+            {priceStr}
+          </Animated.Text>
           <View style={[sc.changeBadge, { backgroundColor: changeColor + '15' }]}>
             <Text style={[sc.changeArrow, { color: changeColor }]}>{isPos ? '▲' : '▼'}</Text>
             <Text style={[sc.changeTxt, { color: changeColor }]}>
