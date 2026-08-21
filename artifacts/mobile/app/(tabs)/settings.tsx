@@ -20,6 +20,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
+import { DetailModal } from '@/components/DetailModal';
 import { useAppSettings, ThemeMode, WeightUnit, DisplayCurrency, ALL_DISPLAY_CURRENCIES } from '@/context/AppSettingsContext';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
@@ -161,33 +162,6 @@ function ToggleRow({
       </View>
       {!last && <Div />}
     </>
-  );
-}
-
-// ─── Detail modal (works on web + native) ──────────────────────────────────────
-
-function DetailModal({ visible, title, content, onClose }: {
-  visible: boolean; title: string; content: string; onClose: () => void;
-}) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  if (!visible) return null;
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={mo.backdrop} onPress={onClose} />
-      <View style={[mo.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]}>
-        <View style={[mo.handle, { backgroundColor: colors.border }]} />
-        <View style={[mo.header, { borderBottomColor: colors.border }]}>
-          <Text style={[mo.title, { color: colors.text }]}>{title}</Text>
-          <TouchableOpacity onPress={onClose} style={[mo.close, { backgroundColor: colors.muted }]}>
-            <Feather name="x" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        </View>
-        <ScrollView contentContainerStyle={mo.body} showsVerticalScrollIndicator={false}>
-          <Text style={[mo.content, { color: colors.textSecondary }]}>{content}</Text>
-        </ScrollView>
-      </View>
-    </Modal>
   );
 }
 

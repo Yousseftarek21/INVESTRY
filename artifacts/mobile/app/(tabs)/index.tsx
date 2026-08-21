@@ -41,6 +41,7 @@ import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { useAppSettings, DisplayCurrency } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
+import { DetailModal } from '@/components/DetailModal';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding, MarketPrices } from '@/types';
 import { computeCashTotalEGP } from '@/utils/cash';
@@ -532,6 +533,8 @@ export default function HomeScreen() {
   const [chartScrubbing, setChartScrubbing] = useState(false);
   const [sparkWidth, setSparkWidth] = useState(0);
   const [showTodayBreakdown, setShowTodayBreakdown] = useState(false);
+  const [modal, setModal] = useState<{ title: string; content: string } | null>(null);
+  const showModal = (title: string, content: string) => { impact(); setModal({ title, content }); };
 
   // ── Portfolio maths ────────────────────────────────────────────────────────
   const egxChangeByTicker = useMemo(() => {
@@ -980,7 +983,10 @@ export default function HomeScreen() {
                 </View>
               </View>
               <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
-              <View style={styles.iCell}>
+              <Pressable
+                style={styles.iCell}
+                onPress={() => showModal(t.returnCalcTitle, t.returnCalcBody)}
+              >
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.returnLabel}</Text>
                 <View style={styles.iCellValueRow}>
                   <Text style={[styles.iCellValue, { color: gainColor }]}>
@@ -989,8 +995,9 @@ export default function HomeScreen() {
                   <Text style={[styles.iCellCur, { color: gainColor + 'AA' }]}>
                     {isGain ? '▲' : '▼'}
                   </Text>
+                  <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
                 </View>
-              </View>
+              </Pressable>
             </View>
           )}
 
@@ -1041,7 +1048,10 @@ export default function HomeScreen() {
                 </Pressable>
               )}
 
-              <View style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}>
+              <Pressable
+                onPress={() => showModal(t.totalPLCalcTitle, t.totalPLCalcBody)}
+                style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}
+              >
                 <View style={styles.plTop}>
                   <Feather name={isGain ? 'trending-up' : 'trending-down'} size={10} color={gainColor + 'CC'} />
                   <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.totalPL}</Text>
@@ -1050,11 +1060,12 @@ export default function HomeScreen() {
                       {`${isGain ? '+' : ''}${summary.gainPct.toFixed(2)}%`}
                     </Text>
                   </View>
+                  <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
                 </View>
                 <Text style={[styles.plValue, { color: gainColor }]}>
                   {hideValues ? '••••' : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.gain)))} ${displayCurrency}`}
                 </Text>
-              </View>
+              </Pressable>
             </View>
           )}
 
@@ -1468,6 +1479,15 @@ export default function HomeScreen() {
       toDisp={toDisp}
       displayCurrency={displayCurrency}
     />
+
+    {modal && (
+      <DetailModal
+        visible
+        title={modal.title}
+        content={modal.content}
+        onClose={() => setModal(null)}
+      />
+    )}
 
     {/* Fires once per real tier change, in both directions. On a demotion it
         also carries what it takes to get back — computed from the tier they
