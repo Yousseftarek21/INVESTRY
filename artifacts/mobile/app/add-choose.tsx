@@ -85,18 +85,18 @@ export default function AddChooseScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[s.cardSm, { backgroundColor: colors.background, borderColor: colors.border }]}
+          style={[s.card, { backgroundColor: colors.background, borderColor: colors.border }]}
           onPress={goRecurringIncome}
           activeOpacity={0.72}
         >
-          <View style={[s.iconWrapSm, { backgroundColor: '#8B5CF61A' }]}>
-            <Feather name="repeat" size={18} color="#8B5CF6" />
+          <View style={[s.iconWrap, { backgroundColor: '#8B5CF61A' }]}>
+            <Feather name="repeat" size={26} color="#8B5CF6" />
           </View>
-          <View style={s.cardSmText}>
-            <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addRecurringIncomeOption}</Text>
-            <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.addRecurringIncomeOptionDesc}</Text>
+          <View style={s.cardText}>
+            <Text style={[s.cardTitle, { color: colors.text }]}>{t.addRecurringIncomeOption}</Text>
+            <Text style={[s.cardDesc, { color: colors.mutedForeground }]}>{t.addRecurringIncomeOptionDesc}</Text>
           </View>
-          <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
+          <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -161,6 +161,9 @@ const s = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 16,
     paddingVertical: 16,
+    // Floor keeps the three primary options identical in height even if a
+    // translation wraps its description onto a second line.
+    minHeight: 84,
   },
   iconWrap: {
     width: 48,
