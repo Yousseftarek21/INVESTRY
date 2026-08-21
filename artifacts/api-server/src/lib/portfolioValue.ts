@@ -1,7 +1,7 @@
 import { db, holdingsTable, cashAccountsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { decryptFromStorage } from "./encryption";
-import { fetchPrices, fetchStocks } from "../routes/markets";
+import { getCachedPrices, getCachedStocks } from "../routes/markets";
 
 const TROY_OZ_TO_GRAMS = 31.1034768;
 
@@ -93,8 +93,8 @@ export function computeHoldingValue(
 export async function computeUserPortfolioValue(userId: string): Promise<number> {
   const [holdingRows, prices, egxStocks] = await Promise.all([
     db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
-    fetchPrices(),
-    fetchStocks().catch(() => []), // stock pricing degrades to purchase price if this fails
+    getCachedPrices(),
+    getCachedStocks().catch(() => []), // stock pricing degrades to purchase price if this fails
   ]);
 
   const egxPrices: Record<string, number> = {};
@@ -127,8 +127,8 @@ export async function computeUserPortfolioAllocation(
   const [holdingRows, cashRows, prices, egxStocks] = await Promise.all([
     db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
     db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
-    fetchPrices(),
-    fetchStocks().catch(() => []),
+    getCachedPrices(),
+    getCachedStocks().catch(() => []),
   ]);
 
   const egxPrices: Record<string, number> = {};
