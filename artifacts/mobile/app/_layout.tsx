@@ -137,6 +137,14 @@ function RootLayoutNav() {
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
+        name="dividends"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="leaderboard"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
         name="notifications"
         options={{ presentation: "modal", headerShown: false }}
       />
