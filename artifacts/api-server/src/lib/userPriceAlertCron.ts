@@ -1,6 +1,6 @@
 import { eq, isNotNull } from "drizzle-orm";
 import { db, usersTable, priceAlertsTable } from "@workspace/db";
-import { fetchPrices, fetchStocks } from "../routes/markets";
+import { getCachedPrices, getCachedStocks } from "../routes/markets";
 import { goldPricePerGram, silverPricePerGram } from "./portfolioValue";
 import { encryptForStorage, decryptFromStorage } from "./encryption";
 import { sendPushToTokens } from "./expoPush";
@@ -11,11 +11,12 @@ import { logger } from "./logger";
 // is what makes those alerts fire while the app is closed or backgrounded,
 // not just while it happens to be open in the foreground.
 //
-// 30s matches fetchPrices()/fetchStocks()'s own cache TTL (see markets.ts),
-// so checking this often costs no extra upstream calls to TradingView/
-// Yahoo beyond what's already being made for other routes — polling any
-// faster than the cache TTL would start hammering those free endpoints on
-// every tick instead of reusing the cached response.
+// 30s matches pricesCache's own TTL (see markets.ts) — buildPricesDict()
+// below reads through getCachedPrices()/getCachedStocks(), so checking this
+// often costs no extra upstream calls to CIB/Wise/TradingView beyond
+// whatever another route or cron already made; polling any faster than the
+// cache TTL would start hammering those endpoints on every tick instead of
+// reusing the cached response.
 const CHECK_INTERVAL_MS = 30 * 1000;
 
 interface StoredPriceAlert {
@@ -31,8 +32,8 @@ interface StoredPriceAlert {
 
 async function buildPricesDict(): Promise<Record<string, number>> {
   const [prices, stocks] = await Promise.all([
-    fetchPrices(),
-    fetchStocks().catch(() => []),
+    getCachedPrices(),
+    getCachedStocks().catch(() => []),
   ]);
 
   const dict: Record<string, number> = {
