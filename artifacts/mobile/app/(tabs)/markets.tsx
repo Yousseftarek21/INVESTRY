@@ -164,10 +164,13 @@ const cb = StyleSheet.create({
 
 // ─── Metal hero card ───────────────────────────────────────────────────────────
 
-// Silver's per-gram price sits under 10 EGP/g at some historical points, so
-// the fraction digits can't be a fixed 0 — matches the pre-animation format
-// exactly, just now driven by the tweened value instead of the raw prop.
-const metalPriceFormatter = (n: number) => n.toLocaleString('en-EG', { maximumFractionDigits: n < 10 ? 2 : 0 });
+// Always 2 decimals, not just below 10 EGP/g — gold/silver move by cents on
+// the underlying USD spot every ~30s poll, which is well under 1 EGP/g once
+// converted. Rounded to a whole EGP, that real live tick was invisible (the
+// counter animates every poll, but nothing visibly changed most of the
+// time), making it look like only a manual refresh — spaced minutes apart,
+// so the accumulated move crosses a whole-EGP line — ever moved the number.
+const metalPriceFormatter = (n: number) => n.toLocaleString('en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function MetalHeroCard({
   metalType, accentColor, label, price, unit = 'EGP/g',
@@ -816,15 +819,20 @@ function MetalsTab({ prices }: { prices: ReturnType<typeof useMarketPrices>['dat
   const goldChangePct   = prices?.changesUnknown ? undefined : prices?.goldChangePercent;
   const silverChangePct = prices?.changesUnknown ? undefined : prices?.silverChangePercent;
 
-  const gold24 = prices ? Math.round(goldPricePerGram(prices, '24k')) : 0;
-  const gold22 = prices ? Math.round(goldPricePerGram(prices, '22k')) : 0;
-  const gold21 = prices ? Math.round(goldPricePerGram(prices, '21k')) : 0;
-  const gold18 = prices ? Math.round(goldPricePerGram(prices, '18k')) : 0;
-  const goldOz = prices ? Math.round(prices.goldUsd * prices.usdToEgp) : 0;
+  // Not rounded — gold/silver move by cents on the underlying USD spot
+  // every ~30s poll, well under 1 EGP/g converted. Math.round used to
+  // throw that real live tick away before it ever reached the animated
+  // counter, so nothing visibly moved except after a manual refresh spaced
+  // far enough apart to cross a whole-EGP line.
+  const gold24 = prices ? goldPricePerGram(prices, '24k') : 0;
+  const gold22 = prices ? goldPricePerGram(prices, '22k') : 0;
+  const gold21 = prices ? goldPricePerGram(prices, '21k') : 0;
+  const gold18 = prices ? goldPricePerGram(prices, '18k') : 0;
+  const goldOz = prices ? prices.goldUsd * prices.usdToEgp : 0;
   const silverPure = prices ? silverPricePerGram(prices) : 0;
-  const silver999  = prices ? parseFloat((silverPure * 0.999).toFixed(2)) : 0;
-  const silver925  = prices ? parseFloat((silverPure * 0.925).toFixed(2)) : 0;
-  const silverOz   = prices ? Math.round(prices.silverUsd * prices.usdToEgp) : 0;
+  const silver999  = prices ? silverPure * 0.999 : 0;
+  const silver925  = prices ? silverPure * 0.925 : 0;
+  const silverOz   = prices ? prices.silverUsd * prices.usdToEgp : 0;
 
   return (
     // Tighter than tab.group's default 24 — that gap reads fine between bare
