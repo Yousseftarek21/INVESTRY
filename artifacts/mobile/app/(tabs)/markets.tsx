@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useCounterDisplay } from '@/hooks/useCounterDisplay';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
@@ -163,6 +164,11 @@ const cb = StyleSheet.create({
 
 // ─── Metal hero card ───────────────────────────────────────────────────────────
 
+// Silver's per-gram price sits under 10 EGP/g at some historical points, so
+// the fraction digits can't be a fixed 0 — matches the pre-animation format
+// exactly, just now driven by the tweened value instead of the raw prop.
+const metalPriceFormatter = (n: number) => n.toLocaleString('en-EG', { maximumFractionDigits: n < 10 ? 2 : 0 });
+
 function MetalHeroCard({
   metalType, accentColor, label, price, unit = 'EGP/g',
   usdPrice, troyEgp, changePercent,
@@ -177,7 +183,7 @@ function MetalHeroCard({
   changePercent?: number;
 }) {
   const colors = useColors();
-  const priceStr = price.toLocaleString('en-EG', { maximumFractionDigits: price < 10 ? 2 : 0 });
+  const { text: priceStr, tint } = useCounterDisplay(price, metalPriceFormatter);
 
   const refs: string[] = [];
   if (usdPrice && usdPrice > 0) refs.push(`$${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`);
@@ -199,14 +205,14 @@ function MetalHeroCard({
         </View>
         {/* Price */}
         <View style={mh.priceRow}>
-          <Text
-            style={[mh.price, { color: colors.text }]}
+          <Animated.Text
+            style={[mh.price, { color: tint ?? colors.text }]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.6}
           >
             {priceStr}
-          </Text>
+          </Animated.Text>
           <Text style={[mh.unit, { color: colors.mutedForeground }]}> {unit}</Text>
         </View>
         {/* Reference prices inline */}
@@ -248,6 +254,7 @@ function MetalRow({
   changePercent?: number; isLast?: boolean; bold?: boolean;
 }) {
   const colors = useColors();
+  const { text: priceStr, tint } = useCounterDisplay(price, metalPriceFormatter);
   return (
     <View style={[
       mr.row,
@@ -263,10 +270,10 @@ function MetalRow({
         </View>
       </View>
       <View style={mr.right}>
-        <Text style={[mr.price, { color: colors.text }, bold && mr.priceBold]}>
-          {price.toLocaleString('en-EG', { maximumFractionDigits: price < 10 ? 2 : 0 })}
+        <Animated.Text style={[mr.price, { color: tint ?? colors.text }, bold && mr.priceBold]}>
+          {priceStr}
           <Text style={[mr.unit, { color: colors.mutedForeground }]}> {unit}</Text>
-        </Text>
+        </Animated.Text>
         {usdPrice !== undefined && usdPrice > 0 && (
           <Text style={[mr.usdLine, { color: colors.mutedForeground }]}>
             ${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
