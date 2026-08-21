@@ -23,6 +23,21 @@ function makeCache<T>(ttlMs: number) {
   };
 }
 
+// Collapses concurrent callers into one real upstream fetch. Several
+// crons each call their own first user/check immediately on server boot
+// (see startPortfolioAlertCron etc.), so right after every restart the
+// cache is empty and those near-simultaneous first calls can each see
+// "empty" before the first one finishes and populates it — without this,
+// that boot-time race (and any future concurrent-traffic spike) triggers
+// one full CIB/Wise/TradingView round trip per racer instead of one total.
+function singleFlight<T>(fn: () => Promise<T>): () => Promise<T> {
+  let inFlight: Promise<T> | null = null;
+  return () => {
+    if (!inFlight) inFlight = fn().finally(() => { inFlight = null; });
+    return inFlight;
+  };
+}
+
 const pricesCache    = makeCache<MarketPricesResponse>(30_000);   // 30 s
 const historicalCache = makeCache<HistoricalRates>(86_400_000);   // 24 h
 const stocksCache    = makeCache<EGXStockResponse[]>(10_000);     // 10 s — matches useEGXMarket.ts's client poll; shorter than metals' 30s to compensate for the bigger 281-company scan taking longer to visibly refresh
@@ -32,6 +47,12 @@ const egxIndicesCache = makeCache<EGXStockResponse[]>(30_000);    // 30 s
 // News doesn't move on a 10s clock like price does, so a much longer TTL is
 // correct here, not just tolerable.
 const stockNewsCaches = new Map<string, ReturnType<typeof makeCache<StockNewsItem[]>>>();
+
+// fetchPrices/fetchStocks are declared further down as hoisted function
+// declarations, so referencing them here at module init time is safe.
+const fetchPricesOnce = singleFlight(() => fetchPrices());
+const fetchStocksOnce = singleFlight(() => fetchStocks());
+
 function stockNewsCache(symbol: string) {
   let c = stockNewsCaches.get(symbol);
   if (!c) { c = makeCache<StockNewsItem[]>(5 * 60_000); stockNewsCaches.set(symbol, c); }
@@ -1234,7 +1255,7 @@ export async function fetchStocks(): Promise<EGXStockResponse[]> {
 export async function getCachedPrices(): Promise<MarketPricesResponse> {
   const cached = pricesCache.get();
   if (cached) return cached;
-  const data = await fetchPrices();
+  const data = await fetchPricesOnce();
   pricesCache.set(data);
   return data;
 }
@@ -1242,7 +1263,7 @@ export async function getCachedPrices(): Promise<MarketPricesResponse> {
 export async function getCachedStocks(): Promise<EGXStockResponse[]> {
   const cached = stocksCache.get();
   if (cached) return cached;
-  const data = await fetchStocks();
+  const data = await fetchStocksOnce();
   stocksCache.set(data);
   return data;
 }
@@ -1481,7 +1502,7 @@ router.get("/markets/prices", async (req, res) => {
   const cached = pricesCache.get();
   if (cached) { res.setHeader("X-Cache", "HIT"); res.json(cached); return; }
   try {
-    const data = await fetchPrices();
+    const data = await fetchPricesOnce();
     pricesCache.set(data);
     res.setHeader("X-Cache", "MISS");
     res.json(data);
@@ -1504,7 +1525,7 @@ router.get("/markets/stocks", async (req, res) => {
   const cached = stocksCache.get();
   if (cached) { res.setHeader("X-Cache", "HIT"); res.json(cached); return; }
   try {
-    const data = await fetchStocks();
+    const data = await fetchStocksOnce();
     stocksCache.set(data);
     res.setHeader("X-Cache", "MISS");
     res.json(data);
