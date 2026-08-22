@@ -95,7 +95,12 @@ function fmtEGP(n: number): string {
 }
 function fmtK(n: number): string {
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  if (Math.abs(n) >= 1_000) {
+    // 999,999 rounds to 1000.0 at this precision, which would misleadingly
+    // print as "1000K" — promote to the M tier instead.
+    if (Math.abs(Number((n / 1_000).toFixed(1))) >= 1000) return `${(n / 1_000_000).toFixed(1)}M`;
+    return `${(n / 1_000).toFixed(1)}K`;
+  }
   return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
 

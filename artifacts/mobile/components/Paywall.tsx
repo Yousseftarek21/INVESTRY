@@ -1,40 +1,70 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
+import Purchases, { PURCHASES_ERROR_CODE, type PurchasesPackage } from 'react-native-purchases';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useStableGetToken } from '@/hooks/useStableGetToken';
 import { apiFetch } from '@/utils/api';
 import { useSubscription } from '@/context/SubscriptionContext';
+import { isIOSIAPAvailable, REVENUECAT_ENTITLEMENT_ID } from '@/utils/revenuecat';
 
 interface FeatureRow { icon: keyof typeof Feather.glyphMap; text: string }
 
-// Kept in sync by hand with subFromMonthly/subFromAnnual's display text
-// (i18n/index.ts) — only used here to compute the "save X% vs monthly"
-// badge, not sent anywhere; the real amount charged is whatever
-// STRIPE_PRICE_ID_MONTHLY/ANNUAL resolve to server-side.
+// Fallback display numbers for the Android/web Stripe path only — kept in
+// sync by hand with subFromMonthly/subFromAnnual's display text
+// (i18n/index.ts). On iOS the real price always comes from the App Store via
+// RevenueCat (pkg.product.priceString/pricePerMonthString below), never
+// these constants — Apple requires showing its own store price, not a
+// custom one.
 const MONTHLY_PRICE = 89;
 const ANNUAL_PRICE = 852; // 71/month × 12
-const ANNUAL_SAVINGS_PCT = Math.round((1 - (ANNUAL_PRICE / 12) / MONTHLY_PRICE) * 100);
+const FALLBACK_SAVINGS_PCT = Math.round((1 - (ANNUAL_PRICE / 12) / MONTHLY_PRICE) * 100);
 
-// Opens the website's Stripe Checkout in an in-app browser — the same
-// create-checkout-session route the website itself calls, just triggered
-// from the app now. See SubscriptionContext.tsx for why this is a website
-// redirect rather than a native In-App Purchase.
+// iOS: native In-App Purchase via RevenueCat — required by App Store
+// Guideline 3.1.1 for an app that unlocks paid digital features (this app
+// was rejected twice for a website-checkout redirect; see
+// SubscriptionContext.tsx for the full history). Android/web: the existing
+// Stripe website-checkout redirect, which isn't subject to that rule.
 export function Paywall() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
   const getToken = useStableGetToken();
-  const { paywallVisible, closePaywall, refresh } = useSubscription();
+  const { paywallVisible, closePaywall, refresh, markProLocally } = useSubscription();
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
+
+  const iosIAP = isIOSIAPAvailable();
+  const [monthlyPkg, setMonthlyPkg] = useState<PurchasesPackage | null>(null);
+  const [annualPkg, setAnnualPkg] = useState<PurchasesPackage | null>(null);
+  const [offeringsLoading, setOfferingsLoading] = useState(iosIAP);
+  const [offeringsError, setOfferingsError] = useState(false);
+
+  useEffect(() => {
+    if (!iosIAP || !paywallVisible) return;
+    let active = true;
+    setOfferingsLoading(true);
+    setOfferingsError(false);
+    Purchases.getOfferings()
+      .then((offerings) => {
+        if (!active) return;
+        const current = offerings.current;
+        setMonthlyPkg(current?.monthly ?? null);
+        setAnnualPkg(current?.annual ?? null);
+        if (!current?.monthly && !current?.annual) setOfferingsError(true);
+      })
+      .catch(() => { if (active) setOfferingsError(true); })
+      .finally(() => { if (active) setOfferingsLoading(false); });
+    return () => { active = false; };
+  }, [iosIAP, paywallVisible]);
 
   const features: FeatureRow[] = [
     { icon: 'briefcase', text: t.subUnlimitedInvestments },
@@ -46,26 +76,65 @@ export function Paywall() {
     { icon: 'bar-chart-2', text: t.subPortfolioAnalytics },
   ];
 
+  const subscribeViaStripe = async () => {
+    const token = await getToken();
+    if (!token) { setError(true); return; }
+    const res = await apiFetch('/api/stripe/create-checkout-session', token, {
+      method: 'POST',
+      body: JSON.stringify({ billingPeriod }),
+    });
+    if (!res.ok) { setError(true); return; }
+    const { url } = (await res.json()) as { url?: string };
+    if (!url) { setError(true); return; }
+    await WebBrowser.openBrowserAsync(url);
+    // The user just came back from checkout (completed, cancelled, or
+    // just closed it) — re-check entitlement right away rather than
+    // waiting for the next app-foreground refetch that already exists in
+    // SubscriptionContext. No client-side proof of payment exists here
+    // (unlike IAP's customerInfo), so this can't optimistically unlock —
+    // just keep polling until Stripe's webhook lands.
+    reconcileWithServer();
+  };
+
+  // RevenueCat's own webhook to our backend is async — it can take a few
+  // seconds to land, so a single refresh() right after purchasing can still
+  // read the old "free" row. markProLocally() (called by the caller before
+  // this runs) already unlocked the UI instantly off StoreKit's own
+  // confirmation; this just keeps nudging the server-backed copy until it
+  // catches up, so a later cold start reads real, reconciled server state
+  // instead of a value that only ever existed on this device.
+  const reconcileWithServer = () => {
+    refresh();
+    [3000, 8000, 15000].forEach(delay => setTimeout(refresh, delay));
+  };
+
+  const subscribeViaIAP = async () => {
+    const pkg = billingPeriod === 'annual' ? annualPkg : monthlyPkg;
+    if (!pkg) { setError(true); return; }
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      if (customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID]) {
+        markProLocally(billingPeriod);
+        closePaywall();
+        Alert.alert(t.subPaymentSuccessTitle, t.subPaymentSuccessDesc);
+        reconcileWithServer();
+      }
+    } catch (err: any) {
+      // A user tapping Cancel on the App Store's own purchase sheet isn't an
+      // error state — stay on the paywall quietly instead of showing a banner.
+      if (err?.code !== PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+        setError(true);
+      }
+    }
+  };
+
   const subscribe = async () => {
     impact();
     setError(false);
     setLoading(true);
     try {
-      const token = await getToken();
-      if (!token) { setError(true); return; }
-      const res = await apiFetch('/api/stripe/create-checkout-session', token, {
-        method: 'POST',
-        body: JSON.stringify({ billingPeriod }),
-      });
-      if (!res.ok) { setError(true); return; }
-      const { url } = (await res.json()) as { url?: string };
-      if (!url) { setError(true); return; }
-      await WebBrowser.openBrowserAsync(url);
-      // The user just came back from checkout (completed, cancelled, or
-      // just closed it) — re-check entitlement right away rather than
-      // waiting for the next app-foreground refetch that already exists in
-      // SubscriptionContext.
-      refresh();
+      if (iosIAP) await subscribeViaIAP();
+      else await subscribeViaStripe();
     } catch {
       setError(true);
     } finally {
@@ -73,10 +142,49 @@ export function Paywall() {
     }
   };
 
+  // Apple requires a way to restore a prior purchase without paying again
+  // (e.g. reinstalling, or a family-shared subscription).
+  const restore = async () => {
+    if (restoring) return;
+    impact();
+    setError(false);
+    setRestoring(true);
+    try {
+      const customerInfo = await Purchases.restorePurchases();
+      if (customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID]) {
+        markProLocally(billingPeriod);
+        closePaywall();
+        Alert.alert(t.subRestoreSuccessTitle, t.subRestoreSuccessDesc);
+        reconcileWithServer();
+      } else {
+        setError(true);
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   if (!paywallVisible) return null;
 
   const isAnnual = billingPeriod === 'annual';
-  const priceWhole = isAnnual ? Math.round(ANNUAL_PRICE / 12) : MONTHLY_PRICE;
+  const activePkg = iosIAP ? (isAnnual ? annualPkg : monthlyPkg) : null;
+
+  // The big number: real App Store per-month-equivalent price on iOS (once
+  // loaded), the Stripe display number everywhere else.
+  const iosPriceWhole = activePkg ? (activePkg.product.pricePerMonthString ?? activePkg.product.priceString) : null;
+  const stripePriceWhole = isAnnual ? Math.round(ANNUAL_PRICE / 12) : MONTHLY_PRICE;
+
+  const savingsPct = iosIAP
+    ? (monthlyPkg && annualPkg && monthlyPkg.product.price > 0
+      ? Math.round((1 - (annualPkg.product.price / 12) / monthlyPkg.product.price) * 100)
+      : null)
+    : FALLBACK_SAVINGS_PCT;
+
+  const canSubscribe = iosIAP ? (!!activePkg && !offeringsLoading) : true;
+  const showLoadingPrice = iosIAP && offeringsLoading;
+  const showUnavailable = iosIAP && !offeringsLoading && (offeringsError || !activePkg);
 
   return (
     <Modal visible={paywallVisible} animationType="slide" transparent onRequestClose={closePaywall}>
@@ -105,10 +213,10 @@ export function Paywall() {
                   <Text style={[styles.billingLabel, { color: active ? colors.text : colors.mutedForeground }]}>
                     {period === 'monthly' ? t.subBillingMonthly : t.subBillingAnnual}
                   </Text>
-                  {period === 'annual' && (
+                  {period === 'annual' && !!savingsPct && savingsPct > 0 && (
                     <View style={[styles.savingsBadge, { backgroundColor: active ? colors.primary : colors.border }]}>
                       <Text style={[styles.savingsBadgeText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
-                        -{ANNUAL_SAVINGS_PCT}%
+                        -{savingsPct}%
                       </Text>
                     </View>
                   )}
@@ -125,9 +233,9 @@ export function Paywall() {
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFillObject}
             />
-            {isAnnual && (
+            {isAnnual && !!savingsPct && savingsPct > 0 && (
               <View style={[styles.ribbon, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.ribbonText, { color: colors.primaryForeground }]}>-{ANNUAL_SAVINGS_PCT}%</Text>
+                <Text style={[styles.ribbonText, { color: colors.primaryForeground }]}>-{savingsPct}%</Text>
               </View>
             )}
 
@@ -139,15 +247,23 @@ export function Paywall() {
             </View>
 
             <View style={styles.priceRow}>
-              <Text style={[styles.priceCurrency, { color: colors.text }]}>EGP</Text>
-              <Text style={[styles.priceWhole, { color: colors.text }]}>
-                {priceWhole}
-              </Text>
-              <Text style={[styles.pricePeriod, { color: colors.mutedForeground }]}>/{t.subBillingMonthly.toLowerCase()}</Text>
+              {showLoadingPrice ? (
+                <ActivityIndicator size="small" color={colors.text} />
+              ) : showUnavailable ? (
+                <Text style={[styles.pricePeriod, { color: colors.mutedForeground }]}>{t.subPricingUnavailable}</Text>
+              ) : (
+                <>
+                  {!iosIAP && <Text style={[styles.priceCurrency, { color: colors.text }]}>EGP</Text>}
+                  <Text style={[styles.priceWhole, { color: colors.text }]}>
+                    {iosIAP ? iosPriceWhole : stripePriceWhole}
+                  </Text>
+                  <Text style={[styles.pricePeriod, { color: colors.mutedForeground }]}>/{t.subBillingMonthly.toLowerCase()}</Text>
+                </>
+              )}
             </View>
-            {isAnnual && (
+            {isAnnual && !showLoadingPrice && !showUnavailable && (
               <Text style={[styles.billedAnnually, { color: colors.mutedForeground }]}>
-                {t.subFromAnnual} · {t.subSaveVsMonthly}
+                {iosIAP && activePkg ? activePkg.product.priceString : t.subFromAnnual} · {t.subSaveVsMonthly}
               </Text>
             )}
             <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>{t.subHeroSub}</Text>
@@ -169,9 +285,9 @@ export function Paywall() {
           )}
 
           <TouchableOpacity
-            style={[styles.cta, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
+            style={[styles.cta, { backgroundColor: colors.primary, opacity: (loading || !canSubscribe) ? 0.7 : 1 }]}
             onPress={subscribe}
-            disabled={loading}
+            disabled={loading || !canSubscribe}
             activeOpacity={0.85}
           >
             {loading ? (
@@ -182,6 +298,16 @@ export function Paywall() {
               </Text>
             )}
           </TouchableOpacity>
+
+          {iosIAP && (
+            <TouchableOpacity onPress={restore} disabled={restoring} style={styles.restoreBtn} activeOpacity={0.7}>
+              {restoring ? (
+                <ActivityIndicator size="small" color={colors.mutedForeground} />
+              ) : (
+                <Text style={[styles.restoreText, { color: colors.mutedForeground }]}>{t.subRestorePurchases}</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </View>
     </Modal>
@@ -212,9 +338,9 @@ const styles = StyleSheet.create({
   planRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 },
   planIcon: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   planName: { fontSize: 13, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.8 },
-  priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, minHeight: 44 },
   priceCurrency: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 6 },
-  priceWhole: { fontSize: 44, fontFamily: 'Inter_700Bold', letterSpacing: -1.2 },
+  priceWhole: { fontSize: 32, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
   pricePeriod: { fontSize: 15, fontFamily: 'Inter_400Regular', marginBottom: 7 },
   billedAnnually: { fontSize: 12.5, fontFamily: 'Inter_500Medium', marginTop: 3 },
   heroSub: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19, marginTop: 12 },
@@ -230,4 +356,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16, borderRadius: 16,
   },
   ctaText: { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  restoreBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
+  restoreText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
 });

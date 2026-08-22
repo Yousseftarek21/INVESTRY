@@ -10,6 +10,7 @@ import {
   clerkProxyMiddleware,
 } from "./middlewares/clerkProxyMiddleware";
 import stripeWebhookRouter from "./routes/stripeWebhook";
+import revenuecatWebhookRouter from "./routes/revenuecatWebhook";
 
 const app: Express = express();
 
@@ -46,6 +47,12 @@ app.use("/api", stripeWebhookRouter);
 app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// RevenueCat webhook — plain JSON (its own Authorization-header shared
+// secret, not a request-signature scheme like Stripe's), so it goes through
+// the normal body parsers above rather than needing the raw body Stripe's
+// route requires.
+app.use("/api", revenuecatWebhookRouter);
 
 // Generic per-IP ceiling — not per-user (auth happens further down the
 // chain), just enough to stop a single client from hammering the API.

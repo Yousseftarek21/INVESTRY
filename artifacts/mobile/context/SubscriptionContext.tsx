@@ -38,6 +38,14 @@ export interface SubscriptionContextValue {
   isLoading: boolean;
   /** Manually re-check entitlement against the backend (e.g. pull-to-refresh). */
   refresh: () => Promise<void>;
+  /**
+   * Optimistically flips this device to Pro the instant a purchase/restore
+   * is confirmed by RevenueCat/StoreKit — never make the user wait on the
+   * RevenueCat webhook reaching our server before they see Pro unlock.
+   * `refresh()` still runs in the background afterward to reconcile with
+   * the real server record once the webhook lands.
+   */
+  markProLocally: (billingPeriod: BillingPeriod) => void;
   /** Opens the Paywall modal (rendered once in app/_layout.tsx). */
   showPaywall: () => void;
   /** Paywall modal's own visibility state — consumed by app/_layout.tsx only. */
@@ -187,6 +195,15 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (loadedUserRef.current) runFetch(loadedUserRef.current);
   }, [runFetch]);
 
+  const markProLocally = useCallback((newBillingPeriod: BillingPeriod) => {
+    setPlan('pro');
+    setBillingPeriod(newBillingPeriod);
+    if (loadedUserRef.current) {
+      cachePlanRef.current(loadedUserRef.current, { plan: 'pro', billingPeriod: newBillingPeriod, betaUnlockAll })
+        .catch(() => null);
+    }
+  }, [betaUnlockAll]);
+
   const showPaywall = useCallback(() => setPaywallVisible(true), []);
   const closePaywall = useCallback(() => setPaywallVisible(false), []);
 
@@ -200,6 +217,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       isPro,
       isLoading,
       refresh,
+      markProLocally,
       showPaywall,
       paywallVisible,
       closePaywall,

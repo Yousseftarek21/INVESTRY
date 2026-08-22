@@ -7,7 +7,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable,
+  Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +27,7 @@ import { DetailModal } from '@/components/DetailModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
+import { isIOSIAPAvailable } from '@/utils/revenuecat';
 import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
 
@@ -145,6 +146,12 @@ function SubscriptionStatusCard() {
   const openManageSubscription = async () => {
     if (opening) return;
     haptic();
+    // A subscription bought via native IAP is Apple's to manage, not
+    // Stripe's — the billing portal has no record of it at all.
+    if (isIOSIAPAvailable()) {
+      Linking.openURL('itms-apps://apps.apple.com/account/subscriptions').catch(() => null);
+      return;
+    }
     setOpening(true);
     try {
       const token = await getToken();

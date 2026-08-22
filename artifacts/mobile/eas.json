@@ -25,7 +25,8 @@
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "api.investry.app",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "appl_pxmMxMJxbXPdDPpsPmzuJelorQC"
       }
     },
     "production": {
@@ -33,7 +34,8 @@
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_DOMAIN": "api.investry.app",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA"
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": "appl_pxmMxMJxbXPdDPpsPmzuJelorQC"
       }
     }
   },

@@ -28,6 +28,14 @@ function trimTrailingZeros(s: string): string {
 // whole.
 export function fmtCompact(n: number): string {
   if (n >= 1_000_000) return `${trimTrailingZeros((n / 1_000_000).toFixed(2))}M`;
-  if (n >= 1_000)     return `${trimTrailingZeros((n / 1_000).toFixed(2))}k`;
+  if (n >= 1_000) {
+    // A value like 999,999 divides to 999.999k, which .toFixed(2) rounds up
+    // to "1000.00" — that reads as "1000k" without ever having been a full
+    // million. Promote to the M tier instead of printing a four-digit "k".
+    if (Number(((n / 1_000).toFixed(2))) >= 1000) {
+      return `${trimTrailingZeros((n / 1_000_000).toFixed(2))}M`;
+    }
+    return `${trimTrailingZeros((n / 1_000).toFixed(2))}k`;
+  }
   return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
