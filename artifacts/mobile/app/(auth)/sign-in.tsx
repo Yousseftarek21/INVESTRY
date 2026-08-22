@@ -494,10 +494,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
     alignSelf: 'center', marginTop: 8,
   },
-  headerWrap: { gap: 6, marginBottom: 4 },
+  headerWrap: { gap: 6, marginBottom: 4, alignItems: 'center' },
   appLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 2.5 },
-  title: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -0.8 },
-  subtitle: { fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 22 },
+  title: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -0.8, textAlign: 'center' },
+  subtitle: { fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 22, textAlign: 'center' },
 
   socialBtn: {
     height: 52, borderRadius: 16, borderWidth: 1,
