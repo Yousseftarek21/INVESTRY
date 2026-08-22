@@ -75,10 +75,11 @@ interface User {
   weeklyEnabled: boolean;
   lastDaily: string | null;
   lastWeekly: string | null;
+  isPro: boolean;
 }
 
 async function sendDaily(u: User, today: string): Promise<void> {
-  if (!u.dailyEnabled || !u.pushToken || u.lastDaily === today) return;
+  if (!u.isPro || !u.dailyEnabled || !u.pushToken || u.lastDaily === today) return;
 
   const current = await snapshotOnOrBefore(u.id, today);
   const baseline = await priorSnapshot(u.id, today);
@@ -92,7 +93,7 @@ async function sendDaily(u: User, today: string): Promise<void> {
 }
 
 async function sendWeekly(u: User, today: string): Promise<void> {
-  if (!u.weeklyEnabled || !u.pushToken || u.lastWeekly === today) return;
+  if (!u.isPro || !u.weeklyEnabled || !u.pushToken || u.lastWeekly === today) return;
   if (cairoWeekday() !== WEEKLY_WEEKDAY) return;
 
   const current = await snapshotOnOrBefore(u.id, today);
@@ -111,7 +112,11 @@ async function checkAllUsers(): Promise<void> {
   running = true;
   try {
     const today = cairoDateString();
-    const users = await db
+    // Daily/weekly summaries are Pro features — betaUnlockAll mirrors the
+    // same escape hatch /api/subscription uses so beta testers still see
+    // it work without needing a real Stripe subscription.
+    const betaUnlockAll = process.env.BETA_UNLOCK_ALL === "true";
+    const rows = await db
       .select({
         id: usersTable.id,
         pushToken: usersTable.pushToken,
@@ -119,8 +124,10 @@ async function checkAllUsers(): Promise<void> {
         weeklyEnabled: usersTable.weeklySummaryEnabled,
         lastDaily: usersTable.lastDailySummaryDate,
         lastWeekly: usersTable.lastWeeklySummaryDate,
+        plan: usersTable.plan,
       })
       .from(usersTable);
+    const users: User[] = rows.map(r => ({ ...r, isPro: r.plan === "pro" || betaUnlockAll }));
 
     for (const u of users) {
       try {

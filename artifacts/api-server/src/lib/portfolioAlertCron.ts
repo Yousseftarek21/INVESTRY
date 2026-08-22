@@ -159,13 +159,17 @@ async function checkAllUsers(): Promise<void> {
   running = true;
   try {
     const today = tradingDayKey();
+    // Portfolio alert pushes are a Pro feature — betaUnlockAll mirrors the
+    // same escape hatch /api/subscription uses.
+    const betaUnlockAll = process.env.BETA_UNLOCK_ALL === "true";
     const users = await db
-      .select({ id: usersTable.id, pushToken: usersTable.pushToken, alertsEnabled: usersTable.portfolioAlertsEnabled })
+      .select({ id: usersTable.id, pushToken: usersTable.pushToken, alertsEnabled: usersTable.portfolioAlertsEnabled, plan: usersTable.plan })
       .from(usersTable);
 
     for (const u of users) {
       try {
-        await checkUser(u.id, today, u.alertsEnabled ? u.pushToken : null);
+        const isPro = u.plan === "pro" || betaUnlockAll;
+        await checkUser(u.id, today, isPro && u.alertsEnabled ? u.pushToken : null);
       } catch (err) {
         logger.warn({ err, userId: u.id }, "Portfolio alert check failed for user");
       }

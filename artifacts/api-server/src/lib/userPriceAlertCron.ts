@@ -54,13 +54,20 @@ async function checkAllAlerts(): Promise<void> {
   if (running) return; // guard against overlap if a prior run is still in flight
   running = true;
   try {
+    // Price alert pushes are a Pro feature — betaUnlockAll mirrors the same
+    // escape hatch /api/subscription uses. Free users can't create an alert
+    // in the first place (FREE_LIMIT=0 in app/price-alerts.tsx), but this
+    // still guards any alert a now-downgraded user created while on Pro.
+    const betaUnlockAll = process.env.BETA_UNLOCK_ALL === "true";
     const [priceDict, alertRows, users] = await Promise.all([
       buildPricesDict(),
       db.select().from(priceAlertsTable),
-      db.select({ id: usersTable.id, pushToken: usersTable.pushToken, enabled: usersTable.priceAlertsEnabled }).from(usersTable).where(isNotNull(usersTable.pushToken)),
+      db.select({ id: usersTable.id, pushToken: usersTable.pushToken, enabled: usersTable.priceAlertsEnabled, plan: usersTable.plan }).from(usersTable).where(isNotNull(usersTable.pushToken)),
     ]);
 
-    const tokenByUser = new Map(users.filter(u => u.enabled).map(u => [u.id, u.pushToken as string]));
+    const tokenByUser = new Map(
+      users.filter(u => u.enabled && (u.plan === "pro" || betaUnlockAll)).map(u => [u.id, u.pushToken as string])
+    );
 
     for (const row of alertRows) {
       try {

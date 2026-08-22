@@ -178,9 +178,6 @@ function SubscriptionStatusCard() {
         </View>
         <View style={sub.info}>
           <Text style={[sub.title, { color: colors.text }]}>{isPro ? t.subCurrentPlanPro : t.subCurrentPlanFree}</Text>
-          <Text style={[sub.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
-            {isPro ? t.subManageSubscription : `${t.subUpgradeToProDesc} · ${t.subFromYearlyPro}`}
-          </Text>
         </View>
         {isPro ? (
           <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
@@ -199,7 +196,6 @@ const sub = StyleSheet.create({
   iconWrap: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1, gap: 3, minWidth: 0 },
   title: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  subtitle: { fontSize: 12.5, fontFamily: 'Inter_400Regular' },
   cta: { borderRadius: 11, paddingHorizontal: 14, paddingVertical: 9 },
   ctaTxt: { fontSize: 13, fontFamily: 'Inter_700Bold' },
 });

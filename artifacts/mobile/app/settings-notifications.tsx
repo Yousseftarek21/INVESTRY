@@ -7,6 +7,8 @@ import { backChevron } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useAppSettings } from '@/context/AppSettingsContext';
+import { useSubscription } from '@/context/SubscriptionContext';
+import { LockedFeatureCard } from '@/components/LockedFeatureCard';
 import { Sect, NavRow, ToggleRow, settingsScreenStyles as s } from '@/components/SettingsPrimitives';
 
 export default function SettingsNotificationsScreen() {
@@ -14,6 +16,7 @@ export default function SettingsNotificationsScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { notifications, setNotification } = useAppSettings();
+  const { featuresUnlocked } = useSubscription();
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -30,6 +33,11 @@ export default function SettingsNotificationsScreen() {
           <View style={{ width: 22 }} />
         </View>
 
+        {!featuresUnlocked ? (
+          <View style={{ flex: 1, padding: 24 }}>
+            <LockedFeatureCard feature={t.settingsCatNotifications} description={t.settingsCatNotificationsSub} fullScreen />
+          </View>
+        ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: botPad + 32 }]} showsVerticalScrollIndicator={false}>
           <Sect label={t.settingsSectNotifications}>
             <ToggleRow icon="bell" iconBg="#F59E0B" label={t.priceAlertsLabel} sublabel={t.priceAlertsDesc} value={notifications.priceAlerts} onChange={v => setNotification('priceAlerts', v)} />
@@ -42,6 +50,7 @@ export default function SettingsNotificationsScreen() {
             <ToggleRow icon="calendar" iconBg="#10B981" label={t.weeklyReportLabel} sublabel={t.weeklyReportDesc} value={notifications.weeklySummary} onChange={v => setNotification('weeklySummary', v)} last />
           </Sect>
         </ScrollView>
+        )}
       </View>
     </>
   );
