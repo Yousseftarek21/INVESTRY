@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { forwardArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -32,40 +33,53 @@ export default function WelcomeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
   const slideAnim = useRef(new Animated.Value(1)).current;
+  const cardAnim = useRef(new Animated.Value(1)).current;
   const screenAnim = useRef(new Animated.Value(0)).current;
 
+  // Five slides: what the app actually does today, roughly in the order a
+  // new user would care about it — asset tracking first, the differentiated
+  // AI/gamification features next (a more compelling Pro hook than a bare
+  // "upgrade" pitch), privacy last as the trust close.
   const SLIDES = useMemo(() => [
     {
       id: '1',
-      icon: 'award' as const,
+      icon: 'layers' as const,
       iconColor: '#C9A227',
-      iconBg: '#C9A22718',
+      eyebrow: t.onboardSlide1Eyebrow,
       title: t.onboardSlide1Title,
       subtitle: t.onboardSlide1Sub,
     },
     {
       id: '2',
-      icon: 'bar-chart-2' as const,
-      iconColor: '#4A9EFF',
-      iconBg: '#4A9EFF18',
+      icon: 'pie-chart' as const,
+      iconColor: '#00D4AA',
+      eyebrow: t.onboardSlide2Eyebrow,
       title: t.onboardSlide2Title,
       subtitle: t.onboardSlide2Sub,
     },
     {
       id: '3',
-      icon: 'pie-chart' as const,
-      iconColor: '#00D4AA',
-      iconBg: '#00D4AA18',
+      icon: 'cpu' as const,
+      iconColor: '#4A9EFF',
+      eyebrow: t.onboardSlide3Eyebrow,
       title: t.onboardSlide3Title,
       subtitle: t.onboardSlide3Sub,
     },
     {
       id: '4',
-      icon: 'shield' as const,
-      iconColor: '#4A9EFF',
-      iconBg: '#4A9EFF18',
+      icon: 'award' as const,
+      iconColor: '#C9A227',
+      eyebrow: t.onboardSlide4Eyebrow,
       title: t.onboardSlide4Title,
       subtitle: t.onboardSlide4Sub,
+    },
+    {
+      id: '5',
+      icon: 'shield' as const,
+      iconColor: '#4A9EFF',
+      eyebrow: t.onboardSlide5Eyebrow,
+      title: t.onboardSlide5Title,
+      subtitle: t.onboardSlide5Sub,
     },
   ], [t]);
 
@@ -84,15 +98,15 @@ export default function WelcomeScreen() {
   };
 
   const goToSlide = (nextIndex: number) => {
-    Animated.timing(slideAnim, {
-      toValue: 0, duration: 150,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, { toValue: 0, duration: 150, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(cardAnim, { toValue: 0.94, duration: 150, useNativeDriver: Platform.OS !== 'web' }),
+    ]).start(() => {
       setCurrentIndex(nextIndex);
-      Animated.timing(slideAnim, {
-        toValue: 1, duration: 220,
-        useNativeDriver: Platform.OS !== 'web',
-      }).start();
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 1, duration: 260, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.spring(cardAnim, { toValue: 1, friction: 7, tension: 60, useNativeDriver: Platform.OS !== 'web' }),
+      ]).start();
     });
   };
 
@@ -134,6 +148,12 @@ export default function WelcomeScreen() {
   if (showWelcome) {
     return (
       <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenAnim }]}>
+        <ExpoLinearGradient
+          colors={[colors.primary + '14', colors.background + '00']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 0.55 }}
+          style={StyleSheet.absoluteFillObject}
+        />
         <View style={[styles.welcomeInner, { paddingTop: topPad + 40, paddingBottom: botPad + 20 }]}>
           <View style={styles.logoWrap}>
             <View style={[styles.logoRing2, { borderColor: colors.primary + '14' }]} />
@@ -180,16 +200,39 @@ export default function WelcomeScreen() {
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenAnim }]}>
-      <View style={[styles.skipRow, { paddingTop: topPad + 12 }]}>
+      <View style={[styles.topRow, { paddingTop: topPad + 12 }]}>
+        <View style={styles.stepRow}>
+          {SLIDES.map((s, i) => (
+            <View
+              key={s.id}
+              style={[
+                styles.stepSeg,
+                { backgroundColor: i <= currentIndex ? colors.primary : colors.muted },
+              ]}
+            />
+          ))}
+        </View>
         <Pressable onPress={handleSkip} style={[styles.skipBtn, { backgroundColor: colors.muted }]}>
           <Text style={[styles.skipText, { color: colors.mutedForeground }]}>{t.skip}</Text>
         </Pressable>
       </View>
 
       <Animated.View style={[styles.slide, { opacity: slideAnim }]}>
-        <View style={[styles.slideIconWrap, { backgroundColor: slide.iconBg, borderColor: slide.iconColor + '30' }]}>
-          <Feather name={slide.icon} size={48} color={slide.iconColor} />
-        </View>
+        <Animated.View style={{ transform: [{ scale: cardAnim }] }}>
+          <View style={[styles.heroCard, { borderColor: slide.iconColor + '35' }]}>
+            <ExpoLinearGradient
+              colors={[slide.iconColor + '22', slide.iconColor + '06']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={[styles.slideIconWrap, { backgroundColor: slide.iconColor + '1E' }]}>
+              <Feather name={slide.icon} size={38} color={slide.iconColor} />
+            </View>
+          </View>
+        </Animated.View>
+
+        <Text style={[styles.slideEyebrow, { color: slide.iconColor }]}>{slide.eyebrow}</Text>
         <Text style={[styles.slideTitle, { color: colors.text }]}>{slide.title}</Text>
         <Text style={[styles.slideSubtitle, { color: colors.mutedForeground }]}>{slide.subtitle}</Text>
       </Animated.View>
@@ -229,19 +272,30 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  skipRow: { alignItems: 'flex-end', paddingHorizontal: 24 },
+  topRow: {
+    paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', gap: 16,
+  },
+  stepRow: { flex: 1, flexDirection: 'row', gap: 5 },
+  stepSeg: { flex: 1, height: 3, borderRadius: 2 },
   skipBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
   skipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
 
   slide: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 40, gap: 24,
+    paddingHorizontal: 36, gap: 14,
+  },
+  heroCard: {
+    width: 176, height: 176, borderRadius: 40, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    marginBottom: 12,
   },
   slideIconWrap: {
-    width: 120, height: 120, borderRadius: 36, borderWidth: 1.5,
+    width: 84, height: 84, borderRadius: 26,
     alignItems: 'center', justifyContent: 'center',
   },
-  slideTitle: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.8, textAlign: 'center' },
+  slideEyebrow: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 2, textTransform: 'uppercase' },
+  slideTitle: { fontSize: 27, fontFamily: 'Inter_700Bold', letterSpacing: -0.7, textAlign: 'center', marginTop: 2 },
   slideSubtitle: { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 24, textAlign: 'center' },
 
   footer: { paddingHorizontal: 32, gap: 20, alignItems: 'center' },

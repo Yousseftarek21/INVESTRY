@@ -8,6 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useSignUp, useSSO, useClerk } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { backArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -195,8 +196,14 @@ export default function SignUpScreen() {
   if (needsVerification && !verificationDismissed) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ExpoLinearGradient
+          colors={[colors.primary + '10', colors.background + '00']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 0.4 }}
+          style={StyleSheet.absoluteFillObject}
+        />
         <View style={[styles.inner, { paddingTop: topPad + 24, paddingBottom: botPad + 24, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}>
-          <Pressable onPress={() => setVerificationDismissed(true)} style={styles.backBtn}>
+          <Pressable onPress={() => setVerificationDismissed(true)} style={[styles.backBtn, { backgroundColor: colors.muted }]}>
             <Feather name={backArrow()} size={20} color={colors.text} />
           </Pressable>
           <View style={styles.iconWrap}>
@@ -259,13 +266,19 @@ export default function SignUpScreen() {
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+      <ExpoLinearGradient
+        colors={[colors.primary + '10', colors.background + '00']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={StyleSheet.absoluteFillObject}
+      />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={[styles.inner, { paddingTop: topPad + 16, paddingBottom: botPad + 40, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.muted }]}>
             <Feather name={backArrow()} size={20} color={colors.text} />
           </Pressable>
 
@@ -426,7 +439,7 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { paddingHorizontal: 24, gap: 16 },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  backBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   headerWrap: { gap: 6, marginBottom: 4 },
   appLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 2.5 },
   title: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -0.8 },
