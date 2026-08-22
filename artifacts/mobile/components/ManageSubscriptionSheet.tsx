@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Purchases from 'react-native-purchases';
@@ -9,6 +9,12 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { REVENUECAT_ENTITLEMENT_ID } from '@/utils/revenuecat';
 
 interface Props { visible: boolean; onClose: () => void }
+interface FeatureRow { icon: keyof typeof Feather.glyphMap; text: string }
+
+// Matches the green used for the Pro state on the Settings card
+// (SubscriptionStatusCard) — kept in sync by hand since it's a deliberate
+// one-off accent, not the theme's own `colors.green` token.
+const PRO_ACCENT = '#22C55E';
 
 // Shown before handing an iOS Pro subscriber off to Apple's own
 // subscription-management screen — Apple requires the actual cancel action
@@ -59,6 +65,16 @@ export function ManageSubscriptionSheet({ visible, onClose }: Props) {
     ? new Date(renewalDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
 
+  const features: FeatureRow[] = [
+    { icon: 'briefcase', text: t.subUnlimitedInvestments },
+    { icon: 'credit-card', text: t.subUnlimitedCash },
+    { icon: 'target', text: t.subUnlimitedGoals },
+    { icon: 'bell', text: t.subNotificationsFull },
+    { icon: 'cpu', text: t.subAiAssistantFull },
+    { icon: 'trending-up', text: t.subMarketIntelligence },
+    { icon: 'bar-chart-2', text: t.subPortfolioAnalytics },
+  ];
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
@@ -76,16 +92,16 @@ export function ManageSubscriptionSheet({ visible, onClose }: Props) {
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : (
-          <View style={styles.body}>
-            <View style={[styles.planCard, { borderColor: colors.primary + '3A', backgroundColor: colors.primary + '10' }]}>
-              <View style={[styles.planIcon, { backgroundColor: colors.primary + '22' }]}>
-                <Feather name="award" size={18} color={colors.primary} />
+          <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
+            <View style={[styles.planCard, { borderColor: PRO_ACCENT + '3A', backgroundColor: PRO_ACCENT + '10' }]}>
+              <View style={[styles.planIcon, { backgroundColor: PRO_ACCENT + '22' }]}>
+                <Feather name="award" size={18} color={PRO_ACCENT} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.planName, { color: colors.text }]}>
                   {t.subComparePro}{billingPeriodLabel ? ` — ${billingPeriodLabel}` : ''}
                 </Text>
-                <Text style={[styles.planStatus, { color: colors.green }]}>{t.subStatusActive}</Text>
+                <Text style={[styles.planStatus, { color: PRO_ACCENT }]}>{t.subStatusActive}</Text>
               </View>
             </View>
 
@@ -107,17 +123,35 @@ export function ManageSubscriptionSheet({ visible, onClose }: Props) {
               </View>
             )}
 
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t.subWhatsIncluded}</Text>
+            {features.map(f => (
+              <View key={f.text} style={styles.featureRow}>
+                <View style={[styles.featureIcon, { backgroundColor: colors.green + '20' }]}>
+                  <Feather name="check" size={11} color={colors.green} />
+                </View>
+                <Text style={[styles.featureText, { color: colors.text }]}>{f.text}</Text>
+              </View>
+            ))}
+
             <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.subManageHint}</Text>
 
             <TouchableOpacity
-              style={[styles.cta, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[styles.cta, { backgroundColor: colors.red + '15', borderColor: colors.red + '35' }]}
               onPress={openAppleSettings}
               activeOpacity={0.85}
             >
-              <Text style={[styles.ctaText, { color: colors.text }]}>{t.subManageInAppStore}</Text>
-              <Feather name="external-link" size={15} color={colors.mutedForeground} />
+              <Text style={[styles.ctaText, { color: colors.red }]}>{t.subCancelSubscription}</Text>
             </TouchableOpacity>
-          </View>
+
+            <TouchableOpacity
+              style={styles.secondaryCta}
+              onPress={openAppleSettings}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.secondaryCtaText, { color: colors.mutedForeground }]}>{t.subManageInAppStore}</Text>
+              <Feather name="external-link" size={13} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </ScrollView>
         )}
       </View>
     </Modal>
@@ -126,7 +160,7 @@ export function ManageSubscriptionSheet({ visible, onClose }: Props) {
 
 const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '85%', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 4 },
   header: {
     paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8,
@@ -135,7 +169,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontFamily: 'Inter_700Bold' },
   close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   loadingWrap: { paddingVertical: 60, alignItems: 'center' },
-  body: { paddingHorizontal: 20, paddingTop: 6, gap: 4 },
+  body: { paddingHorizontal: 20, paddingTop: 6 },
+  bodyContent: { gap: 4, paddingBottom: 8 },
 
   planCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -152,11 +187,24 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
   rowValue: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 
-  hint: { fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 18, marginTop: 16, marginBottom: 16 },
+  sectionLabel: {
+    fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 1, textTransform: 'uppercase',
+    marginTop: 20, marginBottom: 10,
+  },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  featureIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  featureText: { flex: 1, fontSize: 13.5, fontFamily: 'Inter_500Medium', lineHeight: 19 },
+
+  hint: { fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 18, marginTop: 20, marginBottom: 16 },
 
   cta: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingVertical: 15, borderRadius: 16, borderWidth: 1,
   },
-  ctaText: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  ctaText: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  secondaryCta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 14,
+  },
+  secondaryCtaText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
 });
