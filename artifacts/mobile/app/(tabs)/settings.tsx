@@ -7,7 +7,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
+  Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +28,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { isIOSIAPAvailable } from '@/utils/revenuecat';
+import { ManageSubscriptionSheet } from '@/components/ManageSubscriptionSheet';
 import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
 
@@ -142,14 +143,19 @@ function SubscriptionStatusCard() {
   const { getToken } = useAuth();
   const { isPro, showPaywall } = useSubscription();
   const [opening, setOpening] = useState(false);
+  const [manageSheetVisible, setManageSheetVisible] = useState(false);
 
   const openManageSubscription = async () => {
     if (opening) return;
     haptic();
     // A subscription bought via native IAP is Apple's to manage, not
-    // Stripe's — the billing portal has no record of it at all.
+    // Stripe's — the billing portal has no record of it at all. Show the
+    // in-app summary sheet first (plan, renewal date, auto-renew) rather
+    // than sending the user straight to iOS Settings with no context —
+    // the actual cancel action still has to happen there (Apple requires
+    // it), but there's no reason to skip explaining what they're cancelling.
     if (isIOSIAPAvailable()) {
-      Linking.openURL('itms-apps://apps.apple.com/account/subscriptions').catch(() => null);
+      setManageSheetVisible(true);
       return;
     }
     setOpening(true);
@@ -168,33 +174,36 @@ function SubscriptionStatusCard() {
   const accent = isPro ? '#22C55E' : colors.primary;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={isPro ? openManageSubscription : () => { haptic(); showPaywall(); }}
-      style={[sub.card, { borderColor: accent + '3A' }]}
-    >
-      <ExpoLinearGradient
-        colors={isPro ? [accent + '20', accent + '08'] : [colors.primary + '22', colors.primary + '08']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <View style={sub.row}>
-        <View style={[sub.iconWrap, { backgroundColor: accent + '22' }]}>
-          <Feather name={isPro ? 'award' : 'credit-card'} size={18} color={accent} />
-        </View>
-        <View style={sub.info}>
-          <Text style={[sub.title, { color: colors.text }]}>{isPro ? t.subCurrentPlanPro : t.subCurrentPlanFree}</Text>
-        </View>
-        {isPro ? (
-          <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
-        ) : (
-          <View style={[sub.cta, { backgroundColor: colors.primary, opacity: opening ? 0.6 : 1 }]}>
-            <Text style={[sub.ctaTxt, { color: colors.primaryForeground }]}>{t.subUpgradeTo} {t.subComparePro}</Text>
+    <>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={isPro ? openManageSubscription : () => { haptic(); showPaywall(); }}
+        style={[sub.card, { borderColor: accent + '3A' }]}
+      >
+        <ExpoLinearGradient
+          colors={isPro ? [accent + '20', accent + '08'] : [colors.primary + '22', colors.primary + '08']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={sub.row}>
+          <View style={[sub.iconWrap, { backgroundColor: accent + '22' }]}>
+            <Feather name={isPro ? 'award' : 'credit-card'} size={18} color={accent} />
           </View>
-        )}
-      </View>
-    </TouchableOpacity>
+          <View style={sub.info}>
+            <Text style={[sub.title, { color: colors.text }]}>{isPro ? t.subCurrentPlanPro : t.subCurrentPlanFree}</Text>
+          </View>
+          {isPro ? (
+            <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
+          ) : (
+            <View style={[sub.cta, { backgroundColor: colors.primary, opacity: opening ? 0.6 : 1 }]}>
+              <Text style={[sub.ctaTxt, { color: colors.primaryForeground }]}>{t.subUpgradeTo} {t.subComparePro}</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+      <ManageSubscriptionSheet visible={manageSheetVisible} onClose={() => setManageSheetVisible(false)} />
+    </>
   );
 }
 const sub = StyleSheet.create({
