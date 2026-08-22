@@ -149,24 +149,30 @@ export default function WelcomeScreen() {
     return (
       <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenAnim }]}>
         <ExpoLinearGradient
-          colors={[colors.primary + '14', colors.background + '00']}
+          colors={[colors.primary + '2E', colors.primary + '08', colors.background + '00']}
+          locations={[0, 0.35, 0.75]}
           start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.55 }}
+          end={{ x: 0.5, y: 0.62 }}
           style={StyleSheet.absoluteFillObject}
         />
-        <View style={[styles.welcomeInner, { paddingTop: topPad + 40, paddingBottom: botPad + 20 }]}>
-          <View style={styles.logoWrap}>
-            <View style={[styles.logoRing2, { borderColor: colors.primary + '14' }]} />
-            <View style={[styles.logoRing1, { borderColor: colors.primary + '28' }]} />
-            <View style={[styles.logoCircle, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="trending-up" size={36} color={colors.primary} />
+        <View style={[styles.welcomeInner, { paddingTop: topPad + 32, paddingBottom: botPad + 20 }]}>
+          <View style={[styles.logoHero, { borderColor: colors.primary + '35' }]}>
+            <ExpoLinearGradient
+              colors={[colors.primary + '2A', colors.primary + '08']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={[styles.logoInner, { backgroundColor: colors.primary + '1E' }]}>
+              <Feather name="trending-up" size={34} color={colors.primary} />
             </View>
           </View>
 
           <View style={styles.welcomeText}>
             <Text style={[styles.welcomeApp, { color: colors.primary }]}>INVESTRY</Text>
             <Text style={[styles.welcomeTitle, { color: colors.text }]}>
-              {t.welcomeTagline}
+              {t.welcomeTaglineLine1}
+              <Text style={{ color: colors.primary }}>{t.welcomeTaglineLine2}</Text>
             </Text>
             <Text style={[styles.welcomeDesc, { color: colors.mutedForeground }]}>
               {t.welcomeDesc}
@@ -175,7 +181,7 @@ export default function WelcomeScreen() {
 
           <View style={styles.welcomeActions}>
             <Pressable
-              style={[styles.btnPrimary, { backgroundColor: colors.primary }]}
+              style={[styles.btnPrimary, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
               onPress={() => router.push('/(auth)/sign-up' as any)}
             >
               <Text style={[styles.btnPrimaryText, { color: colors.primaryForeground }]}>{t.getStarted}</Text>
@@ -313,25 +319,24 @@ const styles = StyleSheet.create({
   getStartedText: { fontSize: 16, fontFamily: 'Inter_700Bold' },
 
   welcomeInner: { flex: 1, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'space-between' },
-  logoWrap: { alignItems: 'center', justifyContent: 'center', marginTop: 20 },
-  logoRing1: {
-    position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 1,
+  logoHero: {
+    width: 132, height: 132, borderRadius: 36, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    marginTop: 12,
   },
-  logoRing2: {
-    position: 'absolute', width: 210, height: 210, borderRadius: 105, borderWidth: 1,
-  },
-  logoCircle: {
-    width: 110, height: 110, borderRadius: 34, borderWidth: 1,
+  logoInner: {
+    width: 76, height: 76, borderRadius: 24,
     alignItems: 'center', justifyContent: 'center',
   },
-  welcomeText: { alignItems: 'center', gap: 10, marginTop: 8 },
+  welcomeText: { alignItems: 'center', gap: 10, marginTop: 20 },
   welcomeApp: { fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 3 },
-  welcomeTitle: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -0.8, textAlign: 'center', lineHeight: 38 },
+  welcomeTitle: { fontSize: 32, fontFamily: 'Inter_700Bold', letterSpacing: -0.8, textAlign: 'center', lineHeight: 40 },
   welcomeDesc: { fontSize: 15, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 24 },
   welcomeActions: { width: '100%', gap: 12 },
   btnPrimary: {
     height: 56, borderRadius: 18, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center', gap: 8,
+    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 6,
   },
   btnPrimaryText: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   btnSecondary: {

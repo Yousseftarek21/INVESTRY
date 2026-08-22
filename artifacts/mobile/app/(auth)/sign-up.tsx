@@ -197,9 +197,10 @@ export default function SignUpScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ExpoLinearGradient
-          colors={[colors.primary + '10', colors.background + '00']}
+          colors={[colors.primary + '26', colors.primary + '06', colors.background + '00']}
+          locations={[0, 0.3, 0.65]}
           start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 0.4 }}
+          end={{ x: 0.5, y: 0.45 }}
           style={StyleSheet.absoluteFillObject}
         />
         <View style={[styles.inner, { paddingTop: topPad + 24, paddingBottom: botPad + 24, paddingLeft: insets.left + 24, paddingRight: insets.right + 24 }]}>
@@ -267,9 +268,10 @@ export default function SignUpScreen() {
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim }]}>
       <ExpoLinearGradient
-        colors={[colors.primary + '10', colors.background + '00']}
+        colors={[colors.primary + '26', colors.primary + '06', colors.background + '00']}
+        locations={[0, 0.3, 0.65]}
         start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.4 }}
+        end={{ x: 0.5, y: 0.45 }}
         style={StyleSheet.absoluteFillObject}
       />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -282,6 +284,15 @@ export default function SignUpScreen() {
             <Feather name={backArrow()} size={20} color={colors.text} />
           </Pressable>
 
+          <View style={[styles.badgeHero, { borderColor: colors.primary + '35' }]}>
+            <ExpoLinearGradient
+              colors={[colors.primary + '2A', colors.primary + '08']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Feather name="user-plus" size={24} color={colors.primary} />
+          </View>
           <View style={styles.headerWrap}>
             <Text style={[styles.appLabel, { color: colors.primary }]}>INVESTRY</Text>
             <Text style={[styles.title, { color: colors.text }]}>{t.createAccount}</Text>
@@ -440,6 +451,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { paddingHorizontal: 24, gap: 16 },
   backBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  badgeHero: {
+    width: 56, height: 56, borderRadius: 18, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    alignSelf: 'center', marginTop: 8,
+  },
   headerWrap: { gap: 6, marginBottom: 4 },
   appLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 2.5 },
   title: { fontSize: 30, fontFamily: 'Inter_700Bold', letterSpacing: -0.8 },
