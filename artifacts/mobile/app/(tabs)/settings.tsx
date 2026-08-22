@@ -1,11 +1,14 @@
 /**
  * Settings — Investry
- * Polished account & preferences hub.
+ * Profile hub + a short category menu into focused sub-screens
+ * (app/settings-account.tsx, settings-appearance.tsx, settings-notifications.tsx,
+ * settings-portfolio.tsx, settings-privacy.tsx, settings-support.tsx) —
+ * previously one very long page with all ten sections expanded at once.
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Animated, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable,
-  ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
+  Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -13,309 +16,21 @@ import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { useAuth, useClerk, useUser } from '@clerk/expo';
+import { useClerk, useUser } from '@clerk/expo';
 import { Stack, useRouter } from 'expo-router';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { DetailModal } from '@/components/DetailModal';
-import { useAppSettings, ThemeMode, DisplayCurrency, ALL_DISPLAY_CURRENCIES } from '@/context/AppSettingsContext';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { useHoldings } from '@/context/HoldingsContext';
-import { useCash } from '@/context/CashContext';
-import { useMarketPrices } from '@/hooks/usePrices';
-import { Language } from '@/i18n';
-import { useSubscription } from '@/context/SubscriptionContext';
-import * as WebBrowser from 'expo-web-browser';
-import { exportPortfolioAsCsv, exportPortfolioAsPdf } from '@/utils/exportPortfolio';
-import { apiFetch } from '@/utils/api';
+import { Sect, NavRow } from '@/components/SettingsPrimitives';
 
 // Read live from the running binary/update instead of a hand-maintained
 // constant, so this can never silently drift out of sync with reality.
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 const COPYRIGHT_YEAR = new Date().getFullYear();
-
-// ─── Pulsing live dot ─────────────────────────────────────────────────────────
-
-function PulseDot({ color, size = 7 }: { color: string; size?: number }) {
-  const opacity = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(Animated.sequence([
-      Animated.timing(opacity, { toValue: 0.2, duration: 900, useNativeDriver: Platform.OS !== 'web' }),
-      Animated.timing(opacity, { toValue: 1,   duration: 900, useNativeDriver: Platform.OS !== 'web' }),
-    ])).start();
-  }, []);
-  return <Animated.View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity }} />;
-}
-
-// ─── Icon badge ────────────────────────────────────────────────────────────────
-
-function Bdg({ icon, bg }: { icon: keyof typeof Feather.glyphMap; bg: string }) {
-  return (
-    <View style={[bdg.wrap, { backgroundColor: bg }]}>
-      <Feather name={icon} size={15} color="#fff" />
-    </View>
-  );
-}
-const bdg = StyleSheet.create({
-  wrap: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-});
-
-// ─── Row divider ──────────────────────────────────────────────────────────────
-
-function Div({ left = 62 }: { left?: number }) {
-  const colors = useColors();
-  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: left }} />;
-}
-
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-
-function Sect({ label, children, noCard }: { label: string; children: React.ReactNode; noCard?: boolean }) {
-  const colors = useColors();
-  const content = noCard ? children : (
-    <View style={[sct.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      {children}
-    </View>
-  );
-  return (
-    <View style={sct.wrap}>
-      <Text style={[sct.label, { color: colors.mutedForeground }]}>{label}</Text>
-      {content}
-    </View>
-  );
-}
-const sct = StyleSheet.create({
-  wrap: { gap: 9 },
-  label: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.6, marginLeft: 5 },
-  card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-});
-
-// ─── Nav row ───────────────────────────────────────────────────────────────────
-
-function NavRow({
-  icon, iconBg, label, sublabel, value, badge, onPress, last, destructive,
-}: {
-  icon: keyof typeof Feather.glyphMap; iconBg: string; label: string;
-  sublabel?: string; value?: string; badge?: { text: string; color: string };
-  onPress?: () => void; last?: boolean; destructive?: boolean;
-}) {
-  const colors = useColors();
-  return (
-    <>
-      <TouchableOpacity
-        style={rw.row} onPress={onPress}
-        activeOpacity={onPress ? 0.5 : 1} disabled={!onPress}
-      >
-        <Bdg icon={icon} bg={iconBg} />
-        <View style={rw.body}>
-          <Text style={[rw.label, { color: destructive ? colors.red : colors.text }]}>{label}</Text>
-          {sublabel ? <Text style={[rw.sub, { color: colors.mutedForeground }]}>{sublabel}</Text> : null}
-        </View>
-        <View style={rw.trail}>
-          {badge ? (
-            <View style={[rw.badge, { backgroundColor: badge.color + '20', borderColor: badge.color + '40' }]}>
-              <Text style={[rw.badgeTxt, { color: badge.color }]}>{badge.text}</Text>
-            </View>
-          ) : null}
-          {value ? <Text style={[rw.val, { color: colors.mutedForeground }]}>{value}</Text> : null}
-          {onPress ? <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} /> : null}
-        </View>
-      </TouchableOpacity>
-      {!last && <Div />}
-    </>
-  );
-}
-const rw = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 14, minHeight: 56 },
-  body: { flex: 1, gap: 2 },
-  label: { fontSize: 15, fontFamily: 'Inter_400Regular' },
-  sub: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
-  trail: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  val: { fontSize: 14, fontFamily: 'Inter_400Regular' },
-  badge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2 },
-  badgeTxt: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
-});
-
-// ─── Toggle row ────────────────────────────────────────────────────────────────
-
-function ToggleRow({
-  icon, iconBg, label, sublabel, value, onChange, last,
-}: {
-  icon: keyof typeof Feather.glyphMap; iconBg: string; label: string;
-  sublabel?: string; value: boolean; onChange: (v: boolean) => void; last?: boolean;
-}) {
-  const colors = useColors();
-  return (
-    <>
-      <View style={rw.row}>
-        <Bdg icon={icon} bg={iconBg} />
-        <View style={rw.body}>
-          <Text style={[rw.label, { color: colors.text }]}>{label}</Text>
-          {sublabel ? <Text style={[rw.sub, { color: colors.mutedForeground }]}>{sublabel}</Text> : null}
-        </View>
-        <Switch
-          value={value} onValueChange={onChange}
-          trackColor={{ false: colors.muted, true: colors.primary }}
-          thumbColor={Platform.OS === 'android' ? (value ? colors.primary : colors.mutedForeground) : undefined}
-          ios_backgroundColor={colors.muted}
-        />
-      </View>
-      {!last && <Div />}
-    </>
-  );
-}
-
-// ─── Display currency picker ────────────────────────────────────────────────
-
-function CurrencyPickerModal({ visible, value, onSelect, onClose, shown, onToggleShown }: {
-  visible: boolean; value: DisplayCurrency; onSelect: (c: DisplayCurrency) => void; onClose: () => void;
-  shown: DisplayCurrency[]; onToggleShown: (list: DisplayCurrency[]) => void;
-}) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const t = useT();
-  if (!visible) return null;
-
-  // The switcher must always offer something, so the last remaining currency
-  // can't be turned off — its chip just stops responding rather than
-  // disappearing, which would be more confusing than an inert control.
-  const toggle = (c: DisplayCurrency) => {
-    const on = shown.includes(c);
-    if (on && shown.length === 1) return;
-    onToggleShown(on ? shown.filter(x => x !== c) : [...shown, c]);
-  };
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={mo.backdrop} onPress={onClose} />
-      <View style={[mo.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]}>
-        <View style={[mo.handle, { backgroundColor: colors.border }]} />
-        <View style={[mo.header, { borderBottomColor: colors.border }]}>
-          <Text style={[mo.title, { color: colors.text }]}>{t.currencyRowLabel}</Text>
-          <TouchableOpacity onPress={onClose} style={[mo.close, { backgroundColor: colors.muted }]}>
-            <Feather name="x" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={{ maxHeight: 460 }} contentContainerStyle={{ padding: 12, paddingBottom: 4 }}>
-          {/* Active currency — only the ones the switcher currently offers, so
-              this list and the portfolio card can never disagree. */}
-          {shown.map(c => {
-            const active = c === value;
-            return (
-              <TouchableOpacity
-                key={c}
-                onPress={() => { onSelect(c); onClose(); }}
-                style={[cp.row, active && { backgroundColor: colors.primary + '12' }]}
-                activeOpacity={0.7}
-              >
-                <Text style={[cp.label, { color: active ? colors.primary : colors.text }]}>{c}</Text>
-                {active && <Feather name="check" size={18} color={colors.primary} />}
-              </TouchableOpacity>
-            );
-          })}
-
-          <View style={[cp.divider, { backgroundColor: colors.border }]} />
-
-          <Text style={[cp.sectionLabel, { color: colors.text }]}>{t.currencySwitcherLabel}</Text>
-          <Text style={[cp.sectionHint, { color: colors.mutedForeground }]}>{t.currencySwitcherHint}</Text>
-
-          <View style={cp.chipWrap}>
-            {ALL_DISPLAY_CURRENCIES.map(c => {
-              const on = shown.includes(c);
-              const locked = on && shown.length === 1;
-              return (
-                <TouchableOpacity
-                  key={c}
-                  onPress={() => toggle(c)}
-                  disabled={locked}
-                  activeOpacity={0.7}
-                  style={[
-                    cp.chip,
-                    {
-                      backgroundColor: on ? colors.primary : colors.muted + '50',
-                      borderColor: on ? colors.primary : colors.border,
-                      opacity: locked ? 0.55 : 1,
-                    },
-                  ]}
-                >
-                  {on && <Feather name="check" size={12} color={colors.primaryForeground} style={{ marginRight: 5 }} />}
-                  <Text style={[cp.chipText, { color: on ? colors.primaryForeground : colors.mutedForeground }]}>{c}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </View>
-    </Modal>
-  );
-}
-const cp = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 15, borderRadius: 14 },
-  label: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 14, marginHorizontal: 2 },
-  sectionLabel: { fontSize: 14, fontFamily: 'Inter_600SemiBold', paddingHorizontal: 2 },
-  sectionHint: { fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 18, paddingHorizontal: 2, marginTop: 4, marginBottom: 12 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
-  chip: { flexDirection: 'row', alignItems: 'center', borderRadius: 11, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 13, paddingVertical: 9 },
-  chipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
-});
-
-// ─── Confirm modal (replaces Alert.alert on web) ────────────────────────────
-
-function ConfirmModal({ visible, title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onCancel }: {
-  visible: boolean; title: string; message: string;
-  confirmLabel?: string; danger?: boolean;
-  onConfirm: () => void; onCancel: () => void;
-}) {
-  const colors = useColors();
-  const t = useT();
-  if (!visible) return null;
-  return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onCancel}>
-      <View style={cm.overlay}>
-        <View style={[cm.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[cm.title, { color: colors.text }]}>{title}</Text>
-          <Text style={[cm.msg, { color: colors.mutedForeground }]}>{message}</Text>
-          <View style={cm.row}>
-            <TouchableOpacity onPress={onCancel} style={[cm.btn, { backgroundColor: colors.muted }]}>
-              <Text style={[cm.btnTxt, { color: colors.mutedForeground }]}>{t.cancelBtn}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={onConfirm}
-              style={[cm.btn, { backgroundColor: danger ? colors.red + '18' : colors.primary + '18', borderWidth: 1, borderColor: danger ? colors.red + '40' : colors.primary + '40' }]}
-            >
-              <Text style={[cm.btnTxt, { color: danger ? colors.red : colors.primary, fontFamily: 'Inter_600SemiBold' }]}>{confirmLabel}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const mo = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
-  handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 4 },
-  header: {
-    paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  title: { fontSize: 18, fontFamily: 'Inter_700Bold', flex: 1 },
-  close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  body: { padding: 24 },
-  content: { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 26 },
-});
-const cm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  card: { borderRadius: 20, borderWidth: 1, padding: 24, width: '100%', gap: 16 },
-  title: { fontSize: 18, fontFamily: 'Inter_700Bold' },
-  msg: { fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 22 },
-  row: { flexDirection: 'row', gap: 10 },
-  btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
-  btnTxt: { fontSize: 14, fontFamily: 'Inter_500Medium' },
-});
 
 // ─── Profile hero card ────────────────────────────────────────────────────────
 
@@ -550,193 +265,17 @@ const epm = StyleSheet.create({
   saveBtn: { borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 6 },
   saveBtnTxt: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 });
-
-// ─── Theme preview cards ───────────────────────────────────────────────────────
-
-function ThemeMiniPreview({ mode }: { mode: ThemeMode }) {
-  const bg   = mode === 'light' ? '#FFFFFF' : '#000000';
-  const card = mode === 'light' ? '#FDFBF7' : '#161616';
-  const a    = '#C9A227';
-  const r1   = mode === 'light' ? '#EBE5D8' : '#242426';
-  const r2   = mode === 'light' ? '#E0D8CA' : '#2C2C2E';
-  return (
-    <View style={[tm.preview, { backgroundColor: bg }]}>
-      <View style={[tm.topBar, { backgroundColor: a }]} />
-      <View style={[tm.fakeCard, { backgroundColor: card }]}>
-        <View style={[tm.line, { backgroundColor: a + '50', width: '55%' }]} />
-        <View style={[tm.lineNarrow, { backgroundColor: r1 }]} />
-        <View style={[tm.lineNarrow, { backgroundColor: r2, width: '60%' }]} />
-      </View>
-      <View style={tm.tabRow}>
-        {[0,1,2,3].map(i => (
-          <View key={i} style={[tm.tabDot, { backgroundColor: i === 0 ? a : r1 }]} />
-        ))}
-      </View>
-    </View>
-  );
-}
-const tm = StyleSheet.create({
-  preview: { height: 76, borderRadius: 12, overflow: 'hidden', padding: 7, justifyContent: 'space-between' },
-  topBar: { height: 4, borderRadius: 2, width: '60%', alignSelf: 'center', marginBottom: 2 },
-  fakeCard: { flex: 1, borderRadius: 7, padding: 6, gap: 4, marginBottom: 5 },
-  line: { height: 8, borderRadius: 4 },
-  lineNarrow: { height: 4, borderRadius: 2, width: '80%' },
-  tabRow: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 6 },
-  tabDot: { width: 14, height: 3, borderRadius: 2 },
-});
-
-const THEME_OPTS: { key: ThemeMode; label: string; icon: keyof typeof Feather.glyphMap }[] = [
-  { key: 'light',  label: 'Light',  icon: 'sun' },
-  { key: 'dark',   label: 'Dark',   icon: 'moon' },
-  { key: 'system', label: 'Auto',   icon: 'smartphone' },
-];
-
-function ThemePicker({ value, onChange }: { value: ThemeMode; onChange: (m: ThemeMode) => void }) {
-  const colors = useColors();
-  const t = useT();
-  const scales = useRef(THEME_OPTS.map(() => new Animated.Value(1))).current;
-
-  const themeLabels: Record<ThemeMode, string> = {
-    light: t.themeLight,
-    dark: t.themeDark,
-    system: t.themeAuto,
-  };
-
-  const tap = (key: ThemeMode, i: number) => {
-    onChange(key);
-    Animated.sequence([
-      Animated.timing(scales[i], { toValue: 0.93, duration: 70, useNativeDriver: Platform.OS !== 'web' }),
-      Animated.spring(scales[i],  { toValue: 1, useNativeDriver: Platform.OS !== 'web', speed: 22 }),
-    ]).start();
-  };
-
-  return (
-    <View style={[tpk.row, { paddingHorizontal: 14, paddingBottom: 16 }]}>
-      {THEME_OPTS.map((item, i) => {
-        const active = value === item.key;
-        return (
-          <Animated.View key={item.key} style={[tpk.cardWrap, { transform: [{ scale: scales[i] }] }]}>
-            <Pressable
-              onPress={() => tap(item.key, i)}
-              style={[tpk.card, {
-                borderColor: active ? colors.primary : colors.border,
-                borderWidth: active ? 2 : StyleSheet.hairlineWidth,
-                backgroundColor: colors.background,
-              }]}
-            >
-              <ThemeMiniPreview mode={item.key} />
-              <View style={tpk.labelRow}>
-                <Feather name={item.icon} size={11} color={active ? colors.primary : colors.mutedForeground} />
-                <Text style={[tpk.label, {
-                  color: active ? colors.primary : colors.mutedForeground,
-                  fontFamily: active ? 'Inter_700Bold' : 'Inter_500Medium',
-                }]}>{themeLabels[item.key]}</Text>
-              </View>
-              {active && (
-                <View style={[tpk.check, { backgroundColor: colors.primary }]}>
-                  <Feather name="check" size={8} color={colors.primaryForeground} />
-                </View>
-              )}
-            </Pressable>
-          </Animated.View>
-        );
-      })}
-    </View>
-  );
-}
-const tpk = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 10 },
-  cardWrap: { flex: 1 },
-  card: { borderRadius: 15, padding: 8, gap: 8, overflow: 'hidden' },
-  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
-  label: { fontSize: 12 },
-  check: { position: 'absolute', top: 8, end: 8, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-});
-
-// ─── Market status card ────────────────────────────────────────────────────────
-
-function MarketStatusCard({ onRefresh }: { onRefresh: () => void }) {
-  const colors = useColors();
-  const t = useT();
-  const { data: prices, dataUpdatedAt, isFetching } = useMarketPrices();
-
-  const lastUpdate = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    : '—';
-
-  const now  = new Date();
-  const day  = now.getUTCDay();
-  const mins = now.getUTCHours() * 60 + now.getUTCMinutes();
-  const egxOpen = day >= 0 && day <= 4 && mins >= 480 && mins < 750;
-  const ok = !!prices;
-
-  const StatusPair = ({ label, value, color }: { label: string; value: string; color?: string }) => (
-    <View style={msc.pair}>
-      <Text style={[msc.pairLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <Text style={[msc.pairValue, { color: color ?? colors.text }]}>{value}</Text>
-    </View>
-  );
-
-  return (
-    <View style={[msc.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={msc.header}>
-        <View style={msc.headerLeft}>
-          <View style={[msc.iconWrap, { backgroundColor: (ok ? colors.green : colors.red) + '1A' }]}>
-            <Feather name="activity" size={15} color={ok ? colors.green : colors.red} />
-          </View>
-          <View style={{ gap: 3 }}>
-            <Text style={[msc.title, { color: colors.text }]}>{t.marketStatus}</Text>
-            <View style={msc.liveRow}>
-              <PulseDot color={ok ? colors.green : colors.red} size={6} />
-              <Text style={[msc.liveLabel, { color: ok ? colors.green : colors.red }]}>
-                {ok ? t.connectedLabel : t.offlineLabel}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={[msc.refreshBtn, {
-            backgroundColor: isFetching ? colors.muted : colors.primary + '16',
-            borderColor: isFetching ? colors.border : colors.primary + '38',
-          }]}
-          onPress={onRefresh} activeOpacity={0.7} disabled={isFetching}
-        >
-          <Feather name="refresh-cw" size={13} color={isFetching ? colors.mutedForeground : colors.primary} />
-          <Text style={[msc.refreshTxt, { color: isFetching ? colors.mutedForeground : colors.primary }]}>
-            {isFetching ? t.updatingLabel : t.refreshBtn}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={[msc.hr, { backgroundColor: colors.border }]} />
-
-      <View style={msc.grid}>
-        <StatusPair label={t.lastUpdateLabel}  value={lastUpdate} />
-        <StatusPair label={t.usdEgpRateLabel}  value={prices ? prices.usdToEgp.toFixed(3) : '—'} />
-        <StatusPair
-          label={t.egxMarketLabel}
-          value={egxOpen ? t.openNow : t.closedLabel}
-          color={egxOpen ? colors.green : colors.mutedForeground}
-        />
-      </View>
-    </View>
-  );
-}
-const msc = StyleSheet.create({
-  card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 13 },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  liveLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
-  refreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8 },
-  refreshTxt: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
-  hr: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
-  grid: { padding: 16, gap: 11 },
-  pair: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pairLabel: { fontSize: 13, fontFamily: 'Inter_400Regular' },
-  pairValue: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+// Shared by EditProfileModal's own bottom-sheet chrome (backdrop/handle/header/close).
+const mo = StyleSheet.create({
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, marginTop: 10, marginBottom: 4 },
+  header: {
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  title: { fontSize: 18, fontFamily: 'Inter_700Bold', flex: 1 },
+  close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
 });
 
 // ─── Smart footer ──────────────────────────────────────────────────────────────
@@ -770,29 +309,15 @@ export default function SettingsScreen() {
   const insets  = useSafeAreaInsets();
   const t       = useT();
   const router  = useRouter();
-  const { impact: haptic, notify } = useHaptic();
+  const { impact: haptic } = useHaptic();
   const { signOut } = useClerk();
   const { user } = useUser();
-  const { getToken } = useAuth();
-  const {
-    themeMode, language, hapticsEnabled, analyticsEnabled, crashReportsEnabled, notifications,
-    biometricLock, setBiometricLock, displayCurrency, setDisplayCurrency,
-    visibleCurrencies, setVisibleCurrencies,
-    setThemeMode, setLanguage, setHapticsEnabled, setAnalyticsEnabled, setCrashReportsEnabled, setNotification,
-  } = useAppSettings();
-  const { holdings, removeHolding } = useHoldings();
-  const { cashAccounts } = useCash();
-  const { data: prices, dataUpdatedAt, refetch: refetchPrices } = useMarketPrices();
-  const { isPro } = useSubscription();
+  const { holdings } = useHoldings();
 
   const [modal, setModal]         = useState<{ title: string; content: string } | null>(null);
-  const [openingPortal, setOpeningPortal] = useState(false);
   const [confirm, setConfirm]     = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
-  const [langOpen, setLangOpen]   = useState(false);
-  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -809,74 +334,6 @@ export default function SettingsScreen() {
   const profileName = displayName.trim() || fullName;
 
   const showModal = (title: string, content: string) => { haptic(); setModal({ title, content }); };
-  const openURL   = (url: string) => { haptic(); Linking.openURL(url).catch(() => showModal(t.couldNotOpenLink, t.couldNotOpenLinkDesc)); };
-
-  // Opens the same Stripe billing portal the website uses to manage/cancel
-  // — reuses the existing create-portal-session route (see Paywall.tsx for
-  // the matching create-checkout-session call).
-  const openManageSubscription = async () => {
-    if (openingPortal) return;
-    haptic();
-    setOpeningPortal(true);
-    try {
-      const token = await getToken();
-      if (!token) return;
-      const res = await apiFetch('/api/stripe/create-portal-session', token, { method: 'POST' });
-      if (!res.ok) { showModal(t.couldNotOpenLink, t.subCheckoutErrorDesc); return; }
-      const { url } = (await res.json()) as { url?: string };
-      if (url) await WebBrowser.openBrowserAsync(url);
-    } catch {
-      showModal(t.couldNotOpenLink, t.subCheckoutErrorDesc);
-    } finally {
-      setOpeningPortal(false);
-    }
-  };
-
-  const handleDeleteAll = () => {
-    haptic(Haptics.ImpactFeedbackStyle.Heavy);
-    setConfirm({ id: 'delete', title: t.deleteAllData, message: t.deleteAllDataConfirmMsg, label: t.deleteEverything, danger: true });
-  };
-
-  const handleDeleteAccount = () => {
-    haptic(Haptics.ImpactFeedbackStyle.Heavy);
-    setConfirm({ id: 'deleteAccount', title: t.deleteAccount, message: t.deleteAccountConfirmMsg, label: t.deleteAccount, danger: true });
-  };
-
-  const handleDeleteMenu = () => {
-    haptic();
-    Alert.alert(t.deleteAccount, undefined, [
-      { text: t.deleteAllData, onPress: handleDeleteAll, style: 'destructive' },
-      { text: t.deleteAccount, onPress: handleDeleteAccount, style: 'destructive' },
-      { text: t.cancel, style: 'cancel' },
-    ]);
-  };
-
-  const handleExportCsv = async () => {
-    haptic();
-    try {
-      await exportPortfolioAsCsv(holdings, cashAccounts, prices);
-    } catch {
-      Alert.alert(t.exportFailed, t.exportFailedDesc);
-    }
-  };
-
-  const handleExportPdf = async () => {
-    haptic();
-    try {
-      await exportPortfolioAsPdf(holdings, cashAccounts, prices, { userName: profileName });
-    } catch {
-      Alert.alert(t.exportFailed, t.exportFailedDesc);
-    }
-  };
-
-  const handleExport = () => {
-    haptic();
-    Alert.alert(t.exportMyData, undefined, [
-      { text: t.exportAsCsv, onPress: handleExportCsv },
-      { text: t.exportAsPdf, onPress: handleExportPdf },
-      { text: t.cancel, style: 'cancel' },
-    ]);
-  };
 
   const handleSignOut = () => {
     haptic(Haptics.ImpactFeedbackStyle.Medium);
@@ -911,35 +368,14 @@ export default function SettingsScreen() {
 
   const handleConfirm = async () => {
     if (!confirm) return;
-    if (confirm.id === 'delete') {
-      for (const h of holdings) removeHolding(h.id);
-      await AsyncStorage.multiRemove([
-        '@invstry_theme', '@invstry_lang', '@invstry_weight',
-        '@invstry_haptics', '@invstry_analytics', '@invstry_notif', '@invstry_hide_values',
-      ]);
-      notify(Haptics.NotificationFeedbackType.Warning);
-    } else if (confirm.id === 'signout') {
+    if (confirm.id === 'signout') {
       await signOut();
       router.replace('/(auth)/welcome' as any);
-    } else if (confirm.id === 'deleteAccount') {
-      setConfirm(null);
-      setDeletingAccount(true);
-      try {
-        const token = await getToken();
-        if (!token) throw new Error('No auth token');
-        const res = await apiFetch('/api/account', token, { method: 'DELETE' });
-        if (!res.ok) throw new Error('Delete failed');
-        await signOut();
-        router.replace('/(auth)/welcome' as any);
-      } catch {
-        showModal(t.deleteAccountFailed, t.deleteAccountFailedDesc);
-      } finally {
-        setDeletingAccount(false);
-      }
-      return;
     }
     setConfirm(null);
   };
+
+  const goTo = (path: string) => { haptic(); router.push(path as any); };
 
   // Matches Analytics/Markets exactly: contentInset (not contentOffset)
   // plus an imperative scrollTo on mount and onLayout, since the
@@ -985,182 +421,57 @@ export default function SettingsScreen() {
 
         {/* ── PROFILE HERO ─────────────────────────────────── */}
         {user && (
-          <>
-            <ProfileHero
-              initials={initials} fullName={profileName} email={email}
-              verified={verified} holdingsCount={holdings.length}
-              imageUrl={user.imageUrl ?? undefined}
-              onPress={() => { haptic(); setEditProfileOpen(true); }}
-            />
-          </>
+          <ProfileHero
+            initials={initials} fullName={profileName} email={email}
+            verified={verified} holdingsCount={holdings.length}
+            imageUrl={user.imageUrl ?? undefined}
+            onPress={() => { haptic(); setEditProfileOpen(true); }}
+          />
         )}
 
-        {/* ── INVITE FRIENDS ────────────────────────────────── */}
+        {/* ── INVITE & EARN ─────────────────────────────────── */}
         {!!user && (
           <Sect label={t.settingsSectInvite}>
             <NavRow
               icon="gift" iconBg={colors.primary}
               label={t.inviteFriendsNav} sublabel={t.inviteFriendsNavSub}
-              onPress={() => { haptic(); router.push('/invite-friends' as any); }}
+              onPress={() => goTo('/invite-friends')}
             />
             <NavRow
               icon="trending-up" iconBg="#00D4AA"
               label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
-              onPress={() => { haptic(); router.push('/leaderboard' as any); }}
+              onPress={() => goTo('/leaderboard')}
             />
             <NavRow
               icon="pie-chart" iconBg="#22C55E"
               label={t.dividendsTitle} sublabel={t.noDividendsHint}
-              onPress={() => { haptic(); router.push('/dividends' as any); }}
+              onPress={() => goTo('/dividends')}
               last
             />
           </Sect>
         )}
 
-        {/* ── ACCOUNT & SECURITY ─────────────────────────── */}
-        <Sect label={t.settingsSectAccount}>
-          <NavRow icon="lock"    iconBg="#1D4ED8" label={t.changePassword}    onPress={() => showModal(t.changePassword, 'To change your password, sign out and use "Forgot Password" on the sign-in screen. Password management is handled securely by Clerk authentication.')} />
-          <NavRow icon="link"    iconBg="#6366F1" label={t.connectedAccounts} value={t.comingSoonLabel}
-            onPress={() => showModal(t.connectedAccounts, 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments — planned for a future update, not yet available.')} />
-          <Div />
-          <ToggleRow icon="lock" iconBg="#6366F1" label={t.biometricLock} sublabel={t.biometricLockDesc} value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last={!isPro} />
-          {isPro && (
-            <>
-              <Div />
-              <NavRow icon="credit-card" iconBg="#22C55E" label={t.subManageSubscription}
-                onPress={openManageSubscription} last />
-            </>
-          )}
-        </Sect>
-
-        {/* ── APPEARANCE ───────────────────────────────────── */}
-        <Sect label={t.settingsSectAppearance}>
-          {/* Theme label row */}
-          <View style={sc.themeLabel}>
-            <View style={[sc.themeLabelIcon, { backgroundColor: '#8B5CF620' }]}>
-              <Feather name="eye" size={14} color="#8B5CF6" />
-            </View>
-            <Text style={[rw.label, { color: colors.text }]}>{t.themeLabel}</Text>
+        {/* ── CATEGORY MENU ─────────────────────────────────── */}
+        {/* Each category is its own separated card, no wrapping "Preferences"
+            label — matches the approved menu exactly. Every label here is
+            Title Case (the small-caps eyebrow strings like
+            settingsSectAccount are for section headers, not row text). */}
+        <View style={cat.wrap}>
+          <View style={cat.stack}>
+            {[
+              { icon: 'user' as const, bg: '#1D4ED8', label: t.settingsCatAccount, sub: t.settingsCatAccountSub, path: '/settings-account' },
+              { icon: 'sliders' as const, bg: '#8B5CF6', label: t.settingsCatAppearance, sub: t.settingsCatAppearanceSub, path: '/settings-appearance' },
+              { icon: 'bell' as const, bg: '#F59E0B', label: t.settingsCatNotifications, sub: t.settingsCatNotificationsSub, path: '/settings-notifications' },
+              { icon: 'briefcase' as const, bg: '#059669', label: t.settingsCatPortfolio, sub: t.settingsCatPortfolioSub, path: '/settings-portfolio' },
+              { icon: 'shield' as const, bg: '#047857', label: t.settingsCatPrivacy, sub: t.settingsCatPrivacySub, path: '/settings-privacy' },
+              { icon: 'help-circle' as const, bg: '#0EA5E9', label: t.settingsCatSupport, sub: t.settingsCatSupportSub, path: '/settings-support' },
+            ].map(c => (
+              <View key={c.path} style={[cat.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <NavRow icon={c.icon} iconBg={c.bg} label={c.label} sublabel={c.sub} onPress={() => goTo(c.path)} last />
+              </View>
+            ))}
           </View>
-          <ThemePicker value={themeMode} onChange={async m => { haptic(); await setThemeMode(m); }} />
-          <Div />
-          <ToggleRow icon="zap" iconBg="#FBBF24" label={t.hapticFeedbackLabel} sublabel={t.hapticFeedbackDesc} value={hapticsEnabled} onChange={v => setHapticsEnabled(v)} last />
-        </Sect>
-
-        {/* ── LANGUAGE & REGION ────────────────────────────── */}
-        <Sect label={t.settingsSectLanguage}>
-          {/* Language row with inline dropdown */}
-          <TouchableOpacity
-            style={rw.row}
-            onPress={() => { haptic(); setLangOpen(v => !v); }}
-            activeOpacity={0.55}
-          >
-            <Bdg icon="globe" bg="#0EA5E9" />
-            <View style={rw.body}>
-              <Text style={[rw.label, { color: colors.text }]}>{t.languageLabel}</Text>
-            </View>
-            <View style={rw.trail}>
-              <Text style={[rw.val, { color: colors.mutedForeground }]}>{language === 'ar' ? 'عربي' : 'English'}</Text>
-              <Feather name={langOpen ? 'chevron-up' : 'chevron-down'} size={15} color={colors.mutedForeground} />
-            </View>
-          </TouchableOpacity>
-          {langOpen && (
-            <>
-              <Div left={0} />
-              {(['en', 'ar'] as Language[]).map((lang, i, arr) => {
-                const active = language === lang;
-                return (
-                  <React.Fragment key={lang}>
-                    <TouchableOpacity
-                      style={[rw.row, { paddingLeft: 60, backgroundColor: active ? colors.primary + '10' : 'transparent' }]}
-                      onPress={async () => { haptic(); await setLanguage(lang); setLangOpen(false); Alert.alert('', t.languageRestartNote); }}
-                      activeOpacity={0.55}
-                    >
-                      <View style={rw.body}>
-                        <Text style={[rw.label, { color: active ? colors.primary : colors.text, fontFamily: active ? 'Inter_600SemiBold' : 'Inter_400Regular' }]}>
-                          {lang === 'ar' ? 'عربي — Arabic' : 'English'}
-                        </Text>
-                      </View>
-                      {active && <Feather name="check" size={16} color={colors.primary} />}
-                    </TouchableOpacity>
-                    {i < arr.length - 1 && <Div left={60} />}
-                  </React.Fragment>
-                );
-              })}
-              <Div left={0} />
-            </>
-          )}
-          <Div />
-          <NavRow icon="map-pin"   iconBg="#EF4444" label={t.regionLabel}       value="Egypt (EG)"
-            onPress={() => showModal(t.regionLabel, 'INVESTRY is built specifically for the Egyptian market — gold and silver prices, EGX stocks, and real estate values are all sourced and priced for Egypt.\n\nSupport for other regions may be added in a future update.')} />
-          <NavRow icon="hash"      iconBg="#374151" label={t.dateFormatLabel}   value="DD/MM/YYYY"
-            onPress={() => showModal(t.dateFormatLabel, 'Dates are currently shown in DD/MM/YYYY format, matching Egyptian conventions.\n\nCustom date formats are not yet configurable — this is coming in a future update.')} />
-          <NavRow icon="type"      iconBg="#6B7280" label={t.numberFormatLabel} value="1,234.56"
-            onPress={() => showModal(t.numberFormatLabel, 'Numbers are currently shown with a comma thousands separator and period decimal (e.g. 1,234.56).\n\nCustom number formats are not yet configurable — this is coming in a future update.')} />
-          <NavRow icon="dollar-sign" iconBg="#059669" label={t.currencyRowLabel} value={displayCurrency}
-            onPress={() => setCurrencyPickerOpen(true)} last />
-        </Sect>
-
-        {/* ── PORTFOLIO PREFERENCES ────────────────────────── */}
-        <Sect label={t.settingsSectPortfolio}>
-          <NavRow icon="award" iconBg="#8b5cf6" label={t.tiersPageTitle} sublabel={t.tiersRowSublabel}
-            onPress={() => { haptic(); router.push('/tiers' as any); }} last />
-        </Sect>
-
-        {/* ── HOW CALCULATIONS WORK ────────────────────────── */}
-        <Sect label={t.settingsSectCalculations}>
-          <NavRow icon="trending-up" iconBg="#6366F1"   label={t.performanceCalc} value="FIFO"
-            onPress={() => showModal(t.performanceCalc, 'Gain/loss is calculated using First-In, First-Out (FIFO): each investment\'s current value is compared against its recorded purchase price.\n\nAlternate calculation methods (LIFO, average cost) are not yet supported — this is coming in a future update.')} />
-          <NavRow icon="percent" iconBg="#22C55E" label={t.fixedIncomeCalc}
-            onPress={() => showModal(t.fixedIncomeCalc, 'Interest accrues using simple interest (not compounded): principal × rate × days elapsed ÷ 365.\n\nFor monthly or quarterly payout certificates, the bank pays interest out to a linked account each period instead of adding it back to the certificate — so the value shown here stays flat at your principal until maturity. Only "At Maturity" products accrue toward a lump-sum payout.\n\nThis matches how Egyptian bank certificates and deposits are actually structured.')} />
-          <NavRow icon="activity" iconBg="#4A9EFF" label={t.chartMethodology}
-            onPress={() => showModal(t.chartMethodology, 'Performance charts use your real recorded snapshots and today\'s live total — no data points are invented. Where multiple real points exist, a smoothing curve is drawn between them; with only two points (e.g. a single day), the line is straight because there\'s nothing yet to curve.\n\nThe inflation comparison uses Egypt\'s latest official annual rate (World Bank/CAPMAS CPI data), updated once a year — treat it as a yearly benchmark, not a live monthly figure.')} last />
-        </Sect>
-
-        {/* ── NOTIFICATIONS ────────────────────────────────── */}
-        <Sect label={t.settingsSectNotifications}>
-          <ToggleRow icon="bell"      iconBg="#F59E0B" label={t.priceAlertsLabel}    sublabel={t.priceAlertsDesc}    value={notifications.priceAlerts}    onChange={v => setNotification('priceAlerts', v)} />
-          <NavRow icon="sliders"     iconBg="#F59E0B" label={t.managePriceAlerts} sublabel={t.managePriceAlertsDesc}
-            onPress={() => router.push('/price-alerts' as any)} />
-          <ToggleRow icon="briefcase" iconBg="#8B5CF6" label={t.portfolioAlertsLabel} sublabel={t.portfolioAlertsDesc}  value={notifications.portfolioAlerts} onChange={v => setNotification('portfolioAlerts', v)} />
-          <NavRow icon="pie-chart"  iconBg="#8B5CF6" label={t.rebalancingAlertsLabel} sublabel={t.rebalancingAlertsDesc}
-            onPress={() => router.push('/target-allocation' as any)} />
-          <ToggleRow icon="sun"       iconBg="#EF4444" label={t.dailySummaryLabel}    sublabel={t.dailySummaryDesc}     value={notifications.dailySummary}    onChange={v => setNotification('dailySummary', v)} />
-          <ToggleRow icon="calendar"  iconBg="#10B981" label={t.weeklyReportLabel}    sublabel={t.weeklyReportDesc}     value={notifications.weeklySummary}   onChange={v => setNotification('weeklySummary', v)} last />
-        </Sect>
-
-        {/* ── PRIVACY & DATA ───────────────────────────────── */}
-        <Sect label={t.settingsSectPrivacy}>
-          <ToggleRow icon="activity"     iconBg="#6366F1" label={t.analyticsSharingLabel} sublabel={t.analyticsSharingDesc} value={analyticsEnabled} onChange={v => setAnalyticsEnabled(v)} />
-          <ToggleRow icon="alert-circle" iconBg="#F97316" label={t.crashReportsLabel}     sublabel={t.crashReportsDesc}     value={crashReportsEnabled} onChange={v => setCrashReportsEnabled(v)} />
-          <NavRow icon="shield"   iconBg="#047857" label={t.privacySettingsLabel}  sublabel={t.privacySettingsDesc} onPress={() => Linking.openSettings()} />
-          <NavRow icon="download" iconBg="#0EA5E9" label={t.exportMyData}
-            sublabel={`${holdings.length} ${t.investmentsLabel} · CSV / PDF`}
-            onPress={handleExport} />
-          <NavRow icon="trash-2"  iconBg={colors.red} label={t.deleteAccount} sublabel={t.deleteAccountRowDesc} onPress={handleDeleteMenu} destructive last />
-        </Sect>
-
-        {/* ── SUPPORT ──────────────────────────────────────── */}
-        <Sect label={t.settingsSectSupport}>
-          <NavRow icon="help-circle" iconBg="#0EA5E9" label={t.helpCenter} onPress={() => { haptic(); router.push('/help-center' as any); }} />
-          <NavRow icon="mail"   iconBg="#10B981" label={t.contactSupport}    onPress={() => openURL('mailto:support@investry.app?subject=INVESTRY Support')} />
-          <NavRow icon="flag"   iconBg="#F59E0B" label={t.reportBug}         onPress={() => openURL(`mailto:bugs@investry.app?subject=Bug Report — INVESTRY v${APP_VERSION}`)} />
-          <NavRow icon="edit-2" iconBg="#8B5CF6" label={t.requestFeature}    onPress={() => openURL('mailto:feedback@investry.app?subject=Feature Request')} />
-          <NavRow icon="star"   iconBg="#EF4444" label={t.rateAppStore}       onPress={() =>
-            openURL(Platform.OS === 'ios'
-              ? 'https://apps.apple.com/app/id6787447052?action=write-review'
-              : 'https://play.google.com/store/apps/details?id=com.investry.app')} last />
-        </Sect>
-
-        {/* ── LEGAL ────────────────────────────────────────── */}
-        <Sect label={t.settingsSectLegal}>
-          <NavRow icon="file-text"    iconBg="#374151" label={t.termsOfService} onPress={() =>
-            showModal(t.termsOfService, t.termsOfServiceBody)} />
-          <NavRow icon="lock"         iconBg="#4B5563" label={t.privacyPolicy}   onPress={() =>
-            showModal(t.privacyPolicy, t.privacyPolicyBody)} />
-          <NavRow icon="alert-circle" iconBg="#7C3AED" label={t.regulatoryDisclaimer} onPress={() =>
-            showModal(t.regulatoryDisclaimer, 'INVESTRY is not a registered investment advisor, broker-dealer, or financial institution.\n\nThis application does not provide personalized investment advice. Market data displayed is for informational purposes only and should not be used as the sole basis for any investment decision.\n\nAlways verify prices with a certified financial professional before making investment decisions.')} last />
-        </Sect>
+        </View>
 
         {/* ── SIGN OUT ─────────────────────────────────────── */}
         <TouchableOpacity
@@ -1178,14 +489,6 @@ export default function SettingsScreen() {
       {modal && (
         <DetailModal visible title={modal.title} content={modal.content} onClose={() => setModal(null)} />
       )}
-      <CurrencyPickerModal
-        visible={currencyPickerOpen}
-        value={displayCurrency}
-        onSelect={setDisplayCurrency}
-        shown={visibleCurrencies}
-        onToggleShown={setVisibleCurrencies}
-        onClose={() => setCurrencyPickerOpen(false)}
-      />
       {confirm && (
         <ConfirmModal
           visible
@@ -1196,16 +499,6 @@ export default function SettingsScreen() {
           onConfirm={handleConfirm}
           onCancel={() => setConfirm(null)}
         />
-      )}
-      {deletingAccount && (
-        <Modal visible transparent animationType="fade">
-          <View style={cm.overlay}>
-            <View style={[cm.card, { backgroundColor: colors.card, borderColor: colors.border, alignItems: 'center' }]}>
-              <ActivityIndicator color={colors.red} size="large" />
-              <Text style={[cm.msg, { color: colors.mutedForeground, marginTop: 16, marginBottom: 0 }]}>{t.deletingAccount}</Text>
-            </View>
-          </View>
-        </Modal>
       )}
       <EditProfileModal
         visible={editProfileOpen}
@@ -1224,6 +517,12 @@ export default function SettingsScreen() {
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
+const cat = StyleSheet.create({
+  wrap: { gap: 9 },
+  stack: { gap: 10 },
+  card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+});
+
 const sc = StyleSheet.create({
   screen: { flex: 1 },
   container: { flex: 1 },
@@ -1231,9 +530,6 @@ const sc = StyleSheet.create({
 
   pageHeader: { marginBottom: 2 },
   pageTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
-
-  themeLabel: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 },
-  themeLabelIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 
   signOut: { borderRadius: 18, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 17, gap: 10 },
   signOutTxt: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },

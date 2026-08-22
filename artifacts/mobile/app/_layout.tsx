@@ -190,6 +190,30 @@ function RootLayoutNav() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="settings-account"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="settings-appearance"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="settings-notifications"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="settings-portfolio"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="settings-privacy"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="settings-support"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="invite-friends"
         options={{ headerShown: false }}
       />
