@@ -17,14 +17,17 @@ import { Feather } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
-import { useClerk, useUser } from '@clerk/expo';
+import { useAuth, useClerk, useUser } from '@clerk/expo';
 import { Stack, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { DetailModal } from '@/components/DetailModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useHoldings } from '@/context/HoldingsContext';
+import { useSubscription } from '@/context/SubscriptionContext';
+import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
 
 // Read live from the running binary/update instead of a hand-maintained
@@ -123,6 +126,82 @@ const ph = StyleSheet.create({
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3 },
   tagTxt: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
+});
+
+// ─── Subscription status ───────────────────────────────────────────────────────
+// Right under the profile card, always visible — Pro opens the billing
+// portal (same route the website uses), Free opens the Paywall. Both reuse
+// the create-checkout-session/create-portal-session routes already wired
+// for Paywall.tsx and this card respectively.
+
+function SubscriptionStatusCard() {
+  const colors = useColors();
+  const t = useT();
+  const { impact: haptic } = useHaptic();
+  const { getToken } = useAuth();
+  const { isPro, showPaywall } = useSubscription();
+  const [opening, setOpening] = useState(false);
+
+  const openManageSubscription = async () => {
+    if (opening) return;
+    haptic();
+    setOpening(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await apiFetch('/api/stripe/create-portal-session', token, { method: 'POST' });
+      if (!res.ok) return;
+      const { url } = (await res.json()) as { url?: string };
+      if (url) await WebBrowser.openBrowserAsync(url);
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  const accent = isPro ? '#22C55E' : colors.primary;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={isPro ? openManageSubscription : () => { haptic(); showPaywall(); }}
+      style={[sub.card, { borderColor: accent + '3A' }]}
+    >
+      <ExpoLinearGradient
+        colors={isPro ? [accent + '20', accent + '08'] : [colors.primary + '22', colors.primary + '08']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={sub.row}>
+        <View style={[sub.iconWrap, { backgroundColor: accent + '22' }]}>
+          <Feather name={isPro ? 'award' : 'credit-card'} size={18} color={accent} />
+        </View>
+        <View style={sub.info}>
+          <Text style={[sub.title, { color: colors.text }]}>{isPro ? t.subCurrentPlanPro : t.subCurrentPlanFree}</Text>
+          <Text style={[sub.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {isPro ? t.subManageSubscription : `${t.subUpgradeToProDesc} · ${t.subFromYearlyPro}`}
+          </Text>
+        </View>
+        {isPro ? (
+          <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
+        ) : (
+          <View style={[sub.cta, { backgroundColor: colors.primary, opacity: opening ? 0.6 : 1 }]}>
+            <Text style={[sub.ctaTxt, { color: colors.primaryForeground }]}>{t.subUpgradeTo} {t.subComparePro}</Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+const sub = StyleSheet.create({
+  card: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 13, padding: 16 },
+  iconWrap: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  info: { flex: 1, gap: 3, minWidth: 0 },
+  title: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  subtitle: { fontSize: 12.5, fontFamily: 'Inter_400Regular' },
+  cta: { borderRadius: 11, paddingHorizontal: 14, paddingVertical: 9 },
+  ctaTxt: { fontSize: 13, fontFamily: 'Inter_700Bold' },
 });
 
 // ─── Edit profile modal ────────────────────────────────────────────────────────
@@ -427,6 +506,14 @@ export default function SettingsScreen() {
             imageUrl={user.imageUrl ?? undefined}
             onPress={() => { haptic(); setEditProfileOpen(true); }}
           />
+        )}
+
+        {/* ── SUBSCRIPTION — right under the profile card, always visible,
+             not buried in a sub-screen ─────────────────────── */}
+        {user && (
+          <Sect label={t.settingsSectSubscription} noCard>
+            <SubscriptionStatusCard />
+          </Sect>
         )}
 
         {/* ── INVITE & EARN ─────────────────────────────────── */}

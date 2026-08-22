@@ -25,6 +25,7 @@ export function Paywall() {
   const { paywallVisible, closePaywall, plan, refresh } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
 
   const features: FeatureRow[] = [
     { icon: 'briefcase', text: t.subUnlimitedInvestments },
@@ -45,7 +46,7 @@ export function Paywall() {
       if (!token) { setError(true); return; }
       const res = await apiFetch('/api/stripe/create-checkout-session', token, {
         method: 'POST',
-        body: JSON.stringify({ billingPeriod: 'annual' }),
+        body: JSON.stringify({ billingPeriod }),
       });
       if (!res.ok) { setError(true); return; }
       const { url } = (await res.json()) as { url?: string };
@@ -95,7 +96,26 @@ export function Paywall() {
             ))}
           </View>
 
-          <Text style={[styles.priceHint, { color: colors.mutedForeground }]}>{t.subFromYearlyPro}</Text>
+          <View style={styles.billingToggle}>
+            {(['monthly', 'annual'] as const).map(period => {
+              const active = billingPeriod === period;
+              return (
+                <TouchableOpacity
+                  key={period}
+                  style={[styles.billingPill, { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border }]}
+                  onPress={() => { impact(); setBillingPeriod(period); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.billingLabel, { color: active ? colors.primaryForeground : colors.text }]}>
+                    {period === 'monthly' ? t.subBillingMonthly : t.subBillingAnnual}
+                  </Text>
+                  <Text style={[styles.billingPrice, { color: active ? colors.primaryForeground + 'CC' : colors.mutedForeground }]}>
+                    {period === 'monthly' ? t.subFromMonthly : t.subFromAnnual}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
           {error && (
             <Text style={[styles.errorText, { color: colors.red }]}>{t.subCheckoutErrorDesc}</Text>
@@ -139,7 +159,10 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
   featureIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   featureText: { flex: 1, fontSize: 13.5, fontFamily: 'Inter_500Medium', lineHeight: 19 },
-  priceHint: { fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center', marginBottom: 16 },
+  billingToggle: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  billingPill: { flex: 1, borderRadius: 14, borderWidth: 1.5, paddingVertical: 12, alignItems: 'center', gap: 2 },
+  billingLabel: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  billingPrice: { fontSize: 12, fontFamily: 'Inter_500Medium' },
   errorText: { fontSize: 13, fontFamily: 'Inter_500Medium', textAlign: 'center', marginBottom: 12 },
   cta: {
     alignItems: 'center', justifyContent: 'center',

@@ -3,50 +3,23 @@ import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as WebBrowser from 'expo-web-browser';
-import { useAuth } from '@clerk/expo';
 import { backChevron } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings } from '@/context/AppSettingsContext';
-import { useSubscription } from '@/context/SubscriptionContext';
-import { apiFetch } from '@/utils/api';
 import { DetailModal } from '@/components/DetailModal';
-import { Sect, NavRow, ToggleRow, Div, settingsScreenStyles as s } from '@/components/SettingsPrimitives';
+import { Sect, NavRow, ToggleRow, settingsScreenStyles as s } from '@/components/SettingsPrimitives';
 
 export default function SettingsAccountScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
   const { impact: haptic } = useHaptic();
-  const { getToken } = useAuth();
   const { biometricLock, setBiometricLock } = useAppSettings();
-  const { isPro } = useSubscription();
 
   const [modal, setModal] = useState<{ title: string; content: string } | null>(null);
-  const [openingPortal, setOpeningPortal] = useState(false);
   const showModal = (title: string, content: string) => { haptic(); setModal({ title, content }); };
-
-  // Same route the website uses to manage/cancel — see Paywall.tsx for the
-  // matching create-checkout-session call.
-  const openManageSubscription = async () => {
-    if (openingPortal) return;
-    haptic();
-    setOpeningPortal(true);
-    try {
-      const token = await getToken();
-      if (!token) return;
-      const res = await apiFetch('/api/stripe/create-portal-session', token, { method: 'POST' });
-      if (!res.ok) { showModal(t.couldNotOpenLink, t.subCheckoutErrorDesc); return; }
-      const { url } = (await res.json()) as { url?: string };
-      if (url) await WebBrowser.openBrowserAsync(url);
-    } catch {
-      showModal(t.couldNotOpenLink, t.subCheckoutErrorDesc);
-    } finally {
-      setOpeningPortal(false);
-    }
-  };
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -69,15 +42,7 @@ export default function SettingsAccountScreen() {
               onPress={() => showModal(t.changePassword, 'To change your password, sign out and use "Forgot Password" on the sign-in screen. Password management is handled securely by Clerk authentication.')} />
             <NavRow icon="link" iconBg="#6366F1" label={t.connectedAccounts} value={t.comingSoonLabel}
               onPress={() => showModal(t.connectedAccounts, 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments — planned for a future update, not yet available.')} />
-            <Div />
-            <ToggleRow icon="lock" iconBg="#6366F1" label={t.biometricLock} sublabel={t.biometricLockDesc} value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last={!isPro} />
-            {isPro && (
-              <>
-                <Div />
-                <NavRow icon="credit-card" iconBg="#22C55E" label={t.subManageSubscription}
-                  onPress={openManageSubscription} last />
-              </>
-            )}
+            <ToggleRow icon="lock" iconBg="#6366F1" label={t.biometricLock} sublabel={t.biometricLockDesc} value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last />
           </Sect>
         </ScrollView>
       </View>
