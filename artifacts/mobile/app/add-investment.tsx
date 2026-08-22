@@ -139,6 +139,60 @@ function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
+// ─── Merge into an existing same-asset holding instead of creating a
+// duplicate row ─────────────────────────────────────────────────────────────
+// Only for genuinely fungible positions — same karat+form gold, same-form
+// silver, same stock ticker. Real estate, personal assets and fixed income
+// are each a distinct, non-fungible item (a second property isn't "more of"
+// the first one, a second certificate has its own rate/maturity), so those
+// always stay separate holdings and are never matched here.
+function findMergeTarget(holding: Holding, holdings: Holding[]): Holding | null {
+  if (holding.type === 'gold') {
+    return holdings.find(h => h.type === 'gold' && h.karat === holding.karat && h.form === holding.form) ?? null;
+  }
+  if (holding.type === 'silver') {
+    return holdings.find(h => h.type === 'silver' && h.form === holding.form) ?? null;
+  }
+  if (holding.type === 'stock') {
+    return holdings.find(h => h.type === 'stock' && h.symbol.toUpperCase() === holding.symbol.toUpperCase()) ?? null;
+  }
+  return null;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// Weighted-average cost basis across the combined quantity — same math a
+// brokerage uses when blending the cost basis of two buys of the same
+// position. Keeps the existing holding's id/purchaseDate/form (the
+// position's original identity); only the quantity and the blended price
+// grow.
+function mergeHoldings(existing: Holding, incoming: Holding): Holding {
+  if (existing.type === 'gold' && incoming.type === 'gold') {
+    const grams = existing.grams + incoming.grams;
+    const purchasePricePerGram = round2(
+      (existing.grams * existing.purchasePricePerGram + incoming.grams * incoming.purchasePricePerGram) / grams
+    );
+    return { ...existing, grams, purchasePricePerGram, notes: existing.notes || incoming.notes };
+  }
+  if (existing.type === 'silver' && incoming.type === 'silver') {
+    const grams = existing.grams + incoming.grams;
+    const purchasePricePerGram = round2(
+      (existing.grams * existing.purchasePricePerGram + incoming.grams * incoming.purchasePricePerGram) / grams
+    );
+    return { ...existing, grams, purchasePricePerGram, notes: existing.notes || incoming.notes };
+  }
+  if (existing.type === 'stock' && incoming.type === 'stock') {
+    const shares = existing.shares + incoming.shares;
+    const purchasePricePerShare = round2(
+      (existing.shares * existing.purchasePricePerShare + incoming.shares * incoming.purchasePricePerShare) / shares
+    );
+    return { ...existing, shares, purchasePricePerShare, notes: existing.notes || incoming.notes };
+  }
+  return incoming;
+}
+
 // ─── RE Area Lookup ───────────────────────────────────────────────────────────
 // Matches a selected city/district to a curated area's IDENTITY only (its id,
 // name and governorate, which are real). Prices come exclusively from the live
@@ -952,8 +1006,19 @@ export default function AddInvestmentScreen() {
         logActivity('holding_edited', t.activityHoldingEditedTitle, describeHolding(holding), holding.id);
         router.back();
       } else {
-        await addHolding(holding);
-        logActivity('holding_added', t.activityHoldingAddedTitle, describeHolding(holding), holding.id);
+        // Adding a gold/silver/stock position identical to one already held
+        // (same karat+form, or same ticker) grows that existing holding
+        // instead of creating a second row for the same asset — see
+        // findMergeTarget's own comment for why real estate/personal
+        // assets/fixed income are excluded from this.
+        const mergeTarget = findMergeTarget(holding, holdings);
+        const finalHolding = mergeTarget ? mergeHoldings(mergeTarget, holding) : holding;
+        if (mergeTarget) {
+          await updateHolding(finalHolding);
+        } else {
+          await addHolding(finalHolding);
+        }
+        logActivity('holding_added', t.activityHoldingAddedTitle, describeHolding(finalHolding), finalHolding.id);
         // Editing came from the holdings list, so `back()` already returns there.
         // Adding came through the add-choose type picker, so `back()` alone would
         // just land back on that picker sheet — dismiss past it to the list instead.
