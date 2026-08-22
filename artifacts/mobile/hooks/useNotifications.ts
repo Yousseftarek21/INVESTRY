@@ -14,6 +14,16 @@ Notifications.setNotificationHandler({
 export async function requestNotificationPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   try {
+    // A pre-server-push app version scheduled the daily/weekly summary as a
+    // LOCAL notification on the device's own clock (see the comment below).
+    // Removing that scheduling code going forward never cancelled whatever
+    // a device had already scheduled under the old version, so it kept
+    // firing at the device's local 9am forever — alongside the new, real
+    // server push sent at 9am Cairo time. This app doesn't schedule any
+    // local notification today (nothing else calls scheduleNotificationAsync
+    // anywhere), so clearing all of them here is safe and just sweeps up
+    // that one leftover per device, once per session.
+    await Notifications.cancelAllScheduledNotificationsAsync();
     const existing = (await Notifications.getPermissionsAsync()) as unknown as { status: string };
     if (existing.status === 'granted') return true;
     const result = (await Notifications.requestPermissionsAsync()) as unknown as { status: string };
