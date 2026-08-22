@@ -21,8 +21,8 @@ interface FeatureRow { icon: keyof typeof Feather.glyphMap; text: string }
 // RevenueCat (pkg.product.priceString/pricePerMonthString below), never
 // these constants — Apple requires showing its own store price, not a
 // custom one.
-const MONTHLY_PRICE = 89;
-const ANNUAL_PRICE = 852; // 71/month × 12
+const MONTHLY_PRICE = 79;
+const ANNUAL_PRICE = 799; // ~66.6/month × 12
 const FALLBACK_SAVINGS_PCT = Math.round((1 - (ANNUAL_PRICE / 12) / MONTHLY_PRICE) * 100);
 
 // iOS: native In-App Purchase via RevenueCat — required by App Store
