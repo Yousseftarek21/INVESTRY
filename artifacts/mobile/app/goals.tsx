@@ -20,7 +20,7 @@ import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 import { CashAccountType } from '@/types';
 
-const FREE_LIMIT = 1;
+const FREE_LIMIT = 0;
 
 const ACCOUNT_TYPE_ICONS: Record<CashAccountType, keyof typeof Feather.glyphMap> = {
   bank: 'credit-card',

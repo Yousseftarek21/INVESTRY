@@ -31,6 +31,7 @@ import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
+import { Paywall } from "@/components/Paywall";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { getApiBaseUrl } from "@/utils/api";
 import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled } from "@/hooks/usePrices";
@@ -285,13 +286,12 @@ function StatusBarManager() {
 }
 
 function AppWithPaywall({ children }: { children: React.ReactNode }) {
-
-
   return (
     <>
       <StatusBarManager />
       <NotificationsInitializer />
       <MetaSDKInitializer />
+      <Paywall />
       {children}
     </>
   );

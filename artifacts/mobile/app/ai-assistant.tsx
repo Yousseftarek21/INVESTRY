@@ -16,6 +16,8 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings } from '@/context/AppSettingsContext';
+import { useSubscription } from '@/context/SubscriptionContext';
+import { LockedFeatureCard } from '@/components/LockedFeatureCard';
 import { apiFetch } from '@/utils/api';
 
 interface ChatMessage {
@@ -52,6 +54,7 @@ export default function AIAssistantScreen() {
   const insets = useSafeAreaInsets();
   const { getToken } = useAuth();
   const { language } = useAppSettings();
+  const { featuresUnlocked } = useSubscription();
 
   // Always starts blank — this screen is a fresh conversation every time
   // it's opened, not a restore of wherever the last one left off. Past
@@ -304,6 +307,11 @@ export default function AIAssistantScreen() {
           </TouchableOpacity>
         </View>
 
+        {!featuresUnlocked ? (
+          <View style={{ flex: 1, padding: 24 }}>
+            <LockedFeatureCard feature={t.aiAssistantTitle} description={t.subAiAssistantFull} fullScreen />
+          </View>
+        ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
           <ScrollView
             ref={scrollRef}
@@ -421,6 +429,7 @@ export default function AIAssistantScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+        )}
       </View>
     </>
   );

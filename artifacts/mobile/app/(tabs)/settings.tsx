@@ -27,6 +27,7 @@ import { useCash } from '@/context/CashContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { Language } from '@/i18n';
 import { useSubscription } from '@/context/SubscriptionContext';
+import * as WebBrowser from 'expo-web-browser';
 import { exportPortfolioAsCsv, exportPortfolioAsPdf } from '@/utils/exportPortfolio';
 import { apiFetch } from '@/utils/api';
 
@@ -782,8 +783,10 @@ export default function SettingsScreen() {
   const { holdings, removeHolding } = useHoldings();
   const { cashAccounts } = useCash();
   const { data: prices, dataUpdatedAt, refetch: refetchPrices } = useMarketPrices();
+  const { isPro } = useSubscription();
 
   const [modal, setModal]         = useState<{ title: string; content: string } | null>(null);
+  const [openingPortal, setOpeningPortal] = useState(false);
   const [confirm, setConfirm]     = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
   const [langOpen, setLangOpen]   = useState(false);
   const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
@@ -807,6 +810,27 @@ export default function SettingsScreen() {
 
   const showModal = (title: string, content: string) => { haptic(); setModal({ title, content }); };
   const openURL   = (url: string) => { haptic(); Linking.openURL(url).catch(() => showModal(t.couldNotOpenLink, t.couldNotOpenLinkDesc)); };
+
+  // Opens the same Stripe billing portal the website uses to manage/cancel
+  // — reuses the existing create-portal-session route (see Paywall.tsx for
+  // the matching create-checkout-session call).
+  const openManageSubscription = async () => {
+    if (openingPortal) return;
+    haptic();
+    setOpeningPortal(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await apiFetch('/api/stripe/create-portal-session', token, { method: 'POST' });
+      if (!res.ok) { showModal(t.couldNotOpenLink, t.subCheckoutErrorDesc); return; }
+      const { url } = (await res.json()) as { url?: string };
+      if (url) await WebBrowser.openBrowserAsync(url);
+    } catch {
+      showModal(t.couldNotOpenLink, t.subCheckoutErrorDesc);
+    } finally {
+      setOpeningPortal(false);
+    }
+  };
 
   const handleDeleteAll = () => {
     haptic(Haptics.ImpactFeedbackStyle.Heavy);
@@ -999,7 +1023,14 @@ export default function SettingsScreen() {
           <NavRow icon="link"    iconBg="#6366F1" label={t.connectedAccounts} value={t.comingSoonLabel}
             onPress={() => showModal(t.connectedAccounts, 'Link bank accounts, brokerage accounts, and other financial services to automatically import your investments — planned for a future update, not yet available.')} />
           <Div />
-          <ToggleRow icon="lock" iconBg="#6366F1" label={t.biometricLock} sublabel={t.biometricLockDesc} value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last />
+          <ToggleRow icon="lock" iconBg="#6366F1" label={t.biometricLock} sublabel={t.biometricLockDesc} value={biometricLock} onChange={v => { haptic(); setBiometricLock(v); }} last={!isPro} />
+          {isPro && (
+            <>
+              <Div />
+              <NavRow icon="credit-card" iconBg="#22C55E" label={t.subManageSubscription}
+                onPress={openManageSubscription} last />
+            </>
+          )}
         </Sect>
 
         {/* ── APPEARANCE ───────────────────────────────────── */}

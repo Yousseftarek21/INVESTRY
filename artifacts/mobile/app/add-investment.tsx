@@ -24,7 +24,7 @@ import { parseAmount, cleanAmountInput } from '@/utils/parseAmount';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
 
-const FREE_LIMIT = 3;
+const FREE_LIMIT = 1;
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset' | 'fixed_income';
 
@@ -879,8 +879,8 @@ export default function AddInvestmentScreen() {
       return;
     }
 
-    // Free tier: max 3 investments. Skip the gate while subscription is still
-    // loading (subLoading=true), or when Launch Access / Pro is active.
+    // Free tier: max 1 investment. Skip the gate while subscription is still
+    // loading (subLoading=true), or when Pro is active.
     if (!isEditing && !subLoading && !featuresUnlocked && holdings.length >= FREE_LIMIT) {
       showPaywall();
       return;

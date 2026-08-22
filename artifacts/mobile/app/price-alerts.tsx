@@ -23,7 +23,7 @@ import { EGX_COMPANIES } from '@/data/egx-companies';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 
-const FREE_LIMIT = 1;
+const FREE_LIMIT = 0;
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);

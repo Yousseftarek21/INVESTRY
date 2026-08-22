@@ -1,15 +1,22 @@
 /**
- * SubscriptionContext — read-only entitlement check.
+ * SubscriptionContext — real entitlement, gated, purchased via the website.
  *
- * The app never processes payments and never talks to Stripe. Upgrading,
- * managing, and cancelling a subscription all happen on the website
- * (investry.app), which shares the same Clerk account as this app. Stripe
- * webhooks on the backend keep the database in sync; this context's only
- * job is to ask the backend "what plan is this user on right now" (`GET
- * /api/subscription`) and refresh that on sign-in, app launch, and app
- * foreground — never to grant entitlements on its own. AsyncStorage is only
- * used as a display cache for a fast paint; a live fetch always follows and
- * overwrites it.
+ * History worth keeping in mind: App Review rejected build 54 under
+ * Guideline 3.1.1 for displaying a Pro plan — a "You're on the Pro plan"
+ * status, a Free-vs-Pro comparison, PRO badges — that was only purchasable
+ * on investry.app, not in the app. A second attempt only unlocked every
+ * feature while leaving plan/isPro live "for badge/display purposes", which
+ * failed review again for the same reason: Apple objects to *presenting*
+ * paid content bought elsewhere, not merely to gating it. Every gate and
+ * every plan/isPro reference was removed after that, and this file carried
+ * a hardcoded `featuresUnlocked = true` for a while.
+ *
+ * Gating is deliberately being reinstated now, still via the website's
+ * Stripe checkout (no in-app purchase — react-native-purchases stays
+ * installed-but-unused, kept on standby for a StoreKit/IAP path later). The
+ * risk that reintroduces on iOS re-review has been explicitly discussed and
+ * accepted — this file's job is just to gate correctly and reflect the
+ * user's real plan, not to relitigate that call.
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -22,28 +29,20 @@ export type Plan = 'free' | 'pro';
 export type BillingPeriod = 'monthly' | 'annual';
 
 export interface SubscriptionContextValue {
-  /**
-   * Always true. The app presents no paid tier and gates nothing.
-   *
-   * App Review rejected build 54 under Guideline 3.1.1: the app displayed a
-   * Pro plan — a "You're on the Pro plan" status, a Free-vs-Pro comparison,
-   * and PRO badges — while the plan itself was only purchasable on
-   * investry.app. An earlier attempt at this fixed only half the problem, by
-   * unlocking every feature but deliberately keeping plan/isPro live "for
-   * badge/display purposes". Apple objects to *presenting* paid content
-   * bought elsewhere, not merely to gating it, so the badges were enough to
-   * fail review a second time.
-   *
-   * plan / isPro / isSubscribed are therefore no longer exposed at all —
-   * nothing in the UI can render a tier that can't be bought in the app.
-   * Reinstating any of them requires shipping StoreKit In-App Purchase first.
-   */
+  /** Real entitlement: `plan === 'pro'` or the server's beta-unlock flag. */
   featuresUnlocked: boolean;
+  /** The user's current plan, straight from the backend. */
+  plan: Plan;
+  /** Convenience alias for `plan === 'pro'`. */
+  isPro: boolean;
   isLoading: boolean;
   /** Manually re-check entitlement against the backend (e.g. pull-to-refresh). */
   refresh: () => Promise<void>;
-  /** No-op. Kept so the (now unreachable) gate call sites still compile. */
+  /** Opens the Paywall modal (rendered once in app/_layout.tsx). */
   showPaywall: () => void;
+  /** Paywall modal's own visibility state — consumed by app/_layout.tsx only. */
+  paywallVisible: boolean;
+  closePaywall: () => void;
 }
 
 interface SubscriptionData { plan: Plan; billingPeriod: BillingPeriod; betaUnlockAll: boolean }
@@ -55,17 +54,13 @@ function subscriptionKey(userId: string) {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null);
 
-let _paywallCallback: (() => void) | null = null;
-export function _registerPaywallCallback(cb: () => void) {
-  _paywallCallback = cb;
-}
-
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { userId, getToken } = useAuth();
   const [plan, setPlan] = useState<Plan>('free');
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [betaUnlockAll, setBetaUnlockAll] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [paywallVisible, setPaywallVisible] = useState(false);
   const loadedUserRef = useRef<string | null>(null);
 
   const cachePlan = useCallback(async (uid: string, data: SubscriptionData) => {
@@ -192,22 +187,22 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     if (loadedUserRef.current) runFetch(loadedUserRef.current);
   }, [runFetch]);
 
-  const showPaywall = useCallback(() => {
-    _paywallCallback?.();
-  }, []);
+  const showPaywall = useCallback(() => setPaywallVisible(true), []);
+  const closePaywall = useCallback(() => setPaywallVisible(false), []);
 
-  // Unconditional on every platform, not just iOS. No platform build has an
-  // in-app purchase path, so a Pro tier is unbuyable everywhere — and Google
-  // Play's payments policy takes the same view Apple does. One behaviour is
-  // also one thing to reason about.
-  const featuresUnlocked = true;
+  const isPro = plan === 'pro';
+  const featuresUnlocked = isPro || betaUnlockAll;
 
   return (
     <SubscriptionContext.Provider value={{
       featuresUnlocked,
+      plan,
+      isPro,
       isLoading,
       refresh,
       showPaywall,
+      paywallVisible,
+      closePaywall,
     }}>
       {children}
     </SubscriptionContext.Provider>

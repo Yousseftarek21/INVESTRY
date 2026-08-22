@@ -9,7 +9,6 @@ import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
 import { tradingDayStart } from '@/utils/cairoDate';
 import { fmtCompact } from '@/utils/formatNumber';
-import { AllFeaturesNotice } from '@/components/AllFeaturesNotice';
 import { UpdateAvailableBanner } from '@/components/UpdateAvailableBanner';
 import { CompetitionInviteBanner } from '@/components/CompetitionInviteBanner';
 import { PerfChart } from '@/components/PerfChart';
@@ -786,13 +785,12 @@ export default function HomeScreen() {
       </View>
 
       {/* Each renders nothing once dismissed/inapplicable, so this costs no
-          layout beyond the first read — order matters only while more than
-          one is visible at once (a first-ever launch could show all three):
-          an update nudge first (acts on the app itself), then the
-          low-friction competition ask, then the standing features notice. */}
+          layout beyond the first read — order matters only while both are
+          visible at once (a first-ever launch could show both): an update
+          nudge first (acts on the app itself), then the low-friction
+          competition ask. */}
       <UpdateAvailableBanner />
       <CompetitionInviteBanner />
-      <AllFeaturesNotice />
 
       {/* ── Hero Card ───────────────────────────────────────────── */}
       <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
