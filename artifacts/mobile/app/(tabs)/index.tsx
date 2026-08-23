@@ -794,17 +794,7 @@ export default function HomeScreen() {
       <CompetitionInviteBanner />
 
       {/* ── Hero Card ───────────────────────────────────────────── */}
-      <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.primary + '2E' }]}>
-        {/* Faint diagonal depth wash under everything else — the card reads
-            as lit rather than a flat panel, without competing with the
-            performance-tinted wash or the accent line above it. */}
-        <ExpoLinearGradient
-          pointerEvents="none"
-          colors={[colors.primary + '14', colors.primary + '00']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
+      <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <ExpoLinearGradient
           colors={[colors.primary + '00', colors.primary + 'CC', colors.primary + '00']}
           start={{ x: 0, y: 0 }}
@@ -1638,7 +1628,7 @@ const styles = StyleSheet.create({
   screenTitle:   { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
-  heroCard:   { borderRadius: 26, borderWidth: 1.25, overflow: 'hidden' },
+  heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   heroAccent: { height: 1.25 },
   // Tall enough to colour the card's upper region, short enough that it has
   // faded to nothing behind the value itself.
