@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -24,6 +24,18 @@ router.post("/push/register", async (req, res) => {
   }
 
   try {
+    // A physical device can only ever belong to whichever account most
+    // recently registered it. Without this, an earlier account that used
+    // this same device (signed out, a shared/test device, reinstalled as a
+    // different account) keeps this token on its own row forever — every
+    // cron that pushes by token (dailySummaryCron, portfolioAlertCron,
+    // userPriceAlertCron) would then send that stale account's own real
+    // data to this device indefinitely, alongside the current user's.
+    await db
+      .update(usersTable)
+      .set({ pushToken: null, updatedAt: new Date() })
+      .where(and(eq(usersTable.pushToken, token), ne(usersTable.id, userId)));
+
     await db
       .insert(usersTable)
       .values({ id: userId, pushToken: token })
