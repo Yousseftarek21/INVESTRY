@@ -1,25 +1,25 @@
-import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = '@invstry_review_prompted';
 
 /**
- * Apple's own StoreKit API silently caps how often its rating dialog can
- * actually appear (up to 3 times per 365 days per device, entirely outside
- * our control — a call here may do nothing and there is no way to detect
- * that). This is a second, stricter cap on top of that: ask at most once
- * per account, ever, and only at a genuinely positive moment — right after
- * a tier promotion — rather than repeatedly hoping the system dialog is
- * still available.
- *
- * isAvailableAsync() also resolves false for a TestFlight build, so this is
- * naturally a no-op during beta testing and only ever fires for real App
- * Store users.
+ * expo-store-review is a native module not yet compiled into the currently
+ * shipped app binary (it was added after the last native build) — a static
+ * top-level `import ... from 'expo-store-review'` throws at module-load
+ * time on any device running that older binary, which crashes the entire
+ * Home tab for every user the moment this file loads, not just for anyone
+ * who reaches a tier promotion. A `require()` deferred until the function
+ * actually runs, wrapped in try/catch, means this file is always safe to
+ * ship — it silently no-ops on an old binary and works normally once a
+ * build that includes the native module goes out.
  */
 export async function maybeRequestReview(): Promise<void> {
   try {
     const alreadyPrompted = await AsyncStorage.getItem(KEY);
     if (alreadyPrompted) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const StoreReview = require('expo-store-review') as typeof import('expo-store-review');
     const available = await StoreReview.isAvailableAsync();
     if (!available) return;
     // Set before requesting, not after: requestReview() can resolve without
@@ -30,6 +30,7 @@ export async function maybeRequestReview(): Promise<void> {
     await AsyncStorage.setItem(KEY, 'true');
     await StoreReview.requestReview();
   } catch {
-    // Never let a rating-prompt failure affect anything else in the app.
+    // Covers both a genuine review-flow failure and the native module not
+    // existing yet on this binary — never let either affect anything else.
   }
 }
