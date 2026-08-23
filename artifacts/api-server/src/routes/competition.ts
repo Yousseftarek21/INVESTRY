@@ -2,8 +2,8 @@ import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { cairoWeekStart } from "../lib/cairoDate";
-import { snapshotOnOrBefore } from "../lib/portfolioSnapshotHelpers";
+import { cairoDateString, cairoMonthStart, cairoWeekStart } from "../lib/cairoDate";
+import { snapshotBefore, snapshotOnOrBefore } from "../lib/portfolioSnapshotHelpers";
 
 const router: IRouter = Router();
 
@@ -66,11 +66,21 @@ const TOP_N = 50;
 
 interface Ranked { nickname: string; pctReturn: number; rank: number; isMe: boolean }
 
-// GET /api/competition/leaderboard — ranked by % portfolio return since this
-// week's start (Sunday, Africa/Cairo — see cairoWeekStart), computed from
-// portfolio_snapshots, which portfolioAlertCron.ts already writes for every
-// user every 5 minutes regardless of any opt-in here. No new data collection,
-// no cron of its own — this is a pure read, computed fresh on each request.
+// GET /api/competition/leaderboard?period=week|month — ranked by % portfolio
+// return since the period's start (Africa/Cairo — see cairoWeekStart /
+// cairoMonthStart), computed from portfolio_snapshots, which
+// portfolioAlertCron.ts already writes for every user every 5 minutes
+// regardless of any opt-in here. No new data collection, no cron of its own
+// — this is a pure read, computed fresh on each request.
+//
+// Same-day-as-period-start edge case: on the exact day a period begins (e.g.
+// every Sunday for the weekly view, or the 1st of the month for the monthly
+// one), snapshotOnOrBefore(userId, periodStart) would resolve to that day's
+// OWN snapshot — identical to `current` — forcing baseline === current and
+// every participant's return to exactly 0%, which is what the leaderboard
+// was actually showing. Fixed by using snapshotBefore (strictly earlier)
+// only on that one day, so the baseline is the last real value from before
+// the period started instead of "right now."
 //
 // Known, accepted limitation: holdings in this app are self-reported, not
 // linked to a real brokerage, so this ranking can be gamed by entering a
@@ -82,7 +92,8 @@ router.get("/competition/leaderboard", async (req, res) => {
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    const weekStart = cairoWeekStart();
+    const period = req.query.period === "month" ? "month" : "week";
+    const periodStart = period === "month" ? cairoMonthStart() : cairoWeekStart();
     const opted = await db
       .select({ id: usersTable.id, nickname: usersTable.competitionNickname })
       .from(usersTable)
@@ -100,10 +111,16 @@ router.get("/competition/leaderboard", async (req, res) => {
     // lookup just needs *a* recent cutoff no earlier than the latest real
     // snapshot, and portfolio_snapshots is written multiple times a day.
     const today = new Date().toISOString().slice(0, 10);
+    // periodStart is a Cairo calendar date; comparing it against today's own
+    // Cairo date (not the plain-UTC `today` above) is what correctly detects
+    // "the period starts today" regardless of the UTC/Cairo offset.
+    const isFirstDayOfPeriod = periodStart === cairoDateString();
     const withReturns: { id: string; nickname: string; pctReturn: number }[] = [];
     for (const u of opted) {
       if (!u.nickname) continue;
-      const baseline = await snapshotOnOrBefore(u.id, weekStart);
+      const baseline = isFirstDayOfPeriod
+        ? await snapshotBefore(u.id, periodStart)
+        : await snapshotOnOrBefore(u.id, periodStart);
       const current = await snapshotOnOrBefore(u.id, today);
       if (baseline == null || current == null) continue;
       withReturns.push({ id: u.id, nickname: u.nickname, pctReturn: ((current - baseline) / baseline) * 100 });
@@ -119,7 +136,7 @@ router.get("/competition/leaderboard", async (req, res) => {
     }));
 
     const me = ranked.find(r => r.isMe) ?? null;
-    res.json({ weekStart, top: ranked.slice(0, TOP_N), me, optedIn });
+    res.json({ period, periodStart, top: ranked.slice(0, TOP_N), me, optedIn });
   } catch (err) {
     req.log.error({ err }, "GET /competition/leaderboard failed");
     res.status(500).json({ error: "Failed to load the leaderboard" });

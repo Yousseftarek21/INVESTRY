@@ -83,3 +83,11 @@ export function cairoWeekStart(d: Date = new Date()): string {
   const weekday = new Date(`${today}T00:00:00Z`).getUTCDay(); // 0=Sunday
   return new Date(Date.parse(`${today}T00:00:00Z`) - weekday * 86_400_000).toISOString().slice(0, 10);
 }
+
+// The date key (YYYY-MM-DD, Africa/Cairo) of the 1st of the current Cairo
+// calendar month — the monthly leaderboard's reset boundary, alongside
+// cairoWeekStart's weekly one.
+export function cairoMonthStart(d: Date = new Date()): string {
+  const today = cairoDateString(d);
+  return `${today.slice(0, 7)}-01`;
+}

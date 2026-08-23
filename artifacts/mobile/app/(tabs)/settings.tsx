@@ -548,11 +548,6 @@ export default function SettingsScreen() {
               icon="trending-up" iconBg="#00D4AA"
               label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
               onPress={() => goTo('/leaderboard')}
-            />
-            <NavRow
-              icon="pie-chart" iconBg="#22C55E"
-              label={t.dividendsTitle} sublabel={t.noDividendsHint}
-              onPress={() => goTo('/dividends')}
               last
             />
           </Sect>

@@ -10,7 +10,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useUser } from '@clerk/expo';
-import { useLeaderboard, LeaderboardEntry } from '@/hooks/useLeaderboard';
+import { useLeaderboard, LeaderboardEntry, LeaderboardPeriod } from '@/hooks/useLeaderboard';
 
 const NICKNAME_MAX = 24;
 
@@ -20,32 +20,73 @@ function pctColor(colors: ReturnType<typeof useColors>, pct: number): string {
   return colors.mutedForeground;
 }
 
+// Podium treatment for the top 3 — bigger, medal-tinted, visually distinct
+// from the plain numbered rows below them, since "who's #1 this week" is the
+// single most scannable thing a competitive leaderboard should communicate.
+const MEDAL_BG: Record<number, string> = { 1: '#F5C34C1F', 2: '#C7CDD61F', 3: '#D3956B1F' };
+const MEDAL_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
 function Row({ entry, isLast }: { entry: LeaderboardEntry; isLast: boolean }) {
   const colors = useColors();
   const t = useT();
-  const medal = entry.rank <= 3 ? ['🥇', '🥈', '🥉'][entry.rank - 1] : null;
+  const isPodium = entry.rank <= 3;
   return (
     <View
       style={[
         rs.row,
         { borderBottomColor: colors.border },
         !isLast && rs.rowBorder,
-        entry.isMe && { backgroundColor: colors.primary + '0F' },
+        isPodium && { backgroundColor: MEDAL_BG[entry.rank] },
+        entry.isMe && { backgroundColor: colors.primary + '14' },
       ]}
     >
       <View style={rs.rankWrap}>
-        {medal ? (
-          <Text style={rs.medal}>{medal}</Text>
+        {isPodium ? (
+          <Text style={rs.medal}>{MEDAL_EMOJI[entry.rank]}</Text>
         ) : (
           <Text style={[rs.rankTxt, { color: colors.mutedForeground }]}>{entry.rank}</Text>
         )}
       </View>
-      <Text style={[rs.nickname, { color: colors.text }]} numberOfLines={1}>
+      <Text
+        style={[rs.nickname, { color: colors.text }, isPodium && rs.nicknameBold]}
+        numberOfLines={1}
+      >
         {entry.nickname}{entry.isMe ? ` (${t.leaderboardYou})` : ''}
       </Text>
-      <Text style={[rs.pct, { color: pctColor(colors, entry.pctReturn) }]} numberOfLines={1}>
-        {entry.pctReturn > 0 ? '+' : ''}{entry.pctReturn.toFixed(1)}%
-      </Text>
+      <View style={[rs.pctPill, { backgroundColor: pctColor(colors, entry.pctReturn) + '18' }]}>
+        <Text style={[rs.pct, { color: pctColor(colors, entry.pctReturn) }]} numberOfLines={1}>
+          {entry.pctReturn > 0 ? '+' : ''}{entry.pctReturn.toFixed(1)}%
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function PeriodToggle({ period, onChange }: { period: LeaderboardPeriod; onChange: (p: LeaderboardPeriod) => void }) {
+  const colors = useColors();
+  const t = useT();
+  const { impact } = useHaptic();
+  const options: { key: LeaderboardPeriod; label: string }[] = [
+    { key: 'week', label: t.leaderboardWeekly },
+    { key: 'month', label: t.leaderboardMonthly },
+  ];
+  return (
+    <View style={[pt.wrap, { backgroundColor: colors.muted }]}>
+      {options.map(opt => {
+        const active = opt.key === period;
+        return (
+          <TouchableOpacity
+            key={opt.key}
+            style={[pt.pill, active && { backgroundColor: colors.card }]}
+            onPress={() => { if (!active) { impact(); onChange(opt.key); } }}
+            activeOpacity={0.8}
+          >
+            <Text style={[pt.pillTxt, { color: active ? colors.text : colors.mutedForeground }]}>
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -56,7 +97,8 @@ export default function LeaderboardScreen() {
   const { user } = useUser();
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
-  const { top, me, isLoading, isOptedIn, join, leave } = useLeaderboard();
+  const [period, setPeriod] = useState<LeaderboardPeriod>('week');
+  const { top, me, isLoading, isOptedIn, join, leave } = useLeaderboard(period);
 
   const realName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
   // Reusing the same nickname state for both first-time join and a later
@@ -73,6 +115,9 @@ export default function LeaderboardScreen() {
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
+
+  const yourRankLabel = period === 'week' ? t.leaderboardYourRankWeek : t.leaderboardYourRankMonth;
+  const topLabel = period === 'week' ? t.leaderboardTopLabelWeek : t.leaderboardTopLabelMonth;
 
   const handleJoin = async () => {
     const trimmed = nickname.trim();
@@ -158,6 +203,8 @@ export default function LeaderboardScreen() {
           </View>
         ) : (
           <>
+            <PeriodToggle period={period} onChange={setPeriod} />
+
             {!me && (
               <View style={[s.pendingBanner, { backgroundColor: colors.muted }]}>
                 <Feather name="clock" size={13} color={colors.mutedForeground} />
@@ -170,7 +217,7 @@ export default function LeaderboardScreen() {
             {!!me && (
               <View style={[s.meCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={s.meLabelRow}>
-                  <Text style={[s.meLabel, { color: colors.mutedForeground }]}>{t.leaderboardYourRank}</Text>
+                  <Text style={[s.meLabel, { color: colors.mutedForeground }]}>{yourRankLabel}</Text>
                   <TouchableOpacity onPress={startEditing} hitSlop={8} style={s.editBtn}>
                     <Feather name="edit-2" size={11} color={colors.mutedForeground} />
                     <Text style={[s.editBtnTxt, { color: colors.mutedForeground }]}>{me.nickname}</Text>
@@ -191,7 +238,7 @@ export default function LeaderboardScreen() {
               contentContainerStyle={{ paddingBottom: botPad + 20 }}
               ListHeaderComponent={
                 top.length > 0 ? (
-                  <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{t.leaderboardTopLabel}</Text>
+                  <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{topLabel}</Text>
                 ) : null
               }
               ListEmptyComponent={
@@ -250,12 +297,20 @@ const s = StyleSheet.create({
   leaveTxt: { fontSize: 12.5, fontFamily: 'Inter_500Medium' },
 });
 
+const pt = StyleSheet.create({
+  wrap: { flexDirection: 'row', margin: 16, marginBottom: 4, borderRadius: 12, padding: 3, gap: 3 },
+  pill: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 9 },
+  pillTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+});
+
 const rs = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 13 },
   rowBorder: { borderBottomWidth: StyleSheet.hairlineWidth },
   rankWrap: { width: 28, alignItems: 'center' },
-  medal: { fontSize: 17 },
+  medal: { fontSize: 18 },
   rankTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] },
   nickname: { flex: 1, fontSize: 14, fontFamily: 'Inter_500Medium' },
-  pct: { fontSize: 14, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
+  nicknameBold: { fontFamily: 'Inter_700Bold' },
+  pctPill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
+  pct: { fontSize: 13, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 });

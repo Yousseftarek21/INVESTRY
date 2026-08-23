@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/utils/api';
 import { useStableGetToken } from './useStableGetToken';
 
+export type LeaderboardPeriod = 'week' | 'month';
+
 export interface LeaderboardEntry {
   nickname: string;
   pctReturn: number;
@@ -11,39 +13,44 @@ export interface LeaderboardEntry {
 }
 
 interface LeaderboardResponse {
-  weekStart: string;
+  period: LeaderboardPeriod;
+  periodStart: string;
   top: LeaderboardEntry[];
   me: LeaderboardEntry | null;
   optedIn: boolean;
 }
 
-const EMPTY: LeaderboardResponse = { weekStart: '', top: [], me: null, optedIn: false };
+const emptyFor = (period: LeaderboardPeriod): LeaderboardResponse => (
+  { period, periodStart: '', top: [], me: null, optedIn: false }
+);
 
 // Same react-query pattern as useCashAccountsTodayChanges — a short
 // staleTime rather than no cache at all, so reopening the screen doesn't
 // show a blank list for a beat every time.
-export function useLeaderboard() {
+export function useLeaderboard(period: LeaderboardPeriod = 'week') {
   const { userId, isSignedIn } = useAuth();
   const getToken = useStableGetToken();
   const queryClient = useQueryClient();
-  // Scoped by userId, not a flat key: a flat key would keep serving the
-  // previous account's cached opted-in status (from before sign-out, or
-  // from a fetch that raced the sign-out and got a token-less EMPTY) to
-  // whoever's session mounts next, for up to staleTime — surfacing the
-  // "join" banner right after re-signing into an account that had already
-  // joined, or leaking one account's status into the next on a shared
-  // device. Every user-scoped context in this app (Holdings, Cash, Goals,
-  // Subscription, …) clears its own cache on account change for the same
-  // reason; this is the react-query-native way to get the same guarantee.
-  const queryKey = ['competition-leaderboard', userId] as const;
+  // Scoped by userId AND period, not a flat key: a flat key would keep
+  // serving the previous account's cached opted-in status (from before
+  // sign-out, or from a fetch that raced the sign-out and got a token-less
+  // EMPTY) to whoever's session mounts next, for up to staleTime — surfacing
+  // the "join" banner right after re-signing into an account that had
+  // already joined, or leaking one account's status into the next on a
+  // shared device. Every user-scoped context in this app (Holdings, Cash,
+  // Goals, Subscription, …) clears its own cache on account change for the
+  // same reason; this is the react-query-native way to get the same
+  // guarantee. Scoping by period too means switching Weekly/Monthly is an
+  // instant cache hit on a second visit instead of a refetch every time.
+  const queryKey = ['competition-leaderboard', userId, period] as const;
 
   const query = useQuery<LeaderboardResponse>({
     queryKey,
     queryFn: async () => {
       const token = await getToken();
-      if (!token) return EMPTY;
-      const res = await apiFetch('/api/competition/leaderboard', token);
-      if (!res.ok) return EMPTY;
+      if (!token) return emptyFor(period);
+      const res = await apiFetch(`/api/competition/leaderboard?period=${period}`, token);
+      if (!res.ok) return emptyFor(period);
       return res.json();
     },
     enabled: !!isSignedIn && !!userId,
@@ -57,7 +64,9 @@ export function useLeaderboard() {
       method: 'PUT',
       body: JSON.stringify({ nickname }),
     });
-    if (res.ok) await queryClient.invalidateQueries({ queryKey });
+    if (res.ok) {
+      await queryClient.invalidateQueries({ queryKey: ['competition-leaderboard', userId] });
+    }
     return res.ok;
   };
 
@@ -65,12 +74,14 @@ export function useLeaderboard() {
     const token = await getToken();
     if (!token) return false;
     const res = await apiFetch('/api/competition/leave', token, { method: 'POST' });
-    if (res.ok) await queryClient.invalidateQueries({ queryKey });
+    if (res.ok) {
+      await queryClient.invalidateQueries({ queryKey: ['competition-leaderboard', userId] });
+    }
     return res.ok;
   };
 
   return {
-    ...(query.data ?? EMPTY),
+    ...(query.data ?? emptyFor(period)),
     isLoading: query.isLoading,
     // Read directly from the server's own flag, not inferred from `me` —
     // a just-joined user with no snapshot history yet is genuinely opted in
