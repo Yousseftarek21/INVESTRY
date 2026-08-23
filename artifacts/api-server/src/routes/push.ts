@@ -48,6 +48,29 @@ router.post("/push/register", async (req, res) => {
   }
 });
 
+// POST /api/push/unregister — called right before sign-out (while the
+// session is still valid, since a token is needed to authenticate this
+// call at all). Without this, a signed-out account keeps its device's push
+// token forever, so anyone who later picks up that device — or the device
+// just sitting idle, signed out — would still receive that account's own
+// real daily/weekly summary and portfolio alerts.
+router.post("/push/unregister", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    await db
+      .update(usersTable)
+      .set({ pushToken: null, updatedAt: new Date() })
+      .where(eq(usersTable.id, userId));
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "POST /push/unregister failed");
+    res.status(500).json({ error: "Failed to clear push token" });
+  }
+});
+
 // PUT /api/push/preferences — toggle server-sent notification categories.
 // portfolioAlertsEnabled gates the daily ±1% portfolio-value push (see
 // lib/portfolioAlertCron.ts); priceAlertsEnabled gates custom target-price

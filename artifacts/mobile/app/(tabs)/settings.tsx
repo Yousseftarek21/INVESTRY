@@ -402,6 +402,7 @@ export default function SettingsScreen() {
   const router  = useRouter();
   const { impact: haptic } = useHaptic();
   const { signOut } = useClerk();
+  const { getToken } = useAuth();
   const { user } = useUser();
   const { holdings } = useHoldings();
 
@@ -460,6 +461,13 @@ export default function SettingsScreen() {
   const handleConfirm = async () => {
     if (!confirm) return;
     if (confirm.id === 'signout') {
+      // Clear this device's push token from the account before the session
+      // that authenticates the call goes away — otherwise a signed-out
+      // account keeps receiving its own real notifications on this device.
+      try {
+        const token = await getToken();
+        if (token) await apiFetch('/api/push/unregister', token, { method: 'POST' });
+      } catch { /* best-effort — never block sign-out on this */ }
       await signOut();
       router.replace('/(auth)/welcome' as any);
     }
