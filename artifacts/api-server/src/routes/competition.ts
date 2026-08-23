@@ -87,13 +87,17 @@ interface Ranked { nickname: string; pctReturn: number; rank: number; isMe: bool
 // the one definition of "today" that always matches the freshest row that's
 // actually been written.
 //
-// Same-day-as-period-start edge case: on the exact trading day a period
-// begins (e.g. every Sunday for the weekly view, or the 1st of the month for
-// the monthly one), snapshotOnOrBefore(userId, periodStart) would resolve to
-// that day's OWN snapshot — identical to `current` — again forcing
-// baseline === current. Fixed by using snapshotBefore (strictly earlier)
-// only on that one day, so the baseline is the last real value from before
-// the period started instead of "right now."
+// The baseline is always the last snapshot from STRICTLY BEFORE periodStart
+// (snapshotBefore), never "on or before" it. A change made during the
+// period's own first day (e.g. a real portfolio edit made sometime Sunday)
+// must count as part of that period's movement — using "on or before
+// Sunday" as the baseline would instead pick up Sunday's own end-of-day
+// value, silently absorbing that day's change into the baseline itself and
+// making it invisible. Anchoring strictly before the period started (i.e.
+// Saturday's closing value for the weekly view) is what makes every day of
+// the period, including its first, actually count toward the shown return.
+// This also incidentally avoids the same-day baseline === current collision
+// (see portfolioSnapshotHelpers.ts) without needing a separate branch for it.
 //
 // A user whose tracking history doesn't reach back to periodStart at all
 // (joined, or opted into competition tracking, partway through the week/
@@ -127,14 +131,10 @@ router.get("/competition/leaderboard", async (req, res) => {
     const optedIn = opted.some(u => u.id === userId);
 
     const today = tradingDayKey();
-    const isFirstDayOfPeriod = periodStart === today;
     const withReturns: { id: string; nickname: string; pctReturn: number }[] = [];
     for (const u of opted) {
       if (!u.nickname) continue;
-      const onBoundary = isFirstDayOfPeriod
-        ? await snapshotBefore(u.id, periodStart)
-        : await snapshotOnOrBefore(u.id, periodStart);
-      const baseline = onBoundary ?? await earliestSnapshotBefore(u.id, today);
+      const baseline = (await snapshotBefore(u.id, periodStart)) ?? await earliestSnapshotBefore(u.id, today);
       const current = await snapshotOnOrBefore(u.id, today);
       if (baseline == null || current == null) continue;
       withReturns.push({ id: u.id, nickname: u.nickname, pctReturn: ((current - baseline) / baseline) * 100 });
