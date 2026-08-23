@@ -2,10 +2,10 @@
  * Portfolio tiers — a status band derived from net worth (investments +
  * cash), the same figure the Home hero shows as "Net Worth incl. cash".
  *
- * Three bands: Core (100k – 1M), Plus (1M – 10M), Wealth (10M+). Core starts
- * at 100k, not 0, by explicit product decision — tier 1 itself has to be
- * reached, not handed out for having a few thousand pounds tracked. Below
- * 100k there is genuinely no tier (see tierForValue returning null), same
+ * Three bands: Core (50k – 500k), Plus (500k – 1.5M), Wealth (1.5M+). Core
+ * starts at 50k, not 0, by explicit product decision — tier 1 itself has to
+ * be reached, not handed out for having a few thousand pounds tracked. Below
+ * 50k there is genuinely no tier (see tierForValue returning null), same
  * honesty policy as everywhere else in this app: no status badge for having
  * basically nothing, rather than a "Core" that means nothing because
  * everyone always has it.
@@ -33,9 +33,9 @@ export interface Tier {
 }
 
 export const TIERS: Tier[] = [
-  { id: 'core',   minEgp: 100_000,    level: 0 },
-  { id: 'plus',   minEgp: 1_000_000,  level: 1 },
-  { id: 'wealth', minEgp: 10_000_000, level: 2 },
+  { id: 'core',   minEgp: 50_000,    level: 0 },
+  { id: 'plus',   minEgp: 500_000,   level: 1 },
+  { id: 'wealth', minEgp: 1_500_000, level: 2 },
 ];
 
 /**
@@ -69,13 +69,13 @@ export function tierById(id: TierId): Tier {
 
 /**
  * The tier to actually display, given what the user held last time. Null
- * means "no tier" — either net worth has never reached Core's 100k floor,
+ * means "no tier" — either net worth has never reached Core's 50k floor,
  * or it fell back under it after a real, sustained drop.
  *
  * Promotions apply immediately. Demotions — including dropping out of Core
  * entirely — only apply once net worth has fallen a clear margin below the
- * held tier's entry point: a dip to 9.9M keeps Wealth, a real slide to 9.4M
- * doesn't; a dip to 96k keeps Core, a real slide to 94k loses it.
+ * held tier's entry point: a dip to 1.48M keeps Wealth, a real slide to
+ * 1.4M doesn't; a dip to 48k keeps Core, a real slide to 47k loses it.
  *
  * `held` is null for a user who has never had a tier resolved (first
  * launch, or net worth that has simply never reached 100k), in which case
