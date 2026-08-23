@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, lte } from "drizzle-orm";
+import { and, asc, desc, eq, lt, lte } from "drizzle-orm";
 import { db, portfolioSnapshotsTable } from "@workspace/db";
 
 // Shared by dailySummaryCron.ts and routes/competition.ts — both need "this
@@ -29,6 +29,28 @@ export async function snapshotBefore(userId: string, dateKey: string): Promise<n
     .from(portfolioSnapshotsTable)
     .where(and(eq(portfolioSnapshotsTable.userId, userId), lt(portfolioSnapshotsTable.date, dateKey)))
     .orderBy(desc(portfolioSnapshotsTable.date))
+    .limit(1);
+  return row && row.totalValue > 0 ? row.totalValue : null;
+}
+
+// The user's very first ever recorded snapshot, but only if it's strictly
+// before `beforeDateKey` — used as a leaderboard baseline fallback for a
+// user whose tracking history doesn't reach back to the period's start (they
+// joined, or opted into competition tracking, partway through the week/
+// month). Rather than excluding them from ranking entirely until a full
+// period has elapsed, their return is measured "since they started
+// tracking" instead — the same inclusive philosophy chartUtils.ts's
+// isPeriodAvailable already applies to chart periods. Requiring the row to
+// be strictly before `beforeDateKey` (normally today) stops a user with only
+// a single same-day snapshot from getting a fabricated baseline === current
+// (0%) result; they're correctly excluded instead, same as anyone else with
+// no comparison point yet.
+export async function earliestSnapshotBefore(userId: string, beforeDateKey: string): Promise<number | null> {
+  const [row] = await db
+    .select({ totalValue: portfolioSnapshotsTable.totalValue })
+    .from(portfolioSnapshotsTable)
+    .where(and(eq(portfolioSnapshotsTable.userId, userId), lt(portfolioSnapshotsTable.date, beforeDateKey)))
+    .orderBy(asc(portfolioSnapshotsTable.date))
     .limit(1);
   return row && row.totalValue > 0 ? row.totalValue : null;
 }

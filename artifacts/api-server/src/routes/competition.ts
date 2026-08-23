@@ -2,8 +2,8 @@ import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { cairoDateString, cairoMonthStart, cairoWeekStart } from "../lib/cairoDate";
-import { snapshotBefore, snapshotOnOrBefore } from "../lib/portfolioSnapshotHelpers";
+import { cairoMonthStart, cairoWeekStart, tradingDayKey } from "../lib/cairoDate";
+import { earliestSnapshotBefore, snapshotBefore, snapshotOnOrBefore } from "../lib/portfolioSnapshotHelpers";
 
 const router: IRouter = Router();
 
@@ -73,14 +73,34 @@ interface Ranked { nickname: string; pctReturn: number; rank: number; isMe: bool
 // regardless of any opt-in here. No new data collection, no cron of its own
 // — this is a pure read, computed fresh on each request.
 //
-// Same-day-as-period-start edge case: on the exact day a period begins (e.g.
-// every Sunday for the weekly view, or the 1st of the month for the monthly
-// one), snapshotOnOrBefore(userId, periodStart) would resolve to that day's
-// OWN snapshot — identical to `current` — forcing baseline === current and
-// every participant's return to exactly 0%, which is what the leaderboard
-// was actually showing. Fixed by using snapshotBefore (strictly earlier)
+// "Today" MUST be tradingDayKey(), not a plain UTC or Cairo calendar date:
+// portfolio_snapshots.date is itself written using tradingDayKey() (see
+// portfolioAlertCron.ts), so any other definition of "today" can disagree
+// with what's actually in the table. This was a real, live bug: a plain UTC
+// `new Date().toISOString().slice(0,10)` lags tradingDayKey() by up to a
+// couple of hours every single day (tradingDayKey rolls over at 22:00/23:00
+// UTC, UTC's own calendar date only rolls at 00:00 UTC) — during that daily
+// window `current` silently fell back to *yesterday's* snapshot even though
+// a fresh one already existed, and on top of that it happened to collide
+// with `weekStart` on Cairo's own Sunday, collapsing baseline === current
+// and showing an exact 0% for every single participant. tradingDayKey() is
+// the one definition of "today" that always matches the freshest row that's
+// actually been written.
+//
+// Same-day-as-period-start edge case: on the exact trading day a period
+// begins (e.g. every Sunday for the weekly view, or the 1st of the month for
+// the monthly one), snapshotOnOrBefore(userId, periodStart) would resolve to
+// that day's OWN snapshot — identical to `current` — again forcing
+// baseline === current. Fixed by using snapshotBefore (strictly earlier)
 // only on that one day, so the baseline is the last real value from before
 // the period started instead of "right now."
+//
+// A user whose tracking history doesn't reach back to periodStart at all
+// (joined, or opted into competition tracking, partway through the week/
+// month) falls back to their own earliest snapshot as the baseline instead
+// of being excluded outright — see earliestSnapshotBefore's own comment.
+// Without this, a monthly view early in most users' lifetime would rank
+// almost nobody, which is exactly what was happening.
 //
 // Known, accepted limitation: holdings in this app are self-reported, not
 // linked to a real brokerage, so this ranking can be gamed by entering a
@@ -106,21 +126,15 @@ router.get("/competition/leaderboard", async (req, res) => {
     // since they'd never appear in `me` below.
     const optedIn = opted.some(u => u.id === userId);
 
-    // "Today" as a plain UTC date is fine as the upper bound here — unlike
-    // the trading-day/Cairo-day distinction elsewhere in this app, a snapshot
-    // lookup just needs *a* recent cutoff no earlier than the latest real
-    // snapshot, and portfolio_snapshots is written multiple times a day.
-    const today = new Date().toISOString().slice(0, 10);
-    // periodStart is a Cairo calendar date; comparing it against today's own
-    // Cairo date (not the plain-UTC `today` above) is what correctly detects
-    // "the period starts today" regardless of the UTC/Cairo offset.
-    const isFirstDayOfPeriod = periodStart === cairoDateString();
+    const today = tradingDayKey();
+    const isFirstDayOfPeriod = periodStart === today;
     const withReturns: { id: string; nickname: string; pctReturn: number }[] = [];
     for (const u of opted) {
       if (!u.nickname) continue;
-      const baseline = isFirstDayOfPeriod
+      const onBoundary = isFirstDayOfPeriod
         ? await snapshotBefore(u.id, periodStart)
         : await snapshotOnOrBefore(u.id, periodStart);
+      const baseline = onBoundary ?? await earliestSnapshotBefore(u.id, today);
       const current = await snapshotOnOrBefore(u.id, today);
       if (baseline == null || current == null) continue;
       withReturns.push({ id: u.id, nickname: u.nickname, pctReturn: ((current - baseline) / baseline) * 100 });
