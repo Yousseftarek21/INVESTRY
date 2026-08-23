@@ -20,6 +20,7 @@ import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 import { usePortfolioTier } from '@/hooks/usePortfolioTier';
 import { TierCelebration } from '@/components/TierCelebration';
+import { maybeRequestReview } from '@/utils/appReview';
 import { TierSeal } from '@/components/TierSeal';
 import { TierCard } from '@/components/TierCard';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
@@ -1463,7 +1464,13 @@ export default function HomeScreen() {
         ?. is defensive, not expected to ever take the fallback. */}
     <TierCelebration
       change={tierChange}
-      onDismiss={clearTierChange}
+      onDismiss={() => {
+        // A tier promotion is the most genuinely positive moment this app
+        // has — ask here, not after any other action, and never on a
+        // demotion (maybeRequestReview also self-limits to once ever).
+        if (tierChange?.promoted) void maybeRequestReview();
+        clearTierChange();
+      }}
       returnHint={
         tierChange && !tierChange.promoted && tierChange.from
           ? t.tierLostHint(

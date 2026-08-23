@@ -73,6 +73,7 @@
     "expo-print": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "expo-speech-recognition": "^56.0.1",
+    "expo-store-review": "^57.0.2",
     "expo-tracking-transparency": "^6.0.8",
     "expo-updates": "~29.0.18",
     "react-native-fbsdk-next": "^13.4.3",
