@@ -154,7 +154,7 @@ export default function InviteFriendsScreen() {
               onPress={() => router.push('/referral-leaderboard')}
               style={({ pressed }) => [s.leaderboardLink, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}
             >
-              <Feather name="award" size={15} color={colors.primary} />
+              <Feather name="user-plus" size={15} color={colors.primary} />
               <Text style={[s.leaderboardLinkTxt, { color: colors.primary }]}>{t.referralLeaderboardNav}</Text>
               <Feather name={forwardChevron()} size={15} color={colors.primary} />
             </Pressable>

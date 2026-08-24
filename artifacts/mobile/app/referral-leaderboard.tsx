@@ -134,7 +134,7 @@ export default function ReferralLeaderboardScreen() {
             <PeriodToggle period={period} onChange={setPeriod} />
 
             <View style={[s.prizeNote, { backgroundColor: colors.muted }]}>
-              <Feather name="award" size={13} color={colors.mutedForeground} />
+              <Feather name="user-plus" size={13} color={colors.mutedForeground} />
               <Text style={[s.prizeNoteTxt, { color: colors.mutedForeground }]}>{t.referralLeaderboardPrizeNote}</Text>
             </View>
 
