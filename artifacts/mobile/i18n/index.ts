@@ -1329,9 +1329,9 @@ const en = {
 
   // Settings — invite friends / referrals
   inviteFriendsNav: 'Invite Friends',
-  leaderboardNav: 'Leaderboard',
+  leaderboardNav: 'Performance Leaderboard',
   leaderboardNavSub: 'See how your returns stack up',
-  leaderboardTitle: 'Leaderboard',
+  leaderboardTitle: 'Performance Leaderboard',
   leaderboardJoinTitle: 'Compete on your returns',
   leaderboardJoinBody: 'Join the weekly leaderboard, ranked by portfolio return \u2014 not by how much you have. Resets every Sunday.',
   leaderboardJoinFailed: "Couldn't join right now \u2014 try again",
@@ -2710,9 +2710,9 @@ const ar: typeof en = {
 
   // Settings — invite friends / referrals
   inviteFriendsNav: 'ادعُ أصدقاءك',
-  leaderboardNav: 'لوحة المتصدرين',
+  leaderboardNav: 'لوحة متصدري الأداء',
   leaderboardNavSub: 'قارن عائدك بعائد الآخرين',
-  leaderboardTitle: 'لوحة المتصدرين',
+  leaderboardTitle: 'لوحة متصدري الأداء',
   leaderboardJoinTitle: 'نافس على العائد',
   leaderboardJoinBody: 'انضم إلى لوحة المتصدرين الأسبوعية، مرتبة حسب عائد المحفظة \u2014 وليس حسب المبلغ. تُعاد كل يوم أحد.',
   leaderboardJoinFailed: 'تعذّر الانضمام الآن \u2014 حاول مجددًا',
