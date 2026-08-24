@@ -399,7 +399,7 @@ export default function HomeScreen() {
   // Today's manual balance-update deltas, re-bucketed from per-account (how
   // the API returns them, and how the Cash Accounts screen's own badges read
   // them) into per-currency, to match the rows this card actually renders.
-  const { todayChanges: cashTodayByAccount } = useCashAccountsTodayChanges();
+  const { todayChanges: cashTodayByAccount, isLoading: cashTodayLoading } = useCashAccountsTodayChanges();
   const cashTodayByCurrency = useMemo(() => {
     const totals = new Map<string, number>();
     cashAccounts.forEach(a => {
@@ -1180,19 +1180,29 @@ export default function HomeScreen() {
                   {hideValues ? '••••••' : cashTotalDispText}
                 </Text>
                 <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{displayCurrency}</Text>
-                {!hideValues && !!cashTodayEGP && (() => {
+                {!hideValues && (cashTodayLoading ? (
+                  // Same reserved-footprint treatment as the Cash Accounts
+                  // screen's own badge and the portfolio hero's Today chip —
+                  // never pops in after the fact, never disappears on a flat
+                  // day, so this row's width is stable from first paint.
+                  <View style={[styles.cashTodayBadge, { opacity: 0 }]} pointerEvents="none">
+                    <Feather name="minus" size={9} color="transparent" />
+                    <Text style={styles.cashTodayBadgeText}>+12.3K</Text>
+                  </View>
+                ) : (() => {
                   const delta = toDisp(cashTodayEGP);
+                  const isFlat = Math.abs(delta) < 0.005;
                   const up = delta > 0;
-                  const c = up ? colors.green : colors.red;
+                  const c = isFlat ? colors.mutedForeground : up ? colors.green : colors.red;
                   return (
                     <View style={[styles.cashTodayBadge, { backgroundColor: c + '18' }]}>
-                      <Feather name={up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
+                      <Feather name={isFlat ? 'minus' : up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
                       <Text style={[styles.cashTodayBadgeText, { color: c }]} numberOfLines={1}>
-                        {t.todayChangeBadge(`${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
+                        {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
                       </Text>
                     </View>
                   );
-                })()}
+                })())}
               </View>
             </View>
           ) : (
@@ -1219,19 +1229,25 @@ export default function HomeScreen() {
                       Hidden along with the balances when values are masked:
                       a visible delta would leak the very movement the mask
                       exists to hide. */}
-                  {!hideValues && !!cashTodayByCurrency.get(cur) && (() => {
-                    const delta = cashTodayByCurrency.get(cur) as number;
+                  {!hideValues && (cashTodayLoading ? (
+                    <View style={[styles.cashTodayBadge, { opacity: 0 }]} pointerEvents="none">
+                      <Feather name="minus" size={9} color="transparent" />
+                      <Text style={styles.cashTodayBadgeText}>+12.3K</Text>
+                    </View>
+                  ) : (() => {
+                    const delta = cashTodayByCurrency.get(cur) ?? 0;
+                    const isFlat = Math.abs(delta) < 0.005;
                     const up = delta > 0;
-                    const c = up ? colors.green : colors.red;
+                    const c = isFlat ? colors.mutedForeground : up ? colors.green : colors.red;
                     return (
                       <View style={[styles.cashTodayBadge, { backgroundColor: c + '18' }]}>
-                        <Feather name={up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
+                        <Feather name={isFlat ? 'minus' : up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
                         <Text style={[styles.cashTodayBadgeText, { color: c }]} numberOfLines={1}>
-                          {t.todayChangeBadge(`${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
+                          {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
                         </Text>
                       </View>
                     );
-                  })()}
+                  })())}
                 </View>
                 </React.Fragment>
               ))}
