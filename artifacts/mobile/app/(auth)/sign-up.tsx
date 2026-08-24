@@ -14,6 +14,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { FieldPlaceholder } from '@/components/FieldPlaceholder';
 import { useAppleAuthWithName } from '@/hooks/useAppleAuthWithName';
+import { apiFetch } from '@/utils/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -81,6 +82,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [code, setCode] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
@@ -113,8 +115,32 @@ export default function SignUpScreen() {
     }
   };
 
-  const finalizeNavigate = ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
+  const finalizeNavigate = async ({ session, decorateUrl }: { session?: any; decorateUrl: (url: string) => string }) => {
     if (session?.currentTask) return;
+
+    // Best-effort, never blocks account creation: if a referral code was
+    // entered, redeem it now that a real session exists (the redeem route
+    // requires auth). Silently ignored on failure — same as any code
+    // entered later in Settings → Invite Friends, this is just a second
+    // entry point for the same POST /referral/redeem, timed for the moment
+    // someone's most likely to have the code on hand (right when a friend
+    // sent it to them), not the only chance to use it.
+    const trimmedReferral = referralCode.trim();
+    if (trimmedReferral) {
+      try {
+        const token = await (session?.getToken?.() ?? clerk.session?.getToken());
+        if (token) {
+          await apiFetch('/api/referral/redeem', token, {
+            method: 'POST',
+            body: JSON.stringify({ code: trimmedReferral.toUpperCase() }),
+          });
+        }
+      } catch {
+        // Invalid/already-redeemed/network failure — the redeem field in
+        // Settings → Invite Friends is still there as a fallback.
+      }
+    }
+
     const url = decorateUrl('/');
     if (url.startsWith('http') && typeof window !== 'undefined') {
       window.location.href = url;
@@ -387,6 +413,25 @@ export default function SignUpScreen() {
             {errors.fields.password && (
               <Text style={[styles.fieldError, { color: colors.red }]}>{errors.fields.password.message}</Text>
             )}
+          </View>
+
+          {/* Referral code — optional, redeemed automatically once the
+              account is created (see finalizeNavigate). Anyone who forgets
+              this can still redeem later in Settings → Invite Friends. */}
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.referralCodeSignUpLabel}</Text>
+            <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <Feather name="gift" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={t.referralCodePlaceholder}
+                placeholderTextColor={colors.mutedForeground}
+                value={referralCode}
+                onChangeText={v => setReferralCode(v.toUpperCase())}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+            </View>
           </View>
 
           {/* Terms */}
