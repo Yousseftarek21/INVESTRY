@@ -332,6 +332,18 @@ const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
+// Presence of Arabic script is unambiguous; presence of Latin letters with
+// no Arabic script is unambiguous too. Only a message with neither (a bare
+// number, an emoji, punctuation) is genuinely ambiguous, and that's the one
+// case where falling back to the app's own language setting makes sense.
+const ARABIC_SCRIPT_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const LATIN_LETTER_RE = /[A-Za-z]/;
+function detectReplyLanguage(latestMessage: string, appLanguage: "ar" | "en"): "ar" | "en" {
+  if (ARABIC_SCRIPT_RE.test(latestMessage)) return "ar";
+  if (LATIN_LETTER_RE.test(latestMessage)) return "en";
+  return appLanguage;
+}
+
 // Only the user's own holdings are inlined into every message (small,
 // always relevant). The other ~280+ EGX companies are reachable on demand
 // through this tool instead of being dumped into context every turn, which
@@ -590,34 +602,25 @@ router.post("/chat", chatGenerationLimit, async (req, res) => {
   }
   const latestUserMessage = messages[messages.length - 1];
 
-  // What the user actually typed decides the reply language; the app's own
-  // language setting is only the tie-breaker.
-  //
-  // An earlier version of this pinned the reply to the app setting "regardless
-  // of what language the user's message itself is written in" — which meant an
-  // English-configured app answered Arabic questions in English, the exact
-  // complaint this replaces. SYSTEM_PREAMBLE is written in English, so without
-  // any instruction the model drifts to English too; the setting still has to
-  // be sent, just not allowed to override the user.
-  const appLanguageName = body.language === "ar" ? "Arabic" : "English";
-  // The Arabic-register guidance below is necessarily several sentences (word
-  // order, colloquial vocabulary, how numbers are spoken) while the English
-  // case is just "reply in English" — on a lite, non-reasoning model that
-  // length imbalance can itself act as a bias toward Arabic, independent of
-  // what the user actually typed. CRITICAL/ALL-CAPS framing plus stating the
-  // English case first and just as bluntly, and calling the imbalance out
-  // explicitly, is a direct countermeasure to that, not just restating the
-  // same instruction louder.
-  const languageInstruction =
-    "\n\nLANGUAGE (CRITICAL — check this before every reply): Detect the language of the user's LATEST message and reply in that exact language, full stop. " +
-    "English message -> reply entirely in English. Arabic message -> reply entirely in Arabic. " +
-    "The detailed Arabic style notes below describe HOW to write Arabic once Arabic is already the answer — they are not a reason to prefer Arabic, and being longer than the English instruction does not mean Arabic is the default or the safer choice. When the latest message is in English, do not slip into Arabic partway through, and do not add an Arabic translation alongside it. " +
-    "When the reply is Arabic, use genuine Egyptian colloquial Arabic (مصري) — the way a Cairo finance person actually talks, not a formal or literal translation of an English sentence. " +
-    "Default to everyday spoken word order and vocabulary (e.g. \"فلوسك\" not \"أموالك\", \"محفظتك زادت\" not \"لقد ارتفعت محفظتك\") — reach for Modern Standard Arabic only for genuinely formal/technical terms that don't have a natural colloquial equivalent (e.g. official fund or regulatory names), not as the default register. " +
-    "Keep numbers, percentages, and currency the way Egyptians actually say them out loud (e.g. \"مليون وميتين ألف جنيه\", not a stiff digit-by-digit reading), since replies are sometimes read aloud by text-to-speech and need to sound natural spoken, not just correct written. " +
-    "If a reply reads like it was translated rather than originally thought in Arabic, rewrite it before answering. " +
-    `Only when the message itself is too short or ambiguous to tell (a bare number, a ticker symbol, "ok"), fall back to ${appLanguageName}, the app's current language setting. ` +
-    "Never answer in a different language from the one the user's latest message just used.";
+  // Asking the model to detect the user's language itself and then comply
+  // failed twice in practice — even an unambiguous English message like
+  // "Hi" still sometimes came back in Arabic on gemini-3.5-flash-lite (see
+  // git history). Detecting it deterministically in code instead removes
+  // that failure mode entirely: the model is handed a fact to obey, not a
+  // judgment call to make. For an English message the prompt contains zero
+  // Arabic text at all, which also rules out the model drifting toward
+  // Arabic script by mere proximity to Arabic-language guidance elsewhere
+  // in the prompt — a real tendency independent of what that guidance
+  // literally says to do.
+  const appLanguage: "ar" | "en" = body.language === "ar" ? "ar" : "en";
+  const replyLanguage = detectReplyLanguage(latestUserMessage.content, appLanguage);
+  const languageInstruction = replyLanguage === "ar"
+    ? "\n\nLANGUAGE: Write your entire reply in genuine Egyptian colloquial Arabic (مصري) — the way a Cairo finance person actually talks, not a formal or literal translation of an English sentence. " +
+      "Default to everyday spoken word order and vocabulary (e.g. \"فلوسك\" not \"أموالك\", \"محفظتك زادت\" not \"لقد ارتفعت محفظتك\") — reach for Modern Standard Arabic only for genuinely formal/technical terms that don't have a natural colloquial equivalent (e.g. official fund or regulatory names), not as the default register. " +
+      "Keep numbers, percentages, and currency the way Egyptians actually say them out loud (e.g. \"مليون وميتين ألف جنيه\", not a stiff digit-by-digit reading), since replies are sometimes read aloud by text-to-speech and need to sound natural spoken, not just correct written. " +
+      "If a reply reads like it was translated rather than originally thought in Arabic, rewrite it before answering. " +
+      "The app's name, INVESTRY, is a fixed English brand name — always write it exactly as \"INVESTRY\" in Latin letters, even mid-sentence in Arabic, never transliterated into Arabic script."
+    : "\n\nLANGUAGE: Write your entire reply in English. Do not include any Arabic.";
 
   let portfolioContext: string;
   let egxStocks: EGXStockResponse[];
