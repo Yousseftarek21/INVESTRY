@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, FlatList, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -55,7 +55,7 @@ function Row({ entry, isLast }: { entry: LeaderboardEntry; isLast: boolean }) {
       </Text>
       <View style={[rs.pctPill, { backgroundColor: pctColor(colors, entry.pctReturn) + '18' }]}>
         <Text style={[rs.pct, { color: pctColor(colors, entry.pctReturn) }]} numberOfLines={1}>
-          {entry.pctReturn > 0 ? '+' : ''}{entry.pctReturn.toFixed(1)}%
+          {entry.pctReturn > 0 ? '+' : ''}{entry.pctReturn.toFixed(2)}%
         </Text>
       </View>
     </View>
@@ -98,7 +98,7 @@ export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
   const [period, setPeriod] = useState<LeaderboardPeriod>('week');
-  const { top, me, isLoading, isOptedIn, join, leave } = useLeaderboard(period);
+  const { top, me, isLoading, isFetching, isOptedIn, refresh, join, leave } = useLeaderboard(period);
 
   const realName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
   // Reusing the same nickname state for both first-time join and a later
@@ -226,7 +226,7 @@ export default function LeaderboardScreen() {
                 <View style={s.meRow}>
                   <Text style={[s.meRank, { color: colors.text }]}>#{me.rank}</Text>
                   <Text style={[s.mePct, { color: pctColor(colors, me.pctReturn) }]}>
-                    {me.pctReturn > 0 ? '+' : ''}{me.pctReturn.toFixed(1)}%
+                    {me.pctReturn > 0 ? '+' : ''}{me.pctReturn.toFixed(2)}%
                   </Text>
                 </View>
               </View>
@@ -236,6 +236,9 @@ export default function LeaderboardScreen() {
               data={top}
               keyExtractor={item => item.nickname + item.rank}
               contentContainerStyle={{ paddingBottom: botPad + 20 }}
+              refreshControl={
+                <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />
+              }
               ListHeaderComponent={
                 top.length > 0 ? (
                   <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{topLabel}</Text>

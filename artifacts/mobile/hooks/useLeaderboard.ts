@@ -54,7 +54,16 @@ export function useLeaderboard(period: LeaderboardPeriod = 'week') {
       return res.json();
     },
     enabled: !!isSignedIn && !!userId,
-    staleTime: 30_000,
+    // Ranks are computed live off portfolio_snapshots, which
+    // portfolioAlertCron writes every 5 minutes — staleTime: 0 means every
+    // time this screen is opened it fetches fresh rather than showing a
+    // stale cached read (the leaderboard felt "stuck" before this, since a
+    // reopen within the old 30s window silently reused the previous number).
+    // refetchInterval keeps it updating while the screen stays open, matched
+    // to the same 5-minute cadence useServerIntraday already polls at —
+    // polling faster would just repeat the same payload between cron ticks.
+    staleTime: 0,
+    refetchInterval: 5 * 60_000,
   });
 
   const join = async (nickname: string): Promise<boolean> => {
@@ -88,6 +97,10 @@ export function useLeaderboard(period: LeaderboardPeriod = 'week') {
     // but has nothing to rank, and would otherwise never leave the join
     // screen despite having already joined. See routes/competition.ts.
     isOptedIn: query.data?.optedIn ?? false,
+    // Distinct from isLoading (which only covers the very first fetch) —
+    // this is what a pull-to-refresh spinner should key off, so it clears
+    // even though isLoading has long since gone false.
+    isFetching: query.isFetching,
     refresh: query.refetch,
     join,
     leave,
