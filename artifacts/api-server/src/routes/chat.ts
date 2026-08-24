@@ -332,15 +332,31 @@ const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
-// Presence of Arabic script is unambiguous; presence of Latin letters with
-// no Arabic script is unambiguous too. Only a message with neither (a bare
-// number, an emoji, punctuation) is genuinely ambiguous, and that's the one
-// case where falling back to the app's own language setting makes sense.
+// Script alone isn't the same thing as language: a huge share of Egyptian
+// texting is Arabic written in Latin letters ("Ezayak", "3ezayak") \u2014 an
+// earlier version of this treated "has Latin letters" as "is English",
+// which forced an English reply to that and even overrode an explicit
+// "Talk Arabic" request typed in Latin script (see git history). Order
+// matters here: an explicit short request to switch language wins first,
+// in either script; then real Arabic script; then confidently long Latin
+// prose (a real question, not a one-word greeting); and only genuinely
+// short/ambiguous Latin content (a greeting, a bare number, "ok") falls
+// back to the app's own toggle \u2014 which is exactly the case Arabizi lands
+// in, so it resolves correctly without needing to actually parse Arabizi.
 const ARABIC_SCRIPT_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-const LATIN_LETTER_RE = /[A-Za-z]/;
+const ENGLISH_REQUEST_RE = /\benglish\b|\u0627\u0646\u062C\u0644\u064A\u0632[\u064A\u0649]|\u0625\u0646\u062C\u0644\u064A\u0632[\u064A\u0649]/i;
+const ARABIC_REQUEST_RE = /\barabic\b|\u0628\u0627\u0644\u0639\u0631\u0628|\u0639\u0631\u0628[\u064A\u0649]/i;
+const SUBSTANTIAL_LATIN_LENGTH = 20;
 function detectReplyLanguage(latestMessage: string, appLanguage: "ar" | "en"): "ar" | "en" {
-  if (ARABIC_SCRIPT_RE.test(latestMessage)) return "ar";
-  if (LATIN_LETTER_RE.test(latestMessage)) return "en";
+  const trimmed = latestMessage.trim();
+  // Length-guarded so a genuine longer question that happens to mention
+  // "Arabic"/"English" as a topic isn't misread as a request to switch.
+  if (trimmed.length <= 40) {
+    if (ENGLISH_REQUEST_RE.test(trimmed)) return "en";
+    if (ARABIC_REQUEST_RE.test(trimmed)) return "ar";
+  }
+  if (ARABIC_SCRIPT_RE.test(trimmed)) return "ar";
+  if (trimmed.length > SUBSTANTIAL_LATIN_LENGTH) return "en";
   return appLanguage;
 }
 
