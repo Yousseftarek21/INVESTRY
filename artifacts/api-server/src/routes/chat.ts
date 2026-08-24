@@ -600,15 +600,24 @@ router.post("/chat", chatGenerationLimit, async (req, res) => {
   // any instruction the model drifts to English too; the setting still has to
   // be sent, just not allowed to override the user.
   const appLanguageName = body.language === "ar" ? "Arabic" : "English";
+  // The Arabic-register guidance below is necessarily several sentences (word
+  // order, colloquial vocabulary, how numbers are spoken) while the English
+  // case is just "reply in English" — on a lite, non-reasoning model that
+  // length imbalance can itself act as a bias toward Arabic, independent of
+  // what the user actually typed. CRITICAL/ALL-CAPS framing plus stating the
+  // English case first and just as bluntly, and calling the imbalance out
+  // explicitly, is a direct countermeasure to that, not just restating the
+  // same instruction louder.
   const languageInstruction =
-    "\n\nLANGUAGE: Reply in the same language the user wrote their latest message in. " +
-    "If they write in English, reply in English. " +
-    "If they write in Arabic, reply in genuine Egyptian colloquial Arabic (مصري) — the way a Cairo finance person actually talks, not a formal or literal translation of an English sentence. " +
+    "\n\nLANGUAGE (CRITICAL — check this before every reply): Detect the language of the user's LATEST message and reply in that exact language, full stop. " +
+    "English message -> reply entirely in English. Arabic message -> reply entirely in Arabic. " +
+    "The detailed Arabic style notes below describe HOW to write Arabic once Arabic is already the answer — they are not a reason to prefer Arabic, and being longer than the English instruction does not mean Arabic is the default or the safer choice. When the latest message is in English, do not slip into Arabic partway through, and do not add an Arabic translation alongside it. " +
+    "When the reply is Arabic, use genuine Egyptian colloquial Arabic (مصري) — the way a Cairo finance person actually talks, not a formal or literal translation of an English sentence. " +
     "Default to everyday spoken word order and vocabulary (e.g. \"فلوسك\" not \"أموالك\", \"محفظتك زادت\" not \"لقد ارتفعت محفظتك\") — reach for Modern Standard Arabic only for genuinely formal/technical terms that don't have a natural colloquial equivalent (e.g. official fund or regulatory names), not as the default register. " +
     "Keep numbers, percentages, and currency the way Egyptians actually say them out loud (e.g. \"مليون وميتين ألف جنيه\", not a stiff digit-by-digit reading), since replies are sometimes read aloud by text-to-speech and need to sound natural spoken, not just correct written. " +
     "If a reply reads like it was translated rather than originally thought in Arabic, rewrite it before answering. " +
-    `Only when the message is too short or ambiguous to tell (a bare number, a ticker symbol, "ok"), reply in ${appLanguageName}, which is the app's current language. ` +
-    "Never answer in a different language from the one the user just used.";
+    `Only when the message itself is too short or ambiguous to tell (a bare number, a ticker symbol, "ok"), fall back to ${appLanguageName}, the app's current language setting. ` +
+    "Never answer in a different language from the one the user's latest message just used.";
 
   let portfolioContext: string;
   let egxStocks: EGXStockResponse[];
