@@ -624,7 +624,7 @@ export default function HomeScreen() {
 
   const startOfDayValue = summary.totalValue - summary.todayGain;
   const rawTodaySamples = useIntradaySamples(summary.totalValue, startOfDayValue);
-  const { data: serverIntraday } = useServerIntraday();
+  const { data: serverIntraday, isLoading: serverIntradayLoading } = useServerIntraday();
   // The stored samples' own first/last points can be up to ~10 minutes
   // stale (they're debounced to avoid flooding storage), while the "Today"
   // badge above always recomputes live on every render. Using stale
@@ -635,6 +635,16 @@ export default function HomeScreen() {
   // for real texture *in between* those two fresh, guaranteed-consistent
   // points.
   const todaySamples = useMemo(() => {
+    // Wait for the server intraday query to actually settle before ever
+    // drawing texture from the on-device samples — showing the on-device
+    // curve first and then swapping to the server one a moment later (once
+    // the network request resolves) produced two visibly different curve
+    // shapes flashing in sequence on a cold launch, since the two sources
+    // are sampled at different times, not just the same data arriving
+    // twice. Settling first means the chart goes straight from its
+    // placeholder/straight-line state to the one true shape.
+    if (serverIntradayLoading) return [startOfDayValue, summary.totalValue];
+
     // Server-recorded points win: the cron samples every 5 minutes for
     // everyone regardless of whether the app was ever opened, so it captures
     // the day's real ups and downs. The on-device sampler only sees what
@@ -647,7 +657,7 @@ export default function HomeScreen() {
     const middle = serverMiddle
       ?? (rawTodaySamples && rawTodaySamples.length > 2 ? rawTodaySamples.slice(1, -1) : []);
     return [startOfDayValue, ...middle, summary.totalValue];
-  }, [serverIntraday, rawTodaySamples, startOfDayValue, summary.totalValue]);
+  }, [serverIntradayLoading, serverIntraday, rawTodaySamples, startOfDayValue, summary.totalValue]);
 
   const isGain = summary.gain >= 0;
   const isTodayGain = summary.todayGain >= 0;
