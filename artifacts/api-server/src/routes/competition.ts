@@ -4,6 +4,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { cairoMonthStart, cairoWeekStart, tradingDayKey } from "../lib/cairoDate";
 import { earliestSnapshotBefore, snapshotBefore, snapshotOnOrBefore } from "../lib/portfolioSnapshotHelpers";
+import { fetchIdentities, FALLBACK_NAME } from "../lib/clerkIdentity";
 
 const router: IRouter = Router();
 
@@ -13,42 +14,30 @@ router.use("/competition", clerkMiddleware(), (req, res, next) => {
   next();
 });
 
-const NICKNAME_MAX = 24;
-
-// PUT /api/competition/join — opt in with a display nickname. Deliberately
-// separate from the account's real name/email: this ranking is still real
-// financial signal (a % return), so nobody should appear under an identity
-// tied back to them without choosing a nickname specifically for it.
+// PUT /api/competition/join — opt in. Identity shown on the leaderboard is
+// the account's real Clerk name/photo (see fetchIdentities) — no nickname
+// to collect, so joining is just a flag flip.
 router.put("/competition/join", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const raw = (req.body as Record<string, unknown>)?.nickname;
-  const nickname = typeof raw === "string" ? raw.trim() : "";
-  if (!nickname) { res.status(400).json({ error: "nickname is required" }); return; }
-  if (nickname.length > NICKNAME_MAX) {
-    res.status(400).json({ error: `nickname must be ${NICKNAME_MAX} characters or fewer` });
-    return;
-  }
-
   try {
     await db
       .insert(usersTable)
-      .values({ id: userId, competitionNickname: nickname, competitionOptedIn: true })
+      .values({ id: userId, competitionOptedIn: true })
       .onConflictDoUpdate({
         target: usersTable.id,
-        set: { competitionNickname: nickname, competitionOptedIn: true, updatedAt: new Date() },
+        set: { competitionOptedIn: true, updatedAt: new Date() },
       });
-    res.json({ success: true, nickname });
+    res.json({ success: true });
   } catch (err) {
     req.log.error({ err }, "PUT /competition/join failed");
     res.status(500).json({ error: "Failed to join the leaderboard" });
   }
 });
 
-// POST /api/competition/leave — opts out. Nickname is kept (not cleared) so
-// rejoining doesn't ask for it again; only competitionOptedIn gates whether
-// the user is actually queried for the leaderboard.
+// POST /api/competition/leave — opts out. competitionOptedIn alone gates
+// whether the user is actually queried for the leaderboard.
 router.post("/competition/leave", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -64,7 +53,7 @@ router.post("/competition/leave", async (req, res) => {
 
 const TOP_N = 50;
 
-interface Ranked { nickname: string; pctReturn: number; rank: number; isMe: boolean }
+interface Ranked { userId: string; name: string; imageUrl: string | null; pctReturn: number; rank: number; isMe: boolean }
 
 // GET /api/competition/leaderboard?period=week|month — ranked by % portfolio
 // return since the period's start (Africa/Cairo — see cairoWeekStart /
@@ -119,7 +108,7 @@ router.get("/competition/leaderboard", async (req, res) => {
     const period = req.query.period === "month" ? "month" : "week";
     const periodStart = period === "month" ? cairoMonthStart() : cairoWeekStart();
     const opted = await db
-      .select({ id: usersTable.id, nickname: usersTable.competitionNickname })
+      .select({ id: usersTable.id })
       .from(usersTable)
       .where(eq(usersTable.competitionOptedIn, true));
 
@@ -131,26 +120,33 @@ router.get("/competition/leaderboard", async (req, res) => {
     const optedIn = opted.some(u => u.id === userId);
 
     const today = tradingDayKey();
-    const withReturns: { id: string; nickname: string; pctReturn: number }[] = [];
+    const withReturns: { id: string; pctReturn: number }[] = [];
     for (const u of opted) {
-      if (!u.nickname) continue;
       const baseline = (await snapshotBefore(u.id, periodStart)) ?? await earliestSnapshotBefore(u.id, today);
       const current = await snapshotOnOrBefore(u.id, today);
       if (baseline == null || current == null) continue;
-      withReturns.push({ id: u.id, nickname: u.nickname, pctReturn: ((current - baseline) / baseline) * 100 });
+      withReturns.push({ id: u.id, pctReturn: ((current - baseline) / baseline) * 100 });
     }
 
     withReturns.sort((a, b) => b.pctReturn - a.pctReturn);
 
-    const ranked: Ranked[] = withReturns.map((u, i) => ({
-      nickname: u.nickname,
-      pctReturn: Math.round(u.pctReturn * 100) / 100,
-      rank: i + 1,
-      isMe: u.id === userId,
-    }));
+    const rankedIds = withReturns.map((u, i) => ({ id: u.id, pctReturn: Math.round(u.pctReturn * 100) / 100, rank: i + 1 }));
+    const top = rankedIds.slice(0, TOP_N);
+    const meRow = rankedIds.find(r => r.id === userId) ?? null;
 
-    const me = ranked.find(r => r.isMe) ?? null;
-    res.json({ period, periodStart, top: ranked.slice(0, TOP_N), me, optedIn });
+    // Only fetch identities for ids actually displayed (top N + me, at most
+    // TOP_N + 1) — never the full opted-in list, well under Clerk's 500-id
+    // batch cap regardless of how many users are opted in.
+    const idsToFetch = [...new Set([...top.map(u => u.id), ...(meRow ? [meRow.id] : [])])];
+    const identities = await fetchIdentities(idsToFetch);
+
+    const toEntry = (u: { id: string; pctReturn: number; rank: number }): Ranked => {
+      const identity = identities.get(u.id) ?? { name: FALLBACK_NAME, imageUrl: null };
+      return { userId: u.id, name: identity.name, imageUrl: identity.imageUrl, pctReturn: u.pctReturn, rank: u.rank, isMe: u.id === userId };
+    };
+
+    const me = meRow ? toEntry(meRow) : null;
+    res.json({ period, periodStart, top: top.map(toEntry), me, optedIn });
   } catch (err) {
     req.log.error({ err }, "GET /competition/leaderboard failed");
     res.status(500).json({ error: "Failed to load the leaderboard" });

@@ -1,8 +1,10 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
-import { db, usersTable } from "@workspace/db";
-import { and, eq, count, isNull } from "drizzle-orm";
+import { db, usersTable, holdingsTable, cashAccountsTable } from "@workspace/db";
+import { and, eq, count, isNull, isNotNull, gte, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
+import { fetchIdentities, FALLBACK_NAME } from "../lib/clerkIdentity";
+import { utcMonthStart } from "../lib/calendarDate";
 
 const router: IRouter = Router();
 
@@ -135,6 +137,7 @@ router.post("/referral/redeem", async (req, res) => {
     const claimed = await db.transaction(async (tx) => {
       const rows = await tx.update(usersTable).set({
         referredByUserId: referrer.id,
+        referralRedeemedAt: now,
         proCreditExpiresAt: meNewExpiry,
         updatedAt: new Date(),
       })
@@ -159,6 +162,85 @@ router.post("/referral/redeem", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "POST /referral/redeem failed");
     res.status(500).json({ error: "Failed to redeem referral code" });
+  }
+});
+
+const REFERRAL_TOP_N = 50;
+
+interface ReferralRanked {
+  userId: string; name: string; imageUrl: string | null;
+  referredCount: number; rank: number; isMe: boolean;
+}
+
+// GET /api/referral/leaderboard?period=month|all — ranks users by how many
+// people they've referred, gated by a LIVE "real activity" check: a referred
+// user only counts once they have at least one real holding OR one real
+// cash account — either is a genuine sign this is a real, used account, not
+// just a fake signup redeeming a code for the free Pro month. Re-evaluated
+// every request, not a one-time flag set at redemption — a friend who signs
+// up today and adds their first holding/cash account next week becomes
+// eligible the moment that write happens, no backfill needed, and drops
+// back out again if they ever delete their only one. Without this gate a
+// cash prize for "most referrals" would immediately incentivize registering
+// fake accounts that never touch the app.
+//
+// period=month uses referralRedeemedAt (NOT createdAt — someone can create
+// an account, then redeem a friend's code later, so the two can differ)
+// compared against utcMonthStart(), a true calendar month — deliberately
+// different from the portfolio leaderboard's rolling cairoMonthStart()
+// window. Mixing the two "what month is it" definitions inside one feature
+// is exactly the category of bug that produced the portfolio leaderboard's
+// 0%-for-everyone incident earlier — this route only ever calls
+// utcMonthStart(), nothing else.
+router.get("/referral/leaderboard", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const period = req.query.period === "all" ? "all" : "month";
+    const monthStart = utcMonthStart();
+
+    const rows = await db
+      .select({ referrerId: usersTable.referredByUserId, referredCount: count() })
+      .from(usersTable)
+      .where(and(
+        isNotNull(usersTable.referredByUserId),
+        period === "month" ? gte(usersTable.referralRedeemedAt, monthStart) : undefined,
+        sql`(
+          EXISTS (SELECT 1 FROM ${holdingsTable} WHERE ${holdingsTable.userId} = ${usersTable.id})
+          OR EXISTS (SELECT 1 FROM ${cashAccountsTable} WHERE ${cashAccountsTable.userId} = ${usersTable.id})
+        )`,
+      ))
+      .groupBy(usersTable.referredByUserId)
+      .orderBy(desc(count()));
+
+    const withCounts = rows
+      .filter((r): r is { referrerId: string; referredCount: number } => r.referrerId != null)
+      .map((r, i) => ({ id: r.referrerId, referredCount: r.referredCount, rank: i + 1 }));
+
+    const top = withCounts.slice(0, REFERRAL_TOP_N);
+    const meRow = withCounts.find(r => r.id === userId) ?? null;
+
+    // Only fetch identities for ids actually displayed (top N + me, at most
+    // 51) — never the full referrer list, which stays well under Clerk's
+    // 500-id batch cap regardless of how many total referrers exist.
+    const idsToFetch = [...new Set([...top.map(u => u.id), ...(meRow ? [meRow.id] : [])])];
+    const identities = await fetchIdentities(idsToFetch);
+
+    const toEntry = (u: { id: string; referredCount: number; rank: number }): ReferralRanked => {
+      const identity = identities.get(u.id) ?? { name: FALLBACK_NAME, imageUrl: null };
+      return { userId: u.id, name: identity.name, imageUrl: identity.imageUrl, referredCount: u.referredCount, rank: u.rank, isMe: u.id === userId };
+    };
+
+    res.json({
+      period,
+      periodStart: period === "month" ? monthStart.toISOString() : null,
+      top: top.map(toEntry),
+      me: meRow ? toEntry(meRow) : null,
+    });
+  } catch (err) {
+    req.log.error({ err }, "GET /referral/leaderboard failed");
+    res.status(500).json({ error: "Failed to load the referral leaderboard" });
   }
 });
 

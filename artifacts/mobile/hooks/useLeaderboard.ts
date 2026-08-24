@@ -6,7 +6,9 @@ import { useStableGetToken } from './useStableGetToken';
 export type LeaderboardPeriod = 'week' | 'month';
 
 export interface LeaderboardEntry {
-  nickname: string;
+  userId: string;
+  name: string;
+  imageUrl: string | null;
   pctReturn: number;
   rank: number;
   isMe: boolean;
@@ -66,13 +68,10 @@ export function useLeaderboard(period: LeaderboardPeriod = 'week') {
     refetchInterval: 5 * 60_000,
   });
 
-  const join = async (nickname: string): Promise<boolean> => {
+  const join = async (): Promise<boolean> => {
     const token = await getToken();
     if (!token) return false;
-    const res = await apiFetch('/api/competition/join', token, {
-      method: 'PUT',
-      body: JSON.stringify({ nickname }),
-    });
+    const res = await apiFetch('/api/competition/join', token, { method: 'PUT' });
     if (res.ok) {
       await queryClient.invalidateQueries({ queryKey: ['competition-leaderboard', userId] });
     }

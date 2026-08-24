@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { backChevron } from '@/utils/rtl';
+import { backChevron, forwardChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/expo';
 import { useColors } from '@/hooks/useColors';
@@ -150,6 +150,15 @@ export default function InviteFriendsScreen() {
               </View>
             </View>
 
+            <Pressable
+              onPress={() => router.push('/referral-leaderboard')}
+              style={({ pressed }) => [s.leaderboardLink, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.75 : 1 }]}
+            >
+              <Feather name="award" size={15} color={colors.primary} />
+              <Text style={[s.leaderboardLinkTxt, { color: colors.primary }]}>{t.referralLeaderboardNav}</Text>
+              <Feather name={forwardChevron()} size={15} color={colors.primary} />
+            </Pressable>
+
             {/* Redeem a friend's code */}
             {!info.hasRedeemed && (
               <View style={[s.redeemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -224,6 +233,12 @@ const s = StyleSheet.create({
   statLabel: { fontSize: 11, fontFamily: 'Inter_500Medium', textAlign: 'center' },
 
   creditNote: { fontSize: 12, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+
+  leaderboardLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 14, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 13,
+  },
+  leaderboardLinkTxt: { flex: 1, fontSize: 13.5, fontFamily: 'Inter_600SemiBold' },
 
   redeemCard: { borderRadius: 18, borderWidth: 1, padding: 18, gap: 4 },
   redeemTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },

@@ -11,6 +11,7 @@ export const usersTable = pgTable("users", {
   billingPeriod:          text("billing_period").notNull().default("monthly"), // 'monthly' | 'annual'
   referralCode:           text("referral_code").unique(), // short shareable code, lazily generated
   referredByUserId:       text("referred_by_user_id"), // id of the user whose code was redeemed
+  referralRedeemedAt:     timestamp("referral_redeemed_at", { withTimezone: true }), // when THIS user redeemed a code — NOT createdAt, which can predate redemption; anchors the referral leaderboard's monthly window
   proCreditExpiresAt:     timestamp("pro_credit_expires_at", { withTimezone: true }), // bonus Pro time earned from referrals
   pushToken:              text("push_token"), // Expo push token for the user's most recent device
   portfolioAlertsEnabled: boolean("portfolio_alerts_enabled").notNull().default(true), // gates the daily ±1% portfolio-value push
@@ -29,9 +30,13 @@ export const usersTable = pgTable("users", {
   // Weekly % return leaderboard (routes/competition.ts). Opt-in, off by
   // default — a portfolio-return ranking is still real financial signal
   // even without an absolute EGP figure attached, so nobody appears on it
-  // without deliberately choosing to. Nickname is separate from the
-  // account's real name on purpose, for the same reason.
+  // without deliberately choosing to.
   competitionOptedIn:     boolean("competition_opted_in").notNull().default(false),
+  // Unused as of the real-identity switch (see competition.ts) — the
+  // leaderboard now shows each user's real Clerk name/photo instead of a
+  // chosen nickname. Left in place rather than dropped: nothing reads it
+  // anymore, but dropping a column is an irreversible migration for zero
+  // functional gain. Safe to drop in a later cleanup pass.
   competitionNickname:    text("competition_nickname"),
   // One-time broadcast tracking, not a preference — set the first time each
   // user is sent the "leaderboard launched" push so a redeploy/restart of
