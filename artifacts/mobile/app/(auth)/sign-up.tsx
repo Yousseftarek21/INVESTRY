@@ -415,23 +415,22 @@ export default function SignUpScreen() {
             )}
           </View>
 
-          {/* Referral code — optional, redeemed automatically once the
+          {/* Referral code — optional and deliberately low-emphasis (no bold
+              label row, small dashed field) since it's a minor add-on to
+              sign-up, not a core field. Redeemed automatically once the
               account is created (see finalizeNavigate). Anyone who forgets
               this can still redeem later in Settings → Invite Friends. */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t.referralCodeSignUpLabel}</Text>
-            <View style={[styles.inputWrap, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              <Feather name="gift" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
+          <View style={[styles.referralWrap, { borderColor: colors.border }]}>
+              <Feather name="gift" size={12} color={colors.mutedForeground} style={styles.referralIcon} />
               <TextInput
-                style={[styles.input, { color: colors.text }]}
-                placeholder={t.referralCodePlaceholder}
+                style={[styles.referralInput, { color: colors.mutedForeground }]}
+                placeholder={t.referralCodeSignUpLabel}
                 placeholderTextColor={colors.mutedForeground}
                 value={referralCode}
                 onChangeText={v => setReferralCode(v.toUpperCase())}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />
-            </View>
           </View>
 
           {/* Terms */}
@@ -528,6 +527,17 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' },
   eyeBtn: { padding: 4 },
   fieldError: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+
+  // Deliberately smaller/lighter than inputWrap/input above — a dashed,
+  // unfilled, no-label field reads as an optional add-on at a glance,
+  // rather than a field with the same visual weight as email/password.
+  referralWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderStyle: 'dashed', borderRadius: 10,
+    paddingHorizontal: 10, height: 34, alignSelf: 'flex-start',
+  },
+  referralIcon: { marginRight: 6 },
+  referralInput: { fontSize: 12, fontFamily: 'Inter_400Regular', width: 150 },
 
   termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   checkbox: {
