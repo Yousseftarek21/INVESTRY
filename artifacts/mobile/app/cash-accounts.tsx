@@ -670,25 +670,64 @@ export default function CashAccountsScreen() {
                     </Text>
                   )}
 
-                  {editingOriginalBalance !== null && balanceEntryMode === 'add' ? (
-                    <View style={[styles.addAmountRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  {editingOriginalBalance !== null && (
+                    <View style={[styles.balanceModeTabsWrap, { backgroundColor: colors.muted }]}>
                       <TouchableOpacity
-                        style={[styles.signToggle, { backgroundColor: addSign === 1 ? colors.green + '16' : colors.red + '16' }]}
-                        onPress={() => { impact(); setAddSign(s => (s === 1 ? -1 : 1)); }}
+                        style={[styles.balanceModeTabPill, balanceEntryMode === 'add' && { backgroundColor: colors.card }]}
+                        onPress={() => switchBalanceMode('add')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.balanceModeTabTxt, { color: balanceEntryMode === 'add' ? colors.text : colors.mutedForeground }]}>
+                          {t.balanceModeTabAdd}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.balanceModeTabPill, balanceEntryMode === 'total' && { backgroundColor: colors.card }]}
+                        onPress={() => switchBalanceMode('total')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.balanceModeTabTxt, { color: balanceEntryMode === 'total' ? colors.text : colors.mutedForeground }]}>
+                          {t.balanceModeTabTotal}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {editingOriginalBalance !== null && balanceEntryMode === 'add' ? (
+                    <View style={styles.signInlineRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.signSelectorBtn,
+                          { borderColor: colors.green },
+                          addSign === 1 && { backgroundColor: colors.green },
+                        ]}
+                        onPress={() => { impact(); setAddSign(1); }}
                         activeOpacity={0.7}
                       >
-                        <Feather name={addSign === 1 ? 'plus' : 'minus'} size={20} color={addSign === 1 ? colors.green : colors.red} />
+                        <Feather name="plus" size={16} color={addSign === 1 ? colors.primaryForeground : colors.green} />
                       </TouchableOpacity>
-                      <View style={[styles.signDivider, { backgroundColor: colors.border }]} />
+                      <TouchableOpacity
+                        style={[
+                          styles.signSelectorBtn,
+                          { borderColor: colors.red },
+                          addSign === -1 && { backgroundColor: colors.red },
+                        ]}
+                        onPress={() => { impact(); setAddSign(-1); }}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="minus" size={16} color={addSign === -1 ? colors.primaryForeground : colors.red} />
+                      </TouchableOpacity>
                       <AmountInput
-                        style={[...inputStyle, styles.addAmountInput]}
+                        style={[...inputStyle, styles.signInlineInput]}
                         placeholder={t.balanceModeAddPlaceholder}
                         placeholderTextColor={colors.mutedForeground}
                         value={balance}
                         onChangeText={setBalance}
                       />
                     </View>
-                  ) : (
+                  ) : null}
+
+                  {!(editingOriginalBalance !== null && balanceEntryMode === 'add') && (
                     <AmountInput
                       style={inputStyle}
                       placeholder="0.00"
@@ -701,40 +740,52 @@ export default function CashAccountsScreen() {
                   {editingOriginalBalance !== null && (() => {
                     const parsed = parseAmount(balance);
                     if (balance.trim() === '' || isNaN(parsed)) return null;
+
+                    let delta: number;
+                    let newTotal: number;
                     if (balanceEntryMode === 'add') {
                       if (parsed === 0) return null;
-                      const delta = addSign * parsed;
-                      const newTotal = editingOriginalBalance + delta;
-                      return (
-                        <Text style={[styles.balanceDeltaHint, { color: delta > 0 ? colors.green : colors.red }]}>
-                          {t.balanceModeAddHint(newTotal.toLocaleString('en-EG', { maximumFractionDigits: 2 }), currency)}
-                        </Text>
-                      );
+                      delta = addSign * parsed;
+                      newTotal = editingOriginalBalance + delta;
+                    } else {
+                      if (parsed === editingOriginalBalance) return null;
+                      delta = parsed - editingOriginalBalance;
+                      newTotal = parsed;
                     }
-                    if (parsed === editingOriginalBalance) return null;
-                    const delta = parsed - editingOriginalBalance;
+
+                    const deltaColor = delta > 0 ? colors.green : colors.red;
+                    const fmt = (n: number) => n.toLocaleString('en-EG', { maximumFractionDigits: 2 });
+
                     return (
-                      <Text style={[styles.balanceDeltaHint, { color: delta > 0 ? colors.green : colors.red }]}>
-                        {t.balanceDeltaHint(`${delta > 0 ? '+' : ''}${delta.toLocaleString('en-EG', { maximumFractionDigits: 2 })} ${currency}`)}
-                      </Text>
+                      <View style={[styles.balancePreviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <View style={[styles.balancePreviewAccent, { backgroundColor: deltaColor }]} />
+                        <View style={styles.balancePreviewBody}>
+                          <Text style={[styles.balancePreviewLabel, { color: colors.mutedForeground }]}>
+                            {t.newBalanceLabel}
+                          </Text>
+                          <Text style={[styles.balancePreviewHero, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+                            {fmt(newTotal)} <Text style={styles.balancePreviewHeroCurrency}>{currency}</Text>
+                          </Text>
+                          <View style={styles.balancePreviewFooterRow}>
+                            <Text style={[styles.balancePreviewFrom, { color: colors.mutedForeground }]}>
+                              {t.balancePreviewFrom(fmt(editingOriginalBalance))}
+                            </Text>
+                            <View style={[styles.balancePreviewBadge, { backgroundColor: deltaColor + '18' }]}>
+                              <Feather name={delta > 0 ? 'arrow-up-right' : 'arrow-down-right'} size={11} color={deltaColor} />
+                              <Text style={[styles.balancePreviewBadgeTxt, { color: deltaColor }]}>
+                                {delta > 0 ? '+' : ''}{fmt(delta)}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
                     );
                   })()}
 
-                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                    {editingOriginalBalance !== null && balanceEntryMode === 'add' ? t.balanceModeAddHelp : (BALANCE_HINT[entryType as CashAccountType] ?? '')}
-                  </Text>
-
-                  {editingOriginalBalance !== null && (
-                    <TouchableOpacity
-                      onPress={() => switchBalanceMode(balanceEntryMode === 'add' ? 'total' : 'add')}
-                      activeOpacity={0.6}
-                      style={styles.modeLinkRow}
-                    >
-                      <Feather name="repeat" size={12} color={colors.primary} />
-                      <Text style={[styles.modeLink, { color: colors.primary }]}>
-                        {balanceEntryMode === 'add' ? t.balanceModeSwitchToTotal : t.balanceModeSwitchToAdd}
-                      </Text>
-                    </TouchableOpacity>
+                  {!(editingOriginalBalance !== null && balanceEntryMode === 'add') && (
+                    <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+                      {BALANCE_HINT[entryType as CashAccountType] ?? ''}
+                    </Text>
                   )}
                 </View>
 
@@ -1214,6 +1265,31 @@ const styles = StyleSheet.create({
   addAmountInput: { flex: 1, borderWidth: 0, borderRadius: 0, backgroundColor: 'transparent' },
   modeLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'flex-start' },
   modeLink: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
+  // Segmented pill toggle for add/subtract vs set-total mode — same visual
+  // pattern as the leaderboard's Weekly/Monthly PeriodToggle.
+  balanceModeTabsWrap: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 3, marginBottom: 12 },
+  balanceModeTabPill: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 9 },
+  balanceModeTabTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  // Two small +/- sign buttons inline with the amount field, replacing the
+  // old single flip-toggle — same compact footprint, two explicit targets
+  // instead of one that cycles.
+  signInlineRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  signSelectorBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1.5 },
+  signInlineInput: { flex: 1 },
+  // Before → after balance preview — a hero "new balance" figure (the thing
+  // that actually matters most) with a colored accent bar and a compact
+  // "from X, delta Y" footer, rather than two same-weight numbers side by
+  // side.
+  balancePreviewCard: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, marginTop: 14, overflow: 'hidden' },
+  balancePreviewAccent: { width: 4 },
+  balancePreviewBody: { flex: 1, padding: 14, gap: 4 },
+  balancePreviewLabel: { fontSize: 10.5, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase' },
+  balancePreviewHero: { fontSize: 24, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.5 },
+  balancePreviewHeroCurrency: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  balancePreviewFooterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  balancePreviewFrom: { fontSize: 12.5, fontFamily: 'Inter_500Medium' },
+  balancePreviewBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
+  balancePreviewBadgeTxt: { fontSize: 12.5, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
   lastUpdatedHint: { fontSize: 10.5, fontFamily: 'Inter_400Regular', marginTop: 2 },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   typeCardWrap: { width: '47%' },
