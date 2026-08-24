@@ -30,5 +30,5 @@ export function useCashAccountsTodayChanges() {
     staleTime: 30_000,
   });
 
-  return { todayChanges: query.data ?? {}, refresh: query.refetch };
+  return { todayChanges: query.data ?? {}, isLoading: query.isLoading, refresh: query.refetch };
 }

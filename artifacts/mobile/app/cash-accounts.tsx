@@ -97,7 +97,7 @@ export default function CashAccountsScreen() {
   // every account's history into one feed rather than fetching one
   // account's history in isolation (which is all this hook call gives you).
   const { logUpdate: logBalanceUpdate } = useCashBalanceUpdates(null);
-  const { todayChanges, refresh: refreshTodayChanges } = useCashAccountsTodayChanges();
+  const { todayChanges, isLoading: todayChangesLoading, refresh: refreshTodayChanges } = useCashAccountsTodayChanges();
   const { updates: recentUpdates, refresh: refreshRecentUpdates } = useRecentCashUpdates(cashAccounts, RECENT_UPDATES_PREVIEW_LIMIT);
   const { logActivity } = useActivityLog();
   const [currency, setCurrency] = useState('EGP');
@@ -921,9 +921,21 @@ export default function CashAccountsScreen() {
                           <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
                             {fmtCompact(Number(a.balance) || 0)} {a.currency}
                           </Text>
-                          {!!todayChanges[a.id] && (() => {
-                            const up = todayChanges[a.id] > 0;
-                            const c = up ? colors.green : colors.red;
+                          {todayChangesLoading ? (
+                            // Same footprint as the real badge below (down to
+                            // the invisible placeholder digits), reserved
+                            // from the very first render — matches the
+                            // portfolio hero's own Today chip, which always
+                            // occupies its space rather than popping in.
+                            <View style={[styles.todayBadge, { opacity: 0 }]} pointerEvents="none">
+                              <Feather name="minus" size={9} color="transparent" />
+                              <Text style={styles.todayBadgeText}>+12.3K</Text>
+                            </View>
+                          ) : (() => {
+                            const delta = todayChanges[a.id] || 0;
+                            const isFlat = Math.abs(delta) < 0.005;
+                            const up = delta > 0;
+                            const c = isFlat ? colors.mutedForeground : up ? colors.green : colors.red;
                             return (
                             <View style={[styles.todayBadge, { backgroundColor: c + '18' }]}>
                               {/* No currency code here: the balance sitting
@@ -935,10 +947,15 @@ export default function CashAccountsScreen() {
                                   Icon + 7/3 padding + 11px text matches
                                   HoldingCard's gainPill (the investment
                                   list's own %-change pill) — same badge
-                                  language across the app, not a one-off. */}
-                              <Feather name={up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
+                                  language across the app, not a one-off.
+                                  Always rendered, even at exactly zero — same
+                                  as the portfolio hero's own Today chip
+                                  (isTodayFlat), so the row never reflows once
+                                  loaded, matching how that chip never
+                                  disappears either. */}
+                              <Feather name={isFlat ? 'minus' : up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
                               <Text style={[styles.todayBadgeText, { color: c }]} numberOfLines={1}>
-                                {t.todayChangeBadge(`${up ? '+' : '−'}${fmtCompact(Math.abs(todayChanges[a.id]))}`)}
+                                {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
                               </Text>
                             </View>
                             );
