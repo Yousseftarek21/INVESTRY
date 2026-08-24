@@ -210,7 +210,7 @@ const en = {
   balanceModeSwitchToTotal: 'Enter exact total instead',
   balanceModeSwitchToAdd: 'Back to add/subtract',
   updatedDaysAgo: (days: string) => (days === '0' ? 'Updated today' : days === '1' ? 'Updated 1 day ago' : `Updated ${days} days ago`) as string,
-  todayChangeBadge: (delta: string) => `${delta} today` as string,
+  todayChangeBadge: (delta: string) => `${delta} Today` as string,
   recentUpdatesTitle: 'Recent updates',
   viewAllUpdates: 'View all',
   cashHistoryTitle: 'Balance History',
