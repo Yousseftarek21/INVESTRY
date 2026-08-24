@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -38,6 +38,14 @@ export const usersTable = pgTable("users", {
   // anymore, but dropping a column is an irreversible migration for zero
   // functional gain. Safe to drop in a later cleanup pass.
   competitionNickname:    text("competition_nickname"),
+  // Best (lowest/numerically smallest) rank already congratulated for this
+  // week, and which cairoWeekStart() that record belongs to — see
+  // leaderboardRankCron.ts. A new week (record's stored week no longer
+  // matches the current one) or a genuinely better rank than last notified
+  // both re-open eligibility; wobbling back to a worse rank within the same
+  // week never re-fires for a rank already congratulated.
+  perfLeaderboardNotifiedRank: integer("perf_leaderboard_notified_rank"),
+  perfLeaderboardNotifiedWeek: text("perf_leaderboard_notified_week"),
   // One-time broadcast tracking, not a preference — set the first time each
   // user is sent the "leaderboard launched" push so a redeploy/restart of
   // the boot-time sender (see competitionAnnouncement.ts) can't resend it.

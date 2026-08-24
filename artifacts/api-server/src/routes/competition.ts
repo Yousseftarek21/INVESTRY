@@ -2,9 +2,9 @@ import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { cairoMonthStart, cairoWeekStart, tradingDayKey } from "../lib/cairoDate";
-import { earliestSnapshotBefore, snapshotBefore, snapshotOnOrBefore } from "../lib/portfolioSnapshotHelpers";
 import { fetchIdentities, FALLBACK_NAME } from "../lib/clerkIdentity";
+import { computeRankedReturns } from "../lib/leaderboardRanking";
+import { cairoMonthStart, cairoWeekStart } from "../lib/cairoDate";
 
 const router: IRouter = Router();
 
@@ -107,30 +107,19 @@ router.get("/competition/leaderboard", async (req, res) => {
   try {
     const period = req.query.period === "month" ? "month" : "week";
     const periodStart = period === "month" ? cairoMonthStart() : cairoWeekStart();
-    const opted = await db
-      .select({ id: usersTable.id })
-      .from(usersTable)
-      .where(eq(usersTable.competitionOptedIn, true));
 
     // Read directly, not inferred from ranking: a user who just joined and
     // has no portfolio_snapshots row yet (brand new, or simply hasn't had
     // one written this week) is genuinely opted in but can't be ranked —
     // conflating the two would show them the "join" screen again forever,
     // since they'd never appear in `me` below.
-    const optedIn = opted.some(u => u.id === userId);
+    const [self] = await db
+      .select({ competitionOptedIn: usersTable.competitionOptedIn })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    const optedIn = self?.competitionOptedIn ?? false;
 
-    const today = tradingDayKey();
-    const withReturns: { id: string; pctReturn: number }[] = [];
-    for (const u of opted) {
-      const baseline = (await snapshotBefore(u.id, periodStart)) ?? await earliestSnapshotBefore(u.id, today);
-      const current = await snapshotOnOrBefore(u.id, today);
-      if (baseline == null || current == null) continue;
-      withReturns.push({ id: u.id, pctReturn: ((current - baseline) / baseline) * 100 });
-    }
-
-    withReturns.sort((a, b) => b.pctReturn - a.pctReturn);
-
-    const rankedIds = withReturns.map((u, i) => ({ id: u.id, pctReturn: Math.round(u.pctReturn * 100) / 100, rank: i + 1 }));
+    const rankedIds = await computeRankedReturns(period);
     const top = rankedIds.slice(0, TOP_N);
     const meRow = rankedIds.find(r => r.id === userId) ?? null;
 
