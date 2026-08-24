@@ -14,7 +14,6 @@ import { CompetitionInviteBanner } from '@/components/CompetitionInviteBanner';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
-import { useIntradaySamples } from '@/hooks/useIntradaySamples';
 import { useServerIntraday } from '@/hooks/useServerIntraday';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
@@ -605,7 +604,7 @@ export default function HomeScreen() {
     return rows.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
   }, [summary, prices, colors, t]);
 
-  const { snapshots } = usePortfolioSnapshots(summary.totalValue);
+  const { snapshots } = usePortfolioSnapshots();
   // A period is only offered once real recorded history reaches back that
   // far — otherwise it can only redraw a shorter period's data, which reads
   // as a duplicate curve. Selecting an unavailable one is blocked, and if
@@ -623,41 +622,24 @@ export default function HomeScreen() {
   const [showTierCard, setShowTierCard] = useState(false);
 
   const startOfDayValue = summary.totalValue - summary.todayGain;
-  const rawTodaySamples = useIntradaySamples(summary.totalValue, startOfDayValue);
   const { data: serverIntraday, isLoading: serverIntradayLoading } = useServerIntraday();
-  // The stored samples' own first/last points can be up to ~10 minutes
-  // stale (they're debounced to avoid flooding storage), while the "Today"
-  // badge above always recomputes live on every render. Using stale
-  // endpoints here could make the chart's color disagree with that badge
-  // if the live gain direction shifted since the last sample was written.
-  // So: always anchor the chart's start/end to the current live numbers
-  // (identical to what drives the badge), and only use the stored samples
-  // for real texture *in between* those two fresh, guaranteed-consistent
-  // points.
+  // The server cron samples every 5 minutes for everyone regardless of
+  // whether the app was ever opened, so it's the single source of truth for
+  // 1D texture — never blended with any on-device-only samples, which used
+  // to cause the chart to flash one curve shape then swap to another as the
+  // two sources settled at different speeds (see git history). Always
+  // anchor the chart's start/end to the current live numbers (identical to
+  // what drives the "Today" badge above) so the two can never disagree; only
+  // the server's middle points fill in real intraday texture.
   const todaySamples = useMemo(() => {
-    // Wait for the server intraday query to actually settle before ever
-    // drawing texture from the on-device samples — showing the on-device
-    // curve first and then swapping to the server one a moment later (once
-    // the network request resolves) produced two visibly different curve
-    // shapes flashing in sequence on a cold launch, since the two sources
-    // are sampled at different times, not just the same data arriving
-    // twice. Settling first means the chart goes straight from its
-    // placeholder/straight-line state to the one true shape.
+    // Wait for the server intraday query to actually settle before drawing
+    // any texture — until then this is the same "not enough points yet"
+    // 2-point shape PerfChart already renders as a straight line.
     if (serverIntradayLoading) return [startOfDayValue, summary.totalValue];
 
-    // Server-recorded points win: the cron samples every 5 minutes for
-    // everyone regardless of whether the app was ever opened, so it captures
-    // the day's real ups and downs. The on-device sampler only sees what
-    // happened while the app was running, which on most days is nothing —
-    // leaving 1D as a straight start-to-now line. Fall back to it only when
-    // the server has nothing yet (first run after deploy, brand-new user).
-    const serverMiddle = serverIntraday && serverIntraday.length > 0
-      ? serverIntraday.map(p => p.v)
-      : null;
-    const middle = serverMiddle
-      ?? (rawTodaySamples && rawTodaySamples.length > 2 ? rawTodaySamples.slice(1, -1) : []);
+    const middle = serverIntraday && serverIntraday.length > 0 ? serverIntraday.map(p => p.v) : [];
     return [startOfDayValue, ...middle, summary.totalValue];
-  }, [serverIntradayLoading, serverIntraday, rawTodaySamples, startOfDayValue, summary.totalValue]);
+  }, [serverIntradayLoading, serverIntraday, startOfDayValue, summary.totalValue]);
 
   const isGain = summary.gain >= 0;
   const isTodayGain = summary.todayGain >= 0;

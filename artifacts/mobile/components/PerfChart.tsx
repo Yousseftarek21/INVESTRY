@@ -24,7 +24,7 @@ interface PerfChartProps {
    * Real observed total-portfolio-value samples for today (2+ points),
    * derived from actual live price/accrual change — never fabricated.
    * Starts as just [start-of-day, now] early in the day and gains real
-   * in-between points as the day goes on (see useIntradaySamples), so the
+   * in-between points as the day goes on (see useServerIntraday), so the
    * 1D curve fills in with genuine shape instead of staying a flat line.
    */
   todayValues?: number[];

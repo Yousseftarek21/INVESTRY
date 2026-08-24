@@ -6,10 +6,15 @@ import { useStableGetToken } from './useStableGetToken';
 export interface IntradayPoint { t: number; v: number }
 
 // Today's intraday series recorded server-side by portfolioAlertCron every
-// 5 minutes, for every user, whether or not the app was open. This is what
-// gives the 1D chart real movement across the day — the on-device sampler
-// (useIntradaySamples) can only record what it observed while the app was
-// running, so on its own it collapses to a straight start-to-now line.
+// 5 minutes, for every user, whether or not the app was open — the single
+// source for the 1D chart's real intraday texture. Deliberately no
+// on-device fallback: an earlier version also sampled locally while the app
+// was running and preferred whichever source settled first, which made the
+// chart flash one curve shape then swap to another as the two sources
+// resolved at different speeds. Server-only means every screen shows the
+// same shape for the same day, and the chart simply waits (see index.tsx's
+// and analytics.tsx's todaySamples) rather than ever painting a second,
+// different-looking curve.
 export function useServerIntraday() {
   const { userId, isSignedIn } = useAuth();
   const getToken = useStableGetToken();

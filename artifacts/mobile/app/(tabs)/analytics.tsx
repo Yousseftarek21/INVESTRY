@@ -28,7 +28,7 @@ import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useInflationRate } from '@/hooks/useInflationRate';
 import { usePortfolioBenchmark } from '@/hooks/usePortfolioBenchmark';
 import { usePortfolioTargets, AllocationClass } from '@/hooks/usePortfolioTargets';
-import { useIntradaySamples } from '@/hooks/useIntradaySamples';
+import { useServerIntraday } from '@/hooks/useServerIntraday';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
@@ -609,7 +609,7 @@ export default function AnalyticsScreen() {
     };
   }, [holdings, prices, egxChangeByTicker]);
 
-  const { snapshots } = usePortfolioSnapshots(sm.totalValue);
+  const { snapshots } = usePortfolioSnapshots();
   // Same availability rule as Home: only offer a period once real recorded
   // history reaches back that far, so a selectable period is never just a
   // shorter period's data redrawn under a longer label.
@@ -627,17 +627,17 @@ export default function AnalyticsScreen() {
   // be the two combined.
   const cashTotalEGP = useMemo(() => computeCashTotalEGP(cashAccounts, prices), [cashAccounts, prices]);
   const startOfDayValue = sm.totalValue - sm.todayGain;
-  const rawTodaySamples = useIntradaySamples(sm.totalValue, startOfDayValue);
-  // Keep the chart's start/end always freshly consistent with the "Today"
-  // badge (which always recomputes live) — see index.tsx for the full
-  // explanation. Only the stored samples' middle points (real texture)
-  // are used; the endpoints are always the current live numbers.
+  const { data: serverIntraday, isLoading: serverIntradayLoading } = useServerIntraday();
+  // Server-only, same as index.tsx's Home chart — no on-device sample
+  // blending, so the two screens can never show a different-shaped 1D
+  // curve for the same day. Keep the chart's start/end always freshly
+  // consistent with the "Today" badge (which always recomputes live); only
+  // the server's middle points (real texture) are used.
   const todaySamples = useMemo(() => {
-    const middle = rawTodaySamples && rawTodaySamples.length > 2
-      ? rawTodaySamples.slice(1, -1)
-      : [];
+    if (serverIntradayLoading) return [startOfDayValue, sm.totalValue];
+    const middle = serverIntraday && serverIntraday.length > 0 ? serverIntraday.map(p => p.v) : [];
     return [startOfDayValue, ...middle, sm.totalValue];
-  }, [rawTodaySamples, startOfDayValue, sm.totalValue]);
+  }, [serverIntradayLoading, serverIntraday, startOfDayValue, sm.totalValue]);
 
   // ── Health ────────────────────────────────────────────────────────────────────
   const typeCount = useMemo(() => new Set(holdings.map(h => h.type)).size, [holdings]);

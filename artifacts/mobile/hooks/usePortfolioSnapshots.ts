@@ -1,39 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
-import { tradingDayKey } from '@/utils/cairoDate';
 import { apiFetch } from '@/utils/api';
-
-const MAX_DAYS = 730;
-const SETTLE_MS = 3000; // wait 3s after value stops changing before saving
 
 export interface PortfolioSnapshot {
   date: string;
   value: number;
 }
 
-// Namespaced per-user, matching every other local data store (Cash,
-// Holdings, Goals, RecurringIncome, price alerts) — without this, one
-// account's portfolio value history would stay readable by whoever signs
-// in next on the same device.
-function snapshotKey(userId: string) {
-  return `@investry_portfolio_snapshots_${userId}`;
-}
-// Pre-namespacing key — one-time migration only, see load effect below.
-const LEGACY_KEY = '@investry_portfolio_snapshots';
-
-// The app's trading day (22:00 UTC boundary) — must match the server's
-// tradingDayKey() so client and server agree on which day a value belongs to.
-function todayStr(): string {
-  return tradingDayKey();
-}
-
 /**
- * Combines two sources: the server's daily cron-computed snapshot history
- * (durable — survives reinstalls and device changes, doesn't depend on ever
- * having opened the app on a particular day) and a local same-day value
- * saved as soon as it settles, so "today" shows up immediately without
- * waiting for the next cron cycle. Server rows win for any date both have.
+ * The server's daily cron-computed snapshot history — durable, survives
+ * reinstalls and device changes, doesn't depend on ever having opened the
+ * app on a particular day, and is the single source of truth for every
+ * date (no per-device local override that could drift from it).
+ *
+ * "Today" in the returned list can lag a few minutes behind the live total
+ * (this hook only fetches once per session) — callers needing today's value
+ * to track live should pass PerfChart's own `liveValue` prop, which
+ * overlays the current live number onto today's entry regardless of what
+ * this hook returned for it (see chartUtils.ts's snapshotsToValues).
  *
  * Deliberately no reconstruction of history before real tracking began —
  * every value here is a real observed portfolio total, TradingView-sourced
@@ -41,52 +25,21 @@ function todayStr(): string {
  * third-party historical-price estimate. History simply grows longer the
  * more the app is used.
  */
-export function usePortfolioSnapshots(currentValue: number) {
+export function usePortfolioSnapshots() {
   const { getToken, isSignedIn, userId } = useAuth();
-  const [localStore, setLocalStore] = useState<Record<string, number>>({});
   const [serverStore, setServerStore] = useState<Record<string, number>>({});
-  const latestValue = useRef(currentValue);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedUserRef = useRef<string | null>(null);
 
-  // Load local cache + fetch server history on auth state change; clear the
-  // previous account's local cache on a genuine account switch.
   useEffect(() => {
     if (!isSignedIn || !userId) {
-      const prevUserId = loadedUserRef.current;
-      setLocalStore({});
       setServerStore({});
       loadedUserRef.current = null;
-      if (prevUserId) AsyncStorage.removeItem(snapshotKey(prevUserId)).catch(() => null);
       return;
     }
     if (loadedUserRef.current === userId) return;
-
-    const prevUserId = loadedUserRef.current;
-    if (prevUserId && prevUserId !== userId) {
-      AsyncStorage.removeItem(snapshotKey(prevUserId)).catch(() => null);
-    }
     loadedUserRef.current = userId;
 
     (async () => {
-      try {
-        let raw = await AsyncStorage.getItem(snapshotKey(userId));
-        // One-time migration: local day-by-day history built up under the
-        // pre-namespacing global key would otherwise be silently orphaned
-        // the moment this device adopts a per-user key.
-        if (!raw) {
-          const legacy = await AsyncStorage.getItem(LEGACY_KEY);
-          if (legacy) {
-            await AsyncStorage.setItem(snapshotKey(userId), legacy);
-            await AsyncStorage.removeItem(LEGACY_KEY);
-            raw = legacy;
-          }
-        }
-        setLocalStore(raw ? JSON.parse(raw) : {});
-      } catch {
-        setLocalStore({});
-      }
-
       try {
         const t = await getToken();
         if (!t) return;
@@ -96,7 +49,7 @@ export function usePortfolioSnapshots(currentValue: number) {
         const store: Record<string, number> = {};
         rows.forEach(r => { store[r.date] = r.totalValue; });
         setServerStore(store);
-      } catch { /* offline — local cache still applies */ }
+      } catch { /* offline or request failed — snapshots stay empty until next load */ }
     })();
     // Deliberately NOT depending on `getToken` — see PriceAlertsContext.tsx
     // for why an unstable Clerk callback reference in this deps array is
@@ -104,45 +57,7 @@ export function usePortfolioSnapshots(currentValue: number) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, userId]);
 
-  useEffect(() => { latestValue.current = currentValue; }, [currentValue]);
-
-  // Debounced local save of today's settled value — only fires 3s after
-  // currentValue stops changing, so we never save a mid-load partial total.
-  // Re-fires on every settle (not just the first one each session) so
-  // today's entry keeps tracking intraday movement — mirrors what
-  // useIntradaySamples already does for the 1D chart, so 1W/1M's last
-  // point stays in sync with it instead of freezing at app-launch value.
-  useEffect(() => {
-    if (!userId || currentValue <= 0) return;
-
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      const settled = latestValue.current;
-      if (settled <= 0) return;
-
-      try {
-        const raw = await AsyncStorage.getItem(snapshotKey(userId));
-        const store: Record<string, number> = raw ? JSON.parse(raw) : {};
-        store[todayStr()] = settled;
-        const keys = Object.keys(store).sort();
-        if (keys.length > MAX_DAYS) keys.slice(0, keys.length - MAX_DAYS).forEach(k => delete store[k]);
-        await AsyncStorage.setItem(snapshotKey(userId), JSON.stringify(store));
-        setLocalStore(store);
-      } catch { /* ignore */ }
-    }, SETTLE_MS);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [currentValue, userId]);
-
-  // Local wins on overlap: the server copy is only fetched once per app
-  // session (see load effect above), so its "today" row is stuck at
-  // whatever value existed at launch. Local's today keeps updating live
-  // (see save effect above), so it's always the fresher of the two for
-  // any date both sides have. Server still fills in any date local never
-  // captured (missed days, reinstalls, other devices).
-  const snapshots: PortfolioSnapshot[] = Object.entries({ ...serverStore, ...localStore })
+  const snapshots: PortfolioSnapshot[] = Object.entries(serverStore)
     .map(([date, value]) => ({ date, value }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
