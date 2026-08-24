@@ -632,14 +632,9 @@ export default function HomeScreen() {
   // what drives the "Today" badge above) so the two can never disagree; only
   // the server's middle points fill in real intraday texture.
   const todaySamples = useMemo(() => {
-    // Wait for the server intraday query to actually settle before drawing
-    // any texture — until then this is the same "not enough points yet"
-    // 2-point shape PerfChart already renders as a straight line.
-    if (serverIntradayLoading) return [startOfDayValue, summary.totalValue];
-
     const middle = serverIntraday && serverIntraday.length > 0 ? serverIntraday.map(p => p.v) : [];
     return [startOfDayValue, ...middle, summary.totalValue];
-  }, [serverIntradayLoading, serverIntraday, startOfDayValue, summary.totalValue]);
+  }, [serverIntraday, startOfDayValue, summary.totalValue]);
 
   const isGain = summary.gain >= 0;
   const isTodayGain = summary.todayGain >= 0;
@@ -1031,15 +1026,20 @@ export default function HomeScreen() {
                     so when the deltas aren't known todayGain is 0 and both
                     endpoints collapse onto the same number — the 1D curve
                     draws perfectly flat, then jumps to its real shape once
-                    live prices land. An empty series lets PerfChart show its
+                    live prices land. Same reasoning for serverIntradayLoading:
+                    without it, todaySamples' 2-point start/end line paints as
+                    a real (untextured) chart, then gets replaced a moment
+                    later once the server's texture lands — visibly "a chart
+                    changing shape." An empty series lets PerfChart show its
                     own "building" placeholder instead, matching how the Today
-                    tile waits rather than asserting a flat day. */}
+                    tile waits rather than asserting a flat day, so 1D only
+                    ever paints once, already final. */}
                 <PerfChart
                   period={timeFilter}
                   width={sparkWidth}
                   height={78}
                   snapshots={snapshots}
-                  todayValues={todaysChangeKnown ? todaySamples : []}
+                  todayValues={todaysChangeKnown && !serverIntradayLoading ? todaySamples : []}
                   liveValue={summary.totalValue}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
                   interactive

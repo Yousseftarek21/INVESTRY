@@ -634,7 +634,13 @@ export default function AnalyticsScreen() {
   // consistent with the "Today" badge (which always recomputes live); only
   // the server's middle points (real texture) are used.
   const todaySamples = useMemo(() => {
-    if (serverIntradayLoading) return [startOfDayValue, sm.totalValue];
+    // Never draw the flat 2-point start/end line while the server's real
+    // intraday texture is still loading — that's a real, visible chart
+    // shape that would just get replaced a moment later once it lands,
+    // which reads as "the chart changed." An empty array here makes
+    // PerfChart show its "building" placeholder instead, so 1D only ever
+    // paints once, already textured.
+    if (serverIntradayLoading) return [];
     const middle = serverIntraday && serverIntraday.length > 0 ? serverIntraday.map(p => p.v) : [];
     return [startOfDayValue, ...middle, sm.totalValue];
   }, [serverIntradayLoading, serverIntraday, startOfDayValue, sm.totalValue]);
