@@ -1,28 +1,26 @@
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import { cairoWeekStart, tradingDayKey } from "./cairoDate";
+import { cairoWeekStart } from "./cairoDate";
 import { utcMonthStartKey } from "./calendarDate";
-import { earliestSnapshotBefore, snapshotBefore } from "./portfolioSnapshotHelpers";
 import { computePeriodPerformance } from "./portfolioValue";
 
 export interface RankedReturn { id: string; pctReturn: number; rank: number }
 
 // The portfolio-return ranking computation, shared by GET
 // /competition/leaderboard (routes/competition.ts) and leaderboardRankCron —
-// one place for this math so the two can never quietly drift apart. See
-// competition.ts's own route comment for the full reasoning behind
-// tradingDayKey() as "today" and the strictly-before baseline.
+// one place for this math so the two can never quietly drift apart.
 //
-// "current" is deliberately not just "today's total portfolio value" —
-// that let anyone top the leaderboard by adding one large new holding
-// mid-period (real case seen in production: a user's weekly return read as
-// +853% after adding a single real estate property, nothing to do with
-// actual performance). computePeriodPerformance (portfolioValue.ts) offsets
-// any capital added during the period out of the gain instead of excluding
-// it from the value entirely — see that function's own comment: an earlier
-// exclusion-based version caused a worse production incident, wiping most
-// of the leaderboard because ordinary recently-added holdings got treated
-// the same as gaming.
+// Restricted to gold, silver, and EGX stocks — see computePeriodPerformance
+// (portfolioValue.ts) for the full reasoning. Real estate, personal assets,
+// and fixed income are entirely excluded: their values are self-reported
+// with no independent price feed, which is exactly what produced every
+// leaderboard incident so far (the original 853% jump from one newly-added
+// property, and this week's >100%/-100% swings from a mix of backdated
+// purchase data and an exclusion rule that zeroed out most active users'
+// whole portfolios on an app this young). No longer depends on
+// portfolio_snapshots at all — baseline is computed fresh each time from
+// real historical gold/silver prices and stock cost basis, not a daily
+// aggregate snapshot that mixed in the now-excluded types anyway.
 export async function computeRankedReturns(period: "week" | "month"): Promise<RankedReturn[]> {
   const periodStart = period === "month" ? utcMonthStartKey() : cairoWeekStart();
   const opted = await db
@@ -30,17 +28,11 @@ export async function computeRankedReturns(period: "week" | "month"): Promise<Ra
     .from(usersTable)
     .where(eq(usersTable.competitionOptedIn, true));
 
-  const today = tradingDayKey();
   const withReturns: { id: string; pctReturn: number }[] = [];
   for (const u of opted) {
-    const baselineSnap = (await snapshotBefore(u.id, periodStart)) ?? await earliestSnapshotBefore(u.id, today);
-    if (baselineSnap == null) continue;
-    const { date: baselineDate, totalValue: baseline } = baselineSnap;
-
-    const perf = await computePeriodPerformance(u.id, baselineDate);
-    const gain = (perf.current + perf.saleProceeds - baseline) - (perf.newHoldingsValue + perf.newlySoldProceeds);
-
-    withReturns.push({ id: u.id, pctReturn: (gain / baseline) * 100 });
+    const { pctReturn } = await computePeriodPerformance(u.id, periodStart);
+    if (pctReturn == null) continue; // nothing eligible (no gold/silver, no pre-existing stock) — not a real 0/-100%, just unrankable yet
+    withReturns.push({ id: u.id, pctReturn });
   }
 
   withReturns.sort((a, b) => b.pctReturn - a.pctReturn);

@@ -56,53 +56,33 @@ const TOP_N = 50;
 
 interface Ranked { userId: string; name: string; imageUrl: string | null; pctReturn: number; rank: number; isMe: boolean }
 
-// GET /api/competition/leaderboard?period=week|month — ranked by % portfolio
-// return since the period's start — week is Africa/Cairo's Sun-Thu banking
-// week (cairoWeekStart), month is the true calendar month (utcMonthStartKey,
-// resets on the 1st, same boundary the referral prize window uses) — computed
-// from portfolio_snapshots, which
-// portfolioAlertCron.ts already writes for every user every 5 minutes
-// regardless of any opt-in here. No new data collection, no cron of its own
-// — this is a pure read, computed fresh on each request.
+// GET /api/competition/leaderboard?period=week|month — ranked by % return
+// since the period's start — week is Africa/Cairo's Sun-Thu banking week
+// (cairoWeekStart), month is the true calendar month (utcMonthStartKey,
+// resets on the 1st, same boundary the referral prize window uses).
 //
-// "Today" MUST be tradingDayKey(), not a plain UTC or Cairo calendar date:
-// portfolio_snapshots.date is itself written using tradingDayKey() (see
-// portfolioAlertCron.ts), so any other definition of "today" can disagree
-// with what's actually in the table. This was a real, live bug: a plain UTC
-// `new Date().toISOString().slice(0,10)` lags tradingDayKey() by up to a
-// couple of hours every single day (tradingDayKey rolls over at 22:00/23:00
-// UTC, UTC's own calendar date only rolls at 00:00 UTC) — during that daily
-// window `current` silently fell back to *yesterday's* snapshot even though
-// a fresh one already existed, and on top of that it happened to collide
-// with `weekStart` on Cairo's own Sunday, collapsing baseline === current
-// and showing an exact 0% for every single participant. tradingDayKey() is
-// the one definition of "today" that always matches the freshest row that's
-// actually been written.
+// The ranking itself (computeRankedReturns -> computePeriodPerformance in
+// leaderboardRanking.ts/portfolioValue.ts) is restricted to gold, silver,
+// and EGX stocks, and no longer reads portfolio_snapshots at all — it's
+// computed fresh from real historical gold/silver prices
+// (market_close_snapshots) and live stock data every time this route is
+// called. See computePeriodPerformance's own comment for the full history
+// of why: three straight production incidents (a single user's +853% from
+// one newly-added property, then >100%/-100% swings once cost-basis or
+// exclusion-based protections were tried) all traced back to real
+// estate/personal-asset/fixed-income values being entirely self-reported
+// with no independent price feed to check them against, on an app young
+// enough that most users' whole portfolios were added within days of any
+// period boundary. Restricting to the three types with real market prices
+// (and computing gold/silver's contribution as a pure price ratio, immune
+// to quantity gaming — see that function) removes the actual mechanism
+// behind all three incidents, rather than trying to detect misuse of it.
 //
-// The baseline is always the last snapshot from STRICTLY BEFORE periodStart
-// (snapshotBefore), never "on or before" it. A change made during the
-// period's own first day (e.g. a real portfolio edit made sometime Sunday)
-// must count as part of that period's movement — using "on or before
-// Sunday" as the baseline would instead pick up Sunday's own end-of-day
-// value, silently absorbing that day's change into the baseline itself and
-// making it invisible. Anchoring strictly before the period started (i.e.
-// Saturday's closing value for the weekly view) is what makes every day of
-// the period, including its first, actually count toward the shown return.
-// This also incidentally avoids the same-day baseline === current collision
-// (see portfolioSnapshotHelpers.ts) without needing a separate branch for it.
-//
-// A user whose tracking history doesn't reach back to periodStart at all
-// (joined, or opted into competition tracking, partway through the week/
-// month) falls back to their own earliest snapshot as the baseline instead
-// of being excluded outright — see earliestSnapshotBefore's own comment.
-// Without this, a monthly view early in most users' lifetime would rank
-// almost nobody, which is exactly what was happening.
-//
-// Known, accepted limitation: holdings in this app are self-reported, not
-// linked to a real brokerage, so this ranking can be gamed by entering a
-// fake holding. No attempt is made to detect that for this first version —
-// flagged here rather than silently ignored, and worth revisiting if it's
-// ever actually abused.
+// Known, accepted limitation: a stock holding's own cost basis is still
+// user-entered and could be backdated, same category of issue as before
+// but narrower — EGX prices are public and checkable, unlike a self-reported
+// property valuation. A stock bought during the period itself is excluded
+// from the ratio entirely rather than guessed at.
 router.get("/competition/leaderboard", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
