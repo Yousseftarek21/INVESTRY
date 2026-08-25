@@ -1122,6 +1122,7 @@ export default function AnalyticsScreen() {
                   todayValues={todaySamples}
                   liveValue={sm.totalValue}
                   allTimeValues={[sm.totalCost, sm.totalValue]}
+                  loading={period === '1D' && serverIntradayLoading}
                 />
               </View>
               <View style={s.periodRow}>

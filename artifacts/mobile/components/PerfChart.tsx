@@ -1,5 +1,5 @@
 import React from 'react';
-import { PanResponder, PanResponderInstance, Text, View } from 'react-native';
+import { ActivityIndicator, PanResponder, PanResponderInstance, Text, View } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop, Circle, Line } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -71,11 +71,22 @@ interface PerfChartProps {
    * snapshot, never a full interactive screen.
    */
   snapshotMode?: boolean;
+  /**
+   * True while the caller is still waiting on a real data fetch (e.g.
+   * useServerIntraday) rather than genuinely lacking enough history yet.
+   * Both cases render as "fewer than 2 points" below, but they aren't the
+   * same thing to a user — "still loading" is a moment, "come back
+   * tomorrow to build this chart" is a multi-day ask. Without this, every
+   * cold app launch flashed the multi-day message for the second or so it
+   * takes the real data to arrive, which read as the chart telling you to
+   * come back later when it was actually just about to finish loading.
+   */
+  loading?: boolean;
 }
 
 export function PerfChart({
   period, width, height = 110, snapshots, todayValues, liveValue, allTimeValues,
-  interactive = false, formatScrubValue, onScrubChange, snapshotMode = true,
+  interactive = false, formatScrubValue, onScrubChange, snapshotMode = true, loading = false,
 }: PerfChartProps) {
   const colors = useColors();
   const t = useT();
@@ -184,18 +195,25 @@ export function PerfChart({
   // No real data at all yet (e.g. prices still loading), or what remained
   // after filtering out bad/missing samples isn't enough to draw a line —
   // a clear, visible empty state, not a subtle dashed line easy to mistake
-  // for broken, and never a crash from a malformed upstream value.
+  // for broken, and never a crash from a malformed upstream value. `loading`
+  // gets its own wording (see the prop's own comment) rather than sharing
+  // chartBuildingHint's "come back another day" message with a transient
+  // fetch that's about to resolve.
   if (!dataPoints || dataPoints.length < 2) {
     return (
       <View style={{ height, alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-        <Feather name="trending-up" size={20} color={colors.mutedForeground} style={{ opacity: 0.5 }} />
+        {loading ? (
+          <ActivityIndicator size="small" color={colors.mutedForeground} />
+        ) : (
+          <Feather name="trending-up" size={20} color={colors.mutedForeground} style={{ opacity: 0.5 }} />
+        )}
         <Text style={{
           textAlign: 'center',
           color: colors.mutedForeground,
           fontSize: 12,
           fontFamily: 'Inter_500Medium',
         }}>
-          {t.chartBuildingHint}
+          {loading ? t.chartLoadingHint : t.chartBuildingHint}
         </Text>
       </View>
     );

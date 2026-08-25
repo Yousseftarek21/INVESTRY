@@ -10,6 +10,7 @@ import { pctDelta } from '@/utils/pctDelta';
 import { tradingDayStart } from '@/utils/cairoDate';
 import { fmtCompact } from '@/utils/formatNumber';
 import { UpdateAvailableBanner } from '@/components/UpdateAvailableBanner';
+import { WhatsNewModal } from '@/components/WhatsNewModal';
 import { CompetitionInviteBanner } from '@/components/CompetitionInviteBanner';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
@@ -779,6 +780,7 @@ export default function HomeScreen() {
           competition ask. */}
       <UpdateAvailableBanner />
       <CompetitionInviteBanner />
+      <WhatsNewModal />
 
       {/* ── Hero Card ───────────────────────────────────────────── */}
       <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -1042,6 +1044,7 @@ export default function HomeScreen() {
                   todayValues={todaysChangeKnown && !serverIntradayLoading ? todaySamples : []}
                   liveValue={summary.totalValue}
                   allTimeValues={[summary.totalCost, summary.totalValue]}
+                  loading={timeFilter === '1D' && (!todaysChangeKnown || serverIntradayLoading)}
                   interactive
                   formatScrubValue={v =>
                     hideValues ? '••••' : `${fmtCompact(toDisp(v))} ${displayCurrency}`
