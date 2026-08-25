@@ -4,7 +4,8 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { fetchIdentities, FALLBACK_NAME } from "../lib/clerkIdentity";
 import { computeRankedReturns } from "../lib/leaderboardRanking";
-import { cairoMonthStart, cairoWeekStart } from "../lib/cairoDate";
+import { cairoWeekStart } from "../lib/cairoDate";
+import { utcMonthStartKey } from "../lib/calendarDate";
 
 const router: IRouter = Router();
 
@@ -56,8 +57,10 @@ const TOP_N = 50;
 interface Ranked { userId: string; name: string; imageUrl: string | null; pctReturn: number; rank: number; isMe: boolean }
 
 // GET /api/competition/leaderboard?period=week|month — ranked by % portfolio
-// return since the period's start (Africa/Cairo — see cairoWeekStart /
-// cairoMonthStart), computed from portfolio_snapshots, which
+// return since the period's start — week is Africa/Cairo's Sun-Thu banking
+// week (cairoWeekStart), month is the true calendar month (utcMonthStartKey,
+// resets on the 1st, same boundary the referral prize window uses) — computed
+// from portfolio_snapshots, which
 // portfolioAlertCron.ts already writes for every user every 5 minutes
 // regardless of any opt-in here. No new data collection, no cron of its own
 // — this is a pure read, computed fresh on each request.
@@ -106,7 +109,7 @@ router.get("/competition/leaderboard", async (req, res) => {
 
   try {
     const period = req.query.period === "month" ? "month" : "week";
-    const periodStart = period === "month" ? cairoMonthStart() : cairoWeekStart();
+    const periodStart = period === "month" ? utcMonthStartKey() : cairoWeekStart();
 
     // Read directly, not inferred from ranking: a user who just joined and
     // has no portfolio_snapshots row yet (brand new, or simply hasn't had

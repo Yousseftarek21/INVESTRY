@@ -84,15 +84,3 @@ export function cairoWeekStart(d: Date = new Date()): string {
   return new Date(Date.parse(`${today}T00:00:00Z`) - weekday * 86_400_000).toISOString().slice(0, 10);
 }
 
-// The date key (YYYY-MM-DD) of the start of the leaderboard's rolling
-// "month" — the current week plus the 3 weeks before it, i.e. exactly 3
-// weeks (21 days) before this week's own Sunday. Deliberately not the 1st of
-// the calendar month: this keeps "month" built out of the same Sunday-
-// aligned weekly cycles the weekly view already resets on, so it always
-// spans 4 whole reset cycles and rolls forward one week at a time right
-// alongside cairoWeekStart, rather than snapping to a calendar date that can
-// land mid-week and dangle a partial first week.
-export function cairoMonthStart(d: Date = new Date()): string {
-  const weekStart = cairoWeekStart(d);
-  return new Date(Date.parse(`${weekStart}T00:00:00Z`) - 21 * 86_400_000).toISOString().slice(0, 10);
-}

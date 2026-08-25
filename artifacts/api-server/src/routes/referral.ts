@@ -186,12 +186,10 @@ interface ReferralRanked {
 //
 // period=month uses referralRedeemedAt (NOT createdAt — someone can create
 // an account, then redeem a friend's code later, so the two can differ)
-// compared against utcMonthStart(), a true calendar month — deliberately
-// different from the portfolio leaderboard's rolling cairoMonthStart()
-// window. Mixing the two "what month is it" definitions inside one feature
-// is exactly the category of bug that produced the portfolio leaderboard's
-// 0%-for-everyone incident earlier — this route only ever calls
-// utcMonthStart(), nothing else.
+// compared against utcMonthStart(), the same true-calendar-month boundary
+// the portfolio leaderboard's own "month" period now uses too (see
+// calendarDate.ts) — one definition of "what month is it" shared across
+// both features, not two that can quietly disagree.
 router.get("/referral/leaderboard", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }

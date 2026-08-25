@@ -136,19 +136,60 @@ export async function computeUserPortfolioValue(userId: string): Promise<number>
   }, 0);
 }
 
+export interface PeriodPerformance {
+  /** Live value (EGP) of every holding the user still has, no filtering. */
+  current: number;
+  /**
+   * Cost basis (EGP) of holdings created on/after `cutoffDateKey`, still
+   * held — the "new capital contributed this period" side of the
+   * adjustment below.
+   */
+  netNewCapital: number;
+  /** Sale proceeds (EGP) from every sale that happened on/after `cutoffDateKey`. */
+  saleProceeds: number;
+  /**
+   * Cost basis (EGP) of holdings that were BOTH created and sold on/after
+   * `cutoffDateKey` (a same-period buy-then-sell) — also "new capital,"
+   * offsetting saleProceeds the same way netNewCapital offsets current.
+   */
+  soldNetNewCapital: number;
+}
+
 /**
- * Live current value (EGP) of only the holdings that already existed before
- * `cutoffDateKey` — used for the leaderboard, where naively comparing
- * "current total" against a period-start baseline let anyone top the
- * rankings by simply adding a large new holding mid-period (that full
- * value read as a "gain," nothing to do with actual investment
- * performance). A holding added on or after the cutoff contributes
- * nothing here, exactly as it should for "how did what I already had
- * perform" — new capital isn't a return.
+ * A period's raw performance ingredients for one user — used by the
+ * leaderboard as `(current + saleProceeds − baseline − netNewCapital −
+ * soldNetNewCapital) / baseline`. This is the standard technique real
+ * portfolio-performance tools use for periods with cash flows (deposits/
+ * withdrawals) in the middle — sometimes called the Modified Dietz method:
+ * don't exclude contributed capital from the numbers, offset it out of the
+ * GAIN instead, so contributing money is neutral rather than either
+ * inflating a return or making a holding (and the user entirely, if it's
+ * most of their portfolio) invisible to the calculation.
+ *
+ * Replaces an earlier "exclude anything created/edited this period"
+ * approach that caused two real problems in production: (1) a user who
+ * added most of their portfolio recently — completely normal for anyone
+ * who joined the app in the last few weeks — ended up with ~0 "eligible"
+ * value and either showed a fabricated huge loss or got silently dropped
+ * from the leaderboard (25 opted-in users showed as 9); (2) since the
+ * monthly window looks back 4x further than weekly, it excluded even more
+ * of a typical recent holding's history, so plenty of people who ranked in
+ * the weekly leaderboard vanished from the monthly one — same underlying
+ * cause, not a separate bug. This version never excludes a real holding
+ * from the math at all, so neither failure mode can happen: current is
+ * always the true, full portfolio value.
+ *
+ * This does NOT close every gaming vector — a user editing an EXISTING
+ * (pre-period) holding's quantity to inflate it still isn't caught, since
+ * there's no per-holding value history to detect that against. That gap
+ * needs real historical value-tracking to close properly; it was
+ * deliberately left open here rather than risk another blunt exclusion
+ * rule breaking real users again.
  */
-export async function computeEligiblePortfolioValue(userId: string, cutoffDateKey: string): Promise<number> {
-  const [holdingRows, prices, egxStocks] = await Promise.all([
+export async function computePeriodPerformance(userId: string, cutoffDateKey: string): Promise<PeriodPerformance> {
+  const [holdingRows, soldRows, prices, egxStocks] = await Promise.all([
     db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
+    db.select().from(soldHoldingsTable).where(eq(soldHoldingsTable.userId, userId)),
     getCachedPrices(),
     getCachedStocks().catch(() => []),
   ]);
@@ -156,43 +197,31 @@ export async function computeEligiblePortfolioValue(userId: string, cutoffDateKe
   const egxPrices: Record<string, number> = {};
   for (const s of egxStocks) egxPrices[s.symbol] = s.price;
 
-  return holdingRows.reduce((sum, row) => {
-    if (tradingDayKey(row.createdAt) >= cutoffDateKey) return sum;
+  let current = 0;
+  let netNewCapital = 0;
+  for (const row of holdingRows) {
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
-    return sum + computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
-  }, 0);
-}
+    current += computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
+    if (tradingDayKey(row.createdAt) >= cutoffDateKey) {
+      netNewCapital += costBasisEGP(holding, prices.usdToEgp);
+    }
+  }
 
-/**
- * Sum of sale proceeds (EGP) from holdings that (a) were sold on or after
- * `cutoffDateKey` — during the period being measured — and (b) already
- * existed before that same cutoff. Without this, selling a holding that
- * was part of the baseline makes a period's return look like a huge loss:
- * computeEligiblePortfolioValue no longer counts it (it's gone), but
- * nothing replaces its value, even though the sale itself may have been a
- * genuine gain. Adding the proceeds back in is what makes "current" mean
- * "what I still hold, plus what I got for what I sold" — the actual
- * question a performance leaderboard is supposed to answer.
- *
- * Holds sold before this field was ever recorded have no
- * holdingCreatedDay — treated as eligible rather than silently dropped,
- * since excluding a real historical sale is worse than the narrow window
- * where that default could be wrong.
- */
-export async function sumEligibleSaleProceeds(userId: string, cutoffDateKey: string): Promise<number> {
-  const rows = await db.select().from(soldHoldingsTable).where(eq(soldHoldingsTable.userId, userId));
-
-  let sum = 0;
-  for (const row of rows) {
+  let saleProceeds = 0;
+  let soldNetNewCapital = 0;
+  for (const row of soldRows) {
     const data = decryptFromStorage(row.data) as {
-      saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string;
+      saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string; costBasis?: number;
     };
     if (!data.saleDate || typeof data.saleProceeds !== "number") continue;
     if (data.saleDate < cutoffDateKey) continue;
-    if (data.holdingCreatedDay && data.holdingCreatedDay >= cutoffDateKey) continue;
-    sum += data.saleProceeds;
+    saleProceeds += data.saleProceeds;
+    if (data.holdingCreatedDay && data.holdingCreatedDay >= cutoffDateKey && typeof data.costBasis === "number") {
+      soldNetNewCapital += data.costBasis;
+    }
   }
-  return sum;
+
+  return { current, netNewCapital, saleProceeds, soldNetNewCapital };
 }
 
 export type AllocationClass = "gold" | "silver" | "stock" | "realEstate" | "personalAsset" | "fixedIncome" | "cash";

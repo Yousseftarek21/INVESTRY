@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import { cairoMonthStart, cairoWeekStart, tradingDayKey } from "./cairoDate";
+import { cairoWeekStart, tradingDayKey } from "./cairoDate";
+import { utcMonthStartKey } from "./calendarDate";
 import { earliestSnapshotBefore, snapshotBefore } from "./portfolioSnapshotHelpers";
-import { computeEligiblePortfolioValue, sumEligibleSaleProceeds } from "./portfolioValue";
+import { computePeriodPerformance } from "./portfolioValue";
 
 export interface RankedReturn { id: string; pctReturn: number; rank: number }
 
@@ -16,13 +17,14 @@ export interface RankedReturn { id: string; pctReturn: number; rank: number }
 // that let anyone top the leaderboard by adding one large new holding
 // mid-period (real case seen in production: a user's weekly return read as
 // +853% after adding a single real estate property, nothing to do with
-// actual performance). It's the live value of holdings that already
-// existed at the baseline, plus proceeds from any of those same
-// pre-existing holdings sold during the period — "how did what I already
-// had actually perform," which a leaderboard is supposed to measure, not
-// "how much new capital did I add."
+// actual performance). computePeriodPerformance (portfolioValue.ts) offsets
+// any capital added during the period out of the gain instead of excluding
+// it from the value entirely — see that function's own comment: an earlier
+// exclusion-based version caused a worse production incident, wiping most
+// of the leaderboard because ordinary recently-added holdings got treated
+// the same as gaming.
 export async function computeRankedReturns(period: "week" | "month"): Promise<RankedReturn[]> {
-  const periodStart = period === "month" ? cairoMonthStart() : cairoWeekStart();
+  const periodStart = period === "month" ? utcMonthStartKey() : cairoWeekStart();
   const opted = await db
     .select({ id: usersTable.id })
     .from(usersTable)
@@ -35,24 +37,10 @@ export async function computeRankedReturns(period: "week" | "month"): Promise<Ra
     if (baselineSnap == null) continue;
     const { date: baselineDate, totalValue: baseline } = baselineSnap;
 
-    const [eligibleValue, saleProceeds] = await Promise.all([
-      computeEligiblePortfolioValue(u.id, baselineDate),
-      sumEligibleSaleProceeds(u.id, baselineDate),
-    ]);
-    const current = eligibleValue + saleProceeds;
+    const perf = await computePeriodPerformance(u.id, baselineDate);
+    const gain = (perf.current + perf.saleProceeds - baseline) - (perf.netNewCapital + perf.soldNetNewCapital);
 
-    // Zero eligible value with a positive baseline doesn't mean "lost
-    // everything" — it means every holding this user currently has (or
-    // sold) was added on or after the baseline day, so nothing accounts
-    // for what the baseline actually measured (most often: they joined
-    // this period and their only snapshot is itself same-day as their
-    // first holding). Showing -100% here would be exactly the kind of
-    // false number this whole eligibility filter exists to prevent, just
-    // in the opposite direction — skip them, same as the existing
-    // no-baseline-at-all case just above.
-    if (current === 0) continue;
-
-    withReturns.push({ id: u.id, pctReturn: ((current - baseline) / baseline) * 100 });
+    withReturns.push({ id: u.id, pctReturn: (gain / baseline) * 100 });
   }
 
   withReturns.sort((a, b) => b.pctReturn - a.pctReturn);
