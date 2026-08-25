@@ -17,9 +17,12 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const CHANGE_THRESHOLD_PCT = 1;
 // A real diversified portfolio doesn't swing this much in one day — a
 // reading past this is almost certainly a data artifact (e.g. a valuation
-// formula change comparing against a snapshot taken under the old formula)
-// rather than an actual move, so it's safer to skip the push than mislead.
-const SANITY_MAX_PCT = 20;
+// formula change comparing against a snapshot taken under the old formula,
+// or a holding being added/edited/removed, not real market movement)
+// rather than an actual move, so it's safer to skip the push (or, for
+// dailyChangeBackfill.ts's snapshot-based history, skip showing that day at
+// all) than mislead. Exported so both places share one threshold.
+export const SANITY_MAX_PCT = 20;
 
 function generateId(): string {
   return `snap_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -104,7 +107,18 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   try {
     const yesterday = tradingDayKey(new Date(tradingDayStart().getTime() - 1));
     const { pctReturn } = await computePeriodPerformance(userId, yesterday);
-    if (pctReturn != null) {
+    // Hard guardrail, independent of whatever produced the number: a real
+    // diversified portfolio doesn't move this much in a day (same
+    // SANITY_MAX_PCT threshold already used for push-alert milestones
+    // above). Seen live in production: a value that should have been
+    // stable around -0.6% briefly read +22%, self-correcting a few
+    // minutes later — almost certainly a stale per-instance price cache
+    // racing during a rolling deploy (this cron runs independently on
+    // every server process), not a real market move. Rather than chase
+    // that race to its exact root cause, refuse to ever persist or
+    // overwrite a value this implausible — better to skip a tick than
+    // show a fabricated-looking number on a screen a user reads as fact.
+    if (pctReturn != null && Math.abs(pctReturn) <= SANITY_MAX_PCT) {
       await db
         .insert(dailyChangeSnapshotsTable)
         .values({ id: dailyChangeId(userId, today), userId, date: today, pctReturn })
@@ -112,6 +126,8 @@ async function checkUser(userId: string, today: string, pushToken: string | null
           target: [dailyChangeSnapshotsTable.userId, dailyChangeSnapshotsTable.date],
           set: { pctReturn, updatedAt: new Date() },
         });
+    } else if (pctReturn != null) {
+      logger.warn({ userId, pctReturn }, "Rejected implausible daily change reading — not persisted");
     }
   } catch (err) {
     logger.warn({ err, userId }, "Daily change snapshot failed — Today's Change history unaffected");
