@@ -1342,7 +1342,10 @@ export default function AnalyticsScreen() {
                     { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
                   ]}
                 >
-                  <Text style={[dh.cardTitle, { color: colors.text }]}>{t.dailyHistoryLabel}</Text>
+                  <View style={s.aiTitleRow}>
+                    <Text style={[dh.cardTitle, { color: colors.text }]}>{t.dailyHistoryLabel}</Text>
+                    <BetaChip label={t.dailyHistoryBetaChip} />
+                  </View>
                   <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
                 </Pressable>
               </View>

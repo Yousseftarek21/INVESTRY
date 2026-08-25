@@ -10,11 +10,27 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { useDailyChanges, DailyChange } from '@/hooks/useDailyChanges';
+import { BetaChip } from '@/components/BetaChip';
 
-function Row({ item, locale }: { item: DailyChange; locale: string }) {
+// Egypt's weekend (Africa/Cairo Sun-Thu banking week — see api-server's
+// cairoDate.ts) — gold/EGX prices don't move on these days, so a flat
+// reading here is a market being closed, not zero real performance.
+// Read directly off the date key (noon UTC, matching how dateLabel below
+// is formatted) since the key already IS the trading day, no further
+// timezone conversion needed.
+function isCairoWeekend(dateKey: string): boolean {
+  const day = new Date(`${dateKey}T12:00:00Z`).getUTCDay(); // 0=Sun..6=Sat
+  return day === 5 || day === 6; // Friday, Saturday
+}
+
+function Row({ item, locale, t }: { item: DailyChange; locale: string; t: ReturnType<typeof useT> }) {
   const colors = useColors();
-  const isGain = item.pctReturn >= 0;
-  const gainColor = isGain ? colors.green : colors.red;
+  const isFlat = Math.abs(item.pctReturn) < 0.005;
+  const isGain = item.pctReturn > 0;
+  // Flat is neutral, never green — a 0% reading isn't a gain. Weekend +
+  // flat together means the market was simply closed that day.
+  const pctColor = isFlat ? colors.mutedForeground : (isGain ? colors.green : colors.red);
+  const showHoliday = isFlat && isCairoWeekend(item.date);
   const dateLabel = new Date(`${item.date}T12:00:00Z`).toLocaleDateString(locale, {
     weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC',
   });
@@ -22,8 +38,8 @@ function Row({ item, locale }: { item: DailyChange; locale: string }) {
   return (
     <View style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Text style={[styles.rowDate, { color: colors.text }]} numberOfLines={1}>{dateLabel}</Text>
-      <Text style={[styles.rowPct, { color: gainColor }]} numberOfLines={1}>
-        {isGain ? '+' : ''}{item.pctReturn.toFixed(2)}%
+      <Text style={[styles.rowPct, { color: pctColor }]} numberOfLines={1}>
+        {showHoliday ? t.holidayLabel : `${isGain ? '+' : ''}${item.pctReturn.toFixed(2)}%`}
       </Text>
     </View>
   );
@@ -50,7 +66,10 @@ export default function DailyHistoryScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
           <Feather name={backChevron()} size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t.dailyHistoryLabel}</Text>
+        <View style={styles.headerTitleRow}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t.dailyHistoryLabel}</Text>
+          <BetaChip label={t.dailyHistoryBetaChip} />
+        </View>
         <View style={{ width: 22 }} />
       </View>
 
@@ -74,7 +93,7 @@ export default function DailyHistoryScreen() {
             </View>
           )
         }
-        renderItem={({ item }) => <Row item={item} locale={locale} />}
+        renderItem={({ item }) => <Row item={item} locale={locale} t={t} />}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
     </View>
@@ -87,6 +106,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingBottom: 14,
   },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   headerTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
   content: { paddingHorizontal: 20, gap: 8 },
   row: {
