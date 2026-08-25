@@ -17,8 +17,8 @@ type HoldingLabels = {
 interface HoldingCardProps {
   holding: Holding;
   prices?: MarketPrices;
-  onDelete?: () => void;
   onEdit?: () => void;
+  onSell?: () => void;
   hideValues?: boolean;
   hideSubtitle?: boolean;
 }
@@ -49,7 +49,7 @@ function fixedIncomeAccruedValue(h: Extract<Holding, { type: 'fixed_income' }>):
   return h.principal * (1 + (h.annualRate / 100) * (daysElapsed / 365));
 }
 
-function computeCurrentValue(holding: Holding, prices?: MarketPrices): number {
+export function computeCurrentValue(holding: Holding, prices?: MarketPrices): number {
   if (holding.type === 'fixed_income') return fixedIncomeAccruedValue(holding);
   if (holding.type === 'real_estate') return getRECurrentValue(holding);
   if (!prices) return 0;
@@ -60,7 +60,7 @@ function computeCurrentValue(holding: Holding, prices?: MarketPrices): number {
   return 0;
 }
 
-function computeCost(holding: Holding, prices?: MarketPrices): number {
+export function computeCost(holding: Holding, prices?: MarketPrices): number {
   if (holding.type === 'gold') return holding.grams * holding.purchasePricePerGram;
   if (holding.type === 'silver') return holding.grams * holding.purchasePricePerGram;
   if (holding.type === 'stock') return holding.shares * holding.purchasePricePerShare;
@@ -127,7 +127,7 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   fixed_income: '#22C55E',
 };
 
-export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hideSubtitle }: HoldingCardProps) {
+export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideSubtitle }: HoldingCardProps) {
   const colors = useColors();
   const t = useT();
   const labels: HoldingLabels = {
@@ -189,7 +189,7 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
         )}
       </View>
 
-      {(onEdit || onDelete) && (
+      {(onEdit || onSell) && (
         <View style={styles.actions}>
           {onEdit && (
             <TouchableOpacity
@@ -201,14 +201,14 @@ export function HoldingCard({ holding, prices, onDelete, onEdit, hideValues, hid
               <Feather name="edit-2" size={14} color={colors.primary} />
             </TouchableOpacity>
           )}
-          {onDelete && (
+          {onSell && (
             <TouchableOpacity
-              onPress={onDelete}
+              onPress={onSell}
               style={styles.actionBtn}
               hitSlop={10}
               activeOpacity={0.6}
             >
-              <Feather name="trash-2" size={14} color={colors.red} />
+              <Feather name="check-circle" size={14} color={colors.green} />
             </TouchableOpacity>
           )}
         </View>

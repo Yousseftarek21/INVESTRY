@@ -25,6 +25,8 @@ function eventVisual(type: string, colors: ReturnType<typeof useColors>) {
     case 'holding_added':
     case 'holding_edited':
       return { icon: <Feather name="trending-up" size={18} color={colors.primary} />, color: colors.primary };
+    case 'holding_sold':
+      return { icon: <Feather name="check-circle" size={18} color={colors.green} />, color: colors.green };
     case 'portfolio_alert':
     default:
       return { icon: <Feather name="trending-up" size={18} color={colors.green} />, color: colors.green };

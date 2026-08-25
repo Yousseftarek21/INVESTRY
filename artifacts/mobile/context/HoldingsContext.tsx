@@ -17,6 +17,7 @@ interface HoldingsContextValue {
   addHolding: (holding: Holding) => Promise<void>;
   removeHolding: (id: string) => Promise<void>;
   updateHolding: (holding: Holding) => Promise<void>;
+  sellHolding: (id: string, saleProceeds: number, saleDate: string, notes?: string) => Promise<void>;
   isLoading: boolean;
   syncError: string | null;
 }
@@ -194,6 +195,25 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [token, persist, userId]);
 
+  // ── Sell (records a realized sale, then removes locally — like remove,
+  // but re-throws on failure like add/update since a "sold" action that
+  // silently didn't save is worse than one that visibly failed) ───────────
+  const sellHolding = useCallback(async (id: string, saleProceeds: number, saleDate: string, notes?: string) => {
+    if (!userId) return;
+    const t = await token();
+    if (!t) throw new Error('Not signed in');
+    const res = await apiFetch(`/api/holdings/${id}/sell`, t, {
+      method: 'POST',
+      body: JSON.stringify({ saleProceeds, saleDate, notes }),
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+    setHoldings(prev => {
+      const next = prev.filter(h => h.id !== id);
+      persist(next, userId);
+      return next;
+    });
+  }, [token, persist, userId]);
+
   // ── Update (optimistic, with rollback) ───────────────────────────────────
   const updateHolding = useCallback(async (holding: Holding) => {
     if (!userId) return;
@@ -223,7 +243,7 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   }, [token, persist, userId]);
 
   return (
-    <HoldingsContext.Provider value={{ holdings, addHolding, removeHolding, updateHolding, isLoading, syncError }}>
+    <HoldingsContext.Provider value={{ holdings, addHolding, removeHolding, updateHolding, sellHolding, isLoading, syncError }}>
       {children}
     </HoldingsContext.Provider>
   );

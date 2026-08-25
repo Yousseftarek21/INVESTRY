@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { apiFetch } from '@/utils/api';
 import { useStableGetToken } from './useStableGetToken';
 
-export type ActivityType = 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited';
+export type ActivityType = 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited' | 'holding_sold';
 
 export interface ActivityLogEntry {
   id: string;

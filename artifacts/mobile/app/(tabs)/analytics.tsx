@@ -37,6 +37,7 @@ import { PerfChart } from '@/components/PerfChart';
 import { getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar, AllocationSegment } from '@/components/AllocationBar';
+import { useSoldHoldings } from '@/hooks/useSoldHoldings';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function personalAssetValueEGP(h: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -402,6 +403,54 @@ function MetalSpotlight({ title, grams, value, avgBuy, gainPct, livePrice, tintC
     </View>
   );
 }
+// Same visual language as MetalSpotlight (shares its `ms` styles below) but
+// generalized for the 4 non-metal types (stock/real_estate/personal_asset/
+// fixed_income), which don't have a meaningful "grams"/"price-per-gram" —
+// count and cost basis are the universal 3rd/1st stats instead. Previously
+// only gold and silver got a dedicated breakdown card at all; any user
+// holding stocks, real estate, personal assets, or fixed income saw nothing
+// equivalent for what they actually held.
+function ClassSpotlight({ title, countLabel, value, cost, gainPct, tintColor, footerText }: {
+  title: string; countLabel: string; value: number; cost: number;
+  gainPct: number; tintColor: string; footerText?: string;
+}) {
+  const colors = useColors();
+  const t = useT();
+  const isGain = gainPct >= 0;
+  const gc = isGain ? colors.green : colors.red;
+  return (
+    <View style={[ms.card, { backgroundColor: colors.card, borderColor: tintColor + '30' }]}>
+      <View style={[ms.topBar, { backgroundColor: tintColor + '12' }]}>
+        <Text style={[ms.title, { color: tintColor }]}>{title}</Text>
+        <View style={[ms.gainBadge, { backgroundColor: gc + '1A' }]}>
+          <Text style={[ms.gainTxt, { color: gc }]}>{isGain ? '+' : ''}{gainPct.toFixed(2)}%</Text>
+        </View>
+      </View>
+      <View style={ms.body}>
+        <View style={ms.statCol}>
+          <Text style={[ms.statVal, { color: colors.text }]}>{countLabel}</Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>{t.holdingsCountLabel}</Text>
+        </View>
+        <View style={[ms.divider, { backgroundColor: colors.border }]} />
+        <View style={ms.statCol}>
+          <Text style={[ms.statVal, { color: tintColor }]}>{fmtK(value)}<Text style={[ms.statUnit, { color: colors.mutedForeground }]}> EGP</Text></Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>{t.marketValue}</Text>
+        </View>
+        <View style={[ms.divider, { backgroundColor: colors.border }]} />
+        <View style={ms.statCol}>
+          <Text style={[ms.statVal, { color: colors.text }]}>{fmtK(cost)}<Text style={[ms.statUnit, { color: colors.mutedForeground }]}> EGP</Text></Text>
+          <Text style={[ms.statLabel, { color: colors.mutedForeground }]}>{t.costBasisLabel}</Text>
+        </View>
+      </View>
+      {footerText && (
+        <View style={[ms.footer, { borderTopColor: tintColor + '20' }]}>
+          <Feather name="award" size={10} color={tintColor} />
+          <Text style={[ms.footerTxt, { color: colors.mutedForeground }]}>{footerText}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
 const ms = StyleSheet.create({
   card: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
@@ -416,6 +465,18 @@ const ms = StyleSheet.create({
   divider: { width: 1, height: 36, alignSelf: 'center' },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 10 },
   footerTxt: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+});
+
+// ─── Realized gains card ───────────────────────────────────────────────────────
+const rg = StyleSheet.create({
+  card: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderRadius: 18, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 18,
+  },
+  left: { flex: 1, gap: 6 },
+  label: { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4, textTransform: 'uppercase' },
+  value: { fontSize: 22, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.4 },
+  currency: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 });
 
 // ─── Section label ─────────────────────────────────────────────────────────────
@@ -559,9 +620,9 @@ export default function AnalyticsScreen() {
 
   const sm = useMemo(() => {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;
-    let goldCost = 0, silverCost = 0;
+    let goldCost = 0, silverCost = 0, stockCost = 0, reCost = 0, paCost = 0, fiCost = 0;
     let totalGoldGrams = 0, totalSilverGrams = 0;
-    let stockCount = 0, reCount = 0, paCount = 0;
+    let stockCount = 0, reCount = 0, paCount = 0, fiCount = 0;
     let todayGold = 0, todaySilver = 0, todayStock = 0, todayFI = 0;
     for (const h of holdings) {
       const v = computeValue(h, prices);
@@ -578,24 +639,28 @@ export default function AnalyticsScreen() {
         todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
       }
       else if (h.type === 'stock') {
-        stockV += v; stockCount++;
+        stockV += v; stockCost += c; stockCount++;
         const changePercent = egxChangeByTicker[h.symbol] ?? 0;
         todayStock += pctDelta(v, changePercent);
       }
-      else if (h.type === 'personal_asset') { paV += v; paCount++; }
+      else if (h.type === 'personal_asset') { paV += v; paCost += c; paCount++; }
       else if (h.type === 'fixed_income') {
-        fiV += v;
+        fiV += v; fiCost += c; fiCount++;
         // Since the trading day began, matching index.tsx — see the comment
         // there for why a rolling 24h window was wrong.
         todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
       }
-      else { reV += v; reCount++; }
+      else { reV += v; reCost += c; reCount++; }
     }
     const totalValue = goldV + silverV + stockV + reV + paV + fiV;
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
     const goldGainPct = goldCost > 0 ? ((goldV - goldCost) / goldCost) * 100 : 0;
     const silverGainPct = silverCost > 0 ? ((silverV - silverCost) / silverCost) * 100 : 0;
+    const stockGainPct = stockCost > 0 ? ((stockV - stockCost) / stockCost) * 100 : 0;
+    const reGainPct = reCost > 0 ? ((reV - reCost) / reCost) * 100 : 0;
+    const paGainPct = paCost > 0 ? ((paV - paCost) / paCost) * 100 : 0;
+    const fiGainPct = fiCost > 0 ? ((fiV - fiCost) / fiCost) * 100 : 0;
     const goldAvgBuy = totalGoldGrams > 0 ? goldCost / totalGoldGrams : 0;
     const silverAvgBuy = totalSilverGrams > 0 ? silverCost / totalSilverGrams : 0;
     const metalPct = totalValue > 0 ? (goldV + silverV) / totalValue : 0;
@@ -603,9 +668,10 @@ export default function AnalyticsScreen() {
     return {
       totalValue, totalCost, gain, gainPct, todayGain,
       goldV, silverV, stockV, reV, paV, fiV,
-      goldCost, silverCost, goldGainPct, silverGainPct,
+      goldCost, silverCost, stockCost, reCost, paCost, fiCost,
+      goldGainPct, silverGainPct, stockGainPct, reGainPct, paGainPct, fiGainPct,
       totalGoldGrams, totalSilverGrams, goldAvgBuy, silverAvgBuy,
-      metalPct, stockCount, reCount, paCount,
+      metalPct, stockCount, reCount, paCount, fiCount,
     };
   }, [holdings, prices, egxChangeByTicker]);
 
@@ -658,6 +724,13 @@ export default function AnalyticsScreen() {
     const real = rp > 0.5 ? 20 : rp > 0.25 ? 14 : rp > 0 ? 8 : 4;
     return { score: Math.min(100, div + conc + hedge + real), div, conc, hedge, real };
   }, [sm, typeCount]);
+
+  // ── Realized gains (sold/redeemed holdings) ─────────────────────────────────
+  const { soldHoldings } = useSoldHoldings();
+  const totalRealized = useMemo(
+    () => soldHoldings.reduce((sum, s) => sum + s.realizedGainLoss, 0),
+    [soldHoldings],
+  );
 
   // ── Performers ────────────────────────────────────────────────────────────────
   const performers = useMemo(() =>
@@ -1191,6 +1264,32 @@ export default function AnalyticsScreen() {
               </View>
             )}
 
+            {/* ── Realized gains ───────────────────────────────────────── */}
+            {soldHoldings.length > 0 && (
+              <View style={s.section}>
+                <SLabel icon="archive" title={t.realizedGainsLabel} sub={`${soldHoldings.length} ${t.investmentPlural}`} />
+                <Pressable
+                  onPress={() => { impact(); router.push('/sold-holdings' as any); }}
+                  style={({ pressed }) => [
+                    rg.card,
+                    { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
+                  ]}
+                >
+                  <View style={rg.left}>
+                    <Text style={[rg.label, { color: colors.mutedForeground }]}>{t.totalRealizedPLLabel}</Text>
+                    <Text
+                      style={[rg.value, { color: totalRealized >= 0 ? colors.green : colors.red }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {totalRealized >= 0 ? '+' : ''}{fmtK(totalRealized)} <Text style={rg.currency}>EGP</Text>
+                    </Text>
+                  </View>
+                  <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+            )}
+
             {/* ── Smart insights ───────────────────────────────────────── */}
             <View style={s.section}>
               <SLabel icon="zap" title={t.smartInsightsLabel} sub={`${insights.length} ${t.observationsLabel}`} />
@@ -1232,6 +1331,70 @@ export default function AnalyticsScreen() {
                   gainPct={sm.silverGainPct}
                   livePrice={liveSilverG}
                   tintColor={colors.silverColor}
+                />
+              </View>
+            )}
+
+            {/* ── Stock spotlight ──────────────────────────────────────── */}
+            {sm.stockV > 0 && (
+              <View style={s.section}>
+                <SLabel icon="bar-chart-2" title={t.stockBreakdownLabel} />
+                <ClassSpotlight
+                  title={t.stockHoldingsTitle}
+                  countLabel={`${sm.stockCount}`}
+                  value={sm.stockV}
+                  cost={sm.stockCost}
+                  gainPct={sm.stockGainPct}
+                  tintColor="#4A9EFF"
+                  footerText={(() => {
+                    const top = performers.find(p => p.h.type === 'stock');
+                    return top ? t.topPerformerFooter(top.label, top.gainPct.toFixed(1)) : undefined;
+                  })()}
+                />
+              </View>
+            )}
+
+            {/* ── Real estate spotlight ────────────────────────────────── */}
+            {sm.reV > 0 && (
+              <View style={s.section}>
+                <SLabel icon={{ lib: 'mci', name: 'home-city' }} title={t.realEstateBreakdownLabel} />
+                <ClassSpotlight
+                  title={t.realEstateHoldingsTitle}
+                  countLabel={`${sm.reCount}`}
+                  value={sm.reV}
+                  cost={sm.reCost}
+                  gainPct={sm.reGainPct}
+                  tintColor="#A47FCA"
+                />
+              </View>
+            )}
+
+            {/* ── Personal assets spotlight ────────────────────────────── */}
+            {sm.paV > 0 && (
+              <View style={s.section}>
+                <SLabel icon={{ lib: 'mci', name: 'tag-multiple' }} title={t.personalAssetsBreakdownLabel} />
+                <ClassSpotlight
+                  title={t.personalAssetsHoldingsTitle}
+                  countLabel={`${sm.paCount}`}
+                  value={sm.paV}
+                  cost={sm.paCost}
+                  gainPct={sm.paGainPct}
+                  tintColor="#E08E45"
+                />
+              </View>
+            )}
+
+            {/* ── Fixed income spotlight ───────────────────────────────── */}
+            {sm.fiV > 0 && (
+              <View style={s.section}>
+                <SLabel icon={{ lib: 'mci', name: 'bank-transfer' }} title={t.fixedIncomeBreakdownLabel} />
+                <ClassSpotlight
+                  title={t.fixedIncomeHoldingsTitle}
+                  countLabel={`${sm.fiCount}`}
+                  value={sm.fiV}
+                  cost={sm.fiCost}
+                  gainPct={sm.fiGainPct}
+                  tintColor="#22C55E"
                 />
               </View>
             )}

@@ -141,6 +141,7 @@ export default function HoldingsScreen() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('default');
+  const [showSortPicker, setShowSortPicker] = useState(false);
 
   const TYPE_LABELS: Record<Holding['type'], string> = {
     gold: t.goldGroup,
@@ -217,7 +218,13 @@ export default function HoldingsScreen() {
     router.push(`/add-investment?holdingId=${id}` as any);
   };
 
+  const handleSell = (id: string) => {
+    impact();
+    router.push(`/sell-holding?holdingId=${id}` as any);
+  };
+
   const openAdd = () => { impact(); router.push('/add-choose' as any); };
+  const openSoldHoldings = () => { impact(); router.push('/sold-holdings' as any); };
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -257,64 +264,63 @@ export default function HoldingsScreen() {
               </Text>
             )}
           </View>
-          {/* Header add button — only shown when there are holdings */}
-          {totalCount > 0 && (
-            <TouchableOpacity
-              style={[styles.headerAddBtn, { backgroundColor: colors.primary }]}
-              onPress={openAdd}
-              activeOpacity={0.8}
-            >
-              <Feather name="plus" size={18} color={colors.primaryForeground} />
-              <Text style={[styles.headerAddText, { color: colors.primaryForeground }]}>Add</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* ── Search bar ── */}
-        {holdings.length > 0 && (
-          <View style={[styles.searchWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="search" size={15} color={colors.mutedForeground} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder={t.searchHoldings}
-              placeholderTextColor={colors.mutedForeground}
-              clearButtonMode="while-editing"
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
-                <Feather name="x" size={15} color={colors.mutedForeground} />
+          <View style={styles.headerBtnCol}>
+            {/* Header add button — only shown when there are holdings */}
+            {totalCount > 0 && (
+              <TouchableOpacity
+                style={[styles.headerAddBtn, { backgroundColor: colors.primary }]}
+                onPress={openAdd}
+                activeOpacity={0.8}
+              >
+                <Feather name="plus" size={18} color={colors.primaryForeground} />
+                <Text style={[styles.headerAddText, { color: colors.primaryForeground }]}>Add</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={styles.soldLinkBtn}
+              onPress={openSoldHoldings}
+              activeOpacity={0.7}
+            >
+              <Feather name="archive" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.soldLinkText, { color: colors.mutedForeground }]}>{t.soldInvestments}</Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
 
-        {/* ── Sort chips ── */}
+        {/* ── Search bar + filter icon ── */}
         {holdings.length > 0 && (
-          <View style={styles.sortRow}>
-            {(['default', 'value', 'gain', 'date'] as SortMode[]).map(mode => {
-              const labels: Record<SortMode, string> = {
-                default: t.sortDefault,
-                value:   t.sortByValue,
-                gain:    t.sortByReturn,
-                date:    t.sortByDate,
-              };
-              const active = sortMode === mode;
-              return (
-                <TouchableOpacity
-                  key={mode}
-                  style={[styles.sortChip, { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border }]}
-                  onPress={() => setSortMode(mode)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.sortChipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
-                    {labels[mode]}
-                  </Text>
+          <View style={styles.searchRow}>
+            <View style={[styles.searchWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="search" size={15} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={t.searchHoldings}
+                placeholderTextColor={colors.mutedForeground}
+                clearButtonMode="while-editing"
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
+                  <Feather name="x" size={15} color={colors.mutedForeground} />
                 </TouchableOpacity>
-              );
-            })}
+              )}
+            </View>
+            {/* Single filter icon replaces the old 4-chip sort row — tapping
+                opens the same options in a bottom sheet instead. Filled when
+                a non-default sort is active, so the icon itself signals a
+                filter is applied without needing a visible chip row. */}
+            <TouchableOpacity
+              onPress={() => setShowSortPicker(true)}
+              style={[
+                styles.filterBtn,
+                { backgroundColor: sortMode !== 'default' ? colors.primary : colors.card, borderColor: sortMode !== 'default' ? colors.primary : colors.border },
+              ]}
+              activeOpacity={0.75}
+            >
+              <Feather name="sliders" size={16} color={sortMode !== 'default' ? colors.primaryForeground : colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -377,7 +383,7 @@ export default function HoldingsScreen() {
                         prices={prices}
                         hideSubtitle
                         onEdit={() => handleEdit(h.id)}
-                        onDelete={() => handleDelete(h.id)}
+                        onSell={() => handleSell(h.id)}
                       />
                     </SwipeToDelete>
                   </FadeInCard>
@@ -387,6 +393,34 @@ export default function HoldingsScreen() {
           ))
         )}
       </ScrollView>
+
+      <Modal visible={showSortPicker} animationType="slide" transparent onRequestClose={() => setShowSortPicker(false)}>
+        <TouchableOpacity style={confirmStyles.pickerOverlay} activeOpacity={1} onPress={() => setShowSortPicker(false)}>
+          <View style={[confirmStyles.pickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[confirmStyles.pickerSheetTitle, { color: colors.text }]}>{t.sortHoldingsTitle}</Text>
+            {(['default', 'value', 'gain', 'date'] as SortMode[]).map(mode => {
+              const labels: Record<SortMode, string> = {
+                default: t.sortDefault,
+                value:   t.sortByValue,
+                gain:    t.sortByReturn,
+                date:    t.sortByDate,
+              };
+              const active = sortMode === mode;
+              return (
+                <TouchableOpacity
+                  key={mode}
+                  style={[confirmStyles.pickerOption, { borderColor: colors.border, backgroundColor: active ? colors.primary + '14' : 'transparent' }]}
+                  onPress={() => { setSortMode(mode); setShowSortPicker(false); }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[confirmStyles.pickerOptionText, { color: active ? colors.primary : colors.text }]}>{labels[mode]}</Text>
+                  {active && <Feather name="check" size={16} color={colors.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal visible={!!pendingDeleteId} animationType="fade" transparent onRequestClose={() => setPendingDeleteId(null)}>
         <View style={confirmStyles.overlay}>
@@ -426,12 +460,15 @@ const styles = StyleSheet.create({
   },
   screenTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   subtitle: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 4 },
+  headerBtnCol: { alignItems: 'flex-end', gap: 8, marginTop: 6 },
   headerAddBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 14, paddingVertical: 9,
-    borderRadius: 12, marginTop: 6,
+    borderRadius: 12,
   },
   headerAddText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  soldLinkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  soldLinkText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
   groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   groupIconWrap: { width: 24, height: 24, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   groupLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.1, flex: 1 },
@@ -465,24 +502,22 @@ const styles = StyleSheet.create({
   },
   syncToastText: { color: '#fff', fontSize: 13, fontFamily: 'Inter_500Medium', flex: 1 },
 
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: -8,
+  },
   searchWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
     borderRadius: 14, borderWidth: 1,
     paddingHorizontal: 12, paddingVertical: 10,
-    marginBottom: -8,
   },
   searchInput: {
     flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular',
     paddingVertical: 0,
   },
-  sortRow: {
-    flexDirection: 'row', gap: 6, marginBottom: -8, flexWrap: 'wrap',
+  filterBtn: {
+    width: 42, height: 42, borderRadius: 14, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
   },
-  sortChip: {
-    borderRadius: 20, borderWidth: 1,
-    paddingHorizontal: 12, paddingVertical: 6,
-  },
-  sortChipText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
 });
 
 const confirmStyles = StyleSheet.create({
@@ -493,4 +528,9 @@ const confirmStyles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
   btnTxt: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  pickerSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, gap: 8 },
+  pickerSheetTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 8 },
+  pickerOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  pickerOptionText: { fontSize: 15, fontFamily: 'Inter_500Medium' },
 });
