@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { isNotNull } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { sendPushToTokens } from "../lib/expoPush";
+import { backfillDailyChanges } from "../lib/dailyChangeBackfill";
 
 const router: IRouter = Router();
 
@@ -48,6 +49,32 @@ router.post("/admin/broadcast-push", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "POST /admin/broadcast-push failed");
     res.status(500).json({ error: "Failed to send broadcast" });
+  }
+});
+
+// One-time (safely re-runnable) backfill for daily_change_snapshots — see
+// dailyChangeBackfill.ts for exactly what it does and doesn't fill in.
+// Same secret/curl pattern as broadcast-push above:
+//
+//   curl -X POST https://api.investry.app/api/admin/backfill-daily-changes \
+//     -H "x-admin-secret: <the secret>"
+router.post("/admin/backfill-daily-changes", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const result = await backfillDailyChanges();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    req.log.error({ err }, "POST /admin/backfill-daily-changes failed");
+    res.status(500).json({ error: "Backfill failed" });
   }
 });
 
