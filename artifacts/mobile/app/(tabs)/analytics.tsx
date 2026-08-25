@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
-import { tradingDayStart } from '@/utils/cairoDate';
+import { tradingDayStart, touchedToday } from '@/utils/cairoDate';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Svg, {
   Defs, LinearGradient, Stop, Path,
@@ -628,27 +628,34 @@ export default function AnalyticsScreen() {
       const v = computeValue(h, prices);
       const c = computeCost(h, prices);
       totalCost += c;
+      // Same reasoning as index.tsx's countsToday — a holding added/edited
+      // today still counts at full value everywhere above, only its
+      // contribution to TODAY's change is skipped, so bumping a quantity
+      // right as the market moves can't inflate the badge.
+      const countsToday = !touchedToday(h.updatedAt);
       if (h.type === 'gold') {
         goldV += v; goldCost += c; totalGoldGrams += h.grams;
         // goldChangePercent is the metal's raw USD move; goldChangePercentEgp
         // compounds it with today's FX move, which is what a holding valued
         // in EGP (`v`) actually needs — see markets.ts for why.
-        todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
+        if (countsToday) todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
       } else if (h.type === 'silver') {
         silverV += v; silverCost += c; totalSilverGrams += h.grams;
-        todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
+        if (countsToday) todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
       }
       else if (h.type === 'stock') {
         stockV += v; stockCost += c; stockCount++;
-        const changePercent = egxChangeByTicker[h.symbol] ?? 0;
-        todayStock += pctDelta(v, changePercent);
+        if (countsToday) {
+          const changePercent = egxChangeByTicker[h.symbol] ?? 0;
+          todayStock += pctDelta(v, changePercent);
+        }
       }
       else if (h.type === 'personal_asset') { paV += v; paCost += c; paCount++; }
       else if (h.type === 'fixed_income') {
         fiV += v; fiCost += c; fiCount++;
         // Since the trading day began, matching index.tsx — see the comment
         // there for why a rolling 24h window was wrong.
-        todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
+        if (countsToday) todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
       }
       else { reV += v; reCost += c; reCount++; }
     }

@@ -146,8 +146,15 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   // that succeeded in the meantime.
   const addHolding = useCallback(async (holding: Holding) => {
     if (!userId) return;
+    // Stamped locally, not sent to the server (POST body stays the plain
+    // holding) — the server's own createdAt/updatedAt (set at insert time)
+    // is the source of truth on the next GET, this just makes the "touched
+    // today" signal correct the instant the add happens, for
+    // touchedToday()'s exclusion of today's-change (see index.tsx).
+    const now = new Date().toISOString();
+    const stamped: Holding = { ...holding, createdAt: now, updatedAt: now } as Holding;
     setHoldings(prev => {
-      const next = [...prev, holding];
+      const next = [...prev, stamped];
       persist(next, userId);
       return next;
     });
@@ -218,9 +225,14 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   const updateHolding = useCallback(async (holding: Holding) => {
     if (!userId) return;
     let previous: Holding | undefined;
+    // Same reasoning as addHolding's stamp — local-only, PUT body stays the
+    // plain holding. createdAt is carried over from what was already
+    // loaded (an edit is not a new holding), only updatedAt moves to now.
+    let stamped: Holding = holding;
     setHoldings(prev => {
       previous = prev.find(h => h.id === holding.id);
-      const next = prev.map(h => h.id === holding.id ? holding : h);
+      stamped = { ...holding, updatedAt: new Date().toISOString(), createdAt: previous?.createdAt ?? holding.createdAt } as Holding;
+      const next = prev.map(h => h.id === holding.id ? stamped : h);
       persist(next, userId);
       return next;
     });

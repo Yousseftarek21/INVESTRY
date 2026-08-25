@@ -10,6 +10,12 @@ export type PersonalAssetCategory =
   | 'luxury' | 'electronics' | 'furniture' | 'instruments' | 'other';
 export type PersonalAssetCurrency = 'EGP' | 'USD';
 
+// createdAt/updatedAt (ISO strings, set by the server — see
+// GET /api/holdings) tell "touched today" from "untouched": the Home tab's
+// Today's Change badge (touchedToday in index.tsx/analytics.tsx) excludes a
+// holding's contribution when it was added or edited today, so bumping a
+// quantity right as the market moves can't inflate the badge. Optional
+// because older cached/local data may not have them yet.
 export interface GoldHolding {
   id: string;
   type: 'gold';
@@ -19,6 +25,8 @@ export interface GoldHolding {
   purchasePricePerGram: number;
   purchaseDate: string;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface SilverHolding {
@@ -29,6 +37,8 @@ export interface SilverHolding {
   purchasePricePerGram: number;
   purchaseDate: string;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface StockHolding {
@@ -40,6 +50,8 @@ export interface StockHolding {
   purchasePricePerShare: number;
   purchaseDate: string;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface RealEstateHolding {
@@ -87,6 +99,8 @@ export interface RealEstateHolding {
   propertyStatus?: PropertyStatus;
 
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PersonalAssetHolding {
@@ -101,6 +115,8 @@ export interface PersonalAssetHolding {
   purchaseDate: string;
   notes?: string;
   photos?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type FixedIncomeSubtype = 'tbill' | 'saving_cert' | 'deposit' | 'sukuk';
@@ -118,6 +134,8 @@ export interface FixedIncomeHolding {
   maturityDate: string;
   paymentFrequency: PaymentFrequency;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type Holding = GoldHolding | SilverHolding | StockHolding | RealEstateHolding | PersonalAssetHolding | FixedIncomeHolding;

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta } from '@/utils/pctDelta';
-import { tradingDayStart } from '@/utils/cairoDate';
+import { tradingDayStart, touchedToday } from '@/utils/cairoDate';
 import { fmtCompact } from '@/utils/formatNumber';
 import { UpdateAvailableBanner } from '@/components/UpdateAvailableBanner';
 import { WhatsNewModal } from '@/components/WhatsNewModal';
@@ -505,22 +505,35 @@ export default function HomeScreen() {
       const v = computeValue(h, prices);
       const c = computeCost(h, prices);
       totalCost += c;
+      // A holding added or edited today still counts at its full current
+      // value everywhere above — only its contribution to TODAY's change is
+      // skipped, so bumping a quantity right as the market moves can't
+      // apply today's real price % to a just-inflated amount and make the
+      // badge look fake. Per-holding, so one edit doesn't zero out today's
+      // change from a user's other, untouched holdings.
+      const countsToday = !touchedToday(h.updatedAt);
       if (h.type === 'gold') {
         goldV += v; goldGrams += h.grams;
         // goldChangePercent is the metal's raw USD move (matches the Markets
         // tab's own display) — goldChangePercentEgp compounds that with
         // today's FX move, which is what a holding valued in EGP (`v`)
         // actually needs, or it can show a gain on a day the EGP value fell.
-        todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
-        todayGoldMetal += pctDelta(v, prices?.goldChangePercent ?? 0);
+        if (countsToday) {
+          todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
+          todayGoldMetal += pctDelta(v, prices?.goldChangePercent ?? 0);
+        }
       } else if (h.type === 'silver') {
         silverV += v; silverGrams += h.grams;
-        todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
-        todaySilverMetal += pctDelta(v, prices?.silverChangePercent ?? 0);
+        if (countsToday) {
+          todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
+          todaySilverMetal += pctDelta(v, prices?.silverChangePercent ?? 0);
+        }
       } else if (h.type === 'stock') {
         stockV += v; stockCount++;
-        const changePercent = egxChangeByTicker[h.symbol] ?? 0;
-        todayStock += pctDelta(v, changePercent);
+        if (countsToday) {
+          const changePercent = egxChangeByTicker[h.symbol] ?? 0;
+          todayStock += pctDelta(v, changePercent);
+        }
       } else if (h.type === 'personal_asset') {
         paV += v; paCount++;
       } else if (h.type === 'fixed_income') {
@@ -529,7 +542,9 @@ export default function HomeScreen() {
         // window never resets: right after the boundary it still showed a
         // whole day's interest while every other bucket had just gone to
         // zero, so "Today" could never read flat on a portfolio holding any.
-        todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
+        if (countsToday) {
+          todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
+        }
       } else {
         reV += v; reCount++;
       }

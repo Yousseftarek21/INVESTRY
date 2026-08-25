@@ -53,7 +53,15 @@ router.get("/holdings", async (req, res) => {
       .where(eq(holdingsTable.userId, userId))
       .orderBy(holdingsTable.createdAt);
 
-    res.json(rows.map(r => ({ id: r.id, type: r.type, ...(decryptFromStorage(r.data) as object) })));
+    res.json(rows.map(r => ({
+      id: r.id, type: r.type, ...(decryptFromStorage(r.data) as object),
+      // Lets the client tell "touched today" from "untouched" — e.g. so the
+      // Home tab's Today's Change badge can exclude a holding that was just
+      // added or edited today instead of applying today's real price % to a
+      // possibly just-inflated current amount (see HoldingsContext.tsx /
+      // index.tsx's touchedToday for the consuming side).
+      createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString(),
+    })));
   } catch (err) {
     req.log.error({ err }, "GET /holdings failed");
     res.status(500).json({ error: "Failed to fetch holdings" });
