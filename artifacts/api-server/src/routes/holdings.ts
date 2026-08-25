@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 import { costBasisEGP, type StoredHolding } from "../lib/portfolioValue";
 import { getCachedPrices } from "./markets";
+import { tradingDayKey } from "../lib/cairoDate";
 
 function generateSoldHoldingId(): string {
   return `sld_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -171,6 +172,15 @@ router.post("/holdings/:id/sell", async (req, res) => {
       label: holdingLabel(holding),
       quantity: holdingQuantity(holding),
       purchaseDate: holding.purchaseDate ?? null,
+      // The trading day this holding was actually added to the app (not the
+      // user-entered purchaseDate, which they could backdate) — lets the
+      // leaderboard correctly credit a sale's proceeds toward "return on
+      // what I already held" only when that's true, instead of either
+      // always counting it (letting a same-day add-then-sell inflate a
+      // period's return) or never counting it (making a legitimate
+      // mid-period sale of a long-held asset look like a big loss, since
+      // the holding just vanishes with nothing replacing its value).
+      holdingCreatedDay: tradingDayKey(row.createdAt),
       costBasis,
       saleProceeds,
       saleDate: body.saleDate,

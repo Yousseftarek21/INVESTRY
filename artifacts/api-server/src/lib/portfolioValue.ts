@@ -1,7 +1,8 @@
-import { db, holdingsTable, cashAccountsTable } from "@workspace/db";
+import { db, holdingsTable, cashAccountsTable, soldHoldingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { decryptFromStorage } from "./encryption";
 import { getCachedPrices, getCachedStocks } from "../routes/markets";
+import { tradingDayKey } from "./cairoDate";
 
 const TROY_OZ_TO_GRAMS = 31.1034768;
 
@@ -133,6 +134,65 @@ export async function computeUserPortfolioValue(userId: string): Promise<number>
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
     return sum + computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
   }, 0);
+}
+
+/**
+ * Live current value (EGP) of only the holdings that already existed before
+ * `cutoffDateKey` — used for the leaderboard, where naively comparing
+ * "current total" against a period-start baseline let anyone top the
+ * rankings by simply adding a large new holding mid-period (that full
+ * value read as a "gain," nothing to do with actual investment
+ * performance). A holding added on or after the cutoff contributes
+ * nothing here, exactly as it should for "how did what I already had
+ * perform" — new capital isn't a return.
+ */
+export async function computeEligiblePortfolioValue(userId: string, cutoffDateKey: string): Promise<number> {
+  const [holdingRows, prices, egxStocks] = await Promise.all([
+    db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
+    getCachedPrices(),
+    getCachedStocks().catch(() => []),
+  ]);
+
+  const egxPrices: Record<string, number> = {};
+  for (const s of egxStocks) egxPrices[s.symbol] = s.price;
+
+  return holdingRows.reduce((sum, row) => {
+    if (tradingDayKey(row.createdAt) >= cutoffDateKey) return sum;
+    const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
+    return sum + computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
+  }, 0);
+}
+
+/**
+ * Sum of sale proceeds (EGP) from holdings that (a) were sold on or after
+ * `cutoffDateKey` — during the period being measured — and (b) already
+ * existed before that same cutoff. Without this, selling a holding that
+ * was part of the baseline makes a period's return look like a huge loss:
+ * computeEligiblePortfolioValue no longer counts it (it's gone), but
+ * nothing replaces its value, even though the sale itself may have been a
+ * genuine gain. Adding the proceeds back in is what makes "current" mean
+ * "what I still hold, plus what I got for what I sold" — the actual
+ * question a performance leaderboard is supposed to answer.
+ *
+ * Holds sold before this field was ever recorded have no
+ * holdingCreatedDay — treated as eligible rather than silently dropped,
+ * since excluding a real historical sale is worse than the narrow window
+ * where that default could be wrong.
+ */
+export async function sumEligibleSaleProceeds(userId: string, cutoffDateKey: string): Promise<number> {
+  const rows = await db.select().from(soldHoldingsTable).where(eq(soldHoldingsTable.userId, userId));
+
+  let sum = 0;
+  for (const row of rows) {
+    const data = decryptFromStorage(row.data) as {
+      saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string;
+    };
+    if (!data.saleDate || typeof data.saleProceeds !== "number") continue;
+    if (data.saleDate < cutoffDateKey) continue;
+    if (data.holdingCreatedDay && data.holdingCreatedDay >= cutoffDateKey) continue;
+    sum += data.saleProceeds;
+  }
+  return sum;
 }
 
 export type AllocationClass = "gold" | "silver" | "stock" | "realEstate" | "personalAsset" | "fixedIncome" | "cash";
