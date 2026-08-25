@@ -3,7 +3,7 @@ import { isNotNull, eq, asc } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
 import { db, usersTable, holdingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
 import { sendPushToTokens } from "../lib/expoPush";
-import { backfillDailyChanges } from "../lib/dailyChangeBackfill";
+import { backfillDailyChanges, backfillDailyChangesFromSnapshots, resetDailyChangeHistory } from "../lib/dailyChangeBackfill";
 
 const router: IRouter = Router();
 
@@ -54,10 +54,24 @@ router.post("/admin/broadcast-push", async (req, res) => {
 });
 
 // One-time (safely re-runnable) backfill for daily_change_snapshots — see
-// dailyChangeBackfill.ts for exactly what it does and doesn't fill in.
-// Same secret/curl pattern as broadcast-push above:
+// dailyChangeBackfill.ts for exactly what each pass does and doesn't fill
+// in. Runs the precise, gaming-proof gold/silver+EGX method FIRST (so it
+// always wins), then the broader portfolio_snapshots fallback SECOND, which
+// only fills whatever gaps are left over and skips any day whose raw swing
+// looks like a composition change rather than real movement (both passes
+// already refuse to overwrite an existing day, so running them in the
+// other order would be wrong — the weaker source could claim a day first).
+// Both are bounded to start from MIN_BACKFILL_DATE (2026-08-01).
 //
-//   curl -X POST https://api.investry.app/api/admin/backfill-daily-changes \
+// Add ?reset=true to wipe every existing row for every user FIRST, then
+// rebuild from scratch — use this to fix any earlier/inconsistent data
+// (including a bad live-cron reading from before portfolioAlertCron.ts's
+// sanity guardrail existed) rather than layering a new backfill on top of
+// values that might already be wrong. Today's own row is unaffected either
+// way: the live cron rewrites it every 5 minutes regardless of what a
+// reset does to it.
+//
+//   curl -X POST "https://api.investry.app/api/admin/backfill-daily-changes?reset=true" \
 //     -H "x-admin-secret: <the secret>"
 router.post("/admin/backfill-daily-changes", async (req, res) => {
   const secret = process.env.ADMIN_BROADCAST_SECRET;
@@ -71,8 +85,16 @@ router.post("/admin/backfill-daily-changes", async (req, res) => {
   }
 
   try {
-    const result = await backfillDailyChanges();
-    res.json({ success: true, ...result });
+    const reset = req.query.reset === "true" ? await resetDailyChangeHistory() : null;
+    const metals = await backfillDailyChanges();
+    const snapshots = await backfillDailyChangesFromSnapshots();
+    res.json({
+      success: true,
+      reset,
+      daysWritten: metals.daysWritten + snapshots.daysWritten,
+      metals,
+      snapshotsFallback: snapshots,
+    });
   } catch (err) {
     req.log.error({ err }, "POST /admin/backfill-daily-changes failed");
     res.status(500).json({ error: "Backfill failed" });

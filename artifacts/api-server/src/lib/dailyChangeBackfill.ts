@@ -1,8 +1,28 @@
 import { asc, eq } from "drizzle-orm";
-import { db, usersTable, holdingsTable, marketCloseSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
+import { db, usersTable, holdingsTable, portfolioSnapshotsTable, marketCloseSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
 import { decryptFromStorage } from "./encryption";
 import { goldPurity, type GoldKarat, type StoredHolding } from "./portfolioValue";
 import { tradingDayKey } from "./cairoDate";
+import { SANITY_MAX_PCT } from "./portfolioAlertCron";
+
+// Explicit, requested starting point for backfilled history — earlier days
+// exist in portfolio_snapshots for some users, but this is where the
+// full-reset rebuild was asked to start from, not a data limitation.
+const MIN_BACKFILL_DATE = "2026-08-01";
+
+/**
+ * Wipes ALL daily_change_snapshots rows for every user — a genuine full
+ * reset, meant to be followed immediately by re-running both backfill
+ * passes below. Safe with respect to the LIVE, going-forward figure: the
+ * cron in portfolioAlertCron.ts recomputes and rewrites today's row every
+ * 5 minutes regardless of what's in the table, using the gaming-proof
+ * gold/silver+EGX method — wiping today's row just means it's briefly
+ * empty until the next tick, never wrong.
+ */
+export async function resetDailyChangeHistory(): Promise<{ rowsDeleted: number }> {
+  const deleted = await db.delete(dailyChangeSnapshotsTable).returning({ id: dailyChangeSnapshotsTable.id });
+  return { rowsDeleted: deleted.length };
+}
 
 /**
  * One-time (or re-runnable) backfill for daily_change_snapshots, for days
@@ -56,6 +76,7 @@ export async function backfillDailyChanges(): Promise<{ daysWritten: number; use
     for (let i = 1; i < prices.length; i++) {
       const cur = prices[i];
       const prev = prices[i - 1];
+      if (cur.date < MIN_BACKFILL_DATE) continue; // requested starting point
       if (cur.date >= today) continue; // today/future is the live cron's job, not this backfill's
       if (existingDays.has(cur.date)) continue; // never overwrite a real, forward-recorded value
 
@@ -78,6 +99,80 @@ export async function backfillDailyChanges(): Promise<{ daysWritten: number; use
       if (baseline <= 0) continue;
       const current = pureGoldGrams * cur.goldEgp24k + silverGrams * cur.silverEgp;
       const pctReturn = ((current - baseline) / baseline) * 100;
+
+      await db
+        .insert(dailyChangeSnapshotsTable)
+        .values({ id: `dchg_${user.id}_${cur.date}`, userId: user.id, date: cur.date, pctReturn })
+        .onConflictDoNothing();
+      daysWritten++;
+      wroteAny = true;
+    }
+    if (wroteAny) usersAffected++;
+  }
+
+  return { daysWritten, usersAffected };
+}
+
+/**
+ * Second-pass, broader backfill for whatever gaps remain after
+ * backfillDailyChanges — meant to be run right after it, and safe to run
+ * on its own too since it also never overwrites an existing day.
+ *
+ * Uses day-to-day totalValue from portfolio_snapshots directly (all
+ * holding types, not just gold/silver/EGX) — full daily history already
+ * exists there for every user regardless of what they hold, going back to
+ * whenever they first opened the app. The catch, and why this ISN'T the
+ * primary method: a raw day-to-day % change on total portfolio value is
+ * exactly what caused the leaderboard incidents earlier today — a holding
+ * added, edited, or removed reads as a huge fake "gain" or "loss" that has
+ * nothing to do with real market movement. Confirmed on real data: one
+ * account's snapshots show a raw -25% single-day reading that's a holding
+ * being removed, not an actual crash.
+ *
+ * The mitigation: skip any day whose raw change exceeds SANITY_MAX_PCT
+ * (20%, the same threshold portfolioAlertCron.ts already uses to decide
+ * whether a move is even plausible for a real diversified portfolio) —
+ * don't show it at all rather than show a number that's probably fake.
+ * This doesn't eliminate the underlying risk the way the metals/EGX method
+ * does (a *smaller* composition change, e.g. adding a modest holding,
+ * could still slip through under the cap and read as real movement), which
+ * is exactly why backfillDailyChanges's more precise, gaming-proof method
+ * always gets first claim on a day — this function only ever fills in
+ * whatever's left over, and is the visibly weaker source when the two
+ * would disagree.
+ */
+export async function backfillDailyChangesFromSnapshots(): Promise<{ daysWritten: number; usersAffected: number }> {
+  const today = tradingDayKey();
+  const users = await db.select({ id: usersTable.id }).from(usersTable);
+
+  let daysWritten = 0;
+  let usersAffected = 0;
+
+  for (const user of users) {
+    const snapshots = await db
+      .select({ date: portfolioSnapshotsTable.date, totalValue: portfolioSnapshotsTable.totalValue })
+      .from(portfolioSnapshotsTable)
+      .where(eq(portfolioSnapshotsTable.userId, user.id))
+      .orderBy(asc(portfolioSnapshotsTable.date));
+    if (snapshots.length < 2) continue;
+
+    const existing = await db
+      .select({ date: dailyChangeSnapshotsTable.date })
+      .from(dailyChangeSnapshotsTable)
+      .where(eq(dailyChangeSnapshotsTable.userId, user.id));
+    const existingDays = new Set(existing.map(r => r.date));
+
+    let wroteAny = false;
+    for (let i = 1; i < snapshots.length; i++) {
+      const cur = snapshots[i];
+      const prev = snapshots[i - 1];
+      if (cur.date < MIN_BACKFILL_DATE) continue; // requested starting point
+      if (cur.date >= today) continue; // today/future is the live cron's job
+      if (existingDays.has(cur.date)) continue; // never overwrite a real or metals-backfilled value
+      if (prev.totalValue <= 0) continue;
+
+      const pctReturn = ((cur.totalValue - prev.totalValue) / prev.totalValue) * 100;
+      if (Math.abs(pctReturn) > SANITY_MAX_PCT) continue; // almost certainly a composition change, not real movement — skip rather than mislead
 
       await db
         .insert(dailyChangeSnapshotsTable)
