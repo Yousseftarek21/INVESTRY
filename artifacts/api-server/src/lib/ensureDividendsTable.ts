@@ -22,6 +22,25 @@ export async function ensureDividendsTable(): Promise<void> {
   }
 }
 
+// Same self-bootstrapping pattern for the sold_holdings table (see
+// lib/db/src/schema/soldHoldings.ts) — realized profit/loss history created
+// when a holding is marked sold/redeemed via POST /api/holdings/:id/sell.
+export async function ensureSoldHoldingsTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "sold_holdings" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "data" jsonb NOT NULL,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureSoldHoldingsTable: failed to create table — selling a holding will fail until this is resolved");
+  }
+}
+
 // Same self-bootstrapping pattern for the intraday series column added to
 // portfolio_snapshots (see lib/db/src/schema/portfolioSnapshots.ts) — it
 // backs the 1D chart's real intraday movement.

@@ -81,6 +81,35 @@ export function computeHoldingValue(
 }
 
 /**
+ * What the user actually paid (EGP), for computing realized profit/loss
+ * when a holding is sold — covers all 6 types, unlike the narrower partial
+ * versions in HoldingCard.tsx/holdings.tsx (display-only, mobile) and
+ * chat.ts (deliberately returns null for personal_asset/fixed_income for
+ * its own "don't show unrealized %" reason, untouched here). fixed_income's
+ * cost basis is its principal — the amount handed over, not the accrued
+ * redemption value computeHoldingValue returns for it.
+ */
+export function costBasisEGP(h: StoredHolding, usdToEgp: number): number {
+  switch (h.type) {
+    case "gold":
+    case "silver":
+      return (Number(h.grams) || 0) * (Number(h.purchasePricePerGram) || 0);
+    case "stock":
+      return (Number(h.shares) || 0) * (Number(h.purchasePricePerShare) || 0);
+    case "real_estate":
+      return Number(h.purchasePrice) || 0;
+    case "personal_asset": {
+      const v = Number(h.purchasePrice) || 0;
+      return h.currency === "USD" ? v * usdToEgp : v;
+    }
+    case "fixed_income":
+      return Number(h.principal) || 0;
+    default:
+      return 0;
+  }
+}
+
+/**
  * Total current value (EGP) of one user's investment holdings only —
  * matches "Total Portfolio Value" on the Home screen exactly (gold,
  * silver, stocks, real estate, personal assets, fixed income). Cash is

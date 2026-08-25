@@ -1,4 +1,5 @@
 export * from "./holdings";
+export * from "./soldHoldings";
 export * from "./cashAccounts";
 export * from "./users";
 export * from "./portfolioSnapshots";
