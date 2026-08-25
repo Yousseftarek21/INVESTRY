@@ -4,6 +4,7 @@ export * from "./cashAccounts";
 export * from "./users";
 export * from "./portfolioSnapshots";
 export * from "./marketCloseSnapshots";
+export * from "./dailyChangeSnapshots";
 export * from "./goals";
 export * from "./recurringIncome";
 export * from "./dividends";

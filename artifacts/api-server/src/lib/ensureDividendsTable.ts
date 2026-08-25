@@ -41,6 +41,26 @@ export async function ensureSoldHoldingsTable(): Promise<void> {
   }
 }
 
+// Same self-bootstrapping pattern for the daily_change_snapshots table (see
+// lib/db/src/schema/dailyChangeSnapshots.ts) — one row per user per trading
+// day, the closing "Today's Change %" once that day has rolled over.
+export async function ensureDailyChangeSnapshotsTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "daily_change_snapshots" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "date" text NOT NULL,
+        "pct_return" real NOT NULL,
+        "updated_at" timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT "daily_change_snapshots_user_id_date_unique" UNIQUE ("user_id", "date")
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureDailyChangeSnapshotsTable: failed to create table — daily change history will be inert until this is resolved");
+  }
+}
+
 // Same self-bootstrapping pattern for the intraday series column added to
 // portfolio_snapshots (see lib/db/src/schema/portfolioSnapshots.ts) — it
 // backs the 1D chart's real intraday movement.

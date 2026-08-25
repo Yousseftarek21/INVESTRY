@@ -7,7 +7,7 @@ import { startRealEstatePriceCron } from "./lib/realEstatePriceCron";
 import { startDailySummaryCron } from "./lib/dailySummaryCron";
 import { startLeaderboardRankCron } from "./lib/leaderboardRankCron";
 import { ensureUserColumns } from "./lib/ensureUserColumns";
-import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable } from "./lib/ensureDividendsTable";
+import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable } from "./lib/ensureDividendsTable";
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
@@ -38,6 +38,7 @@ app.listen(port, async (err) => {
   await ensureDividendsTable();
   await ensureSoldHoldingsTable();
   await ensureIntradayColumn();
+  await ensureDailyChangeSnapshotsTable();
   await sendCompetitionAnnouncement();
   startPortfolioAlertCron();
   startUserPriceAlertCron();

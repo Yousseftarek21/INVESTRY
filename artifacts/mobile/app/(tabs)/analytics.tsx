@@ -38,6 +38,7 @@ import { getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar, AllocationSegment } from '@/components/AllocationBar';
 import { useSoldHoldings } from '@/hooks/useSoldHoldings';
+import { useDailyChanges } from '@/hooks/useDailyChanges';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function personalAssetValueEGP(h: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -479,6 +480,16 @@ const rg = StyleSheet.create({
   currency: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 });
 
+const dh = StyleSheet.create({
+  card: { borderRadius: 18, borderWidth: 1, paddingHorizontal: 18 },
+  row: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 13,
+  },
+  date: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  pct: { fontSize: 14, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
+});
+
 // ─── Section label ─────────────────────────────────────────────────────────────
 
 type SLabelIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
@@ -737,6 +748,15 @@ export default function AnalyticsScreen() {
   const totalRealized = useMemo(
     () => soldHoldings.reduce((sum, s) => sum + s.realizedGainLoss, 0),
     [soldHoldings],
+  );
+
+  // ── Daily change history — the server's closed "Today's Change %" per
+  // trading day (see useDailyChanges), most recent first, capped to a
+  // screenful so this card can't grow unbounded for a long-time user.
+  const { dailyChanges } = useDailyChanges();
+  const recentDailyChanges = useMemo(
+    () => [...dailyChanges].reverse().slice(0, 14),
+    [dailyChanges],
   );
 
   // ── Performers ────────────────────────────────────────────────────────────────
@@ -1314,6 +1334,36 @@ export default function AnalyticsScreen() {
                   </View>
                   <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
                 </Pressable>
+              </View>
+            )}
+
+            {/* ── Daily change history ─────────────────────────────────── */}
+            {recentDailyChanges.length > 0 && (
+              <View style={s.section}>
+                <SLabel icon="calendar" title={t.dailyHistoryLabel} sub={`${dailyChanges.length} ${t.daysTrackedLabel}`} />
+                <View style={[dh.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  {recentDailyChanges.map((d, i) => {
+                    const isGain = d.pctReturn >= 0;
+                    const dateLabel = new Date(`${d.date}T12:00:00Z`).toLocaleDateString(
+                      language === 'ar' ? 'ar-EG' : 'en-EG',
+                      { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' },
+                    );
+                    return (
+                      <View
+                        key={d.date}
+                        style={[
+                          dh.row,
+                          i < recentDailyChanges.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                        ]}
+                      >
+                        <Text style={[dh.date, { color: colors.text }]}>{dateLabel}</Text>
+                        <Text style={[dh.pct, { color: isGain ? colors.green : colors.red }]}>
+                          {isGain ? '+' : ''}{d.pctReturn.toFixed(2)}%
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
             )}
 

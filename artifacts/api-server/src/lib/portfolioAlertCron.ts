@@ -1,9 +1,9 @@
 import { and, desc, eq, lt, gt, sql } from "drizzle-orm";
-import { db, usersTable, portfolioSnapshotsTable, activityLogTable } from "@workspace/db";
-import { computeUserPortfolioValue } from "./portfolioValue";
+import { db, usersTable, portfolioSnapshotsTable, activityLogTable, dailyChangeSnapshotsTable } from "@workspace/db";
+import { computeUserPortfolioValue, computePeriodPerformance } from "./portfolioValue";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
-import { tradingDayKey } from "./cairoDate";
+import { tradingDayKey, tradingDayStart } from "./cairoDate";
 
 // Checked every 5 minutes throughout the day — each check compares
 // today's live value against yesterday's close and may push again if the
@@ -23,6 +23,10 @@ const SANITY_MAX_PCT = 20;
 
 function generateId(): string {
   return `snap_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function dailyChangeId(userId: string, date: string): string {
+  return `dchg_${userId}_${date}`;
 }
 
 // Deterministic (not random) so the insert below can upsert onto the same
@@ -86,6 +90,31 @@ async function checkUser(userId: string, today: string, pushToken: string | null
     `);
   } catch (err) {
     logger.warn({ err, userId }, "Intraday series append failed — value tracking unaffected");
+  }
+
+  // Records today's "Today's Change %" (the same figure the Home tab's
+  // badge shows, computed the same gaming-proof way as the leaderboard —
+  // see computePeriodPerformance's own comment) so it survives past the
+  // day's rollover, when the live badge resets to a fresh 0% for the new
+  // day. Continuously overwritten every tick (same pattern as the intraday
+  // series above and marketCloseSnapshots.ts) — whatever was last written
+  // before the trading day rolls over becomes that day's permanent record.
+  // Isolated in its own try/catch for the same reason as the intraday
+  // block: a failure here must never take down value tracking or alerts.
+  try {
+    const yesterday = tradingDayKey(new Date(tradingDayStart().getTime() - 1));
+    const { pctReturn } = await computePeriodPerformance(userId, yesterday);
+    if (pctReturn != null) {
+      await db
+        .insert(dailyChangeSnapshotsTable)
+        .values({ id: dailyChangeId(userId, today), userId, date: today, pctReturn })
+        .onConflictDoUpdate({
+          target: [dailyChangeSnapshotsTable.userId, dailyChangeSnapshotsTable.date],
+          set: { pctReturn, updatedAt: new Date() },
+        });
+    }
+  } catch (err) {
+    logger.warn({ err, userId }, "Daily change snapshot failed — Today's Change history unaffected");
   }
 
   if (!pushToken) return;

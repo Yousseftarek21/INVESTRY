@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
-import { db, portfolioSnapshotsTable, portfolioTargetsTable } from "@workspace/db";
+import { db, portfolioSnapshotsTable, portfolioTargetsTable, dailyChangeSnapshotsTable } from "@workspace/db";
 import { and, eq, gte } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 import { cairoDateString, tradingDayKey } from "../lib/cairoDate";
@@ -30,6 +30,32 @@ router.get("/portfolio/snapshots", clerkMiddleware(), async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "GET /portfolio/snapshots failed");
     res.status(500).json({ error: "Failed to fetch portfolio snapshots" });
+  }
+});
+
+// GET /api/portfolio/daily-changes — this user's history of closed daily
+// "Today's Change %" values, one per trading day, written by the same
+// portfolio alert cron (see portfolioAlertCron.ts) that already writes
+// portfolio_snapshots every 5 minutes. Each day's row is continuously
+// overwritten until the trading day rolls over, so what's returned here for
+// any past date is that day's final, closed value — the Home tab's live
+// "Today" badge resets to a fresh calculation each new day, this is what
+// lets a user look back at what a past day's badge actually closed on.
+router.get("/portfolio/daily-changes", clerkMiddleware(), async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const rows = await db
+      .select({ date: dailyChangeSnapshotsTable.date, pctReturn: dailyChangeSnapshotsTable.pctReturn })
+      .from(dailyChangeSnapshotsTable)
+      .where(eq(dailyChangeSnapshotsTable.userId, userId))
+      .orderBy(dailyChangeSnapshotsTable.date);
+
+    res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, "GET /portfolio/daily-changes failed");
+    res.status(500).json({ error: "Failed to fetch daily change history" });
   }
 });
 
