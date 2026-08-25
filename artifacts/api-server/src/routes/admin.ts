@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { isNotNull } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { isNotNull, eq, asc } from "drizzle-orm";
+import { clerkClient } from "@clerk/express";
+import { db, usersTable, holdingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
 import { sendPushToTokens } from "../lib/expoPush";
 import { backfillDailyChanges } from "../lib/dailyChangeBackfill";
 
@@ -75,6 +76,64 @@ router.post("/admin/backfill-daily-changes", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "POST /admin/backfill-daily-changes failed");
     res.status(500).json({ error: "Backfill failed" });
+  }
+});
+
+// Diagnostic lookup, for answering "why does my account show X" support
+// questions with real data instead of a guess — never exposes decrypted
+// holding contents (grams, prices, purchase info), only the metadata this
+// whole feature's eligibility rule actually depends on: type and
+// created/updated timestamps, plus the already-computed snapshot history.
+//
+//   curl "https://api.investry.app/api/admin/user-debug?email=<email>" \
+//     -H "x-admin-secret: <the secret>"
+router.get("/admin/user-debug", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const email = typeof req.query.email === "string" ? req.query.email.trim() : "";
+  if (!email) {
+    res.status(400).json({ error: "email query param is required" });
+    return;
+  }
+
+  try {
+    const { data: clerkUsers } = await clerkClient.users.getUserList({ emailAddress: [email] });
+    if (clerkUsers.length === 0) {
+      res.status(404).json({ error: "No Clerk user with that email" });
+      return;
+    }
+    const userId = clerkUsers[0].id;
+
+    const [holdings, snapshots, dailyChanges] = await Promise.all([
+      db
+        .select({ id: holdingsTable.id, type: holdingsTable.type, createdAt: holdingsTable.createdAt, updatedAt: holdingsTable.updatedAt })
+        .from(holdingsTable)
+        .where(eq(holdingsTable.userId, userId))
+        .orderBy(asc(holdingsTable.createdAt)),
+      db
+        .select({ date: portfolioSnapshotsTable.date, totalValue: portfolioSnapshotsTable.totalValue })
+        .from(portfolioSnapshotsTable)
+        .where(eq(portfolioSnapshotsTable.userId, userId))
+        .orderBy(asc(portfolioSnapshotsTable.date)),
+      db
+        .select({ date: dailyChangeSnapshotsTable.date, pctReturn: dailyChangeSnapshotsTable.pctReturn })
+        .from(dailyChangeSnapshotsTable)
+        .where(eq(dailyChangeSnapshotsTable.userId, userId))
+        .orderBy(asc(dailyChangeSnapshotsTable.date)),
+    ]);
+
+    res.json({ userId, holdings, portfolioSnapshotCount: snapshots.length, portfolioSnapshots: snapshots, dailyChanges });
+  } catch (err) {
+    req.log.error({ err }, "GET /admin/user-debug failed");
+    res.status(500).json({ error: "Lookup failed" });
   }
 });
 
