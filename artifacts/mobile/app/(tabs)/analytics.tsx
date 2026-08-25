@@ -488,6 +488,11 @@ const dh = StyleSheet.create({
   cardTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 });
 
+const hs = StyleSheet.create({
+  strip: { gap: 12, paddingRight: 4 },
+  card: { width: 260 },
+});
+
 // ─── Section label ─────────────────────────────────────────────────────────────
 
 type SLabelIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
@@ -1364,101 +1369,90 @@ export default function AnalyticsScreen() {
               </Text>
             </View>
 
-            {/* ── Gold spotlight ───────────────────────────────────────── */}
-            {sm.goldV > 0 && (
-              <View style={s.section}>
-                <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.goldBreakdownLabel} />
-                <MetalSpotlight
-                  title={t.goldHoldingsTitle}
-                  grams={sm.totalGoldGrams}
-                  value={sm.goldV}
-                  avgBuy={sm.goldAvgBuy}
-                  gainPct={sm.goldGainPct}
-                  livePrice={liveGoldG}
-                  tintColor={colors.primary}
-                />
-              </View>
-            )}
-
-            {/* ── Silver spotlight ─────────────────────────────────────── */}
-            {sm.silverV > 0 && (
-              <View style={s.section}>
-                <SLabel icon={{ lib: 'mci', name: 'gold' }} title={t.silverBreakdownLabel} />
-                <MetalSpotlight
-                  title={t.silverHoldingsTitle}
-                  grams={sm.totalSilverGrams}
-                  value={sm.silverV}
-                  avgBuy={sm.silverAvgBuy}
-                  gainPct={sm.silverGainPct}
-                  livePrice={liveSilverG}
-                  tintColor={colors.silverColor}
-                />
-              </View>
-            )}
-
-            {/* ── Stock spotlight ──────────────────────────────────────── */}
-            {sm.stockV > 0 && (
-              <View style={s.section}>
-                <SLabel icon="bar-chart-2" title={t.stockBreakdownLabel} />
-                <ClassSpotlight
-                  title={t.stockHoldingsTitle}
-                  countLabel={`${sm.stockCount}`}
-                  value={sm.stockV}
-                  cost={sm.stockCost}
-                  gainPct={sm.stockGainPct}
-                  tintColor="#4A9EFF"
-                  footerText={(() => {
-                    const top = performers.find(p => p.h.type === 'stock');
-                    return top ? t.topPerformerFooter(top.label, top.gainPct.toFixed(1)) : undefined;
-                  })()}
-                />
-              </View>
-            )}
-
-            {/* ── Real estate spotlight ────────────────────────────────── */}
-            {sm.reV > 0 && (
-              <View style={s.section}>
-                <SLabel icon={{ lib: 'mci', name: 'home-city' }} title={t.realEstateBreakdownLabel} />
-                <ClassSpotlight
-                  title={t.realEstateHoldingsTitle}
-                  countLabel={`${sm.reCount}`}
-                  value={sm.reV}
-                  cost={sm.reCost}
-                  gainPct={sm.reGainPct}
-                  tintColor="#A47FCA"
-                />
-              </View>
-            )}
-
-            {/* ── Personal assets spotlight ────────────────────────────── */}
-            {sm.paV > 0 && (
-              <View style={s.section}>
-                <SLabel icon={{ lib: 'mci', name: 'tag-multiple' }} title={t.personalAssetsBreakdownLabel} />
-                <ClassSpotlight
-                  title={t.personalAssetsHoldingsTitle}
-                  countLabel={`${sm.paCount}`}
-                  value={sm.paV}
-                  cost={sm.paCost}
-                  gainPct={sm.paGainPct}
-                  tintColor="#E08E45"
-                />
-              </View>
-            )}
-
-            {/* ── Fixed income spotlight ───────────────────────────────── */}
-            {sm.fiV > 0 && (
-              <View style={s.section}>
-                <SLabel icon={{ lib: 'mci', name: 'bank-transfer' }} title={t.fixedIncomeBreakdownLabel} />
-                <ClassSpotlight
-                  title={t.fixedIncomeHoldingsTitle}
-                  countLabel={`${sm.fiCount}`}
-                  value={sm.fiV}
-                  cost={sm.fiCost}
-                  gainPct={sm.fiGainPct}
-                  tintColor="#22C55E"
-                />
-              </View>
-            )}
+            {/* ── Asset breakdown (horizontal strip, was 6 stacked cards) ── */}
+            <View style={s.section}>
+              <SLabel icon="pie-chart" title={t.assetBreakdownStripLabel} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hs.strip}>
+                {sm.goldV > 0 && (
+                  <View style={hs.card}>
+                    <MetalSpotlight
+                      title={t.goldHoldingsTitle}
+                      grams={sm.totalGoldGrams}
+                      value={sm.goldV}
+                      avgBuy={sm.goldAvgBuy}
+                      gainPct={sm.goldGainPct}
+                      livePrice={liveGoldG}
+                      tintColor={colors.primary}
+                    />
+                  </View>
+                )}
+                {sm.silverV > 0 && (
+                  <View style={hs.card}>
+                    <MetalSpotlight
+                      title={t.silverHoldingsTitle}
+                      grams={sm.totalSilverGrams}
+                      value={sm.silverV}
+                      avgBuy={sm.silverAvgBuy}
+                      gainPct={sm.silverGainPct}
+                      livePrice={liveSilverG}
+                      tintColor={colors.silverColor}
+                    />
+                  </View>
+                )}
+                {sm.stockV > 0 && (
+                  <View style={hs.card}>
+                    <ClassSpotlight
+                      title={t.stockHoldingsTitle}
+                      countLabel={`${sm.stockCount}`}
+                      value={sm.stockV}
+                      cost={sm.stockCost}
+                      gainPct={sm.stockGainPct}
+                      tintColor="#4A9EFF"
+                      footerText={(() => {
+                        const top = performers.find(p => p.h.type === 'stock');
+                        return top ? t.topPerformerFooter(top.label, top.gainPct.toFixed(1)) : undefined;
+                      })()}
+                    />
+                  </View>
+                )}
+                {sm.reV > 0 && (
+                  <View style={hs.card}>
+                    <ClassSpotlight
+                      title={t.realEstateHoldingsTitle}
+                      countLabel={`${sm.reCount}`}
+                      value={sm.reV}
+                      cost={sm.reCost}
+                      gainPct={sm.reGainPct}
+                      tintColor="#A47FCA"
+                    />
+                  </View>
+                )}
+                {sm.paV > 0 && (
+                  <View style={hs.card}>
+                    <ClassSpotlight
+                      title={t.personalAssetsHoldingsTitle}
+                      countLabel={`${sm.paCount}`}
+                      value={sm.paV}
+                      cost={sm.paCost}
+                      gainPct={sm.paGainPct}
+                      tintColor="#E08E45"
+                    />
+                  </View>
+                )}
+                {sm.fiV > 0 && (
+                  <View style={hs.card}>
+                    <ClassSpotlight
+                      title={t.fixedIncomeHoldingsTitle}
+                      countLabel={`${sm.fiCount}`}
+                      value={sm.fiV}
+                      cost={sm.fiCost}
+                      gainPct={sm.fiGainPct}
+                      tintColor="#22C55E"
+                    />
+                  </View>
+                )}
+              </ScrollView>
+            </View>
           </>
         )}
       </PremiumGate>
