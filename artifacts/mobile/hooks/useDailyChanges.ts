@@ -30,5 +30,5 @@ export function useDailyChanges() {
     staleTime: 30_000,
   });
 
-  return { dailyChanges: query.data ?? [], isLoading: query.isLoading };
+  return { dailyChanges: query.data ?? [], isLoading: query.isLoading, refresh: query.refetch };
 }

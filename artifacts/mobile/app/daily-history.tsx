@@ -35,7 +35,7 @@ export default function DailyHistoryScreen() {
   const { language } = useAppSettings();
   const locale = language === 'ar' ? 'ar-EG' : 'en-EG';
   const insets = useSafeAreaInsets();
-  const { dailyChanges, isLoading } = useDailyChanges();
+  const { dailyChanges, isLoading, refresh } = useDailyChanges();
 
   // Most recent first — the hook returns oldest-first (sorted by date asc).
   const sorted = [...dailyChanges].reverse();
@@ -58,7 +58,7 @@ export default function DailyHistoryScreen() {
         data={sorted}
         keyExtractor={item => item.date}
         contentContainerStyle={[styles.content, { paddingBottom: botPad + 40 }]}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => {}} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => refresh()} tintColor={colors.primary} />}
         ListEmptyComponent={
           isLoading ? (
             <View style={styles.emptyWrap}>
