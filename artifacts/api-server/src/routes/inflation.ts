@@ -21,8 +21,13 @@ const RETRY_TTL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 3000;
 
 // Last known good value, used if the World Bank API is ever unreachable and
-// no cached value exists yet.
-const FALLBACK: InflationResponse = { rate: 14.1, year: 2025 };
+// no cached value exists yet. World Bank's own indicator only updates
+// annually and can lag real conditions by a year or more, so this constant
+// needs a periodic manual bump — check https://tradingeconomics.com/egypt/inflation-cpi
+// (no free API, so this is a reference to check by hand, not a second live
+// source to fetch from) and update the number/year below to roughly match
+// its latest reading. Last checked 2026-08-25: 14.90% (July 2026).
+const FALLBACK: InflationResponse = { rate: 14.9, year: 2026 };
 
 // Shared by the route below and the AI chat context (chat.ts) — both want
 // Egypt's latest annual inflation rate, so the fetch/cache/fallback logic
