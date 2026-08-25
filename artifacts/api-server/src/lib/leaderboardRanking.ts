@@ -38,7 +38,7 @@ export async function computeRankedReturns(period: "week" | "month"): Promise<Ra
     const { date: baselineDate, totalValue: baseline } = baselineSnap;
 
     const perf = await computePeriodPerformance(u.id, baselineDate);
-    const gain = (perf.current + perf.saleProceeds - baseline) - (perf.netNewCapital + perf.soldNetNewCapital);
+    const gain = (perf.current + perf.saleProceeds - baseline) - (perf.newHoldingsValue + perf.newlySoldProceeds);
 
     withReturns.push({ id: u.id, pctReturn: (gain / baseline) * 100 });
   }

@@ -140,51 +140,57 @@ export interface PeriodPerformance {
   /** Live value (EGP) of every holding the user still has, no filtering. */
   current: number;
   /**
-   * Cost basis (EGP) of holdings created on/after `cutoffDateKey`, still
-   * held — the "new capital contributed this period" side of the
-   * adjustment below.
+   * Live value (EGP) of holdings created on/after `cutoffDateKey`, still
+   * held — subtracted back out of `current` so a holding added this period
+   * contributes exactly nothing to the period's gain, positive or negative.
    */
-  netNewCapital: number;
+  newHoldingsValue: number;
   /** Sale proceeds (EGP) from every sale that happened on/after `cutoffDateKey`. */
   saleProceeds: number;
   /**
-   * Cost basis (EGP) of holdings that were BOTH created and sold on/after
-   * `cutoffDateKey` (a same-period buy-then-sell) — also "new capital,"
-   * offsetting saleProceeds the same way netNewCapital offsets current.
+   * Sale proceeds (EGP) from holdings that were BOTH created and sold
+   * on/after `cutoffDateKey` (a same-period buy-then-sell) — subtracted
+   * back out of `saleProceeds` the same way, so a same-period flip also
+   * nets to zero.
    */
-  soldNetNewCapital: number;
+  newlySoldProceeds: number;
 }
 
 /**
  * A period's raw performance ingredients for one user — used by the
- * leaderboard as `(current + saleProceeds − baseline − netNewCapital −
- * soldNetNewCapital) / baseline`. This is the standard technique real
- * portfolio-performance tools use for periods with cash flows (deposits/
- * withdrawals) in the middle — sometimes called the Modified Dietz method:
- * don't exclude contributed capital from the numbers, offset it out of the
- * GAIN instead, so contributing money is neutral rather than either
- * inflating a return or making a holding (and the user entirely, if it's
- * most of their portfolio) invisible to the calculation.
+ * leaderboard as `(current + saleProceeds − baseline − newHoldingsValue −
+ * newlySoldProceeds) / baseline`. A holding added this period cancels
+ * itself out exactly: its value flows into `current`, then right back out
+ * via `newHoldingsValue`, net zero — so buying (or buying-then-selling)
+ * something new can never move a user's rank in either direction, and
+ * every OTHER holding's real value and real price movement still counts
+ * normally, since nothing is excluded from `current` itself.
  *
- * Replaces an earlier "exclude anything created/edited this period"
- * approach that caused two real problems in production: (1) a user who
- * added most of their portfolio recently — completely normal for anyone
- * who joined the app in the last few weeks — ended up with ~0 "eligible"
- * value and either showed a fabricated huge loss or got silently dropped
- * from the leaderboard (25 opted-in users showed as 9); (2) since the
- * monthly window looks back 4x further than weekly, it excluded even more
- * of a typical recent holding's history, so plenty of people who ranked in
- * the weekly leaderboard vanished from the monthly one — same underlying
- * cause, not a separate bug. This version never excludes a real holding
- * from the math at all, so neither failure mode can happen: current is
- * always the true, full portfolio value.
+ * Earlier versions tried this two other ways, both wrong in production:
+ * (1) excluding new/edited holdings from `current` entirely, which zeroed
+ * out active users' whole portfolios and either fabricated a huge loss or
+ * (combined with a since-removed "skip if zero" guard) silently dropped
+ * them from the leaderboard — 25 opted-in users showed as 9, and since the
+ * monthly window looked back further than weekly, even more people who
+ * ranked weekly vanished monthly, same root cause. (2) offsetting by cost
+ * basis instead of current value (a real technique, "Modified Dietz") —
+ * broke down here specifically because purchasePrice/purchaseDate are
+ * user-entered and freely backdatable: someone adding a holding they
+ * actually bought 6 months ago gets a 6-month-old cost basis, so ALL of
+ * that real appreciation read as "this week's gain," easily swinging past
+ * 100% in a couple of days. Offsetting by the holding's OWN current value
+ * instead sidesteps that completely — it can't leak pre-app history in
+ * because it never looks at cost basis at all. The trade-off: a holding
+ * genuinely bought (and briefly held) within the period gets no credit for
+ * its own small real price move during that window either — accepted
+ * deliberately, since a little lost precision on a rare case is far safer
+ * than either prior failure mode.
  *
- * This does NOT close every gaming vector — a user editing an EXISTING
- * (pre-period) holding's quantity to inflate it still isn't caught, since
- * there's no per-holding value history to detect that against. That gap
- * needs real historical value-tracking to close properly; it was
- * deliberately left open here rather than risk another blunt exclusion
- * rule breaking real users again.
+ * Still doesn't close every gaming vector — a user editing an EXISTING
+ * (pre-period) holding's quantity to inflate it isn't caught, since there's
+ * no per-holding value history to detect that against. That needs real
+ * historical value-tracking to close properly; deliberately left open
+ * rather than risk yet another blunt rule breaking real users again.
  */
 export async function computePeriodPerformance(userId: string, cutoffDateKey: string): Promise<PeriodPerformance> {
   const [holdingRows, soldRows, prices, egxStocks] = await Promise.all([
@@ -198,30 +204,31 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
   for (const s of egxStocks) egxPrices[s.symbol] = s.price;
 
   let current = 0;
-  let netNewCapital = 0;
+  let newHoldingsValue = 0;
   for (const row of holdingRows) {
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
-    current += computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
+    const value = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
+    current += value;
     if (tradingDayKey(row.createdAt) >= cutoffDateKey) {
-      netNewCapital += costBasisEGP(holding, prices.usdToEgp);
+      newHoldingsValue += value;
     }
   }
 
   let saleProceeds = 0;
-  let soldNetNewCapital = 0;
+  let newlySoldProceeds = 0;
   for (const row of soldRows) {
     const data = decryptFromStorage(row.data) as {
-      saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string; costBasis?: number;
+      saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string;
     };
     if (!data.saleDate || typeof data.saleProceeds !== "number") continue;
     if (data.saleDate < cutoffDateKey) continue;
     saleProceeds += data.saleProceeds;
-    if (data.holdingCreatedDay && data.holdingCreatedDay >= cutoffDateKey && typeof data.costBasis === "number") {
-      soldNetNewCapital += data.costBasis;
+    if (data.holdingCreatedDay && data.holdingCreatedDay >= cutoffDateKey) {
+      newlySoldProceeds += data.saleProceeds;
     }
   }
 
-  return { current, netNewCapital, saleProceeds, soldNetNewCapital };
+  return { current, newHoldingsValue, saleProceeds, newlySoldProceeds };
 }
 
 export type AllocationClass = "gold" | "silver" | "stock" | "realEstate" | "personalAsset" | "fixedIncome" | "cash";
