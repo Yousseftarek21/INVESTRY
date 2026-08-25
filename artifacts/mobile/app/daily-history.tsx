@@ -12,25 +12,18 @@ import { useAppSettings } from '@/context/AppSettingsContext';
 import { useDailyChanges, DailyChange } from '@/hooks/useDailyChanges';
 import { BetaChip } from '@/components/BetaChip';
 
-// Egypt's weekend (Africa/Cairo Sun-Thu banking week — see api-server's
-// cairoDate.ts) — gold/EGX prices don't move on these days, so a flat
-// reading here is a market being closed, not zero real performance.
-// Read directly off the date key (noon UTC, matching how dateLabel below
-// is formatted) since the key already IS the trading day, no further
-// timezone conversion needed.
-function isCairoWeekend(dateKey: string): boolean {
-  const day = new Date(`${dateKey}T12:00:00Z`).getUTCDay(); // 0=Sun..6=Sat
-  return day === 5 || day === 6; // Friday, Saturday
-}
-
-function Row({ item, locale, t }: { item: DailyChange; locale: string; t: ReturnType<typeof useT> }) {
+function Row({ item, locale }: { item: DailyChange; locale: string }) {
   const colors = useColors();
   const isFlat = Math.abs(item.pctReturn) < 0.005;
   const isGain = item.pctReturn > 0;
-  // Flat is neutral, never green — a 0% reading isn't a gain. Weekend +
-  // flat together means the market was simply closed that day.
+  // Flat is neutral, never green — a 0% reading isn't a gain. NOT tied to
+  // weekends: real data shows gold/USD-EGP keep moving through Egypt's
+  // Fri/Sat banking weekend (confirmed against this account's own
+  // history — every Friday/Saturday had real, often large movement), so
+  // "weekend implies flat" was a wrong assumption and got removed rather
+  // than kept as a misleading "Holiday" label on whichever day happened
+  // to land on exactly 0%.
   const pctColor = isFlat ? colors.mutedForeground : (isGain ? colors.green : colors.red);
-  const showHoliday = isFlat && isCairoWeekend(item.date);
   const dateLabel = new Date(`${item.date}T12:00:00Z`).toLocaleDateString(locale, {
     weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC',
   });
@@ -39,7 +32,7 @@ function Row({ item, locale, t }: { item: DailyChange; locale: string; t: Return
     <View style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Text style={[styles.rowDate, { color: colors.text }]} numberOfLines={1}>{dateLabel}</Text>
       <Text style={[styles.rowPct, { color: pctColor }]} numberOfLines={1}>
-        {showHoliday ? t.holidayLabel : `${isGain ? '+' : ''}${item.pctReturn.toFixed(2)}%`}
+        {isGain ? '+' : ''}{item.pctReturn.toFixed(2)}%
       </Text>
     </View>
   );
@@ -93,7 +86,7 @@ export default function DailyHistoryScreen() {
             </View>
           )
         }
-        renderItem={({ item }) => <Row item={item} locale={locale} t={t} />}
+        renderItem={({ item }) => <Row item={item} locale={locale} />}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
     </View>

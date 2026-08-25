@@ -464,10 +464,13 @@ export default function SettingsScreen() {
       // Clear this device's push token from the account before the session
       // that authenticates the call goes away — otherwise a signed-out
       // account keeps receiving its own real notifications on this device.
-      try {
-        const token = await getToken();
-        if (token) await apiFetch('/api/push/unregister', token, { method: 'POST' });
-      } catch { /* best-effort — never block sign-out on this */ }
+      // Deliberately NOT awaited: the request only needs to be SENT with a
+      // still-valid token before signOut() invalidates it, not waited on —
+      // awaiting it here added a full extra network round-trip of visible
+      // lag before the button did anything, on top of signOut()'s own.
+      getToken()
+        .then(token => (token ? apiFetch('/api/push/unregister', token, { method: 'POST' }) : null))
+        .catch(() => { /* best-effort — never block sign-out on this */ });
       await signOut();
       router.replace('/(auth)/welcome' as any);
     }
