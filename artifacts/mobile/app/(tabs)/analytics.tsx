@@ -481,13 +481,11 @@ const rg = StyleSheet.create({
 });
 
 const dh = StyleSheet.create({
-  card: { borderRadius: 18, borderWidth: 1, paddingHorizontal: 18 },
-  row: {
+  card: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 13,
+    borderRadius: 18, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 18,
   },
-  date: { fontSize: 13, fontFamily: 'Inter_500Medium' },
-  pct: { fontSize: 14, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
+  cardTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 });
 
 // ─── Section label ─────────────────────────────────────────────────────────────
@@ -751,13 +749,9 @@ export default function AnalyticsScreen() {
   );
 
   // ── Daily change history — the server's closed "Today's Change %" per
-  // trading day (see useDailyChanges), most recent first, capped to a
-  // screenful so this card can't grow unbounded for a long-time user.
+  // trading day (see useDailyChanges); the card here is just an entry
+  // point, the full list lives on its own screen (app/daily-history.tsx).
   const { dailyChanges } = useDailyChanges();
-  const recentDailyChanges = useMemo(
-    () => [...dailyChanges].reverse().slice(0, 14),
-    [dailyChanges],
-  );
 
   // ── Performers ────────────────────────────────────────────────────────────────
   const performers = useMemo(() =>
@@ -1338,32 +1332,19 @@ export default function AnalyticsScreen() {
             )}
 
             {/* ── Daily change history ─────────────────────────────────── */}
-            {recentDailyChanges.length > 0 && (
+            {dailyChanges.length > 0 && (
               <View style={s.section}>
                 <SLabel icon="calendar" title={t.dailyHistoryLabel} sub={`${dailyChanges.length} ${t.daysTrackedLabel}`} />
-                <View style={[dh.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  {recentDailyChanges.map((d, i) => {
-                    const isGain = d.pctReturn >= 0;
-                    const dateLabel = new Date(`${d.date}T12:00:00Z`).toLocaleDateString(
-                      language === 'ar' ? 'ar-EG' : 'en-EG',
-                      { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' },
-                    );
-                    return (
-                      <View
-                        key={d.date}
-                        style={[
-                          dh.row,
-                          i < recentDailyChanges.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
-                        ]}
-                      >
-                        <Text style={[dh.date, { color: colors.text }]}>{dateLabel}</Text>
-                        <Text style={[dh.pct, { color: isGain ? colors.green : colors.red }]}>
-                          {isGain ? '+' : ''}{d.pctReturn.toFixed(2)}%
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
+                <Pressable
+                  onPress={() => { impact(); router.push('/daily-history' as any); }}
+                  style={({ pressed }) => [
+                    dh.card,
+                    { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
+                  ]}
+                >
+                  <Text style={[dh.cardTitle, { color: colors.text }]}>{t.dailyHistoryLabel}</Text>
+                  <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
+                </Pressable>
               </View>
             )}
 
