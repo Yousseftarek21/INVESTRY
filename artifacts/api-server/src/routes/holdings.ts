@@ -181,6 +181,12 @@ router.post("/holdings/:id/sell", async (req, res) => {
       // mid-period sale of a long-held asset look like a big loss, since
       // the holding just vanishes with nothing replacing its value).
       holdingCreatedDay: tradingDayKey(row.createdAt),
+      // Same reasoning, for edits instead of creation — a holding that was
+      // quantity-edited mid-period and then sold shouldn't have its
+      // (possibly inflated) sale proceeds count as "return on what I
+      // already had" either. Mirrors portfolioValue.ts's
+      // computeEligiblePortfolioValue updatedAt check.
+      holdingUpdatedDay: tradingDayKey(row.updatedAt),
       costBasis,
       saleProceeds,
       saleDate: body.saleDate,

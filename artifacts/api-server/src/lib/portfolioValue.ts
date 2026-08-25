@@ -138,13 +138,25 @@ export async function computeUserPortfolioValue(userId: string): Promise<number>
 
 /**
  * Live current value (EGP) of only the holdings that already existed before
- * `cutoffDateKey` — used for the leaderboard, where naively comparing
- * "current total" against a period-start baseline let anyone top the
- * rankings by simply adding a large new holding mid-period (that full
- * value read as a "gain," nothing to do with actual investment
- * performance). A holding added on or after the cutoff contributes
- * nothing here, exactly as it should for "how did what I already had
- * perform" — new capital isn't a return.
+ * `cutoffDateKey` AND haven't been edited since — used for the leaderboard,
+ * where naively comparing "current total" against a period-start baseline
+ * let anyone top the rankings by simply adding a large new holding
+ * mid-period (that full value read as a "gain," nothing to do with actual
+ * investment performance — real case: +853% from adding one real estate
+ * property). A holding added on or after the cutoff contributes nothing
+ * here, exactly as it should for "how did what I already had perform" —
+ * new capital isn't a return.
+ *
+ * The updatedAt check closes the same hole from the other direction:
+ * without it, someone could keep an old holding but bump its quantity
+ * mid-period (e.g. edit a gold holding from 10g to 500g) and have the full
+ * current value of the edit still count as "what I already had." updatedAt
+ * only ever changes via the explicit PUT /holdings/:id edit route (it
+ * defaults to now() on insert too, same as createdAt, so an untouched
+ * holding always has updatedAt === createdAt) — requiring it to also
+ * predate the cutoff means any holding touched during the period, whether
+ * added or edited, is excluded, with no new historical-price
+ * infrastructure needed.
  */
 export async function computeEligiblePortfolioValue(userId: string, cutoffDateKey: string): Promise<number> {
   const [holdingRows, prices, egxStocks] = await Promise.all([
@@ -158,6 +170,7 @@ export async function computeEligiblePortfolioValue(userId: string, cutoffDateKe
 
   return holdingRows.reduce((sum, row) => {
     if (tradingDayKey(row.createdAt) >= cutoffDateKey) return sum;
+    if (tradingDayKey(row.updatedAt) >= cutoffDateKey) return sum;
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
     return sum + computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
   }, 0);
@@ -177,7 +190,11 @@ export async function computeEligiblePortfolioValue(userId: string, cutoffDateKe
  * Holds sold before this field was ever recorded have no
  * holdingCreatedDay — treated as eligible rather than silently dropped,
  * since excluding a real historical sale is worse than the narrow window
- * where that default could be wrong.
+ * where that default could be wrong. Same treatment for holdingUpdatedDay,
+ * which additionally excludes a sale of a holding that was quantity-edited
+ * (mirrors computeEligiblePortfolioValue's updatedAt check, for the same
+ * reason — a mid-period edit followed by a sale is the same exploit as a
+ * mid-period edit followed by just holding it).
  */
 export async function sumEligibleSaleProceeds(userId: string, cutoffDateKey: string): Promise<number> {
   const rows = await db.select().from(soldHoldingsTable).where(eq(soldHoldingsTable.userId, userId));
@@ -185,11 +202,12 @@ export async function sumEligibleSaleProceeds(userId: string, cutoffDateKey: str
   let sum = 0;
   for (const row of rows) {
     const data = decryptFromStorage(row.data) as {
-      saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string;
+      saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string; holdingUpdatedDay?: string;
     };
     if (!data.saleDate || typeof data.saleProceeds !== "number") continue;
     if (data.saleDate < cutoffDateKey) continue;
     if (data.holdingCreatedDay && data.holdingCreatedDay >= cutoffDateKey) continue;
+    if (data.holdingUpdatedDay && data.holdingUpdatedDay >= cutoffDateKey) continue;
     sum += data.saleProceeds;
   }
   return sum;

@@ -16,11 +16,14 @@ export interface RankedReturn { id: string; pctReturn: number; rank: number }
 // that let anyone top the leaderboard by adding one large new holding
 // mid-period (real case seen in production: a user's weekly return read as
 // +853% after adding a single real estate property, nothing to do with
-// actual performance). It's the live value of holdings that already
-// existed at the baseline, plus proceeds from any of those same
-// pre-existing holdings sold during the period — "how did what I already
-// had actually perform," which a leaderboard is supposed to measure, not
-// "how much new capital did I add."
+// actual performance) or by editing an existing holding's quantity
+// mid-period (e.g. bumping a gold holding from 10g to 500g — same exploit,
+// no new holding needed). It's the live value of holdings that already
+// existed at the baseline AND haven't been touched since, plus proceeds
+// from any of those same pre-existing, untouched holdings sold during the
+// period — "how did what I already had actually perform," which a
+// leaderboard is supposed to measure, not "how much new capital did I add
+// or inflate."
 export async function computeRankedReturns(period: "week" | "month"): Promise<RankedReturn[]> {
   const periodStart = period === "month" ? cairoMonthStart() : cairoWeekStart();
   const opted = await db
