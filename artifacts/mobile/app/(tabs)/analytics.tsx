@@ -1164,20 +1164,39 @@ export default function AnalyticsScreen() {
                   )}
                 </Text>
               )}
-              {sm.totalCost > 0 && inflation && (
-                <View style={s.inflationRow}>
-                  <Feather
-                    name={sm.gainPct >= inflation.rate ? 'check-circle' : 'alert-circle'}
-                    size={11}
-                    color={sm.gainPct >= inflation.rate ? colors.green : '#F59E0B'}
-                  />
-                  <Text style={[s.inflationNote, { color: colors.mutedForeground }]}>
-                    {sm.gainPct >= inflation.rate
-                      ? t.egpInflationBeating((sm.gainPct - inflation.rate).toFixed(1), inflation.rate.toFixed(1))
-                      : t.egpInflationLagging(`${sm.gainPct >= 0 ? '+' : ''}${sm.gainPct.toFixed(1)}%`, inflation.rate.toFixed(1))}
-                  </Text>
-                </View>
-              )}
+              {sm.totalCost > 0 && inflation && (() => {
+                const isBeating = sm.gainPct >= inflation.rate;
+                const diff = Math.abs(sm.gainPct - inflation.rate);
+                const tint = isBeating ? colors.green : '#F59E0B';
+                return (
+                  <View style={[s.inflationCard, { backgroundColor: tint + '0F', borderColor: tint + '2E' }]}>
+                    <View style={s.inflationHeader}>
+                      <View style={[s.inflationIconWrap, { backgroundColor: tint + '1F' }]}>
+                        <Feather name={isBeating ? 'trending-up' : 'alert-circle'} size={13} color={tint} />
+                      </View>
+                      <Text style={[s.inflationTitle, { color: tint }]}>
+                        {isBeating ? t.inflationBeatingTitle : t.inflationLaggingTitle}
+                      </Text>
+                    </View>
+                    <View style={s.inflationStatsRow}>
+                      <View style={s.inflationStatCol}>
+                        <Text style={[s.inflationStatVal, { color: colors.text }]}>
+                          {sm.gainPct >= 0 ? '+' : ''}{sm.gainPct.toFixed(1)}%
+                        </Text>
+                        <Text style={[s.inflationStatLabel, { color: colors.mutedForeground }]}>{t.yourReturnLabel}</Text>
+                      </View>
+                      <View style={[s.inflationDivider, { backgroundColor: tint + '30' }]} />
+                      <View style={s.inflationStatCol}>
+                        <Text style={[s.inflationStatVal, { color: colors.text }]}>~{inflation.rate.toFixed(1)}%</Text>
+                        <Text style={[s.inflationStatLabel, { color: colors.mutedForeground }]}>{t.egpInflationLabel}</Text>
+                      </View>
+                    </View>
+                    <Text style={[s.inflationDiffText, { color: tint }]}>
+                      {isBeating ? t.inflationBeatingDiff(diff.toFixed(1)) : t.inflationLaggingDiff(diff.toFixed(1))}
+                    </Text>
+                  </View>
+                );
+              })()}
             </View>
 
             {/* ── Community comparison ─────────────────────────────────── */}
@@ -1437,8 +1456,16 @@ const s = StyleSheet.create({
   periodPill: { borderRadius: 9, paddingHorizontal: 11, paddingVertical: 5 },
   periodTxt: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
   chartNote: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center' },
-  inflationRow: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
-  inflationNote: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16, flexShrink: 1 },
+  inflationCard: { borderRadius: 16, borderWidth: 1, padding: 14, marginTop: 4, gap: 10 },
+  inflationHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  inflationIconWrap: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  inflationTitle: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  inflationStatsRow: { flexDirection: 'row', alignItems: 'center' },
+  inflationStatCol: { flex: 1, alignItems: 'center', gap: 2 },
+  inflationStatVal: { fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
+  inflationStatLabel: { fontSize: 10.5, fontFamily: 'Inter_500Medium' },
+  inflationDivider: { width: 1, height: 30, alignSelf: 'center' },
+  inflationDiffText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
 
   // Generic section
   section: { gap: 14 },
