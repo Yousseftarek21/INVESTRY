@@ -11,6 +11,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useLeaderboard, LeaderboardEntry, LeaderboardPeriod } from '@/hooks/useLeaderboard';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { BetaChip } from '@/components/BetaChip';
 
 function pctColor(colors: ReturnType<typeof useColors>, pct: number): string {
   if (pct > 0) return colors.green;
@@ -152,7 +153,10 @@ export default function LeaderboardScreen() {
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
             <Feather name={backChevron()} size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[s.headerTitle, { color: colors.text }]}>{t.leaderboardTitle}</Text>
+          <View style={s.headerTitleRow}>
+            <Text style={[s.headerTitle, { color: colors.text }]}>{t.leaderboardTitle}</Text>
+            <BetaChip label={t.leaderboardBetaChip} />
+          </View>
           <View style={{ width: 22 }} />
         </View>
 
@@ -255,6 +259,7 @@ export default function LeaderboardScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   headerTitle: { fontSize: 17, fontFamily: 'Inter_600SemiBold' },
 
   joinCta: { margin: 16, marginBottom: 4, borderRadius: 18, borderWidth: 1, padding: 16, gap: 10 },
