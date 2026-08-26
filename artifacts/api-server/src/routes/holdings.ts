@@ -3,8 +3,8 @@ import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, holdingsTable, activityLogTable, soldHoldingsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
-import { costBasisEGP, type StoredHolding } from "../lib/portfolioValue";
-import { getCachedPrices } from "./markets";
+import { costBasisEGP, livePricePerUnit, type StoredHolding } from "../lib/portfolioValue";
+import { getCachedPrices, getCachedStocks } from "./markets";
 import { tradingDayKey } from "../lib/cairoDate";
 
 function generateSoldHoldingId(): string {
@@ -30,6 +30,18 @@ function holdingQuantity(h: StoredHolding): number | null {
   if (h.type === "gold" || h.type === "silver") return Number(h.grams) || 0;
   if (h.type === "stock") return Number(h.shares) || 0;
   return null;
+}
+
+// Fetches everything livePricePerUnit needs in one call — shared by the
+// stamping logic in POST/PUT below.
+async function fetchPriceContext() {
+  const [prices, egxStocks] = await Promise.all([
+    getCachedPrices(),
+    getCachedStocks().catch(() => []),
+  ]);
+  const egxPrices: Record<string, number> = {};
+  for (const s of egxStocks) egxPrices[s.symbol] = s.price;
+  return { prices, egxPrices };
 }
 
 const router: IRouter = Router();
@@ -82,14 +94,28 @@ router.post("/holdings", async (req, res) => {
   const { id, type, ...rest } = body;
 
   try {
+    // Stamp the live price at this exact moment, server-side, into the
+    // holding's own data — never trust a client-supplied value for this
+    // field even if one is present in the request body. This is what lets
+    // Today's Change and the leaderboard use "real movement since this lot
+    // was added" instead of either the whole day's price (unfair — credits
+    // movement from before it existed) or zero (uninformative). Silently
+    // skipped for types with no live price feed (real_estate,
+    // personal_asset, fixed_income) or if the feed is down — never
+    // fabricated.
+    const holdingForPricing = { id: id as string, type: type as string, ...rest } as StoredHolding;
+    const { prices, egxPrices } = await fetchPriceContext();
+    const stampedPrice = livePricePerUnit(holdingForPricing, prices, egxPrices);
+    const dataToStore = stampedPrice != null ? { ...rest, priceAtCreationEgp: stampedPrice } : rest;
+
     await db.insert(holdingsTable).values({
       id: id as string,
       userId,
       type: type as string,
-      data: encryptForStorage(rest),
+      data: encryptForStorage(dataToStore),
     });
 
-    res.status(201).json({ id, type, ...rest });
+    res.status(201).json({ id, type, ...dataToStore });
   } catch (err: unknown) {
     // Unique-constraint violation on the primary key — the supplied ID already
     // exists. Return 409 so the caller can regenerate an ID rather than
@@ -228,20 +254,54 @@ router.put("/holdings/:id", async (req, res) => {
 
   const { id } = req.params;
   const body = req.body as Record<string, unknown>;
-  const { type, ...rest } = body;
+  // priceAtCreationEgp/priceAtLastEditEgp are never client-supplied, even if
+  // present in the body (e.g. round-tripped from a prior GET) — always
+  // derived below, either preserved from the existing row or freshly
+  // stamped, never trusted from the request.
+  const { type, priceAtCreationEgp: _ignoredCreation, priceAtLastEditEgp: _ignoredEdit, ...rest } = body;
 
   try {
-    const updated = await db
-      .update(holdingsTable)
-      .set({ data: encryptForStorage(rest), type: type as string, updatedAt: new Date() })
-      .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)))
-      .returning({ id: holdingsTable.id });
-
-    if (updated.length === 0) {
+    const [existingRow] = await db
+      .select()
+      .from(holdingsTable)
+      .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)));
+    if (!existingRow) {
       res.status(404).json({ error: "Not found" });
       return;
     }
-    res.json({ id, type, ...rest });
+    const existingHolding = { id: existingRow.id, type: existingRow.type, ...(decryptFromStorage(existingRow.data) as object) } as StoredHolding;
+
+    const newHolding = { id, type: type as string, ...rest } as StoredHolding;
+    const quantityChanged = holdingQuantity(existingHolding) !== holdingQuantity(newHolding);
+
+    let dataToStore: Record<string, unknown> = rest;
+    if (quantityChanged) {
+      // A real quantity change resets this lot's own tracking reference to
+      // right now — see livePricePerUnit's own comment for why this can't
+      // be split into "the original portion" vs "the correction" without
+      // per-lot infrastructure; treating the whole lot as freshly stamped
+      // is the honest, conservative choice, not a fabricated split.
+      const { prices, egxPrices } = await fetchPriceContext();
+      const stampedPrice = livePricePerUnit(newHolding, prices, egxPrices);
+      dataToStore = {
+        ...rest,
+        priceAtCreationEgp: existingHolding.priceAtCreationEgp,
+        ...(stampedPrice != null ? { priceAtLastEditEgp: stampedPrice } : {}),
+      };
+    } else {
+      dataToStore = {
+        ...rest,
+        priceAtCreationEgp: existingHolding.priceAtCreationEgp,
+        priceAtLastEditEgp: existingHolding.priceAtLastEditEgp,
+      };
+    }
+
+    await db
+      .update(holdingsTable)
+      .set({ data: encryptForStorage(dataToStore), type: type as string, updatedAt: new Date() })
+      .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)));
+
+    res.json({ id, type, ...dataToStore });
   } catch (err) {
     req.log.error({ err }, "PUT /holdings/:id failed");
     res.status(500).json({ error: "Failed to update holding" });

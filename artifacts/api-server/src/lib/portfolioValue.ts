@@ -29,6 +29,38 @@ export function silverPricePerGram(silverUsd: number, usdToEgp: number): number 
   return (silverUsd / TROY_OZ_TO_GRAMS) * usdToEgp;
 }
 
+/**
+ * Live EGP price per unit (per gram for gold/silver, per share for stock) —
+ * the number stamped server-side into a holding's `priceAtCreationEgp`/
+ * `priceAtLastEditEgp` fields at the moment it's created or edited, NEVER
+ * supplied by the client. This is what makes a lot's baseline unfakeable:
+ * the price is read from the same live feeds getCachedPrices()/
+ * getCachedStocks() already trust elsewhere, at the exact instant the
+ * server processes the request, not typed in by the user.
+ *
+ * Returns null for a type with no live price feed (real_estate,
+ * personal_asset, fixed_income) or when the EGX feed doesn't have the
+ * requested symbol — callers must treat null as "don't stamp anything"
+ * rather than fabricate a number.
+ */
+export function livePricePerUnit(
+  holding: StoredHolding,
+  prices: { goldUsd: number; silverUsd: number; usdToEgp: number },
+  egxPrices: Record<string, number>,
+): number | null {
+  if (holding.type === "gold") {
+    return goldPricePerGram(prices.goldUsd, prices.usdToEgp, (holding.karat as GoldKarat) ?? "24k");
+  }
+  if (holding.type === "silver") {
+    return silverPricePerGram(prices.silverUsd, prices.usdToEgp);
+  }
+  if (holding.type === "stock") {
+    const price = egxPrices[String(holding.symbol)];
+    return typeof price === "number" ? price : null;
+  }
+  return null;
+}
+
 // At-maturity certificates accrue toward their principal + interest daily;
 // monthly/quarterly-payout products pay interest out instead of compounding,
 // so their redemption value stays flat at principal until maturity — same
