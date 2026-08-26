@@ -4,6 +4,7 @@ import { clerkClient } from "@clerk/express";
 import { db, usersTable, holdingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
 import { sendPushToTokens } from "../lib/expoPush";
 import { backfillDailyChanges, backfillDailyChangesFromSnapshots, resetDailyChangeHistory } from "../lib/dailyChangeBackfill";
+import { computeRankedReturns } from "../lib/leaderboardRanking";
 
 const router: IRouter = Router();
 
@@ -155,6 +156,33 @@ router.get("/admin/user-debug", async (req, res) => {
     res.json({ userId, holdings, portfolioSnapshotCount: snapshots.length, portfolioSnapshots: snapshots, dailyChanges });
   } catch (err) {
     req.log.error({ err }, "GET /admin/user-debug failed");
+    res.status(500).json({ error: "Lookup failed" });
+  }
+});
+
+// Diagnostic dump of the full computed leaderboard (id/pctReturn/rank), for
+// verifying a reported pattern (e.g. "most users show the same %") against
+// real output instead of guessing at the cause.
+//
+//   curl "https://api.investry.app/api/admin/leaderboard-debug?period=week" \
+//     -H "x-admin-secret: <the secret>"
+router.get("/admin/leaderboard-debug", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const period = req.query.period === "month" ? "month" : "week";
+    const ranked = await computeRankedReturns(period);
+    res.json({ period, count: ranked.length, ranked });
+  } catch (err) {
+    req.log.error({ err }, "GET /admin/leaderboard-debug failed");
     res.status(500).json({ error: "Lookup failed" });
   }
 });
