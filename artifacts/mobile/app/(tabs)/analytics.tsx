@@ -7,7 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
-import { pctDelta } from '@/utils/pctDelta';
+import { pctDelta, todayContributionFromStamp } from '@/utils/pctDelta';
 import { tradingDayStart, touchedToday } from '@/utils/cairoDate';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Svg, {
@@ -668,25 +668,41 @@ export default function AnalyticsScreen() {
       const c = computeCost(h, prices);
       totalCost += c;
       // Same reasoning as index.tsx's countsToday — a holding added/edited
-      // today still counts at full value everywhere above, only its
-      // contribution to TODAY's change is skipped, so bumping a quantity
-      // right as the market moves can't inflate the badge.
+      // today still counts at full value everywhere above. For gold/silver/
+      // stock its contribution isn't just skipped though: the server's
+      // priceAtCreationEgp/priceAtLastEditEgp stamp (never client-supplied)
+      // gives a real, unfakeable baseline for "movement since this lot
+      // existed," so that's used instead of the day's full %. Falls back to
+      // 0 only when no stamp exists yet (older data).
       const countsToday = !touchedToday(h.updatedAt);
       if (h.type === 'gold') {
         goldV += v; goldCost += c; totalGoldGrams += h.grams;
         // goldChangePercent is the metal's raw USD move; goldChangePercentEgp
         // compounds it with today's FX move, which is what a holding valued
         // in EGP (`v`) actually needs — see markets.ts for why.
-        if (countsToday) todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
+        if (countsToday) {
+          todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
+        } else {
+          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.grams, v);
+          if (stampContribution != null) todayGold += stampContribution;
+        }
       } else if (h.type === 'silver') {
         silverV += v; silverCost += c; totalSilverGrams += h.grams;
-        if (countsToday) todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
+        if (countsToday) {
+          todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
+        } else {
+          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.grams, v);
+          if (stampContribution != null) todaySilver += stampContribution;
+        }
       }
       else if (h.type === 'stock') {
         stockV += v; stockCost += c; stockCount++;
         if (countsToday) {
           const changePercent = egxChangeByTicker[h.symbol] ?? 0;
           todayStock += pctDelta(v, changePercent);
+        } else {
+          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.shares, v);
+          if (stampContribution != null) todayStock += stampContribution;
         }
       }
       else if (h.type === 'personal_asset') { paV += v; paCost += c; paCount++; }

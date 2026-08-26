@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron, forwardArrow } from '@/utils/rtl';
-import { pctDelta } from '@/utils/pctDelta';
+import { pctDelta, todayContributionFromStamp } from '@/utils/pctDelta';
 import { tradingDayStart, touchedToday } from '@/utils/cairoDate';
 import { fmtCompact } from '@/utils/formatNumber';
 import { UpdateAvailableBanner } from '@/components/UpdateAvailableBanner';
@@ -506,11 +506,16 @@ export default function HomeScreen() {
       const c = computeCost(h, prices);
       totalCost += c;
       // A holding added or edited today still counts at its full current
-      // value everywhere above — only its contribution to TODAY's change is
-      // skipped, so bumping a quantity right as the market moves can't
-      // apply today's real price % to a just-inflated amount and make the
-      // badge look fake. Per-holding, so one edit doesn't zero out today's
-      // change from a user's other, untouched holdings.
+      // value everywhere above. Its contribution to TODAY's change can't
+      // just be the day's full price % applied to a possibly-just-changed
+      // quantity (that's how bumping grams right as the market moves used
+      // to fake a gain) — but for gold/silver/stock it also isn't zero: the
+      // server stamps this exact lot's real EGP price the instant it was
+      // created/edited (priceAtCreationEgp/priceAtLastEditEgp, never
+      // client-supplied — see POST/PUT /holdings), so the honest, unfakeable
+      // contribution is "current value minus what it was worth at that
+      // stamp." Falls back to excluding the lot (contributes 0) only when no
+      // stamp exists yet (older data from before this rolled out).
       const countsToday = !touchedToday(h.updatedAt);
       if (h.type === 'gold') {
         goldV += v; goldGrams += h.grams;
@@ -521,18 +526,39 @@ export default function HomeScreen() {
         if (countsToday) {
           todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
           todayGoldMetal += pctDelta(v, prices?.goldChangePercent ?? 0);
+        } else {
+          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.grams, v);
+          if (stampContribution != null) {
+            todayGold += stampContribution;
+            // The stamp gives one combined EGP move (metal + FX together) —
+            // there's no live "gold-only, as of the stamp instant" price to
+            // subtract FX back out with, so it's credited to the metal
+            // bucket whole rather than silently dropped from the breakdown
+            // (which would make Gold + Currency stop summing to Today's
+            // total for a day a lot was just added).
+            todayGoldMetal += stampContribution;
+          }
         }
       } else if (h.type === 'silver') {
         silverV += v; silverGrams += h.grams;
         if (countsToday) {
           todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
           todaySilverMetal += pctDelta(v, prices?.silverChangePercent ?? 0);
+        } else {
+          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.grams, v);
+          if (stampContribution != null) {
+            todaySilver += stampContribution;
+            todaySilverMetal += stampContribution;
+          }
         }
       } else if (h.type === 'stock') {
         stockV += v; stockCount++;
         if (countsToday) {
           const changePercent = egxChangeByTicker[h.symbol] ?? 0;
           todayStock += pctDelta(v, changePercent);
+        } else {
+          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.shares, v);
+          if (stampContribution != null) todayStock += stampContribution;
         }
       } else if (h.type === 'personal_asset') {
         paV += v; paCount++;

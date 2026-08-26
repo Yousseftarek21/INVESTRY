@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -28,16 +28,26 @@ function todayIso(): string {
 // Mirrors add-investment.tsx's own describeHolding — same label style used
 // for the "Investment Added"/"Investment Updated" activity log entries, so
 // "Investment Sold" reads consistently with those in Notification History.
-function describeHolding(h: Holding, t: ReturnType<typeof useT>): string {
+// `overrideQty` reflects the actual quantity SOLD for a partial sale — the
+// lot itself (h.grams/h.shares) may still be the pre-sale full amount at
+// the moment this runs, so the label would otherwise overstate what was
+// actually sold.
+function describeHolding(h: Holding, t: ReturnType<typeof useT>, overrideQty?: number): string {
   switch (h.type) {
-    case 'gold': return `${t.gold}: ${h.grams}g`;
-    case 'silver': return `${t.silver}: ${h.grams}g`;
-    case 'stock': return `${h.symbol}: ${h.shares} ${t.sharesLabel}`;
+    case 'gold': return `${t.gold}: ${overrideQty ?? h.grams}g`;
+    case 'silver': return `${t.silver}: ${overrideQty ?? h.grams}g`;
+    case 'stock': return `${h.symbol}: ${overrideQty ?? h.shares} ${t.sharesLabel}`;
     case 'real_estate': return h.propertyName;
     case 'personal_asset': return h.name;
     case 'fixed_income': return h.label;
     default: return t.egxStocksAllocLabel;
   }
+}
+
+function fungibleQuantity(h: Holding): number | null {
+  if (h.type === 'gold' || h.type === 'silver') return h.grams;
+  if (h.type === 'stock') return h.shares;
+  return null;
 }
 
 export default function SellHoldingScreen() {
@@ -63,14 +73,38 @@ export default function SellHoldingScreen() {
   const isFixedIncome = holding?.type === 'fixed_income';
   const currentValue = holding ? computeCurrentValue(holding, prices) : 0;
   const costBasis = holding ? computeCost(holding, prices) : 0;
+  const fullQuantity = holding ? fungibleQuantity(holding) : null;
+  const isFungible = fullQuantity != null;
 
   const [saleProceeds, setSaleProceeds] = useState(() => String(Math.round(currentValue)));
+  const [sellQuantity, setSellQuantity] = useState(() => fullQuantity != null ? String(fullQuantity) : '');
   const [saleDate, setSaleDate] = useState(todayIso());
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const realizedGainLoss = parseAmount(saleProceeds || '0') - costBasis;
+  // Selling less than the full lot scales both the suggested sell price and
+  // the P/L preview proportionally — a gram is worth the same fraction of
+  // the lot's value/cost regardless of which gram it is, so this is exact,
+  // not an approximation.
+  const parsedQuantity = isFungible ? parseAmount(sellQuantity || '0') : null;
+  const quantityPortion = isFungible && fullQuantity
+    ? Math.min(1, Math.max(0, (Number.isFinite(parsedQuantity) ? parsedQuantity! : 0) / fullQuantity))
+    : 1;
+  const scaledCurrentValue = currentValue * quantityPortion;
+  const scaledCostBasis = costBasis * quantityPortion;
+
+  // Only auto-suggest the sell price from the quantity while the user
+  // hasn't typed their own price — once they touch that field, their number
+  // wins and quantity changes stop overwriting it.
+  const proceedsTouched = useRef(false);
+  useEffect(() => {
+    if (proceedsTouched.current || !holding) return;
+    setSaleProceeds(String(Math.round(scaledCurrentValue)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sellQuantity]);
+
+  const realizedGainLoss = parseAmount(saleProceeds || '0') - scaledCostBasis;
   const isGain = realizedGainLoss >= 0;
   const gainColor = isGain ? colors.green : colors.red;
 
@@ -83,14 +117,27 @@ export default function SellHoldingScreen() {
       setError(t.sellHoldingInvalidAmount);
       return;
     }
+    let quantityToSend: number | undefined;
+    if (isFungible) {
+      const q = parseAmount(sellQuantity || '0');
+      if (!Number.isFinite(q) || q <= 0) {
+        setError(t.sellHoldingInvalidQuantity);
+        return;
+      }
+      if (fullQuantity != null && q > fullQuantity + 1e-9) {
+        setError(t.sellHoldingQuantityExceeds);
+        return;
+      }
+      quantityToSend = q;
+    }
     setError(null);
     setSaving(true);
     impact();
     try {
-      await sellHolding(holding.id, proceeds, saleDate, notes.trim() || undefined);
+      await sellHolding(holding.id, proceeds, saleDate, notes.trim() || undefined, quantityToSend);
       queryClient.invalidateQueries({ queryKey: ['sold-holdings'] });
       const sign = realizedGainLoss >= 0 ? '+' : '';
-      const subtitle = `${describeHolding(holding, t)} — ${sign}${Math.round(realizedGainLoss).toLocaleString('en-EG')} EGP`;
+      const subtitle = `${describeHolding(holding, t, quantityToSend)} — ${sign}${Math.round(realizedGainLoss).toLocaleString('en-EG')} EGP`;
       void logActivity('holding_sold', t.activityHoldingSoldTitle, subtitle, holding.id);
       router.back();
     } catch {
@@ -148,16 +195,37 @@ export default function SellHoldingScreen() {
             </Text>
             <Text style={[styles.summaryMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
               {t.sellCurrentValueLabel}: {Math.round(currentValue).toLocaleString('en-EG')} EGP
+              {isFungible ? `  •  ${t.sellQuantityAvailableLabel}: ${fullQuantity}${holding.type === 'stock' ? ` ${t.sharesLabel}` : 'g'}` : ''}
             </Text>
           </View>
         </View>
+
+        {/* Quantity — only gold/silver/stock lots can be partially sold;
+            real_estate/personal_asset/fixed_income are always sold whole. */}
+        {isFungible && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t.sellQuantityLabel}</Text>
+            <View style={styles.quantityRow}>
+              <AmountInput
+                value={sellQuantity}
+                onChangeText={setSellQuantity}
+                style={[styles.quantityInput, { color: colors.text, backgroundColor: colors.input, borderColor: colors.border }]}
+                placeholder="0"
+                placeholderTextColor={colors.mutedForeground}
+              />
+              <Text style={[styles.quantitySuffix, { color: colors.mutedForeground }]}>
+                {holding.type === 'stock' ? t.sharesLabel : 'g'}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Amount */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{amountLabel}</Text>
           <AmountInput
             value={saleProceeds}
-            onChangeText={setSaleProceeds}
+            onChangeText={(v) => { proceedsTouched.current = true; setSaleProceeds(v); }}
             style={[styles.amountInput, { color: colors.text, backgroundColor: colors.input, borderColor: colors.border }]}
             placeholder="0"
             placeholderTextColor={colors.mutedForeground}
@@ -178,7 +246,7 @@ export default function SellHoldingScreen() {
               {isGain ? '+' : ''}{Math.round(realizedGainLoss).toLocaleString('en-EG')} <Text style={styles.previewHeroCurrency}>EGP</Text>
             </Text>
             <Text style={[styles.previewFrom, { color: colors.mutedForeground }]}>
-              {t.costBasisLabel}: {Math.round(costBasis).toLocaleString('en-EG')} EGP
+              {t.costBasisLabel}: {Math.round(scaledCostBasis).toLocaleString('en-EG')} EGP
             </Text>
           </View>
         </View>
@@ -244,6 +312,12 @@ const styles = StyleSheet.create({
     fontSize: 20, fontFamily: 'Inter_700Bold',
     borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
   },
+  quantityRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  quantityInput: {
+    flex: 1, fontSize: 17, fontFamily: 'Inter_700Bold',
+    borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
+  },
+  quantitySuffix: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   notesInput: {
     fontSize: 14, fontFamily: 'Inter_400Regular',
     borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,

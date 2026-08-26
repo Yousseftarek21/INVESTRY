@@ -219,10 +219,15 @@ export interface PeriodPerformance {
  * cost basis (same caveat as before: cost basis is user-entered and could
  * be backdated, but EGX prices are public and checkable, unlike real
  * estate/personal-asset valuations — a materially narrower risk). A stock
- * bought during the period itself is excluded from the ratio entirely
- * (contributes to neither side) rather than guessed at, since there's no
- * fair baseline for it — accepted as a real, honestly-disclosed gap rather
- * than another fabricated number.
+ * bought (or last quantity-edited) DURING the period instead uses the
+ * server-stamped priceAtCreationEgp/priceAtLastEditEgp captured the instant
+ * that happened (never client-supplied — see POST/PUT /holdings) as its
+ * baseline, folded into the same ratio — a real, unfakeable "how has this
+ * stock moved since it entered the portfolio" contribution instead of being
+ * excluded outright. Only a stock with no stamp at all (older data from
+ * before this stamping existed) is excluded from the ratio entirely
+ * (contributes to neither side) — accepted as a real, honestly-disclosed
+ * gap rather than another fabricated number.
  *
  * Returns pctReturn: null when the user has nothing eligible to measure at
  * all (no gold/silver held and no pre-existing stock holdings/sales) — not
@@ -256,8 +261,23 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
       if (tradingDayKey(row.createdAt) < cutoffDateKey) {
         stockCurrent += value;
         stockBaselineCost += costBasisEGP(holding, prices.usdToEgp);
+      } else {
+        // Bought during this period — no pre-period cost basis to ratio
+        // against, but the server-stamped price captured the instant this
+        // lot was created/last edited (priceAtCreationEgp/
+        // priceAtLastEditEgp, never client-supplied — see POST/PUT
+        // /holdings) is a real, unfakeable baseline for "how has this stock
+        // moved since it entered the portfolio." Folded into the same
+        // ratio as pre-period stock so it contributes a real % instead of
+        // being excluded outright.
+        const stampedPrice = (holding.priceAtLastEditEgp ?? holding.priceAtCreationEgp) as number | undefined;
+        if (typeof stampedPrice === "number" && Number.isFinite(stampedPrice)) {
+          stockCurrent += value;
+          stockBaselineCost += (Number(holding.shares) || 0) * stampedPrice;
+        }
+        // No stamp available (older data from before stamping existed):
+        // excluded entirely, exactly as before — never fabricated.
       }
-      // Stock bought during the period: excluded entirely, neither side.
     }
   }
 

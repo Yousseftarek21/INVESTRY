@@ -384,6 +384,10 @@ const en = {
   confirmRedeemCta: 'Confirm Redemption',
   sellHoldingInvalidAmount: 'Enter a valid amount',
   sellHoldingFailed: 'Could not record this sale — please try again.',
+  sellQuantityLabel: 'Quantity to Sell',
+  sellQuantityAvailableLabel: 'Available',
+  sellHoldingInvalidQuantity: 'Enter a valid quantity to sell.',
+  sellHoldingQuantityExceeds: "You don't have that much to sell.",
   holdingNotFound: 'This investment could not be found.',
   remainingBalanceWarning: (amount: string) => `This property still has ${amount} EGP remaining on its installment plan. You can still record the sale — just make sure to settle the balance separately.` as string,
   notesPlaceholderOptional: 'Add a note...',
@@ -955,6 +959,10 @@ const en = {
 
   // HoldingCard labels
   sharesLabel: 'shares',
+
+  // Lot picker (holdings grouped into one card with 2+ lots)
+  lotPickerTitle: 'Choose a lot',
+  lotPickerHint: 'This card combines multiple additions — pick one to edit, sell, or delete.',
 
   // LaunchAccess
 
@@ -1840,6 +1848,10 @@ const ar: typeof en = {
   confirmRedeemCta: 'تأكيد الاسترداد',
   sellHoldingInvalidAmount: 'أدخل مبلغًا صحيحًا',
   sellHoldingFailed: 'تعذر تسجيل عملية البيع — حاول مرة أخرى.',
+  sellQuantityLabel: 'الكمية المراد بيعها',
+  sellQuantityAvailableLabel: 'المتاح',
+  sellHoldingInvalidQuantity: 'أدخل كمية صحيحة للبيع.',
+  sellHoldingQuantityExceeds: 'لا تملك هذه الكمية للبيع.',
   holdingNotFound: 'تعذر العثور على هذا الاستثمار.',
   remainingBalanceWarning: (amount: string) => `لا يزال على هذا العقار ${amount} جنيه متبقٍ من خطة الأقساط. يمكنك تسجيل البيع رغم ذلك — فقط تأكد من تسوية الرصيد بشكل منفصل.` as string,
   notesPlaceholderOptional: 'أضف ملاحظة...',
@@ -2406,6 +2418,10 @@ const ar: typeof en = {
 
   // HoldingCard labels
   sharesLabel: 'أسهم',
+
+  // Lot picker (holdings grouped into one card with 2+ lots)
+  lotPickerTitle: 'اختر دفعة',
+  lotPickerHint: 'تجمع هذه البطاقة عدة إضافات — اختر واحدة للتعديل أو البيع أو الحذف.',
 
   // LaunchAccess
 

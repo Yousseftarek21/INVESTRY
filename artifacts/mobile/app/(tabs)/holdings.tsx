@@ -15,6 +15,7 @@ import { HoldingCard } from '@/components/HoldingCard';
 
 import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { Holding, MarketPrices } from '@/types';
+import { groupLots, LotGroup } from '@/utils/lotGrouping';
 
 function FadeInCard({ index, children }: { index: number; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -142,6 +143,10 @@ export default function HoldingsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [showSortPicker, setShowSortPicker] = useState(false);
+  // Set when a card represents 2+ separately-tracked lots (see
+  // utils/lotGrouping.ts) and was tapped — opens a picker so Edit/Sell/
+  // Delete can target the specific lot instead of the combined display total.
+  const [lotPickerGroup, setLotPickerGroup] = useState<LotGroup | null>(null);
 
   const TYPE_LABELS: Record<Holding['type'], string> = {
     gold: t.goldGroup,
@@ -158,27 +163,35 @@ export default function HoldingsScreen() {
     return holdings.filter(h => getHoldingSearchText(h).includes(q));
   }, [holdings, searchQuery]);
 
+  // Same-asset lots (e.g. two separate gold-24k purchases) collapse into one
+  // card here — see utils/lotGrouping.ts. Sorting/filtering above already
+  // operates on the real, individual holdings; this is purely a display
+  // step, so it happens last, after everything else.
   const grouped = useMemo(() => {
-    const groups = filtered.reduce<Record<string, Holding[]>>((acc, h) => {
+    const byType = filtered.reduce<Record<string, Holding[]>>((acc, h) => {
       if (!acc[h.type]) acc[h.type] = [];
       acc[h.type].push(h);
       return acc;
     }, {});
+    const groups: Record<string, LotGroup[]> = {};
+    for (const type of Object.keys(byType)) {
+      groups[type] = groupLots(byType[type]);
+    }
     if (sortMode === 'value') {
       for (const type of Object.keys(groups)) {
-        groups[type].sort((a, b) => getHoldingValue(b, prices) - getHoldingValue(a, prices));
+        groups[type].sort((a, b) => getHoldingValue(b.displayHolding, prices) - getHoldingValue(a.displayHolding, prices));
       }
     } else if (sortMode === 'gain') {
       for (const type of Object.keys(groups)) {
         groups[type].sort((a, b) => {
-          const gA = getHoldingValue(a, prices) - getHoldingCost(a);
-          const gB = getHoldingValue(b, prices) - getHoldingCost(b);
+          const gA = getHoldingValue(a.displayHolding, prices) - getHoldingCost(a.displayHolding);
+          const gB = getHoldingValue(b.displayHolding, prices) - getHoldingCost(b.displayHolding);
           return gB - gA;
         });
       }
     } else if (sortMode === 'date') {
       for (const type of Object.keys(groups)) {
-        groups[type].sort((a, b) => (b.purchaseDate ?? '').localeCompare(a.purchaseDate ?? ''));
+        groups[type].sort((a, b) => (b.displayHolding.purchaseDate ?? '').localeCompare(a.displayHolding.purchaseDate ?? ''));
       }
     }
     return groups;
@@ -375,15 +388,16 @@ export default function HoldingsScreen() {
                 </View>
               </View>
               <View style={styles.groupItems}>
-                {grouped[type].map((h, idx) => (
-                  <FadeInCard key={h.id} index={idx}>
-                    <SwipeToDelete onDelete={() => handleDelete(h.id)}>
+                {grouped[type].map((group, idx) => (
+                  <FadeInCard key={group.key} index={idx}>
+                    <SwipeToDelete onDelete={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleDelete(group.lots[0].id))}>
                       <HoldingCard
-                        holding={h}
+                        holding={group.displayHolding}
                         prices={prices}
                         hideSubtitle
-                        onEdit={() => handleEdit(h.id)}
-                        onSell={() => handleSell(h.id)}
+                        lotCount={group.lots.length > 1 ? group.lots.length : undefined}
+                        onEdit={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleEdit(group.lots[0].id))}
+                        onSell={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleSell(group.lots[0].id))}
                       />
                     </SwipeToDelete>
                   </FadeInCard>
@@ -418,6 +432,51 @@ export default function HoldingsScreen() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={!!lotPickerGroup} animationType="slide" transparent onRequestClose={() => setLotPickerGroup(null)}>
+        <TouchableOpacity style={confirmStyles.pickerOverlay} activeOpacity={1} onPress={() => setLotPickerGroup(null)}>
+          <View style={[confirmStyles.pickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[confirmStyles.pickerSheetTitle, { color: colors.text }]}>{t.lotPickerTitle}</Text>
+            <Text style={[styles.lotPickerHint, { color: colors.mutedForeground }]}>{t.lotPickerHint}</Text>
+            {lotPickerGroup?.lots
+              .slice()
+              .sort((a, b) => (b.purchaseDate ?? '').localeCompare(a.purchaseDate ?? ''))
+              .map(lot => {
+                const qty = lot.type === 'gold' || lot.type === 'silver' ? lot.grams : lot.type === 'stock' ? lot.shares : null;
+                const unit = lot.type === 'stock' ? t.sharesLabel : 'g';
+                return (
+                  <View key={lot.id} style={[styles.lotRow, { borderColor: colors.border }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.lotRowQty, { color: colors.text }]}>{qty}{unit === 'g' ? 'g' : ` ${unit}`}</Text>
+                      <Text style={[styles.lotRowDate, { color: colors.mutedForeground }]}>{lot.purchaseDate}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => { setLotPickerGroup(null); handleEdit(lot.id); }}
+                      style={styles.lotRowAction}
+                      hitSlop={8}
+                    >
+                      <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => { setLotPickerGroup(null); handleSell(lot.id); }}
+                      style={styles.lotRowAction}
+                      hitSlop={8}
+                    >
+                      <Feather name="check-circle" size={16} color={colors.green} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => { setLotPickerGroup(null); handleDelete(lot.id); }}
+                      style={styles.lotRowAction}
+                      hitSlop={8}
+                    >
+                      <Feather name="trash-2" size={16} color={colors.red} />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -516,6 +575,18 @@ const styles = StyleSheet.create({
   },
   filterBtn: {
     width: 42, height: 42, borderRadius: 14, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  lotPickerHint: { fontSize: 13, fontFamily: 'Inter_400Regular', marginBottom: 4 },
+  lotRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderTopWidth: 1, paddingVertical: 12,
+  },
+  lotRowQty: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  lotRowDate: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  lotRowAction: {
+    width: 32, height: 32, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
   },
 });

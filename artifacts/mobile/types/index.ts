@@ -12,10 +12,18 @@ export type PersonalAssetCurrency = 'EGP' | 'USD';
 
 // createdAt/updatedAt (ISO strings, set by the server — see
 // GET /api/holdings) tell "touched today" from "untouched": the Home tab's
-// Today's Change badge (touchedToday in index.tsx/analytics.tsx) excludes a
-// holding's contribution when it was added or edited today, so bumping a
-// quantity right as the market moves can't inflate the badge. Optional
-// because older cached/local data may not have them yet.
+// Today's Change badge (touchedToday in index.tsx/analytics.tsx) uses a
+// holding's real stamped price instead of the day's full price % when it
+// was added or edited today, so bumping a quantity right as the market
+// moves can't inflate the badge. Optional because older cached/local data
+// may not have them yet.
+//
+// priceAtCreationEgp/priceAtLastEditEgp (EGP per gram/share, gold/silver/
+// stock only) are stamped server-side the instant a lot is created/edited —
+// never client-supplied, see POST/PUT /holdings in the API. This is the
+// unfakeable baseline "today's real movement since this lot existed" is
+// measured from, instead of either the whole day's % (unfair to a lot that
+// didn't exist for all of it) or zero (uninformative).
 export interface GoldHolding {
   id: string;
   type: 'gold';
@@ -27,6 +35,8 @@ export interface GoldHolding {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  priceAtCreationEgp?: number;
+  priceAtLastEditEgp?: number;
 }
 
 export interface SilverHolding {
@@ -39,6 +49,8 @@ export interface SilverHolding {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  priceAtCreationEgp?: number;
+  priceAtLastEditEgp?: number;
 }
 
 export interface StockHolding {
@@ -52,6 +64,8 @@ export interface StockHolding {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  priceAtCreationEgp?: number;
+  priceAtLastEditEgp?: number;
 }
 
 export interface RealEstateHolding {

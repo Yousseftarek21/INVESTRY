@@ -17,7 +17,7 @@ interface HoldingsContextValue {
   addHolding: (holding: Holding) => Promise<void>;
   removeHolding: (id: string) => Promise<void>;
   updateHolding: (holding: Holding) => Promise<void>;
-  sellHolding: (id: string, saleProceeds: number, saleDate: string, notes?: string) => Promise<void>;
+  sellHolding: (id: string, saleProceeds: number, saleDate: string, notes?: string, quantity?: number) => Promise<void>;
   isLoading: boolean;
   syncError: string | null;
 }
@@ -205,17 +205,40 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   // ── Sell (records a realized sale, then removes locally — like remove,
   // but re-throws on failure like add/update since a "sold" action that
   // silently didn't save is worse than one that visibly failed) ───────────
-  const sellHolding = useCallback(async (id: string, saleProceeds: number, saleDate: string, notes?: string) => {
+  //
+  // `quantity` less than the lot's full grams/shares is a PARTIAL sale — the
+  // server shrinks this same lot in place instead of deleting it (see
+  // POST /holdings/:id/sell), so the local state mirrors that: update the
+  // lot's quantity rather than removing it. Omitting quantity, or passing
+  // the full amount, behaves exactly as before.
+  const sellHolding = useCallback(async (id: string, saleProceeds: number, saleDate: string, notes?: string, quantity?: number) => {
     if (!userId) return;
     const t = await token();
     if (!t) throw new Error('Not signed in');
     const res = await apiFetch(`/api/holdings/${id}/sell`, t, {
       method: 'POST',
-      body: JSON.stringify({ saleProceeds, saleDate, notes }),
+      body: JSON.stringify({ saleProceeds, saleDate, notes, quantity }),
     });
     if (!res.ok) throw new Error(`${res.status}`);
     setHoldings(prev => {
-      const next = prev.filter(h => h.id !== id);
+      const existing = prev.find(h => h.id === id);
+      let fullQty: number | null = null;
+      if (existing) {
+        if (existing.type === 'gold' || existing.type === 'silver') fullQty = existing.grams;
+        else if (existing.type === 'stock') fullQty = existing.shares;
+      }
+      const isPartial = existing != null && quantity != null && fullQty != null && quantity < fullQty - 1e-9;
+
+      let next: Holding[];
+      if (isPartial && existing) {
+        const remaining = fullQty! - quantity!;
+        const updated = (existing.type === 'stock'
+          ? { ...existing, shares: remaining, updatedAt: new Date().toISOString() }
+          : { ...existing, grams: remaining, updatedAt: new Date().toISOString() }) as Holding;
+        next = prev.map(h => h.id === id ? updated : h);
+      } else {
+        next = prev.filter(h => h.id !== id);
+      }
       persist(next, userId);
       return next;
     });

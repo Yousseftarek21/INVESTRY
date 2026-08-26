@@ -21,6 +21,8 @@ interface HoldingCardProps {
   onSell?: () => void;
   hideValues?: boolean;
   hideSubtitle?: boolean;
+  /** Set when `holding` is a combined display total for 2+ separately-tracked lots (see utils/lotGrouping.ts) — shows a small count so it's clear this card represents more than one purchase, each tracked with its own real price/date underneath. */
+  lotCount?: number;
 }
 
 function personalAssetValueEGP(holding: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -127,7 +129,7 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   fixed_income: '#22C55E',
 };
 
-export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideSubtitle }: HoldingCardProps) {
+export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideSubtitle, lotCount }: HoldingCardProps) {
   const colors = useColors();
   const t = useT();
   const labels: HoldingLabels = {
@@ -154,7 +156,14 @@ export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideS
       </View>
 
       <View style={styles.info}>
-        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{getTitle(holding, labels)}</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{getTitle(holding, labels)}</Text>
+          {!!lotCount && (
+            <View style={[styles.lotBadge, { backgroundColor: colors.mutedForeground + '18' }]}>
+              <Text style={[styles.lotBadgeText, { color: colors.mutedForeground }]}>×{lotCount}</Text>
+            </View>
+          )}
+        </View>
         {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>}
       </View>
 
@@ -240,8 +249,22 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   title: {
     fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+  },
+  lotBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  lotBadgeText: {
+    fontSize: 10,
     fontFamily: 'Inter_700Bold',
   },
   subtitle: {

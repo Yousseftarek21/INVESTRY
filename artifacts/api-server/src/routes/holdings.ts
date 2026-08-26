@@ -163,16 +163,28 @@ router.delete("/holdings/:id", async (req, res) => {
 });
 
 // POST /api/holdings/:id/sell — record a realized sale (or redemption, for
-// fixed_income) and remove the holding from the active list. Deliberately
-// separate from DELETE: this is for an actual sale event with a financial
-// record kept afterward, not for removing a mistaken entry — DELETE stays
-// unchanged for that case, both actions live side by side on the card.
+// fixed_income) against ONE specific holding (one lot, once per-lot tracking
+// is in play). Deliberately separate from DELETE: this is for an actual sale
+// event with a financial record kept afterward, not for removing a mistaken
+// entry — DELETE stays unchanged for that case, both actions live side by
+// side on the card.
+//
+// `quantity` is optional and only meaningful for gold/silver/stock (the
+// fungible, quantity-bearing types): omit it, or pass the lot's full
+// quantity, to sell the whole lot exactly as before. Pass less than the
+// full quantity to PARTIALLY sell this lot — e.g. holding 100g, selling
+// 10g — which records a realized sale for just that portion and shrinks
+// this same lot in place, rather than forcing an all-or-nothing sale or a
+// manual "edit the grams down with no sale record" workaround. The
+// remaining portion keeps this lot's own priceAtCreationEgp/
+// priceAtLastEditEgp/purchaseDate untouched — it's still the same lot,
+// just smaller, not a new one.
 router.post("/holdings/:id/sell", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { id } = req.params;
-  const body = req.body as { saleProceeds?: number; saleDate?: string; notes?: string };
+  const body = req.body as { saleProceeds?: number; saleDate?: string; notes?: string; quantity?: number };
   const saleProceeds = Number(body.saleProceeds);
   if (!Number.isFinite(saleProceeds) || saleProceeds < 0) {
     res.status(400).json({ error: "saleProceeds must be a non-negative number" });
@@ -196,7 +208,26 @@ router.post("/holdings/:id/sell", async (req, res) => {
 
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
     const prices = await getCachedPrices();
-    const costBasis = costBasisEGP(holding, prices.usdToEgp);
+    const fullQuantity = holdingQuantity(holding);
+    const isFungible = holding.type === "gold" || holding.type === "silver" || holding.type === "stock";
+
+    let sellQuantity = fullQuantity;
+    if (isFungible && body.quantity != null) {
+      const requested = Number(body.quantity);
+      if (!Number.isFinite(requested) || requested <= 0) {
+        res.status(400).json({ error: "quantity must be a positive number" });
+        return;
+      }
+      if (fullQuantity != null && requested > fullQuantity + 1e-9) {
+        res.status(400).json({ error: "quantity exceeds this holding's remaining amount" });
+        return;
+      }
+      sellQuantity = requested;
+    }
+
+    const isPartial = isFungible && fullQuantity != null && sellQuantity != null && sellQuantity < fullQuantity - 1e-9;
+    const portion = isPartial && fullQuantity ? sellQuantity! / fullQuantity : 1;
+    const costBasis = costBasisEGP(holding, prices.usdToEgp) * portion;
     const realizedGainLoss = saleProceeds - costBasis;
 
     const soldId = generateSoldHoldingId();
@@ -204,7 +235,7 @@ router.post("/holdings/:id/sell", async (req, res) => {
       originalHoldingId: id,
       type: holding.type,
       label: holdingLabel(holding),
-      quantity: holdingQuantity(holding),
+      quantity: isPartial ? sellQuantity : fullQuantity,
       purchaseDate: holding.purchaseDate ?? null,
       // The trading day this holding was actually added to the app (not the
       // user-entered purchaseDate, which they could backdate) — lets the
@@ -229,15 +260,30 @@ router.post("/holdings/:id/sell", async (req, res) => {
         data: encryptForStorage(soldData),
       });
 
-      await tx
-        .delete(holdingsTable)
-        .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)));
+      if (isPartial) {
+        // Shrink this lot in place instead of deleting it — the remaining
+        // quantity is still the same original lot (same price stamps, same
+        // purchaseDate), just smaller.
+        const remainingQty = fullQuantity! - sellQuantity!;
+        const quantityField = holding.type === "stock" ? "shares" : "grams";
+        const remainingData = { ...holding, [quantityField]: remainingQty };
+        delete (remainingData as Record<string, unknown>).id;
+        delete (remainingData as Record<string, unknown>).type;
+        await tx
+          .update(holdingsTable)
+          .set({ data: encryptForStorage(remainingData), updatedAt: new Date() })
+          .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)));
+      } else {
+        await tx
+          .delete(holdingsTable)
+          .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)));
 
-      // Same cleanup as DELETE — a sold holding's old "Investment added" /
-      // "updated" entries shouldn't keep showing in the bell either.
-      await tx
-        .delete(activityLogTable)
-        .where(and(eq(activityLogTable.userId, userId), eq(activityLogTable.entityId, id)));
+        // Same cleanup as DELETE — a sold holding's old "Investment added" /
+        // "updated" entries shouldn't keep showing in the bell either.
+        await tx
+          .delete(activityLogTable)
+          .where(and(eq(activityLogTable.userId, userId), eq(activityLogTable.entityId, id)));
+      }
     });
 
     res.status(201).json({ id: soldId, ...soldData });
