@@ -2,7 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { db, usersTable, holdingsTable, portfolioSnapshotsTable, marketCloseSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
 import { decryptFromStorage } from "./encryption";
 import { goldPurity, type GoldKarat, type StoredHolding } from "./portfolioValue";
-import { tradingDayKey } from "./cairoDate";
+import { tradingDayKey, isSaturday } from "./cairoDate";
 import { SANITY_MAX_PCT } from "./portfolioAlertCron";
 
 // Explicit, requested starting point for backfilled history — earlier days
@@ -98,7 +98,11 @@ export async function backfillDailyChanges(): Promise<{ daysWritten: number; use
       const baseline = pureGoldGrams * prev.goldEgp24k + silverGrams * prev.silverEgp;
       if (baseline <= 0) continue;
       const current = pureGoldGrams * cur.goldEgp24k + silverGrams * cur.silverEgp;
-      const pctReturn = ((current - baseline) / baseline) * 100;
+      // Every market this app prices is closed the entire span of a
+      // Saturday trading day (see isSaturday's own comment) — any nonzero
+      // ratio here is live-feed jitter, not a real move, so it's forced to
+      // exactly 0 rather than trusted.
+      const pctReturn = isSaturday(cur.date) ? 0 : ((current - baseline) / baseline) * 100;
 
       await db
         .insert(dailyChangeSnapshotsTable)
@@ -171,8 +175,14 @@ export async function backfillDailyChangesFromSnapshots(): Promise<{ daysWritten
       if (existingDays.has(cur.date)) continue; // never overwrite a real or metals-backfilled value
       if (prev.totalValue <= 0) continue;
 
-      const pctReturn = ((cur.totalValue - prev.totalValue) / prev.totalValue) * 100;
-      if (Math.abs(pctReturn) > SANITY_MAX_PCT) continue; // almost certainly a composition change, not real movement — skip rather than mislead
+      // Every market this app prices is closed the entire span of a
+      // Saturday trading day (see isSaturday's own comment) — force 0
+      // rather than trust this method's already-weaker raw value ratio,
+      // which is even more likely to be a composition change (a holding
+      // added/removed) than real movement on a day nothing was trading.
+      const rawPctReturn = ((cur.totalValue - prev.totalValue) / prev.totalValue) * 100;
+      if (!isSaturday(cur.date) && Math.abs(rawPctReturn) > SANITY_MAX_PCT) continue; // almost certainly a composition change, not real movement — skip rather than mislead
+      const pctReturn = isSaturday(cur.date) ? 0 : rawPctReturn;
 
       await db
         .insert(dailyChangeSnapshotsTable)

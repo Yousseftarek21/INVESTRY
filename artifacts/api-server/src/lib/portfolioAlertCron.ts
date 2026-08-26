@@ -3,7 +3,7 @@ import { db, usersTable, portfolioSnapshotsTable, activityLogTable, dailyChangeS
 import { computeUserPortfolioValue, computePeriodPerformance } from "./portfolioValue";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
-import { tradingDayKey, tradingDayStart } from "./cairoDate";
+import { tradingDayKey, tradingDayStart, isSaturday } from "./cairoDate";
 
 // Checked every 5 minutes throughout the day — each check compares
 // today's live value against yesterday's close and may push again if the
@@ -106,7 +106,14 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   // block: a failure here must never take down value tracking or alerts.
   try {
     const yesterday = tradingDayKey(new Date(tradingDayStart().getTime() - 1));
-    const { pctReturn } = await computePeriodPerformance(userId, yesterday);
+    const { pctReturn: computedPctReturn } = await computePeriodPerformance(userId, yesterday);
+    // Every market this app prices is closed the entire span of a Saturday
+    // trading day (see isSaturday's own comment) — any nonzero reading here
+    // is live-feed jitter, not a real move, so it's overridden to exactly 0
+    // rather than trusted. Only overrides a real number; a user with
+    // nothing eligible to measure (null) still gets no row at all, same as
+    // any other day.
+    const pctReturn = computedPctReturn != null && isSaturday(today) ? 0 : computedPctReturn;
     // Hard guardrail, independent of whatever produced the number: a real
     // diversified portfolio doesn't move this much in a day (same
     // SANITY_MAX_PCT threshold already used for push-alert milestones
