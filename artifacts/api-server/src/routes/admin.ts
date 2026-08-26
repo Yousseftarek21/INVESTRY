@@ -122,18 +122,22 @@ router.get("/admin/user-debug", async (req, res) => {
   }
 
   const email = typeof req.query.email === "string" ? req.query.email.trim() : "";
-  if (!email) {
-    res.status(400).json({ error: "email query param is required" });
+  const userIdParam = typeof req.query.userId === "string" ? req.query.userId.trim() : "";
+  if (!email && !userIdParam) {
+    res.status(400).json({ error: "email or userId query param is required" });
     return;
   }
 
   try {
-    const { data: clerkUsers } = await clerkClient.users.getUserList({ emailAddress: [email] });
-    if (clerkUsers.length === 0) {
-      res.status(404).json({ error: "No Clerk user with that email" });
-      return;
+    let userId = userIdParam;
+    if (!userId) {
+      const { data: clerkUsers } = await clerkClient.users.getUserList({ emailAddress: [email] });
+      if (clerkUsers.length === 0) {
+        res.status(404).json({ error: "No Clerk user with that email" });
+        return;
+      }
+      userId = clerkUsers[0].id;
     }
-    const userId = clerkUsers[0].id;
 
     const [holdings, snapshots, dailyChanges] = await Promise.all([
       db
