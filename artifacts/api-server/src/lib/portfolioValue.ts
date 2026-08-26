@@ -224,10 +224,15 @@ export interface PeriodPerformance {
  * that happened (never client-supplied — see POST/PUT /holdings) as its
  * baseline, folded into the same ratio — a real, unfakeable "how has this
  * stock moved since it entered the portfolio" contribution instead of being
- * excluded outright. Only a stock with no stamp at all (older data from
- * before this stamping existed) is excluded from the ratio entirely
- * (contributes to neither side) — accepted as a real, honestly-disclosed
- * gap rather than another fabricated number.
+ * excluded outright. A stock with NO stamp at all is treated as if it
+ * predates the period instead (cost basis vs current, same as any other
+ * pre-period holding) rather than excluded: since every stock creation is
+ * stamped unconditionally from the moment this feature shipped, a stamp-less
+ * row is proof the holding already existed before that — it couldn't
+ * possibly have been added to exploit "just created, no stamp yet" leniency,
+ * because that leniency didn't exist yet when it was added. This is what
+ * keeps the leaderboard from staying permanently skewed toward gold-only
+ * ties for every user whose stock holdings predate this rollout.
  *
  * Returns pctReturn: null when the user has nothing eligible to measure at
  * all (no gold/silver held and no pre-existing stock holdings/sales) — not
@@ -258,25 +263,32 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
       silverGrams += Number(holding.grams) || 0;
     } else if (holding.type === "stock") {
       const value = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
-      if (tradingDayKey(row.createdAt) < cutoffDateKey) {
+      const stampedPrice = (holding.priceAtLastEditEgp ?? holding.priceAtCreationEgp) as number | undefined;
+      const hasStamp = typeof stampedPrice === "number" && Number.isFinite(stampedPrice);
+
+      if (tradingDayKey(row.createdAt) < cutoffDateKey || !hasStamp) {
+        // Predates the period — OR predates the stamping feature itself
+        // (no stamp at all). The second case is proof this lot was already
+        // sitting in the database before stamping shipped, since every
+        // stock creation is stamped unconditionally from that point on: a
+        // holding that couldn't possibly have been created to exploit "just
+        // added, no stamp yet" leniency (because that leniency didn't exist
+        // when it was added) gets the same honest cost-basis treatment as
+        // any other pre-period holding, rather than being excluded just
+        // because it happens to fall inside this calendar period.
         stockCurrent += value;
         stockBaselineCost += costBasisEGP(holding, prices.usdToEgp);
       } else {
-        // Bought during this period — no pre-period cost basis to ratio
-        // against, but the server-stamped price captured the instant this
-        // lot was created/last edited (priceAtCreationEgp/
-        // priceAtLastEditEgp, never client-supplied — see POST/PUT
-        // /holdings) is a real, unfakeable baseline for "how has this stock
-        // moved since it entered the portfolio." Folded into the same
-        // ratio as pre-period stock so it contributes a real % instead of
-        // being excluded outright.
-        const stampedPrice = (holding.priceAtLastEditEgp ?? holding.priceAtCreationEgp) as number | undefined;
-        if (typeof stampedPrice === "number" && Number.isFinite(stampedPrice)) {
-          stockCurrent += value;
-          stockBaselineCost += (Number(holding.shares) || 0) * stampedPrice;
-        }
-        // No stamp available (older data from before stamping existed):
-        // excluded entirely, exactly as before — never fabricated.
+        // Bought (or last edited) during this period, WITH a real stamp —
+        // no pre-period cost basis to ratio against, but the server-stamped
+        // price captured the instant this lot was created/last edited
+        // (priceAtCreationEgp/priceAtLastEditEgp, never client-supplied —
+        // see POST/PUT /holdings) is a real, unfakeable baseline for "how
+        // has this stock moved since it entered the portfolio." Folded into
+        // the same ratio as pre-period stock so it contributes a real %
+        // instead of being excluded outright.
+        stockCurrent += value;
+        stockBaselineCost += (Number(holding.shares) || 0) * stampedPrice!;
       }
     }
   }
