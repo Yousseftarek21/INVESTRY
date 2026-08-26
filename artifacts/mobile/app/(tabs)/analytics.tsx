@@ -493,6 +493,15 @@ const hs = StyleSheet.create({
   card: {},
 });
 
+const ts = StyleSheet.create({
+  row: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 14 },
+  tab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 9, borderRadius: 11, borderWidth: 1,
+  },
+  tabTxt: { fontSize: 12.5, fontFamily: 'Inter_700Bold' },
+});
+
 // ─── Section label ─────────────────────────────────────────────────────────────
 
 type SLabelIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
@@ -541,17 +550,19 @@ function LiveDot() {
 
 // ─── Empty state ───────────────────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ icon = 'bar-chart-2', title, hint }: {
+  icon?: keyof typeof Feather.glyphMap; title?: string; hint?: string;
+} = {}) {
   const colors = useColors();
   const t = useT();
   return (
     <View style={[em.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={[em.icon, { backgroundColor: colors.muted }]}>
-        <Feather name="bar-chart-2" size={28} color={colors.mutedForeground} />
+        <Feather name={icon} size={28} color={colors.mutedForeground} />
       </View>
-      <Text style={[em.title, { color: colors.text }]}>{t.noAnalyticsYetTitle}</Text>
+      <Text style={[em.title, { color: colors.text }]}>{title ?? t.noAnalyticsYetTitle}</Text>
       <Text style={[em.sub, { color: colors.mutedForeground }]}>
-        {t.noAnalyticsYetHint}
+        {hint ?? t.noAnalyticsYetHint}
       </Text>
     </View>
   );
@@ -630,6 +641,13 @@ export default function AnalyticsScreen() {
   const isLoading = pricesLoading || holdingsLoading;
 
   const [period, setPeriod] = useState<Period>('ALL');
+  // Top-level Analytics grouping — was 15 sections stacked in one endless
+  // scroll (health/chart/allocation/insights alongside rebalancing/
+  // performers/breakdown alongside history), which read as crowded and
+  // unorganized rather than as three actually-related groups. Splitting by
+  // what each group answers: "how am I doing overall," "what exactly do I
+  // hold," "what happened over time" — not by arbitrary card order.
+  const [activeSection, setActiveSection] = useState<'overview' | 'breakdown' | 'history'>('overview');
   const [chartWidth, setChartWidth] = useState(0);
 
   // ── Maths ─────────────────────────────────────────────────────────────────────
@@ -1120,7 +1138,36 @@ export default function AnalyticsScreen() {
           <EmptyState />
         ) : (
           <>
+            {/* ── Top-level grouping (was one endless scroll) ──────────── */}
+            <View style={[ts.row, { backgroundColor: colors.muted }]}>
+              {([
+                { key: 'overview' as const, icon: 'grid' as const, label: t.analyticsTabOverview },
+                { key: 'breakdown' as const, icon: 'pie-chart' as const, label: t.analyticsTabBreakdown },
+                { key: 'history' as const, icon: 'clock' as const, label: t.analyticsTabHistory },
+              ]).map(({ key, icon, label }) => {
+                const active = activeSection === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => { impact(); setActiveSection(key); }}
+                    style={[ts.tab, { backgroundColor: active ? colors.card : 'transparent', borderColor: active ? colors.border : 'transparent' }]}
+                  >
+                    <Feather name={icon} size={13} color={active ? colors.text : colors.mutedForeground} />
+                    <Text style={[ts.tabTxt, { color: active ? colors.text : colors.mutedForeground }]}>{label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* History can be genuinely empty for a new account — no sales
+                yet, no daily record yet — which would otherwise render as a
+                blank area under the tab with no explanation. */}
+            {activeSection === 'history' && soldHoldings.length === 0 && dailyChanges.length === 0 && (
+              <EmptyState icon="clock" title={t.noHistoryYetTitle} hint={t.noHistoryYetHint} />
+            )}
+
             {/* ── Health hero ──────────────────────────────────────────── */}
+            {activeSection === 'overview' && (
             <View style={[s.healthHero, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[s.heroSectionLabel, { color: colors.mutedForeground }]}>{t.portfolioHealthLabel}</Text>
               <View style={s.healthArcWrap}>
@@ -1136,8 +1183,10 @@ export default function AnalyticsScreen() {
                 {t.informationalDisclaimer}
               </Text>
             </View>
+            )}
 
             {/* ── Performance chart ────────────────────────────────────── */}
+            {activeSection === 'overview' && (
             <View style={s.chartSection}>
               <SLabel icon="activity" title={t.performanceLabel} sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
               <View
@@ -1231,9 +1280,10 @@ export default function AnalyticsScreen() {
                 );
               })()}
             </View>
+            )}
 
             {/* ── Community comparison ─────────────────────────────────── */}
-            {benchmark?.available && (
+            {activeSection === 'overview' && benchmark?.available && (
               <View style={s.section}>
                 <SLabel
                   icon="users"
@@ -1259,7 +1309,7 @@ export default function AnalyticsScreen() {
             )}
 
             {/* ── Allocation bars ──────────────────────────────────────── */}
-            {sm.totalValue > 0 && (
+            {activeSection === 'overview' && sm.totalValue > 0 && (
               <View style={s.section}>
                 <SLabel icon="pie-chart" title={t.assetAllocationLabel} sub={`${allocSegs.filter(seg => seg.value > 0).length} ${t.classesCount}`} />
                 <AllocationBar segments={allocSegs} />
@@ -1267,7 +1317,7 @@ export default function AnalyticsScreen() {
             )}
 
             {/* ── Rebalancing ──────────────────────────────────────────── */}
-            {sm.totalValue > 0 && (
+            {activeSection === 'breakdown' && sm.totalValue > 0 && (
               <View style={s.section}>
                 <SLabel
                   icon="target"
@@ -1299,7 +1349,7 @@ export default function AnalyticsScreen() {
             )}
 
             {/* ── Performers ───────────────────────────────────────────── */}
-            {performers.length > 0 && (
+            {activeSection === 'breakdown' && performers.length > 0 && (
               <View style={s.section}>
                 <SLabel icon="award" title={t.performersLabel} sub={`${performers.length} ${t.investmentPlural}`} />
                 <View style={s.performersList}>
@@ -1318,7 +1368,7 @@ export default function AnalyticsScreen() {
             )}
 
             {/* ── Realized gains ───────────────────────────────────────── */}
-            {soldHoldings.length > 0 && (
+            {activeSection === 'history' && soldHoldings.length > 0 && (
               <View style={s.section}>
                 <SLabel icon="archive" title={t.realizedGainsLabel} sub={`${soldHoldings.length} ${t.investmentPlural}`} />
                 <Pressable
@@ -1344,7 +1394,7 @@ export default function AnalyticsScreen() {
             )}
 
             {/* ── Daily change history ─────────────────────────────────── */}
-            {dailyChanges.length > 0 && (
+            {activeSection === 'history' && dailyChanges.length > 0 && (
               <View style={s.section}>
                 <SLabel icon="calendar" title={t.dailyHistoryLabel} sub={`${dailyChanges.length} ${t.daysTrackedLabel}`} />
                 <Pressable
@@ -1364,6 +1414,7 @@ export default function AnalyticsScreen() {
             )}
 
             {/* ── Smart insights ───────────────────────────────────────── */}
+            {activeSection === 'overview' && (
             <View style={s.section}>
               <SLabel icon="zap" title={t.smartInsightsLabel} sub={`${insights.length} ${t.observationsLabel}`} />
               <View style={s.insightsList}>
@@ -1375,8 +1426,10 @@ export default function AnalyticsScreen() {
                 {t.insightsDisclaimer}
               </Text>
             </View>
+            )}
 
             {/* ── Asset breakdown (horizontal strip, was 6 stacked cards) ── */}
+            {activeSection === 'breakdown' && (
             <View style={s.section}>
               <SLabel
                 icon="pie-chart"
@@ -1471,6 +1524,7 @@ export default function AnalyticsScreen() {
                 )}
               </ScrollView>
             </View>
+            )}
           </>
         )}
       </PremiumGate>
