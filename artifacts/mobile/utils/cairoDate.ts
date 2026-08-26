@@ -94,6 +94,20 @@ export function touchedToday(updatedAt: string | undefined): boolean {
   return tradingDayKey(new Date(updatedAt)) === tradingDayKey();
 }
 
+// A trading-day dateKey (from tradingDayKey above) is still just a
+// "YYYY-MM-DD" label, so its weekday is ordinary date math — no timezone
+// nuance needed here. Saturday specifically is the one day every market
+// this app prices is fully closed for the entire day: the trading day's
+// 18:00 New York boundary means a Saturday-labeled day runs from Friday
+// 6pm ET (already an hour after COMEX/CME metals close for the week) to
+// Saturday 6pm ET, entirely inside the weekend before Sunday's reopen; and
+// Egypt's EGX trading week is Sunday-Thursday, so EGX is closed that whole
+// span too. Mirrors the server's own isSaturday in cairoDate.ts — see its
+// comment for the full reasoning.
+export function isSaturday(dateKey: string): boolean {
+  return new Date(`${dateKey}T00:00:00Z`).getUTCDay() === 6;
+}
+
 // ─── Africa/Cairo formatting ──────────────────────────────────────────────────
 // Renders the clock time of an instant in Egypt's timezone, for display next
 // to trading-day dates. Which *day* something belongs to is the trading day

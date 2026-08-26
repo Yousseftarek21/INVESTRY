@@ -10,20 +10,20 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { useDailyChanges, DailyChange } from '@/hooks/useDailyChanges';
+import { isSaturday } from '@/utils/cairoDate';
 import { BetaChip } from '@/components/BetaChip';
 
-function Row({ item, locale }: { item: DailyChange; locale: string }) {
+function Row({ item, locale, t }: { item: DailyChange; locale: string; t: ReturnType<typeof useT> }) {
   const colors = useColors();
+  // Saturday is the one day every market this app prices (gold/silver spot,
+  // EGX) is closed for its entire span — see isSaturday's own comment. A
+  // numeric "0.00%" on that day would look like a real, measured reading
+  // when there was nothing to measure; spelling out that the market was
+  // closed is the honest version of the same fact, not a design choice.
+  const marketClosed = isSaturday(item.date);
   const isFlat = Math.abs(item.pctReturn) < 0.005;
   const isGain = item.pctReturn > 0;
-  // Flat is neutral, never green — a 0% reading isn't a gain. NOT tied to
-  // weekends: real data shows gold/USD-EGP keep moving through Egypt's
-  // Fri/Sat banking weekend (confirmed against this account's own
-  // history — every Friday/Saturday had real, often large movement), so
-  // "weekend implies flat" was a wrong assumption and got removed rather
-  // than kept as a misleading "Holiday" label on whichever day happened
-  // to land on exactly 0%.
-  const pctColor = isFlat ? colors.mutedForeground : (isGain ? colors.green : colors.red);
+  const pctColor = marketClosed || isFlat ? colors.mutedForeground : (isGain ? colors.green : colors.red);
   const dateLabel = new Date(`${item.date}T12:00:00Z`).toLocaleDateString(locale, {
     weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC',
   });
@@ -32,7 +32,7 @@ function Row({ item, locale }: { item: DailyChange; locale: string }) {
     <View style={[styles.row, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <Text style={[styles.rowDate, { color: colors.text }]} numberOfLines={1}>{dateLabel}</Text>
       <Text style={[styles.rowPct, { color: pctColor }]} numberOfLines={1}>
-        {isGain ? '+' : ''}{item.pctReturn.toFixed(2)}%
+        {marketClosed ? t.marketClosedLabel : `${isGain ? '+' : ''}${item.pctReturn.toFixed(2)}%`}
       </Text>
     </View>
   );
@@ -86,7 +86,7 @@ export default function DailyHistoryScreen() {
             </View>
           )
         }
-        renderItem={({ item }) => <Row item={item} locale={locale} />}
+        renderItem={({ item }) => <Row item={item} locale={locale} t={t} />}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
     </View>
