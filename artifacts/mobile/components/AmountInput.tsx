@@ -80,8 +80,25 @@ export function AmountInput({ value, onChangeText, keyboardType, ...rest }: Amou
     onChangeText(clean);
 
     const formatted = formatAmountInput(clean);
-    const digitCount = digitCountBefore(raw, editEnd);
-    const end = cursorIndexForDigitCount(formatted, digitCount);
+
+    // Typing the decimal point itself is a special case: digit-counting alone
+    // lands the cursor right after the digit *before* the dot, since the dot
+    // isn't a digit and doesn't advance the count — but that's the position
+    // just BEFORE the dot in the reformatted string, not after it. Left
+    // uncorrected, the very next digit the user types gets inserted before
+    // the dot instead of after it (e.g. "5002" + "." + "5" silently becomes
+    // "50025" instead of "5002.5"). Only applies to a fresh insertion whose
+    // last inserted character is the dot — deletions and mid-string edits
+    // fall through to the normal digit-count path below.
+    const insertedDot = raw.length > prevDisplay.length && raw[editEnd - 1] === '.';
+    let end: number;
+    if (insertedDot) {
+      const dotIndex = formatted.indexOf('.');
+      end = dotIndex === -1 ? formatted.length : dotIndex + 1;
+    } else {
+      const digitCount = digitCountBefore(raw, editEnd);
+      end = cursorIndexForDigitCount(formatted, digitCount);
+    }
     setSelection({ start: end, end });
   };
 
