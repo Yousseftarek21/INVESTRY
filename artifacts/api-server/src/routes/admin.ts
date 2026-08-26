@@ -5,6 +5,7 @@ import { db, usersTable, holdingsTable, portfolioSnapshotsTable, dailyChangeSnap
 import { sendPushToTokens } from "../lib/expoPush";
 import { backfillDailyChanges, backfillDailyChangesFromSnapshots, resetDailyChangeHistory } from "../lib/dailyChangeBackfill";
 import { computeRankedReturns } from "../lib/leaderboardRanking";
+import { fetchIdentities } from "../lib/clerkIdentity";
 
 const router: IRouter = Router();
 
@@ -187,6 +188,47 @@ router.get("/admin/leaderboard-debug", async (req, res) => {
     res.json({ period, count: ranked.length, ranked });
   } catch (err) {
     req.log.error({ err }, "GET /admin/leaderboard-debug failed");
+    res.status(500).json({ error: "Lookup failed" });
+  }
+});
+
+// Full dump of every user's daily_change_snapshots history, with a display
+// name attached (batch Clerk lookup, same helper the leaderboard uses) so
+// it's readable without cross-referencing raw ids by hand.
+//
+//   curl "https://api.investry.app/api/admin/all-daily-changes" \
+//     -H "x-admin-secret: <the secret>"
+router.get("/admin/all-daily-changes", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const rows = await db
+      .select({ userId: dailyChangeSnapshotsTable.userId, date: dailyChangeSnapshotsTable.date, pctReturn: dailyChangeSnapshotsTable.pctReturn })
+      .from(dailyChangeSnapshotsTable)
+      .orderBy(asc(dailyChangeSnapshotsTable.userId), asc(dailyChangeSnapshotsTable.date));
+
+    const userIds = [...new Set(rows.map(r => r.userId))];
+    const identities = await fetchIdentities(userIds);
+
+    const byUser = new Map<string, { userId: string; name: string; days: { date: string; pctReturn: number }[] }>();
+    for (const r of rows) {
+      if (!byUser.has(r.userId)) {
+        byUser.set(r.userId, { userId: r.userId, name: identities.get(r.userId)?.name ?? "?", days: [] });
+      }
+      byUser.get(r.userId)!.days.push({ date: r.date, pctReturn: r.pctReturn });
+    }
+
+    res.json({ userCount: byUser.size, rowCount: rows.length, users: [...byUser.values()] });
+  } catch (err) {
+    req.log.error({ err }, "GET /admin/all-daily-changes failed");
     res.status(500).json({ error: "Lookup failed" });
   }
 });
