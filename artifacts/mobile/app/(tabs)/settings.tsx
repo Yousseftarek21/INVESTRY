@@ -550,6 +550,7 @@ export default function SettingsScreen() {
             <NavRow
               icon="trending-up" iconBg="#00D4AA"
               label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
+              badge={{ text: t.leaderboardBetaChip, color: '#F59E0B' }}
               onPress={() => goTo('/leaderboard')}
               last
             />

@@ -8,6 +8,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
+import { BetaChip } from '@/components/BetaChip';
 
 // A one-tap "want to join?" ask, separate from the leaderboard screen
 // itself: that screen is still how someone arrives on purpose (via
@@ -98,6 +99,7 @@ export function CompetitionInviteBanner() {
             <Feather name="award" size={20} color={GOLD} />
           </View>
           <Text style={[s.eyebrow, { color: GOLD }]}>{t.competitionEyebrow}</Text>
+          <BetaChip label={t.leaderboardBetaChip} />
         </View>
 
         <Text style={[s.title, { color: colors.text }]}>{t.competitionInviteTitle}</Text>
