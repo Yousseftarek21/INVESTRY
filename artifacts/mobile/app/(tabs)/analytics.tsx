@@ -490,7 +490,7 @@ const dh = StyleSheet.create({
 
 const hs = StyleSheet.create({
   strip: { gap: 12, paddingRight: 4 },
-  card: { width: 260 },
+  card: {},
 });
 
 // ─── Section label ─────────────────────────────────────────────────────────────
@@ -609,6 +609,13 @@ export default function AnalyticsScreen() {
   const router = useRouter();
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
+  // Asset breakdown strip's card width — a fixed 260px looked arbitrary and
+  // gave no "peek" of the next card on wider phones (nothing hinting the
+  // strip scrolls), and could crowd out the peek on narrow ones. Sized off
+  // the real screen width instead, minus the 20px screen padding each side
+  // and a deliberate ~14% sliver of the next card showing at the edge.
+  const { width: screenWidth } = useWindowDimensions();
+  const spotlightCardWidth = screenWidth - 40 - 36;
   const scrollRef = useRef<ScrollView>(null);
   const { holdings, isLoading: holdingsLoading } = useHoldings();
   const { cashAccounts } = useCash();
@@ -1371,10 +1378,21 @@ export default function AnalyticsScreen() {
 
             {/* ── Asset breakdown (horizontal strip, was 6 stacked cards) ── */}
             <View style={s.section}>
-              <SLabel icon="pie-chart" title={t.assetBreakdownStripLabel} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={hs.strip}>
+              <SLabel
+                icon="pie-chart"
+                title={t.assetBreakdownStripLabel}
+                sub={`${[sm.goldV, sm.silverV, sm.stockV, sm.reV, sm.paV, sm.fiV].filter(v => v > 0).length} ${t.classesCount}`}
+              />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={hs.strip}
+                decelerationRate="fast"
+                snapToInterval={spotlightCardWidth + 12}
+                snapToAlignment="start"
+              >
                 {sm.goldV > 0 && (
-                  <View style={hs.card}>
+                  <View style={[hs.card, { width: spotlightCardWidth }]}>
                     <MetalSpotlight
                       title={t.goldHoldingsTitle}
                       grams={sm.totalGoldGrams}
@@ -1387,7 +1405,7 @@ export default function AnalyticsScreen() {
                   </View>
                 )}
                 {sm.silverV > 0 && (
-                  <View style={hs.card}>
+                  <View style={[hs.card, { width: spotlightCardWidth }]}>
                     <MetalSpotlight
                       title={t.silverHoldingsTitle}
                       grams={sm.totalSilverGrams}
@@ -1400,7 +1418,7 @@ export default function AnalyticsScreen() {
                   </View>
                 )}
                 {sm.stockV > 0 && (
-                  <View style={hs.card}>
+                  <View style={[hs.card, { width: spotlightCardWidth }]}>
                     <ClassSpotlight
                       title={t.stockHoldingsTitle}
                       countLabel={`${sm.stockCount}`}
@@ -1416,7 +1434,7 @@ export default function AnalyticsScreen() {
                   </View>
                 )}
                 {sm.reV > 0 && (
-                  <View style={hs.card}>
+                  <View style={[hs.card, { width: spotlightCardWidth }]}>
                     <ClassSpotlight
                       title={t.realEstateHoldingsTitle}
                       countLabel={`${sm.reCount}`}
@@ -1428,7 +1446,7 @@ export default function AnalyticsScreen() {
                   </View>
                 )}
                 {sm.paV > 0 && (
-                  <View style={hs.card}>
+                  <View style={[hs.card, { width: spotlightCardWidth }]}>
                     <ClassSpotlight
                       title={t.personalAssetsHoldingsTitle}
                       countLabel={`${sm.paCount}`}
@@ -1440,7 +1458,7 @@ export default function AnalyticsScreen() {
                   </View>
                 )}
                 {sm.fiV > 0 && (
-                  <View style={hs.card}>
+                  <View style={[hs.card, { width: spotlightCardWidth }]}>
                     <ClassSpotlight
                       title={t.fixedIncomeHoldingsTitle}
                       countLabel={`${sm.fiCount}`}
