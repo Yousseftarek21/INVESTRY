@@ -1,15 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 
 function fmtCpt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) {
-    // 999,999 rounds to 1000.0 at this precision, which would misleadingly
-    // print as "1000K" — promote to the M tier instead.
-    if (Number((n / 1_000).toFixed(1)) >= 1000) return `${(n / 1_000_000).toFixed(2)}M`;
-    return `${(n / 1_000).toFixed(1)}K`;
+    // 999,999 rounds to 1000.00 at this precision, which would misleadingly
+    // print as "1000.00K" — promote to the M tier instead.
+    if (Number((n / 1_000).toFixed(2)) >= 1000) return `${(n / 1_000_000).toFixed(2)}M`;
+    return `${(n / 1_000).toFixed(2)}K`;
   }
   return n.toLocaleString('en-EG', { maximumFractionDigits: 0 });
 }
@@ -22,15 +21,11 @@ export interface AllocationSegment {
   label: string;
   value: number;
   color: string;
-  icon: SegmentIcon;
+  // No longer rendered by the chip layout (dot + label + % reads fine
+  // without one at this size) — kept optional so existing callers that
+  // still pass an icon don't need to change.
+  icon?: SegmentIcon;
   quantity?: string;
-}
-
-function SegIcon({ icon, size, color }: { icon: SegmentIcon; size: number; color: string }) {
-  if (typeof icon === 'object' && icon.lib === 'mci') {
-    return <MaterialCommunityIcons name={icon.name as any} size={size} color={color} />;
-  }
-  return <Feather name={icon as any} size={size} color={color} />;
 }
 
 interface Props {
@@ -116,122 +111,106 @@ const bar = StyleSheet.create({
   segment: { height: '100%' },
 });
 
-// ─── Single allocation row ────────────────────────────────────────────────────
+// ─── Allocation chip ──────────────────────────────────────────────────────────
+// Replaces the old one-full-row-per-asset-type layout: a user holding all 6
+// types used to get 6 stacked rows (icon + its own progress bar + qty +
+// value, every one of them permanently visible), which could run to ~300px
+// on its own. A chip shows only the dot/label/% by default — quantity and
+// EGP value move behind a tap on that specific chip instead of always being
+// on screen, and chips wrap onto as many lines as they need rather than
+// stacking full-width rows. A 2-asset user barely notices the difference; a
+// 6-asset user gets a fraction of the height.
 
-function AllocationRow({
-  seg, total, trackWidth, delay, hideValues,
+function AllocationChip({
+  seg, pct, hideValues, expanded, onToggle, index,
 }: {
-  seg: AllocationSegment; total: number; trackWidth: number; delay: number; hideValues?: boolean;
+  seg: AllocationSegment; pct: number; hideValues?: boolean; expanded: boolean; onToggle: () => void; index: number;
 }) {
   const colors = useColors();
-  const pct = total > 0 ? (seg.value / total) * 100 : 0;
-  const barAnim = useRef(new Animated.Value(0)).current;
+  const enterAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    barAnim.setValue(0);
-    Animated.timing(barAnim, {
-      toValue: trackWidth > 0 ? (pct / 100) * trackWidth : 0,
-      duration: 750,
-      delay: delay + 120,
-      useNativeDriver: false,
+    Animated.timing(enterAnim, {
+      toValue: 1,
+      duration: 320,
+      delay: index * 45,
+      useNativeDriver: true,
     }).start();
-  }, [pct, trackWidth]);
-
-  if (pct < 0.05) return null;
+  }, []);
 
   return (
-    <View style={row.wrap}>
-      {/* Icon — tinted fill plus a colored ring, reads as a small badge
-          rather than a flat circle */}
-      <View style={[row.iconCircle, { backgroundColor: seg.color + '17', borderColor: seg.color + '4A' }]}>
-        <SegIcon icon={seg.icon} size={13} color={seg.color} />
-      </View>
-
-      {/* Middle: label + bar */}
-      <View style={row.mid}>
-        <View style={row.labelRow}>
-          <Text style={[row.label, { color: colors.text }]} numberOfLines={1}>
-            {seg.label}
+    <Animated.View
+      style={{
+        opacity: enterAnim,
+        transform: [{ scale: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
+      }}
+    >
+      <Pressable
+        onPress={onToggle}
+        style={({ pressed }) => [
+          chip.pill,
+          {
+            backgroundColor: expanded ? seg.color + '14' : colors.muted + '00',
+            borderColor: expanded ? seg.color + '55' : colors.border,
+            opacity: pressed ? 0.7 : 1,
+          },
+        ]}
+      >
+        <View style={chip.headRow}>
+          <View style={[chip.dot, { backgroundColor: seg.color }]} />
+          <Text style={[chip.label, { color: colors.text }]} numberOfLines={1}>{seg.label}</Text>
+          <Text style={[chip.pct, { color: seg.color }]}>{`${pct.toFixed(0)}%`}</Text>
+        </View>
+        {expanded && (
+          <Text style={[chip.detail, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {seg.quantity ? `${seg.quantity} · ` : ''}
+            {hideValues ? '•••••' : `${fmtCpt(seg.value)} EGP`}
           </Text>
-          {seg.quantity ? (
-            <Text style={[row.qty, { color: colors.mutedForeground }]}>{seg.quantity}</Text>
-          ) : null}
-        </View>
-        <View style={[row.trackBg, { backgroundColor: colors.muted }]}>
-          <Animated.View
-            style={[
-              row.fill,
-              {
-                backgroundColor: seg.color,
-                width: barAnim,
-                shadowColor: seg.color,
-              },
-            ]}
-          />
-        </View>
-      </View>
-
-      {/* Right: percentage + value */}
-      <View style={row.right}>
-        <Text style={[row.pct, { color: seg.color }]}>{`${pct.toFixed(1)}%`}</Text>
-        <Text style={[row.val, { color: colors.mutedForeground }]}>
-          {hideValues ? '•••••' : `${fmtCpt(seg.value)} EGP`}
-        </Text>
-      </View>
-    </View>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
-const row = StyleSheet.create({
-  wrap:       { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 9 },
-  iconCircle: {
-    width: 32, height: 32, borderRadius: 10, borderWidth: 1.3,
-    alignItems: 'center', justifyContent: 'center',
+const chip = StyleSheet.create({
+  pill: {
+    borderRadius: 100, borderWidth: 1,
+    paddingHorizontal: 11, paddingVertical: 7,
   },
-  mid:        { flex: 1, gap: 6 },
-  labelRow:   { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  label:      { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
-  trackBg:    { height: 5, borderRadius: 2.5, overflow: 'hidden' },
-  fill:       {
-    height: '100%', borderRadius: 2.5,
-    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.55, shadowRadius: 3,
-  },
-  qty:        { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  right:      { alignItems: 'flex-end', gap: 3, minWidth: 66 },
-  pct:        { fontSize: 13.5, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.2 },
-  val:        { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  headRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot:      { width: 7, height: 7, borderRadius: 3.5 },
+  label:    { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  pct:      { fontSize: 12, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.1 },
+  detail:   { fontSize: 10.5, fontFamily: 'Inter_400Regular', marginTop: 3, paddingLeft: 13 },
 });
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function AllocationBar({ segments, hideValues }: Props) {
   const total = segments.reduce((s, seg) => s + seg.value, 0);
-  const [trackWidth, setTrackWidth] = useState(0);
+  const [expandedLabel, setExpandedLabel] = useState<string | null>(null);
 
   if (total === 0) return null;
 
-  const active = segments.filter(s => s.value > 0);
+  // Biggest holding leads, so the chip row reads in the same order the
+  // overview bar's segments visually take up space, left to right.
+  const active = segments.filter(s => s.value > 0).sort((a, b) => b.value - a.value);
 
   return (
     <View style={styles.container}>
       {/* Pass ALL segments so the fixed-size anims ref stays stable */}
       <OverviewBar segments={segments} total={total} />
 
-      <View
-        style={styles.rows}
-        onLayout={e => {
-          const w = e.nativeEvent.layout.width;
-          if (w > 0) setTrackWidth(w - 40); // subtract icon + gap
-        }}
-      >
+      <View style={styles.chipWrap}>
         {active.map((seg, i) => (
-          <AllocationRow
+          <AllocationChip
             key={seg.label}
             seg={seg}
-            total={total}
-            trackWidth={trackWidth}
-            delay={i * 60}
+            pct={total > 0 ? (seg.value / total) * 100 : 0}
             hideValues={hideValues}
+            expanded={expandedLabel === seg.label}
+            onToggle={() => setExpandedLabel(cur => cur === seg.label ? null : seg.label)}
+            index={i}
           />
         ))}
       </View>
@@ -241,5 +220,5 @@ export function AllocationBar({ segments, hideValues }: Props) {
 
 const styles = StyleSheet.create({
   container: { gap: 14 },
-  rows:      { gap: 0 },
+  chipWrap:  { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
 });
