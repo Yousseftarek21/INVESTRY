@@ -29,12 +29,30 @@ let configuredForUser: string | null = null;
 // app_user_id always matches the Clerk id the webhook keys `usersTable` by.
 export function syncRevenueCatUser(clerkUserId: string | null): void {
   if (!isIOSIAPAvailable() || !clerkUserId || configuredForUser === clerkUserId) return;
-  if (!configuredForUser) {
-    Purchases.configure({ apiKey: REVENUECAT_API_KEY_IOS!, appUserID: clerkUserId });
-  } else {
-    Purchases.logIn(clerkUserId).catch(() => null);
+  try {
+    // isIOSIAPAvailable() only proves the API key is present in this JS
+    // bundle — it says nothing about whether the NATIVE module this
+    // binary was actually compiled with includes RevenueCat. An OTA
+    // update ships the same JS to every device on this runtime version
+    // regardless of when that specific binary was built; a binary built
+    // before RevenueCat was added (no native module linked) makes
+    // Purchases.configure() throw synchronously
+    // (throwIfNativeModuleNotAvailable, uncaught here previously) on
+    // every single launch for any already-signed-in user — this was
+    // crashing the entire app open for anyone still on such a build, not
+    // merely leaving IAP unavailable. Caught here so it degrades to "no
+    // native IAP on this build" instead.
+    if (!configuredForUser) {
+      Purchases.configure({ apiKey: REVENUECAT_API_KEY_IOS!, appUserID: clerkUserId });
+    } else {
+      Purchases.logIn(clerkUserId).catch(() => null);
+    }
+    configuredForUser = clerkUserId;
+  } catch {
+    // Leave configuredForUser unset — every subsequent call this session
+    // will retry (and fail the same safe way) rather than silently
+    // pretending IAP is configured when it never actually was.
   }
-  configuredForUser = clerkUserId;
 }
 
 export function clearRevenueCatUser(): void {
