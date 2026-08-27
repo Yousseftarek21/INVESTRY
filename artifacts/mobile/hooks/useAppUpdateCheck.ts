@@ -26,7 +26,16 @@ function dismissKey(version: string) {
   // Keyed by the version being dismissed, not a flat flag — dismissing the
   // "1.0.3 is out" banner must not silently suppress a real "1.0.4 is out"
   // banner once that actually ships.
-  return `@investry_update_dismissed_${version}`;
+  //
+  // "_v2" is a deliberate one-time reset: LATEST_APP_VERSION (server-side)
+  // was stuck hardcoded at "1.0.3" for a while — the exact bug this system
+  // exists to prevent — so anyone who happened to see and dismiss a
+  // "1.0.4 is out" nudge during that window (real or from testing) had it
+  // suppressed on a false premise. Bumping the key namespace here means any
+  // pre-existing dismissal is silently ignored going forward, without an
+  // explicit migration step. Never bump this again casually — only for a
+  // similar one-time "the previous dismissals shouldn't count" situation.
+  return `@investry_update_dismissed_v2_${version}`;
 }
 
 function otaDismissKey(updateId: string) {
