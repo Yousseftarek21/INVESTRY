@@ -22,7 +22,7 @@ const router: IRouter = Router();
 // latest JS yet". Constants.expoConfig?.version would be wrong for this: an
 // OTA update can freely rewrite that value without the binary itself having
 // changed at all.
-const LATEST_APP_VERSION = "1.0.3";
+const LATEST_APP_VERSION = "1.0.4";
 // App Store Connect's numeric app id (eas.json's own submit.production.ios.ascAppId)
 // and the Android package name (app.json's android.package) — both already
 // fixed identifiers elsewhere in this project, not new values invented here.
