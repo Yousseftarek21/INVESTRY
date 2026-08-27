@@ -3,7 +3,7 @@ import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, holdingsTable, activityLogTable, soldHoldingsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
-import { costBasisEGP, livePricePerUnit, type StoredHolding } from "../lib/portfolioValue";
+import { costBasisEGP, computeHoldingValue, livePricePerUnit, type StoredHolding } from "../lib/portfolioValue";
 import { getCachedPrices, getCachedStocks } from "./markets";
 import { tradingDayKey } from "../lib/cairoDate";
 
@@ -130,7 +130,24 @@ router.post("/holdings", async (req, res) => {
   }
 });
 
-// DELETE /api/holdings/:id — delete a holding
+// DELETE /api/holdings/:id — delete a holding. For "this was never real"
+// corrections (wrong type, duplicate, fat-finger) — Sell stays the only
+// path for an actual realized sale, so DELETE never shows up in the user's
+// own Sold Investments history.
+//
+// For gold/silver/stock specifically, deleting it WOULD otherwise be a real
+// leaderboard hole: computePeriodPerformance ratios a still-held position's
+// current value against its baseline, so simply making a losing position
+// vanish erases that loss from the leaderboard for free — something Sell
+// can't do, since a sale's proceeds/cost-basis get counted either way. The
+// fix mirrors Sell's own accounting exactly: silently record an implicit
+// "sale" at the holding's current market value (isDeletionRecord: true, so
+// GET /sold-holdings filters it back out — the user never sees a fake
+// transaction) before removing the row. computePeriodPerformance reads
+// straight from sold_holdings and doesn't distinguish the two, so a
+// deleted position now costs/benefits a user's leaderboard standing exactly
+// as much as actually selling it would — closing the free-erasure gap
+// without turning genuine mistake-fixing into a fabricated trade.
 router.delete("/holdings/:id", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -138,22 +155,62 @@ router.delete("/holdings/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deleted = await db
-      .delete(holdingsTable)
-      .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)))
-      .returning({ id: holdingsTable.id });
+    const [row] = await db
+      .select()
+      .from(holdingsTable)
+      .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)));
 
-    if (deleted.length === 0) {
+    if (!row) {
       res.status(404).json({ error: "Not found" });
       return;
     }
 
-    // Clean up this holding's own notification history — otherwise a
-    // deleted holding's old "Investment added" / "updated" entries keep
-    // showing in the bell forever, for something that no longer exists.
-    await db
-      .delete(activityLogTable)
-      .where(and(eq(activityLogTable.userId, userId), eq(activityLogTable.entityId, id)));
+    const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
+    const isLeaderboardEligible = holding.type === "gold" || holding.type === "silver" || holding.type === "stock";
+
+    await db.transaction(async (tx) => {
+      if (isLeaderboardEligible) {
+        const [prices, egxStocks] = await Promise.all([
+          getCachedPrices(),
+          getCachedStocks().catch(() => []),
+        ]);
+        const egxPrices: Record<string, number> = {};
+        for (const s of egxStocks) egxPrices[s.symbol] = s.price;
+
+        const costBasis = costBasisEGP(holding, prices.usdToEgp);
+        const currentValue = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
+
+        await tx.insert(soldHoldingsTable).values({
+          id: generateSoldHoldingId(),
+          userId,
+          data: encryptForStorage({
+            originalHoldingId: id,
+            type: holding.type,
+            label: holdingLabel(holding),
+            quantity: holdingQuantity(holding),
+            purchaseDate: holding.purchaseDate ?? null,
+            holdingCreatedDay: tradingDayKey(row.createdAt),
+            costBasis,
+            saleProceeds: currentValue,
+            saleDate: tradingDayKey(),
+            realizedGainLoss: currentValue - costBasis,
+            notes: null,
+            isDeletionRecord: true,
+          }),
+        });
+      }
+
+      await tx
+        .delete(holdingsTable)
+        .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)));
+
+      // Clean up this holding's own notification history — otherwise a
+      // deleted holding's old "Investment added" / "updated" entries keep
+      // showing in the bell forever, for something that no longer exists.
+      await tx
+        .delete(activityLogTable)
+        .where(and(eq(activityLogTable.userId, userId), eq(activityLogTable.entityId, id)));
+    });
 
     res.json({ deleted: id });
   } catch (err) {
