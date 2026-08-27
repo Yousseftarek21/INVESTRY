@@ -1,11 +1,14 @@
 import { Router, type IRouter } from "express";
 import { isNotNull, eq, asc } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
-import { db, usersTable, holdingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
+import { db, usersTable, holdingsTable, cashAccountsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
 import { sendPushToTokens } from "../lib/expoPush";
 import { backfillDailyChanges, backfillDailyChangesFromSnapshots, resetDailyChangeHistory } from "../lib/dailyChangeBackfill";
 import { computeRankedReturns } from "../lib/leaderboardRanking";
 import { fetchIdentities } from "../lib/clerkIdentity";
+import { decryptFromStorage } from "../lib/encryption";
+import { computeHoldingValue, costBasisEGP, type StoredHolding } from "../lib/portfolioValue";
+import { getCachedPrices, getCachedStocks } from "./markets";
 
 const router: IRouter = Router();
 
@@ -295,6 +298,97 @@ router.get("/admin/referral-debug", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "GET /admin/referral-debug failed");
+    res.status(500).json({ error: "Lookup failed" });
+  }
+});
+
+// Full decrypted view of every user's holdings, cash accounts, and total
+// portfolio value — everything Postico/a raw DB browser can't show, because
+// holdings.data and cash_accounts.data are AES-256-GCM-encrypted at rest
+// (see lib/encryption.ts) with a key that only lives in this server's own
+// env, never in the database itself. Same admin-secret gate as every other
+// route here, but this one is meaningfully more sensitive than the rest —
+// it's every real user's real financial holdings in one response, not
+// just metadata or aggregate counts. Treat the URL and the secret with the
+// same care as a database credential: this exists for the app's own
+// operator, never for sharing the response elsewhere.
+//
+//   curl "https://api.investry.app/api/admin/all-users-full" \
+//     -H "x-admin-secret: <the secret>"
+router.get("/admin/all-users-full", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const [users, holdingRows, cashRows, prices, egxStocks] = await Promise.all([
+      db.select({ id: usersTable.id }).from(usersTable),
+      db.select().from(holdingsTable),
+      db.select().from(cashAccountsTable),
+      getCachedPrices(),
+      getCachedStocks().catch(() => []),
+    ]);
+
+    const egxPrices: Record<string, number> = {};
+    for (const s of egxStocks) egxPrices[s.symbol] = s.price;
+
+    // Real email, not just the display name fetchIdentities gives — this
+    // view is for finding a specific person by their actual account, not
+    // just showing a leaderboard-style label.
+    const clerkUsers = await clerkClient.users.getUserList({ userId: users.map(u => u.id), limit: users.length || 1 });
+    const emailById = new Map(clerkUsers.data.map(cu => [cu.id, cu.emailAddresses?.[0]?.emailAddress ?? null]));
+    const nameById = new Map(clerkUsers.data.map(cu => [cu.id, [cu.firstName, cu.lastName].filter(Boolean).join(" ").trim() || null]));
+
+    interface HoldingEntry extends StoredHolding {
+      currentValueEgp: number;
+      costBasisEgp: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }
+    const holdingsByUser = new Map<string, HoldingEntry[]>();
+    for (const row of holdingRows) {
+      const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
+      const currentValueEgp = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
+      const costBasisEgp = costBasisEGP(holding, prices.usdToEgp);
+      const entry: HoldingEntry = { ...holding, currentValueEgp, costBasisEgp, createdAt: row.createdAt, updatedAt: row.updatedAt };
+      const list = holdingsByUser.get(row.userId) ?? [];
+      list.push(entry);
+      holdingsByUser.set(row.userId, list);
+    }
+
+    const cashByUser = new Map<string, unknown[]>();
+    for (const row of cashRows) {
+      const account = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object), createdAt: row.createdAt, updatedAt: row.updatedAt };
+      const list = cashByUser.get(row.userId) ?? [];
+      list.push(account);
+      cashByUser.set(row.userId, list);
+    }
+
+    const result = users.map(u => {
+      const holdings = holdingsByUser.get(u.id) ?? [];
+      const totalPortfolioValueEgp = holdings.reduce((sum, h) => sum + h.currentValueEgp, 0);
+      const totalCostBasisEgp = holdings.reduce((sum, h) => sum + h.costBasisEgp, 0);
+      return {
+        userId: u.id,
+        name: nameById.get(u.id) ?? null,
+        email: emailById.get(u.id) ?? null,
+        totalPortfolioValueEgp,
+        totalCostBasisEgp,
+        holdingsCount: holdings.length,
+        holdings,
+        cashAccounts: cashByUser.get(u.id) ?? [],
+      };
+    });
+
+    res.json({ userCount: result.length, users: result });
+  } catch (err) {
+    req.log.error({ err }, "GET /admin/all-users-full failed");
     res.status(500).json({ error: "Lookup failed" });
   }
 });
