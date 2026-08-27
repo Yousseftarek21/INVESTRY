@@ -32,6 +32,7 @@ import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContex
 import { BiometricGate } from "@/components/BiometricGate";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { Paywall } from "@/components/Paywall";
+import { ForceUpdateGate } from "@/components/ForceUpdateGate";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { getApiBaseUrl } from "@/utils/api";
 import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled } from "@/hooks/usePrices";
@@ -494,6 +495,12 @@ export default function RootLayout() {
           {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
 
           {showNetworkError && <NoNetworkScreen />}
+
+          {/* Mounted this high, outside the Clerk/auth gate, so a native
+              binary old enough to matter is blocked everywhere — signed in
+              or not, mid-onboarding or not — not just once someone reaches
+              the main app. */}
+          <ForceUpdateGate />
 
           {appReady && validClerkConfig && (
             <ClerkProvider

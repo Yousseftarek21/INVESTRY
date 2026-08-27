@@ -629,6 +629,9 @@ const en = {
   updateAvailableTitle: 'Update available',
   updateAvailableBody: 'A newer version of INVESTRY is out with fixes and improvements.',
   updateNow: 'Update',
+  forceUpdateTitle: 'Update Required',
+  forceUpdateBody: 'A new version of INVESTRY is available with important fixes. Please update to continue.',
+  forceUpdateCta: 'Update Now',
   otaUpdateTitle: 'New version ready',
   otaUpdateBody: 'The latest improvements are downloaded and ready — just reload to switch over.',
 
@@ -2094,6 +2097,9 @@ const ar: typeof en = {
   updateAvailableTitle: 'يتوفر تحديث',
   updateAvailableBody: 'يتوفر إصدار أحدث من إنفستري يتضمن إصلاحات وتحسينات.',
   updateNow: 'تحديث',
+  forceUpdateTitle: 'التحديث مطلوب',
+  forceUpdateBody: 'يتوفر إصدار جديد من إنفستري يتضمن إصلاحات مهمة. يرجى التحديث للمتابعة.',
+  forceUpdateCta: 'تحديث الآن',
   otaUpdateTitle: 'إصدار جديد جاهز',
   otaUpdateBody: 'أحدث التحسينات جاهزة للتحميل — فقط أعد التحميل للتفعيل.',
 
