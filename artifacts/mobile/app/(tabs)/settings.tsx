@@ -28,6 +28,7 @@ import { ConfirmModal } from '@/components/ConfirmModal';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { isIOSIAPAvailable } from '@/utils/revenuecat';
+import { useAppUpdateCheck } from '@/hooks/useAppUpdateCheck';
 import { ManageSubscriptionSheet } from '@/components/ManageSubscriptionSheet';
 import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
@@ -374,11 +375,19 @@ const mo = StyleSheet.create({
 function SmartFooter() {
   const colors = useColors();
   const t = useT();
+  // Real diagnostic, not the OTA-updatable app.json value APP_VERSION reads
+  // — this is what actually decides whether the update banner shows, so a
+  // screenshot of this line answers "why isn't it showing" directly instead
+  // of needing another guess from reading the code.
+  const { debug } = useAppUpdateCheck();
   return (
     <View style={[sf.wrap, { borderTopColor: colors.border }]}>
       <Text style={[sf.brand, { color: colors.primary }]}>INVESTRY</Text>
       <Text style={[sf.metaVal, { color: colors.mutedForeground }]}>
         {t.versionLabel} {APP_VERSION}
+      </Text>
+      <Text style={[sf.debugLine, { color: colors.mutedForeground }]} selectable>
+        build {debug.installed ?? '?'} · server says latest is {debug.fetchedLatestAppVersion ?? '?'} · {debug.step}
       </Text>
       <Text style={[sf.copy, { color: colors.mutedForeground }]}>
         © {COPYRIGHT_YEAR} INVESTRY. {t.allRightsReserved}
@@ -390,6 +399,7 @@ const sf = StyleSheet.create({
   wrap: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 32, alignItems: 'center', gap: 12 },
   brand: { fontSize: 20, fontFamily: 'Inter_700Bold', letterSpacing: 4 },
   metaVal: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  debugLine: { fontSize: 10, fontFamily: 'Inter_400Regular', opacity: 0.7, textAlign: 'center' },
   copy: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });
 

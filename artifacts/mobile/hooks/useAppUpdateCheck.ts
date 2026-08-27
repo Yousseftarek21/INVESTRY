@@ -66,41 +66,68 @@ interface OtaInfo {
 // Native takes priority when both are true: there's no point offering an
 // in-app reload for a build old enough that the store update is what
 // actually matters.
+// Every step of the native check, captured regardless of the final
+// yes/no outcome — surfaced in Settings (SmartFooter) so "why isn't the
+// banner showing" has a real, on-device answer instead of another guess
+// from reading the code. `step` records the LAST thing that happened, in
+// order, so a screenshot alone says exactly where this stopped.
+export interface UpdateDebugInfo {
+  installed: string | null;
+  fetchedLatestAppVersion: string | null;
+  step:
+    | 'no_installed_version' // Constants.nativeApplicationVersion was null — dev/simulator build, check never ran
+    | 'fetch_failed'          // /api/config didn't return ok, or threw (network, DNS, etc.)
+    | 'up_to_date'            // fetch succeeded, installed is not older than latest
+    | 'was_dismissed'         // an update IS available but this device dismissed that exact version before
+    | 'no_store_url'          // update available, but iosAppStoreId/androidPackage missing for this platform
+    | 'update_available'      // everything checked out — info should be set, banner should show
+    | 'checking';             // effect hasn't resolved yet
+}
+
 export function useAppUpdateCheck() {
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [ota, setOta] = useState<OtaInfo | null>(null);
   const [otaDismissed, setOtaDismissed] = useState(false);
   const [reloading, setReloading] = useState(false);
+  const [debug, setDebug] = useState<UpdateDebugInfo>({ installed: null, fetchedLatestAppVersion: null, step: 'checking' });
 
   useEffect(() => {
     const installed = Constants.nativeApplicationVersion;
     // Web/simulator dev builds report null here — nothing to compare against.
-    if (!installed) return;
+    if (!installed) { setDebug(d => ({ ...d, step: 'no_installed_version' })); return; }
+    setDebug(d => ({ ...d, installed }));
 
     (async () => {
       try {
         const res = await fetch(`${getApiBaseUrl()}/api/config`);
-        if (!res.ok) return;
+        if (!res.ok) { setDebug(d => ({ ...d, step: 'fetch_failed' })); return; }
         const data = await res.json() as {
           latestAppVersion?: string; iosAppStoreId?: string; androidPackage?: string;
         };
-        if (!data.latestAppVersion || !isOlder(installed, data.latestAppVersion)) return;
+        setDebug(d => ({ ...d, fetchedLatestAppVersion: data.latestAppVersion ?? null }));
+        if (!data.latestAppVersion || !isOlder(installed, data.latestAppVersion)) {
+          setDebug(d => ({ ...d, step: 'up_to_date' }));
+          return;
+        }
 
         const alreadyDismissed = await AsyncStorage.getItem(dismissKey(data.latestAppVersion));
-        if (alreadyDismissed) { setDismissed(true); return; }
+        if (alreadyDismissed) { setDismissed(true); setDebug(d => ({ ...d, step: 'was_dismissed' })); return; }
 
         const storeUrl = Platform.OS === 'ios' && data.iosAppStoreId
           ? `https://apps.apple.com/app/id${data.iosAppStoreId}`
           : data.androidPackage
             ? `https://play.google.com/store/apps/details?id=${data.androidPackage}`
             : null;
-        if (!storeUrl) return;
+        if (!storeUrl) { setDebug(d => ({ ...d, step: 'no_store_url' })); return; }
 
         setInfo({ latestVersion: data.latestAppVersion, storeUrl });
+        setDebug(d => ({ ...d, step: 'update_available' }));
       } catch {
-        // Silent — an update nudge is a nice-to-have, never worth surfacing
-        // a network error over.
+        // Silent for the user-facing banner — an update nudge is a
+        // nice-to-have, never worth surfacing a network error over. Still
+        // recorded in debug so Settings can show it happened.
+        setDebug(d => ({ ...d, step: 'fetch_failed' }));
       }
     })();
   }, []);
@@ -158,5 +185,6 @@ export function useAppUpdateCheck() {
     reload,
     reloading,
     dismiss: nativeUpdateAvailable ? dismiss : dismissOta,
+    debug,
   };
 }
