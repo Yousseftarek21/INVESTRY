@@ -1032,7 +1032,7 @@ export default function AnalyticsScreen() {
             <View style={{ flex: 1 }}>
               <View style={s.aiTitleRow}>
                 <Text style={[s.sectionTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
-                <BetaChip label={t.aiAssistantFreeChip} />
+                <BetaChip label={t.aiAssistantBetaChip} />
               </View>
               <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.aiAssistantDesc}</Text>
             </View>

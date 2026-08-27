@@ -171,7 +171,11 @@ function SubscriptionStatusCard() {
     }
   };
 
-  const accent = isPro ? '#22C55E' : colors.primary;
+  // Gold means Pro, everywhere in the app — reserved exclusively for that,
+  // not shared with the Free state, so it stays a meaningful signal instead
+  // of decoration. Free gets a quiet neutral instead of competing for the
+  // same accent.
+  const accent = isPro ? colors.primary : colors.mutedForeground;
 
   return (
     <>
@@ -181,7 +185,7 @@ function SubscriptionStatusCard() {
         style={[sub.card, { borderColor: accent + '3A' }]}
       >
         <ExpoLinearGradient
-          colors={isPro ? [accent + '20', accent + '08'] : [colors.primary + '22', colors.primary + '08']}
+          colors={[accent + (isPro ? '20' : '14'), accent + '00']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}

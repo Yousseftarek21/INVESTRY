@@ -12,8 +12,8 @@ import { useStableGetToken } from '@/hooks/useStableGetToken';
 import { apiFetch } from '@/utils/api';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { isIOSIAPAvailable, REVENUECAT_ENTITLEMENT_ID } from '@/utils/revenuecat';
-
-interface FeatureRow { icon: keyof typeof Feather.glyphMap; text: string }
+import { getPaywallHighlights } from '@/constants/subscriptionFeatures';
+import { PlanCompareRow } from '@/components/PlanCompareRow';
 
 // Fallback display numbers for the Android/web Stripe path only — kept in
 // sync by hand with subFromMonthly/subFromAnnual's display text
@@ -66,15 +66,7 @@ export function Paywall() {
     return () => { active = false; };
   }, [iosIAP, paywallVisible]);
 
-  const features: FeatureRow[] = [
-    { icon: 'briefcase', text: t.subUnlimitedInvestments },
-    { icon: 'credit-card', text: t.subUnlimitedCash },
-    { icon: 'target', text: t.subUnlimitedGoals },
-    { icon: 'bell', text: t.subNotificationsFull },
-    { icon: 'cpu', text: t.subAiAssistantFull },
-    { icon: 'trending-up', text: t.subMarketIntelligence },
-    { icon: 'bar-chart-2', text: t.subPortfolioAnalytics },
-  ];
+  const highlights = getPaywallHighlights(t);
 
   const subscribeViaStripe = async () => {
     const token = await getToken();
@@ -270,14 +262,50 @@ export function Paywall() {
 
             <View style={[styles.divider, { borderColor: colors.primary + '30' }]} />
 
-            {features.map(f => (
+            {highlights.map(f => (
               <View key={f.text} style={styles.featureRow}>
-                <View style={[styles.featureIcon, { backgroundColor: colors.green + '20' }]}>
-                  <Feather name="check" size={11} color={colors.green} />
+                <View style={[styles.featureIcon, { backgroundColor: colors.muted }]}>
+                  <Feather name="check" size={11} color={colors.primary} />
                 </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>{f.text}</Text>
               </View>
             ))}
+          </View>
+
+          {/* Full Free-vs-Pro comparison — every real gate in the app, not
+              just the Pro highlights above. Row order matches the audit's
+              real feature matrix; locked rows show a lock/check icon
+              instead of repeating "Locked"/"Full access" text nine times. */}
+          <View style={[styles.compareCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.compareHeaderRow}>
+              <View style={{ flex: 1.6 }} />
+              <Text style={[styles.compareHeaderLabel, { color: colors.mutedForeground }]}>{t.subPlanFree}</Text>
+              <Text style={[styles.compareHeaderLabel, { color: colors.primary }]}>{t.subComparePro}</Text>
+            </View>
+            <PlanCompareRow label={t.holdings} freeValue={t.subCompareHoldingsFree} proValue={t.subCompareHoldingsPro} />
+            <PlanCompareRow label={t.cashAccounts} freeValue={t.subCompareCashFree} proValue={t.subCompareCashPro} />
+            <PlanCompareRow label={t.subRecurringIncomeFull} freeValue={t.subCompareRecurringFree} proValue={t.subCompareRecurringPro} />
+            <PlanCompareRow label={t.goals} freeValue={t.subCompareGoalsFree} proValue={t.subCompareGoalsPro} />
+            <PlanCompareRow label={t.priceAlertsLabel} freeValue={t.subComparePriceAlertsFree} proValue={t.subComparePriceAlertsPro} />
+            <PlanCompareRow label={t.settingsCatNotifications} freeValue={t.subCompareNotificationsFree} proValue={t.subCompareNotificationsPro} locked />
+            <PlanCompareRow label={t.aiAssistantTitle} freeValue={t.subCompareAiFree} proValue={t.subCompareAiPro} locked />
+            <PlanCompareRow label={t.subMarketIntelligence} freeValue={t.subCompareMarketIntelFree} proValue={t.subCompareMarketIntelPro} locked />
+            <PlanCompareRow label={t.subPortfolioAnalytics} freeValue={t.subComparePortfolioAnalyticsFree} proValue={t.subComparePortfolioAnalyticsPro} locked />
+          </View>
+
+          {/* Most of the app isn't a paywall at all — make that explicit
+              rather than letting the comparison above read as "everything
+              is locked." */}
+          <View style={styles.alsoFreeSection}>
+            <Text style={[styles.compareSectionTitle, { color: colors.mutedForeground }]}>{t.subAlsoFreeTitle}</Text>
+            <View style={styles.alsoFreeGrid}>
+              {[t.financialToolsTitle, t.markets, t.dailyHistoryLabel, t.leaderboardTitle, t.referralScreenTitle, t.shariahScreening, t.tbillsCalculator].map(item => (
+                <View key={item} style={styles.alsoFreeChip}>
+                  <Feather name="check" size={10} color={colors.mutedForeground} />
+                  <Text style={[styles.alsoFreeText, { color: colors.mutedForeground }]}>{item}</Text>
+                </View>
+              ))}
+            </View>
           </View>
 
           {error && (
@@ -349,6 +377,16 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   featureIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   featureText: { flex: 1, fontSize: 13.5, fontFamily: 'Inter_500Medium', lineHeight: 19 },
+
+  compareCard: { borderRadius: 18, borderWidth: 1, padding: 14, marginBottom: 16 },
+  compareHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 },
+  compareHeaderLabel: { flex: 1, fontSize: 10.5, fontFamily: 'Inter_700Bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.6 },
+
+  alsoFreeSection: { marginBottom: 16 },
+  compareSectionTitle: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 },
+  alsoFreeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  alsoFreeChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  alsoFreeText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
 
   errorText: { fontSize: 13, fontFamily: 'Inter_500Medium', textAlign: 'center', marginBottom: 12 },
   cta: {

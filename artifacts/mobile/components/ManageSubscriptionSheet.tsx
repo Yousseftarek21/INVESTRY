@@ -7,14 +7,10 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { REVENUECAT_ENTITLEMENT_ID } from '@/utils/revenuecat';
+import { getPaywallHighlights } from '@/constants/subscriptionFeatures';
+import { PlanCompareRow } from '@/components/PlanCompareRow';
 
 interface Props { visible: boolean; onClose: () => void }
-interface FeatureRow { icon: keyof typeof Feather.glyphMap; text: string }
-
-// Matches the green used for the Pro state on the Settings card
-// (SubscriptionStatusCard) — kept in sync by hand since it's a deliberate
-// one-off accent, not the theme's own `colors.green` token.
-const PRO_ACCENT = '#22C55E';
 
 // Shown before handing an iOS Pro subscriber off to Apple's own
 // subscription-management screen — Apple requires the actual cancel action
@@ -65,15 +61,7 @@ export function ManageSubscriptionSheet({ visible, onClose }: Props) {
     ? new Date(renewalDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
 
-  const features: FeatureRow[] = [
-    { icon: 'briefcase', text: t.subUnlimitedInvestments },
-    { icon: 'credit-card', text: t.subUnlimitedCash },
-    { icon: 'target', text: t.subUnlimitedGoals },
-    { icon: 'bell', text: t.subNotificationsFull },
-    { icon: 'cpu', text: t.subAiAssistantFull },
-    { icon: 'trending-up', text: t.subMarketIntelligence },
-    { icon: 'bar-chart-2', text: t.subPortfolioAnalytics },
-  ];
+  const features = getPaywallHighlights(t);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -93,15 +81,15 @@ export function ManageSubscriptionSheet({ visible, onClose }: Props) {
           </View>
         ) : (
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-            <View style={[styles.planCard, { borderColor: PRO_ACCENT + '3A', backgroundColor: PRO_ACCENT + '10' }]}>
-              <View style={[styles.planIcon, { backgroundColor: PRO_ACCENT + '22' }]}>
-                <Feather name="award" size={18} color={PRO_ACCENT} />
+            <View style={[styles.planCard, { borderColor: colors.primary + '3A', backgroundColor: colors.primary + '10' }]}>
+              <View style={[styles.planIcon, { backgroundColor: colors.primary + '22' }]}>
+                <Feather name="award" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.planName, { color: colors.text }]}>
                   {t.subComparePro}{billingPeriodLabel ? ` — ${billingPeriodLabel}` : ''}
                 </Text>
-                <Text style={[styles.planStatus, { color: PRO_ACCENT }]}>{t.subStatusActive}</Text>
+                <Text style={[styles.planStatus, { color: colors.primary }]}>{t.subStatusActive}</Text>
               </View>
             </View>
 
@@ -126,12 +114,32 @@ export function ManageSubscriptionSheet({ visible, onClose }: Props) {
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t.subWhatsIncluded}</Text>
             {features.map(f => (
               <View key={f.text} style={styles.featureRow}>
-                <View style={[styles.featureIcon, { backgroundColor: colors.green + '20' }]}>
-                  <Feather name="check" size={11} color={colors.green} />
+                <View style={[styles.featureIcon, { backgroundColor: colors.muted }]}>
+                  <Feather name="check" size={11} color={colors.primary} />
                 </View>
                 <Text style={[styles.featureText, { color: colors.text }]}>{f.text}</Text>
               </View>
             ))}
+
+            {/* Same full comparison shown on the Paywall — a Pro subscriber
+                should be able to see exactly what they're getting for the
+                price too, not just a shorter highlights list. */}
+            <View style={[styles.compareCard, { borderColor: colors.border }]}>
+              <View style={styles.compareHeaderRow}>
+                <View style={{ flex: 1.6 }} />
+                <Text style={[styles.compareHeaderLabel, { color: colors.mutedForeground }]}>{t.subPlanFree}</Text>
+                <Text style={[styles.compareHeaderLabel, { color: colors.primary }]}>{t.subComparePro}</Text>
+              </View>
+              <PlanCompareRow label={t.holdings} freeValue={t.subCompareHoldingsFree} proValue={t.subCompareHoldingsPro} />
+              <PlanCompareRow label={t.cashAccounts} freeValue={t.subCompareCashFree} proValue={t.subCompareCashPro} />
+              <PlanCompareRow label={t.subRecurringIncomeFull} freeValue={t.subCompareRecurringFree} proValue={t.subCompareRecurringPro} />
+              <PlanCompareRow label={t.goals} freeValue={t.subCompareGoalsFree} proValue={t.subCompareGoalsPro} />
+              <PlanCompareRow label={t.priceAlertsLabel} freeValue={t.subComparePriceAlertsFree} proValue={t.subComparePriceAlertsPro} />
+              <PlanCompareRow label={t.settingsCatNotifications} freeValue={t.subCompareNotificationsFree} proValue={t.subCompareNotificationsPro} locked />
+              <PlanCompareRow label={t.aiAssistantTitle} freeValue={t.subCompareAiFree} proValue={t.subCompareAiPro} locked />
+              <PlanCompareRow label={t.subMarketIntelligence} freeValue={t.subCompareMarketIntelFree} proValue={t.subCompareMarketIntelPro} locked />
+              <PlanCompareRow label={t.subPortfolioAnalytics} freeValue={t.subComparePortfolioAnalyticsFree} proValue={t.subComparePortfolioAnalyticsPro} locked />
+            </View>
 
             <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.subManageHint}</Text>
 
@@ -194,6 +202,10 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   featureIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   featureText: { flex: 1, fontSize: 13.5, fontFamily: 'Inter_500Medium', lineHeight: 19 },
+
+  compareCard: { borderRadius: 16, borderWidth: 1, padding: 14, marginTop: 18 },
+  compareHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 },
+  compareHeaderLabel: { flex: 1, fontSize: 10.5, fontFamily: 'Inter_700Bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.6 },
 
   hint: { fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 18, marginTop: 20, marginBottom: 16 },
 
