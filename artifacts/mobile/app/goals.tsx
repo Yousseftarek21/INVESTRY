@@ -18,6 +18,7 @@ import { useCash } from '@/context/CashContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
+import { GoalCelebration } from '@/components/GoalCelebration';
 import { CashAccountType } from '@/types';
 
 const FREE_LIMIT = 0;
@@ -91,6 +92,10 @@ export default function GoalsScreen() {
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [progressGoalId, setProgressGoalId] = useState<string | null>(null);
   const [progressRaw, setProgressRaw] = useState('');
+  // Set only at the moment a save/edit actually crosses a goal from
+  // not-yet-funded to funded — never re-derived from the list on render, so
+  // reopening this screen with an already-completed goal doesn't replay it.
+  const [celebrateGoalName, setCelebrateGoalName] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [targetRaw, setTargetRaw] = useState('');
@@ -147,7 +152,10 @@ export default function GoalsScreen() {
       if (editingId) {
         const existing = goals.find(g => g.id === editingId);
         if (!existing) return;
+        const wasDone = existing.targetAmount > 0 && existing.savedAmount >= existing.targetAmount;
+        const nowDone = target > 0 && saved >= target;
         await updateGoal({ ...existing, name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, linkedCashAccountId: linkedAccountId ?? undefined });
+        if (!wasDone && nowDone) setCelebrateGoalName(trimmed);
       } else {
         await addGoal({ id: generateId(), name: trimmed, targetAmount: target, savedAmount: saved, deadline: deadline || undefined, note: note.trim() || undefined, createdAt: new Date().toISOString(), linkedCashAccountId: linkedAccountId ?? undefined });
       }
@@ -186,10 +194,14 @@ export default function GoalsScreen() {
       return;
     }
     impact(Haptics.ImpactFeedbackStyle.Light);
+    const wasDone = g.targetAmount > 0 && g.savedAmount >= g.targetAmount;
+    const newSaved = g.savedAmount + amount;
+    const nowDone = g.targetAmount > 0 && newSaved >= g.targetAmount;
     try {
-      await updateGoal({ ...g, savedAmount: g.savedAmount + amount });
+      await updateGoal({ ...g, savedAmount: newSaved });
       setShowProgressModal(false);
       setProgressGoalId(null);
+      if (!wasDone && nowDone) setCelebrateGoalName(g.name);
     } catch {
       Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc);
     }
@@ -507,6 +519,8 @@ export default function GoalsScreen() {
             </View>
           </View>
         </Modal>
+
+        <GoalCelebration goalName={celebrateGoalName} onDismiss={() => setCelebrateGoalName(null)} />
       </View>
     </>
   );
