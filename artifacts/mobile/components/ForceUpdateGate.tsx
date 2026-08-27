@@ -1,38 +1,33 @@
 import React from 'react';
-import { BackHandler, Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAppUpdateCheck } from '@/hooks/useAppUpdateCheck';
 
-// A hard, non-dismissible block for anyone on a native binary older than
-// the server's known-latest App Store version — no X button, no backdrop
-// tap, no Android back-button escape. Deliberately stronger than
-// UpdateAvailableBanner (which stays for the lighter "a fresh OTA JS
-// bundle is ready" case, kind === 'ota', still dismissible): a stale
-// NATIVE binary can carry real, already-shipped bugs an OTA update can't
-// patch (e.g. a missing native module), so nudging politely isn't enough
-// once a fix that actually needs a new binary is out.
+// A prominent, app-wide nudge (not tied to any one tab, unlike the older
+// Home-tab-only UpdateAvailableBanner) for anyone on a native binary older
+// than the server's known-latest App Store version — every old version,
+// every user, shown regardless of which screen they're on or whether
+// they're signed in yet. Dismissible (X button, backdrop tap, Android back
+// button) — it reappears next launch as long as the account is still
+// behind, via useAppUpdateCheck's own per-version dismiss tracking.
 export function ForceUpdateGate() {
   const colors = useColors();
   const t = useT();
   const { impact } = useHaptic();
-  const { updateAvailable, kind, storeUrl } = useAppUpdateCheck();
+  const { updateAvailable, kind, storeUrl, dismiss } = useAppUpdateCheck();
 
   const visible = updateAvailable && kind === 'native' && !!storeUrl;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent
-      // No onRequestClose dismissal — intercepted below on Android so the
-      // hardware back button can't back out of this either.
-      onRequestClose={() => { if (Platform.OS === 'android') BackHandler.exitApp(); }}
-    >
-      <View style={[styles.backdrop, { backgroundColor: colors.background }]}>
-        <View style={styles.content}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={dismiss}>
+      <Pressable style={[styles.backdrop, { backgroundColor: colors.background + 'E6' }]} onPress={dismiss}>
+        <Pressable style={styles.content} onPress={(e) => e.stopPropagation()}>
+          <TouchableOpacity onPress={() => { impact(); dismiss(); }} style={[styles.close, { backgroundColor: colors.muted }]} hitSlop={8}>
+            <Feather name="x" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
           <View style={[styles.iconWrap, { backgroundColor: colors.primary + '1F' }]}>
             <Feather name="download" size={32} color={colors.primary} />
           </View>
@@ -45,15 +40,19 @@ export function ForceUpdateGate() {
           >
             <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>{t.forceUpdateCta}</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  content: { alignItems: 'center', gap: 14, maxWidth: 340 },
+  content: { alignItems: 'center', gap: 14, maxWidth: 340, position: 'relative', width: '100%' },
+  close: {
+    position: 'absolute', top: -8, right: -8, zIndex: 1,
+    width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center',
+  },
   iconWrap: { width: 72, height: 72, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   title: { fontSize: 20, fontFamily: 'Inter_700Bold', textAlign: 'center' },
   body: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 21 },
