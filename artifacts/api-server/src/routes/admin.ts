@@ -233,4 +233,70 @@ router.get("/admin/all-daily-changes", async (req, res) => {
   }
 });
 
+// Diagnostic for the referral system — real production proof it's actually
+// working end to end (codes generated, redemptions landing, credit granted),
+// not just that the code reviews clean.
+//
+//   curl "https://api.investry.app/api/admin/referral-debug" \
+//     -H "x-admin-secret: <the secret>"
+router.get("/admin/referral-debug", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const rows = await db
+      .select({
+        id: usersTable.id,
+        referralCode: usersTable.referralCode,
+        referredByUserId: usersTable.referredByUserId,
+        referralRedeemedAt: usersTable.referralRedeemedAt,
+        proCreditExpiresAt: usersTable.proCreditExpiresAt,
+      })
+      .from(usersTable);
+
+    const withCode = rows.filter(r => r.referralCode != null);
+    const redeemed = rows.filter(r => r.referredByUserId != null);
+    const withCredit = rows.filter(r => r.proCreditExpiresAt != null && r.proCreditExpiresAt > new Date());
+
+    const byReferrer = new Map<string, number>();
+    for (const r of redeemed) {
+      if (!r.referredByUserId) continue;
+      byReferrer.set(r.referredByUserId, (byReferrer.get(r.referredByUserId) ?? 0) + 1);
+    }
+    const topReferrers = [...byReferrer.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([userId, referredCount]) => ({ userId, referredCount }));
+
+    const identities = await fetchIdentities(topReferrers.map(r => r.userId));
+
+    res.json({
+      totalUsers: rows.length,
+      usersWithCode: withCode.length,
+      usersWhoRedeemed: redeemed.length,
+      usersWithActiveProCredit: withCredit.length,
+      topReferrers: topReferrers.map(r => ({ ...r, name: identities.get(r.userId)?.name ?? "?" })),
+      // A handful of raw rows (redacted to referral fields only, same
+      // metadata-not-content boundary as user-debug) — enough to sanity
+      // check codes actually look like codes and timestamps are recent,
+      // not to identify who's who beyond what topReferrers already shows.
+      sampleRecentRedemptions: redeemed
+        .filter(r => r.referralRedeemedAt != null)
+        .sort((a, b) => (b.referralRedeemedAt!.getTime()) - (a.referralRedeemedAt!.getTime()))
+        .slice(0, 5)
+        .map(r => ({ referredByUserId: r.referredByUserId, referralRedeemedAt: r.referralRedeemedAt })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "GET /admin/referral-debug failed");
+    res.status(500).json({ error: "Lookup failed" });
+  }
+});
+
 export default router;
