@@ -302,22 +302,26 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
   // narrower "cost basis could be backdated" caveat as stocks, and only for
   // the sale event itself, not for anything still held.
   let metalSaleProceeds = 0;
-  let metalSaleCostBasis = 0;
+  let metalSaleAmountInvested = 0;
   let stockSaleProceeds = 0;
-  let stockSaleCostBasis = 0;
+  let stockSaleAmountInvested = 0;
   for (const row of soldRows) {
     const data = decryptFromStorage(row.data) as {
-      type?: string; saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string; costBasis?: number;
+      type?: string; saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string;
+      amountInvested?: number; costBasis?: number; // costBasis: pre-rename records, read for backward compatibility only — see holdings.ts's sell/delete routes for what actually gets written now
     };
     if (!data.saleDate || typeof data.saleProceeds !== "number") continue;
     if (data.saleDate < cutoffDateKey) continue;
     if (!data.holdingCreatedDay || data.holdingCreatedDay >= cutoffDateKey) continue; // bought and sold within the period: excluded entirely
+    const amountInvested = typeof data.amountInvested === "number" ? data.amountInvested
+      : typeof data.costBasis === "number" ? data.costBasis
+      : data.saleProceeds;
     if (data.type === "gold" || data.type === "silver") {
       metalSaleProceeds += data.saleProceeds;
-      metalSaleCostBasis += typeof data.costBasis === "number" ? data.costBasis : data.saleProceeds;
+      metalSaleAmountInvested += amountInvested;
     } else if (data.type === "stock") {
       stockSaleProceeds += data.saleProceeds;
-      stockSaleCostBasis += typeof data.costBasis === "number" ? data.costBasis : data.saleProceeds;
+      stockSaleAmountInvested += amountInvested;
     }
   }
 
@@ -326,7 +330,7 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
   const hasStock = stockCurrent > 0 || stockSaleProceeds > 0;
   if (!hasMetal && !hasMetalSale && !hasStock) return { pctReturn: null };
 
-  let baseline = stockBaselineCost + stockSaleCostBasis + metalSaleCostBasis;
+  let baseline = stockBaselineCost + stockSaleAmountInvested + metalSaleAmountInvested;
   let current = stockCurrent + stockSaleProceeds + metalSaleProceeds;
   if (hasMetal) {
     const today = todayMetal ?? await metalPriceOnOrBefore(tradingDayKey());

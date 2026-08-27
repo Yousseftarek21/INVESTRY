@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
 import { isNotNull, eq, asc } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
-import { db, usersTable, holdingsTable, cashAccountsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
+import { db, usersTable, holdingsTable, cashAccountsTable, soldHoldingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
 import { sendPushToTokens } from "../lib/expoPush";
 import { backfillDailyChanges, backfillDailyChangesFromSnapshots, resetDailyChangeHistory } from "../lib/dailyChangeBackfill";
 import { computeRankedReturns } from "../lib/leaderboardRanking";
 import { fetchIdentities } from "../lib/clerkIdentity";
-import { decryptFromStorage } from "../lib/encryption";
+import { decryptFromStorage, encryptForStorage } from "../lib/encryption";
 import { computeHoldingValue, costBasisEGP, type StoredHolding } from "../lib/portfolioValue";
 import { getCachedPrices, getCachedStocks } from "./markets";
 
@@ -347,7 +347,7 @@ router.get("/admin/all-users-full", async (req, res) => {
 
     interface HoldingEntry extends StoredHolding {
       currentValueEgp: number;
-      costBasisEgp: number;
+      amountInvestedEgp: number;
       createdAt: Date;
       updatedAt: Date;
     }
@@ -355,8 +355,8 @@ router.get("/admin/all-users-full", async (req, res) => {
     for (const row of holdingRows) {
       const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
       const currentValueEgp = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
-      const costBasisEgp = costBasisEGP(holding, prices.usdToEgp);
-      const entry: HoldingEntry = { ...holding, currentValueEgp, costBasisEgp, createdAt: row.createdAt, updatedAt: row.updatedAt };
+      const amountInvestedEgp = costBasisEGP(holding, prices.usdToEgp);
+      const entry: HoldingEntry = { ...holding, currentValueEgp, amountInvestedEgp, createdAt: row.createdAt, updatedAt: row.updatedAt };
       const list = holdingsByUser.get(row.userId) ?? [];
       list.push(entry);
       holdingsByUser.set(row.userId, list);
@@ -373,13 +373,13 @@ router.get("/admin/all-users-full", async (req, res) => {
     const result = users.map(u => {
       const holdings = holdingsByUser.get(u.id) ?? [];
       const totalPortfolioValueEgp = holdings.reduce((sum, h) => sum + h.currentValueEgp, 0);
-      const totalCostBasisEgp = holdings.reduce((sum, h) => sum + h.costBasisEgp, 0);
+      const totalAmountInvestedEgp = holdings.reduce((sum, h) => sum + h.amountInvestedEgp, 0);
       return {
         userId: u.id,
         name: nameById.get(u.id) ?? null,
         email: emailById.get(u.id) ?? null,
         totalPortfolioValueEgp,
-        totalCostBasisEgp,
+        totalAmountInvestedEgp,
         holdingsCount: holdings.length,
         holdings,
         cashAccounts: cashByUser.get(u.id) ?? [],
@@ -390,6 +390,49 @@ router.get("/admin/all-users-full", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "GET /admin/all-users-full failed");
     res.status(500).json({ error: "Lookup failed" });
+  }
+});
+
+// One-time (safely re-runnable) migration: renames the persisted
+// sold_holdings field from costBasis to amountInvested (matching the
+// user-facing costBasisLabel string, "Amount Invested", that's shown
+// everywhere in the app — this makes it the field's real name, not just a
+// display label). computePeriodPerformance already reads amountInvested
+// with a fallback to the old costBasis key, so this migration isn't
+// required for correctness — it's for making every existing record
+// consistent with new ones instead of leaving old rows on the old name
+// forever. Decrypts each row, renames the key if present, re-encrypts, and
+// writes back only if something actually changed; already-migrated or
+// otherwise-shaped rows are left untouched and don't count as errors.
+//
+//   curl -X POST "https://api.investry.app/api/admin/migrate-cost-basis-field" \
+//     -H "x-admin-secret: <the secret>"
+router.post("/admin/migrate-cost-basis-field", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const rows = await db.select().from(soldHoldingsTable);
+    let migrated = 0;
+    for (const row of rows) {
+      const data = decryptFromStorage(row.data) as Record<string, unknown>;
+      if (!("costBasis" in data)) continue; // already migrated, or never had the field
+      const { costBasis, ...rest } = data;
+      const renamed = "amountInvested" in rest ? rest : { ...rest, amountInvested: costBasis };
+      await db.update(soldHoldingsTable).set({ data: encryptForStorage(renamed) }).where(eq(soldHoldingsTable.id, row.id));
+      migrated++;
+    }
+    res.json({ success: true, totalRows: rows.length, migrated });
+  } catch (err) {
+    req.log.error({ err }, "POST /admin/migrate-cost-basis-field failed");
+    res.status(500).json({ error: "Migration failed" });
   }
 });
 

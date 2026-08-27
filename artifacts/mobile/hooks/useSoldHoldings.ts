@@ -9,7 +9,7 @@ export interface SoldHolding {
   label: string;
   quantity: number | null;
   purchaseDate: string | null;
-  costBasis: number;
+  amountInvested: number;
   saleProceeds: number;
   saleDate: string;
   realizedGainLoss: number;

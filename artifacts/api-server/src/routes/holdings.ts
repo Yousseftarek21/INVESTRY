@@ -177,7 +177,7 @@ router.delete("/holdings/:id", async (req, res) => {
         const egxPrices: Record<string, number> = {};
         for (const s of egxStocks) egxPrices[s.symbol] = s.price;
 
-        const costBasis = costBasisEGP(holding, prices.usdToEgp);
+        const amountInvested = costBasisEGP(holding, prices.usdToEgp);
         const currentValue = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
 
         await tx.insert(soldHoldingsTable).values({
@@ -190,10 +190,13 @@ router.delete("/holdings/:id", async (req, res) => {
             quantity: holdingQuantity(holding),
             purchaseDate: holding.purchaseDate ?? null,
             holdingCreatedDay: tradingDayKey(row.createdAt),
-            costBasis,
+            // "amountInvested" — matches the user-facing costBasisLabel
+            // string ("Amount Invested") everywhere else in the app; this is
+            // the field's real persisted name now, not just a display label.
+            amountInvested,
             saleProceeds: currentValue,
             saleDate: tradingDayKey(),
-            realizedGainLoss: currentValue - costBasis,
+            realizedGainLoss: currentValue - amountInvested,
             notes: null,
             isDeletionRecord: true,
           }),
@@ -284,8 +287,8 @@ router.post("/holdings/:id/sell", async (req, res) => {
 
     const isPartial = isFungible && fullQuantity != null && sellQuantity != null && sellQuantity < fullQuantity - 1e-9;
     const portion = isPartial && fullQuantity ? sellQuantity! / fullQuantity : 1;
-    const costBasis = costBasisEGP(holding, prices.usdToEgp) * portion;
-    const realizedGainLoss = saleProceeds - costBasis;
+    const amountInvested = costBasisEGP(holding, prices.usdToEgp) * portion;
+    const realizedGainLoss = saleProceeds - amountInvested;
 
     const soldId = generateSoldHoldingId();
     const soldData = {
@@ -303,7 +306,10 @@ router.post("/holdings/:id/sell", async (req, res) => {
       // mid-period sale of a long-held asset look like a big loss, since
       // the holding just vanishes with nothing replacing its value).
       holdingCreatedDay: tradingDayKey(row.createdAt),
-      costBasis,
+      // "amountInvested" — matches the user-facing costBasisLabel string
+      // ("Amount Invested") everywhere else in the app; this is the field's
+      // real persisted name now, not just a display label.
+      amountInvested,
       saleProceeds,
       saleDate: body.saleDate,
       realizedGainLoss,
