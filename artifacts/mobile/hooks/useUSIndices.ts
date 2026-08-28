@@ -8,13 +8,14 @@ export interface USIndexMeta {
   fallbackPrice: number;
 }
 
-// Real index metadata — descriptions are localized (see i18n's
-// usIndexSpxDesc/usIndexDjiDesc/usIndexIxicDesc), looked up by symbol in
-// GlobalStocksMarket's index card rather than hardcoded here.
+// Real index metadata — same 3 indices and names TradingView's own "Indices"
+// panel shows. Descriptions are localized (see i18n's usIndexSpxDesc/
+// usIndexDjiDesc/usIndexNdxDesc), looked up by symbol in GlobalStocksMarket's
+// index card rather than hardcoded here.
 export const US_INDICES: USIndexMeta[] = [
-  { symbol: 'SPX', name: 'S&P 500', short: 'SPX', fallbackPrice: 6300 },
-  { symbol: 'DJI', name: 'Dow Jones Industrial Average', short: 'Dow Jones', fallbackPrice: 44500 },
-  { symbol: 'IXIC', name: 'Nasdaq Composite', short: 'Nasdaq', fallbackPrice: 20000 },
+  { symbol: 'SPX', name: 'S&P 500', short: 'S&P 500', fallbackPrice: 7715 },
+  { symbol: 'DJI', name: 'Dow 30', short: 'Dow 30', fallbackPrice: 53550 },
+  { symbol: 'NDX', name: 'Nasdaq 100', short: 'Nasdaq 100', fallbackPrice: 29450 },
 ];
 
 export interface USIndexLive extends USIndexMeta {

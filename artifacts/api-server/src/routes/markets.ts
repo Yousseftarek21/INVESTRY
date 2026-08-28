@@ -1480,17 +1480,21 @@ async function fetchEGXIndices(): Promise<EGXStockResponse[]> {
   return results;
 }
 
-// ─── US major indices (S&P 500, Dow Jones, Nasdaq Composite) ──────────────────
-// Real index values (not ETF proxies like SPY/QQQ/DIA above). Verified live
-// against TradingView's own scanner (not guessed): these three don't resolve
-// on the "america" scanner region used for individual stocks — indices live
-// under the "global" region — and S&P 500 specifically isn't under TVC like
-// the other two, it resolves under the SP exchange (TVC:SPX returns nothing;
-// SP:SPX does).
+// ─── US major indices (S&P 500, Dow 30, Nasdaq 100) ────────────────────────────
+// Real index values (not ETF proxies like SPY/QQQ/DIA above) — same 3 indices
+// and same names TradingView itself shows on its own "Indices" panel. Every
+// symbol/exchange/region here was verified live against TradingView's own
+// scanner (not guessed): none of the three resolve on the "america" scanner
+// region used for individual stocks — indices live under the "global" region
+// — and each needed its own exchange checked individually: SP:SPX (not
+// TVC:SPX, which returns nothing), TVC:DJI, and NASDAQ:NDX for the Nasdaq
+// 100 specifically — NASDAQ:IXIC is a different index (Nasdaq Composite,
+// every Nasdaq-listed stock) and was showing a value ~3,000 points off from
+// what TradingView itself displays as "Nasdaq 100".
 const US_INDICES = [
-  { symbol: "SPX", exchange: "SP",  name: "S&P 500" },
-  { symbol: "DJI", exchange: "TVC", name: "Dow Jones Industrial Average" },
-  { symbol: "IXIC", exchange: "TVC", name: "Nasdaq Composite" },
+  { symbol: "SPX", exchange: "SP",     name: "S&P 500" },
+  { symbol: "DJI", exchange: "TVC",    name: "Dow 30" },
+  { symbol: "NDX", exchange: "NASDAQ", name: "Nasdaq 100" },
 ] as const;
 
 async function fetchUSIndices(): Promise<EGXStockResponse[]> {

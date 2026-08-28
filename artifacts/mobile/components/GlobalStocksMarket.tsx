@@ -16,6 +16,7 @@ import { useGlobalStocks, GlobalStockLive } from '@/hooks/useGlobalStocks';
 import { useUSIndices, USIndexLive } from '@/hooks/useUSIndices';
 import { fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { RangeBar } from '@/components/RangeBar';
+import { MarketStatusCard } from '@/components/MarketStatusCard';
 
 // Rebuilt to match EGXMarket.tsx's structure and polish exactly: one
 // virtualized FlatList (not a ScrollView + .map, which never recycles rows),
@@ -52,61 +53,18 @@ function etLabel(): string {
 
 // Exported so nothing else needs its own copy of the session-hours logic.
 export function USMarketStatusBanner() {
-  const colors = useColors();
   const { session, label, nextEvent } = getUSMarketStatus();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (session !== 'open') return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.3, duration: 900, useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(pulseAnim, { toValue: 1,   duration: 900, useNativeDriver: Platform.OS !== 'web' }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [session]);
-
-  const accent =
-    session === 'open'  ? colors.green :
-    session === 'pre'   ? '#F59E0B'    :
-    session === 'post'  ? '#F97316'    :
-    '#EF4444';
-
   return (
-    <View style={[umb.banner, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={umb.left}>
-        <Animated.View style={[umb.dot, { backgroundColor: accent, opacity: session === 'open' ? pulseAnim : 1 }]} />
-        <View style={umb.textWrap}>
-          <Text style={[umb.label, { color: accent }]}>US {label}</Text>
-          <Text style={[umb.sub, { color: colors.mutedForeground }]} numberOfLines={1}>{nextEvent}</Text>
-        </View>
-      </View>
-      <View style={umb.right}>
-        <Text style={[umb.flag, { color: colors.mutedForeground }]}>🇺🇸 NYSE · NASDAQ</Text>
-        <Text style={[umb.schedule, { color: colors.mutedForeground }]}>Mon–Fri · 9:30–16:00 {etLabel()}</Text>
-        <Text style={[umb.scheduleCairo, { color: colors.mutedForeground }]}>{nyseHoursInCairo()}</Text>
-      </View>
-    </View>
+    <MarketStatusCard
+      session={session}
+      statusLabel={`US ${label}`}
+      nextEvent={nextEvent}
+      flag="🇺🇸"
+      exchangeTag="NYSE · NASDAQ"
+      hoursLine={`Mon–Fri · 9:30–16:00 ${etLabel()} · ${nyseHoursInCairo()}`}
+    />
   );
 }
-const umb = StyleSheet.create({
-  banner: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1,
-    gap: 8,
-  },
-  left:          { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
-  textWrap:      { flex: 1, minWidth: 0 },
-  dot:           { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  label:         { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  sub:           { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  right:         { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
-  flag:          { fontSize: 10, fontFamily: 'Inter_500Medium' },
-  schedule:      { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  scheduleCairo: { fontSize: 8, fontFamily: 'Inter_400Regular', opacity: 0.6 },
-});
 
 // ─── Index card (S&P 500 / Dow Jones / Nasdaq) ─────────────────────────────────
 // Same construction as EGXMarket's EGXIndexChips — one combined card, real
@@ -119,7 +77,7 @@ function indexDesc(t: ReturnType<typeof useT>, symbol: string): string {
   switch (symbol) {
     case 'SPX':  return t.usIndexSpxDesc;
     case 'DJI':  return t.usIndexDjiDesc;
-    case 'IXIC': return t.usIndexIxicDesc;
+    case 'NDX':  return t.usIndexNdxDesc;
     default:     return '';
   }
 }

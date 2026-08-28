@@ -15,6 +15,7 @@ import { useEGXMarket, EGXStockLive, EGX_STATIC_FALLBACK, fmtMarketCap, fmtVolum
 import { useEGXIndices, EGXIndex } from '@/hooks/useEGXIndices';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 import { RangeBar } from '@/components/RangeBar';
+import { MarketStatusCard } from '@/components/MarketStatusCard';
 
 // ─── Timezone helpers ─────────────────────────────────────────────────────────
 // Egypt observes EEST (UTC+3) Apr–Oct and EET (UTC+2) Nov–Mar (DST reintroduced 2023).
@@ -159,60 +160,19 @@ const ix = StyleSheet.create({
 });
 
 function MarketStatusBanner() {
-  const colors = useColors();
   const t = useT();
   const { session, label, nextEvent } = getEGXMarketStatus();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (session !== 'open') return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.3, duration: 900, useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(pulseAnim, { toValue: 1,   duration: 900, useNativeDriver: Platform.OS !== 'web' }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [session]);
-
-  const accent =
-    session === 'open'   ? colors.green :
-    session === 'pre'    ? '#F59E0B'    :
-    session === 'post'   ? '#F97316'    :
-    '#EF4444';
-
   return (
-    <View style={[mst.banner, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={mst.left}>
-        <Animated.View style={[mst.dot, { backgroundColor: accent, opacity: session === 'open' ? pulseAnim : 1 }]} />
-        <View>
-          <Text style={[mst.label, { color: accent }]}>EGX {label}</Text>
-          <Text style={[mst.sub, { color: colors.mutedForeground }]}>{nextEvent}</Text>
-        </View>
-      </View>
-      <View style={mst.right}>
-        <Text style={[mst.flag, { color: colors.mutedForeground }]}>🇪🇬 {t.egyptianExchange}</Text>
-        <Text style={[mst.schedule, { color: colors.mutedForeground }]}>{t.egxSchedule}</Text>
-        <Text style={[mst.scheduleET, { color: colors.mutedForeground }]}>{egxHoursInET()}</Text>
-      </View>
-    </View>
+    <MarketStatusCard
+      session={session}
+      statusLabel={`EGX ${label}`}
+      nextEvent={nextEvent}
+      flag="🇪🇬"
+      exchangeTag={t.egyptianExchange}
+      hoursLine={`${t.egxSchedule} · ${egxHoursInET()}`}
+    />
   );
 }
-const mst = StyleSheet.create({
-  banner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1,
-  },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dot: { width: 9, height: 9, borderRadius: 5 },
-  label: { fontSize: 13, fontFamily: 'Inter_700Bold' },
-  sub: { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  right: { alignItems: 'flex-end', gap: 1 },
-  flag: { fontSize: 11, fontFamily: 'Inter_500Medium' },
-  schedule: { fontSize: 10, fontFamily: 'Inter_400Regular' },
-  scheduleET: { fontSize: 9, fontFamily: 'Inter_400Regular', opacity: 0.6 },
-});
 
 // ─── Search Bar ───────────────────────────────────────────────────────────────
 
