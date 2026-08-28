@@ -41,8 +41,9 @@ function singleFlight<T>(fn: () => Promise<T>): () => Promise<T> {
 const pricesCache    = makeCache<MarketPricesResponse>(30_000);   // 30 s
 const historicalCache = makeCache<HistoricalRates>(86_400_000);   // 24 h
 const stocksCache    = makeCache<EGXStockResponse[]>(10_000);     // 10 s — matches useEGXMarket.ts's client poll; shorter than metals' 30s to compensate for the bigger 281-company scan taking longer to visibly refresh
-const globalStocksCache = makeCache<EGXStockResponse[]>(5 * 60_000); // 5 min (Twelve Data free tier)
+const globalStocksCache = makeCache<EGXStockResponse[]>(60_000);  // 1 min — TradingView is now primary (see fetchGlobalStocks), no per-symbol quota to protect
 const egxIndicesCache = makeCache<EGXStockResponse[]>(30_000);    // 30 s
+const usIndicesCache = makeCache<EGXStockResponse[]>(30_000);     // 30 s
 // Per-symbol, not one shared entry — a Map of independent 5-min caches.
 // News doesn't move on a 10s clock like price does, so a much longer TTL is
 // correct here, not just tolerable.
@@ -439,22 +440,157 @@ const EGX_TICKERS = [
 // `symbol` is what Twelve Data and Stooq both index by. GLOBAL_EXCHANGE
 // below is what the TradingView fetcher uses.
 
+// Mirrors mobile/data/global-stocks.ts's GLOBAL_COMPANIES ticker set (kept as
+// a separate list here since this side only needs symbol/name/exchange, not
+// category/fallbackPrice) — expanded from the original 8 to real large-cap
+// coverage across every GICS sector, all resolved against TradingView's
+// America scanner (the same provider/pattern already proven at EGX's
+// 281-company scale, so this list isn't squeezed to fit a metered quota).
 const GLOBAL_TICKERS = [
-  { symbol: "SPY",   name: "S&P 500 (SPDR ETF)"       },
-  { symbol: "QQQ",   name: "NASDAQ 100 (Invesco ETF)" },
-  { symbol: "AAPL",  name: "Apple Inc."               },
-  { symbol: "MSFT",  name: "Microsoft Corp."          },
-  { symbol: "NVDA",  name: "NVIDIA Corp."             },
-  { symbol: "GOOGL", name: "Alphabet Inc."            },
-  { symbol: "AMZN",  name: "Amazon.com Inc."          },
-  { symbol: "TSLA",  name: "Tesla Inc."               },
+  { symbol: "AAPL",  name: "Apple Inc." },
+  { symbol: "MSFT",  name: "Microsoft Corp." },
+  { symbol: "NVDA",  name: "NVIDIA Corp." },
+  { symbol: "AVGO",  name: "Broadcom Inc." },
+  { symbol: "ORCL",  name: "Oracle Corp." },
+  { symbol: "CRM",   name: "Salesforce Inc." },
+  { symbol: "ADBE",  name: "Adobe Inc." },
+  { symbol: "AMD",   name: "Advanced Micro Devices" },
+  { symbol: "CSCO",  name: "Cisco Systems Inc." },
+  { symbol: "ACN",   name: "Accenture plc" },
+  { symbol: "INTC",  name: "Intel Corp." },
+  { symbol: "QCOM",  name: "Qualcomm Inc." },
+  { symbol: "TXN",   name: "Texas Instruments Inc." },
+  { symbol: "IBM",   name: "IBM Corp." },
+  { symbol: "INTU",  name: "Intuit Inc." },
+  { symbol: "NOW",   name: "ServiceNow Inc." },
+  { symbol: "PYPL",  name: "PayPal Holdings Inc." },
+  { symbol: "SHOP",  name: "Shopify Inc." },
+
+  { symbol: "GOOGL", name: "Alphabet Inc." },
+  { symbol: "META",  name: "Meta Platforms Inc." },
+  { symbol: "NFLX",  name: "Netflix Inc." },
+  { symbol: "DIS",   name: "Walt Disney Co." },
+  { symbol: "CMCSA", name: "Comcast Corp." },
+  { symbol: "T",     name: "AT&T Inc." },
+  { symbol: "VZ",    name: "Verizon Communications" },
+  { symbol: "TMUS",  name: "T-Mobile US Inc." },
+
+  { symbol: "AMZN",  name: "Amazon.com Inc." },
+  { symbol: "TSLA",  name: "Tesla Inc." },
+  { symbol: "HD",    name: "Home Depot Inc." },
+  { symbol: "MCD",   name: "McDonald's Corp." },
+  { symbol: "NKE",   name: "Nike Inc." },
+  { symbol: "SBUX",  name: "Starbucks Corp." },
+  { symbol: "LOW",   name: "Lowe's Companies Inc." },
+  { symbol: "TJX",   name: "TJX Companies Inc." },
+  { symbol: "BKNG",  name: "Booking Holdings Inc." },
+  { symbol: "CMG",   name: "Chipotle Mexican Grill" },
+  { symbol: "UBER",  name: "Uber Technologies Inc." },
+
+  { symbol: "PG",    name: "Procter & Gamble Co." },
+  { symbol: "KO",    name: "Coca-Cola Co." },
+  { symbol: "PEP",   name: "PepsiCo Inc." },
+  { symbol: "WMT",   name: "Walmart Inc." },
+  { symbol: "COST",  name: "Costco Wholesale Corp." },
+  { symbol: "PM",    name: "Philip Morris International" },
+  { symbol: "MO",    name: "Altria Group Inc." },
+  { symbol: "CL",    name: "Colgate-Palmolive Co." },
+  { symbol: "MDLZ",  name: "Mondelez International" },
+  { symbol: "TGT",   name: "Target Corp." },
+
+  { symbol: "JPM",   name: "JPMorgan Chase & Co." },
+  { symbol: "BAC",   name: "Bank of America Corp." },
+  { symbol: "WFC",   name: "Wells Fargo & Co." },
+  { symbol: "GS",    name: "Goldman Sachs Group Inc." },
+  { symbol: "MS",    name: "Morgan Stanley" },
+  { symbol: "C",     name: "Citigroup Inc." },
+  { symbol: "BLK",   name: "BlackRock Inc." },
+  { symbol: "SCHW",  name: "Charles Schwab Corp." },
+  { symbol: "AXP",   name: "American Express Co." },
+  { symbol: "V",     name: "Visa Inc." },
+  { symbol: "MA",    name: "Mastercard Inc." },
+  { symbol: "SPGI",  name: "S&P Global Inc." },
+
+  { symbol: "UNH",   name: "UnitedHealth Group Inc." },
+  { symbol: "JNJ",   name: "Johnson & Johnson" },
+  { symbol: "LLY",   name: "Eli Lilly and Co." },
+  { symbol: "PFE",   name: "Pfizer Inc." },
+  { symbol: "ABBV",  name: "AbbVie Inc." },
+  { symbol: "MRK",   name: "Merck & Co. Inc." },
+  { symbol: "TMO",   name: "Thermo Fisher Scientific" },
+  { symbol: "ABT",   name: "Abbott Laboratories" },
+  { symbol: "DHR",   name: "Danaher Corp." },
+  { symbol: "BMY",   name: "Bristol-Myers Squibb Co." },
+  { symbol: "AMGN",  name: "Amgen Inc." },
+  { symbol: "GILD",  name: "Gilead Sciences Inc." },
+  { symbol: "CVS",   name: "CVS Health Corp." },
+  { symbol: "MDT",   name: "Medtronic plc" },
+  { symbol: "ISRG",  name: "Intuitive Surgical Inc." },
+
+  { symbol: "BA",    name: "Boeing Co." },
+  { symbol: "CAT",   name: "Caterpillar Inc." },
+  { symbol: "GE",    name: "GE Aerospace" },
+  { symbol: "HON",   name: "Honeywell International" },
+  { symbol: "UPS",   name: "United Parcel Service" },
+  { symbol: "RTX",   name: "RTX Corp." },
+  { symbol: "LMT",   name: "Lockheed Martin Corp." },
+  { symbol: "DE",    name: "Deere & Co." },
+  { symbol: "UNP",   name: "Union Pacific Corp." },
+  { symbol: "MMM",   name: "3M Co." },
+
+  { symbol: "XOM",   name: "Exxon Mobil Corp." },
+  { symbol: "CVX",   name: "Chevron Corp." },
+  { symbol: "COP",   name: "ConocoPhillips" },
+  { symbol: "SLB",   name: "Schlumberger (SLB) Ltd." },
+  { symbol: "EOG",   name: "EOG Resources Inc." },
+  { symbol: "OXY",   name: "Occidental Petroleum Corp." },
+
+  { symbol: "PLD",   name: "Prologis Inc." },
+  { symbol: "AMT",   name: "American Tower Corp." },
+  { symbol: "EQIX",  name: "Equinix Inc." },
+  { symbol: "SPG",   name: "Simon Property Group Inc." },
+
+  { symbol: "NEE",   name: "NextEra Energy Inc." },
+  { symbol: "DUK",   name: "Duke Energy Corp." },
+  { symbol: "SO",    name: "Southern Co." },
+
+  { symbol: "LIN",   name: "Linde plc" },
+  { symbol: "SHW",   name: "Sherwin-Williams Co." },
+  { symbol: "ECL",   name: "Ecolab Inc." },
 ];
 
-// Verified live against TradingView's scanner (not guessed) — all 8 resolved
-// on 2026-07-30. SPY is an AMEX-listed ETF; the rest are NASDAQ.
 const GLOBAL_EXCHANGE: Record<string, string> = {
-  SPY: "AMEX", QQQ: "NASDAQ", AAPL: "NASDAQ", MSFT: "NASDAQ",
-  NVDA: "NASDAQ", GOOGL: "NASDAQ", AMZN: "NASDAQ", TSLA: "NASDAQ",
+  AAPL: "NASDAQ", MSFT: "NASDAQ", NVDA: "NASDAQ", AVGO: "NASDAQ", ORCL: "NYSE",
+  CRM: "NYSE", ADBE: "NASDAQ", AMD: "NASDAQ", CSCO: "NASDAQ", ACN: "NYSE",
+  INTC: "NASDAQ", QCOM: "NASDAQ", TXN: "NASDAQ", IBM: "NYSE", INTU: "NASDAQ",
+  NOW: "NYSE", PYPL: "NASDAQ", SHOP: "NYSE",
+
+  GOOGL: "NASDAQ", META: "NASDAQ", NFLX: "NASDAQ", DIS: "NYSE", CMCSA: "NASDAQ",
+  T: "NYSE", VZ: "NYSE", TMUS: "NASDAQ",
+
+  AMZN: "NASDAQ", TSLA: "NASDAQ", HD: "NYSE", MCD: "NYSE", NKE: "NYSE",
+  SBUX: "NASDAQ", LOW: "NYSE", TJX: "NYSE", BKNG: "NASDAQ", CMG: "NYSE", UBER: "NYSE",
+
+  PG: "NYSE", KO: "NYSE", PEP: "NASDAQ", WMT: "NYSE", COST: "NASDAQ",
+  PM: "NYSE", MO: "NYSE", CL: "NYSE", MDLZ: "NASDAQ", TGT: "NYSE",
+
+  JPM: "NYSE", BAC: "NYSE", WFC: "NYSE", GS: "NYSE", MS: "NYSE", C: "NYSE",
+  BLK: "NYSE", SCHW: "NYSE", AXP: "NYSE", V: "NYSE", MA: "NYSE", SPGI: "NYSE",
+
+  UNH: "NYSE", JNJ: "NYSE", LLY: "NYSE", PFE: "NYSE", ABBV: "NYSE", MRK: "NYSE",
+  TMO: "NYSE", ABT: "NYSE", DHR: "NYSE", BMY: "NYSE", AMGN: "NASDAQ", GILD: "NASDAQ",
+  CVS: "NYSE", MDT: "NYSE", ISRG: "NASDAQ",
+
+  BA: "NYSE", CAT: "NYSE", GE: "NYSE", HON: "NASDAQ", UPS: "NYSE", RTX: "NYSE",
+  LMT: "NYSE", DE: "NYSE", UNP: "NYSE", MMM: "NYSE",
+
+  XOM: "NYSE", CVX: "NYSE", COP: "NYSE", SLB: "NYSE", EOG: "NYSE", OXY: "NYSE",
+
+  PLD: "NYSE", AMT: "NYSE", EQIX: "NASDAQ", SPG: "NYSE",
+
+  NEE: "NYSE", DUK: "NYSE", SO: "NYSE",
+
+  LIN: "NASDAQ", SHW: "NYSE", ECL: "NYSE",
 };
 
 const TROY_OZ = 31.1034768;  // exact grams per troy ounce
@@ -466,13 +602,6 @@ const PURITY: Record<string, number> = {
 };
 
 const FALLBACK_EGP    = 51.0;
-
-// Generic browser identity, reused by Stooq's fetches — the only remaining caller.
-const BASE_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Accept": "application/json",
-  "Accept-Language": "en-US,en;q=0.9",
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1351,6 +1480,49 @@ async function fetchEGXIndices(): Promise<EGXStockResponse[]> {
   return results;
 }
 
+// ─── US major indices (S&P 500, Dow Jones, Nasdaq Composite) ──────────────────
+// Real index values (not ETF proxies like SPY/QQQ/DIA above) via TradingView's
+// TVC exchange, the standard listing for cash index data — same "america/scan"
+// endpoint already used for individual US stocks, just a different symbol set.
+const US_INDICES = [
+  { symbol: "SPX", name: "S&P 500" },
+  { symbol: "DJI", name: "Dow Jones Industrial Average" },
+  { symbol: "IXIC", name: "Nasdaq Composite" },
+] as const;
+
+async function fetchUSIndices(): Promise<EGXStockResponse[]> {
+  const body = JSON.stringify({
+    columns: ["close", "change_abs", "change"],
+    symbols: { tickers: US_INDICES.map(i => `TVC:${i.symbol}`) },
+  });
+  const res = await safeFetch("https://scanner.tradingview.com/america/scan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
+    body,
+  });
+  const data = await safeJson<{ data: Array<{ s: string; d: [number, number, number] }> }>(
+    res, "US indices TradingView"
+  );
+  const rows = data?.data ?? [];
+  if (rows.length === 0) {
+    logger.warn("US indices: TradingView scanner returned no data");
+    return [];
+  }
+  const bySymbol = new Map(rows.map(r => [r.s.split(":")[1], r.d]));
+  return US_INDICES.map(({ symbol, name }) => {
+    const d = bySymbol.get(symbol);
+    if (!d || !(d[0] > 0)) {
+      return { symbol, name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
+    }
+    const [close, changeAbs, changePct] = d;
+    return {
+      symbol, name,
+      price: round2(close), previousClose: round2(close - changeAbs),
+      change: round2(changeAbs), changePercent: round2(changePct),
+    };
+  });
+}
+
 /** Fetch US stock quotes via TradingView's America scanner. */
 async function fetchGlobalStocksViaTradingView(): Promise<EGXStockResponse[]> {
   const tickers = GLOBAL_TICKERS.map(t => `${GLOBAL_EXCHANGE[t.symbol]}:${t.symbol}`);
@@ -1382,118 +1554,25 @@ async function fetchGlobalStocksViaTradingView(): Promise<EGXStockResponse[]> {
   });
 }
 
-// ─── Twelve Data — primary live source for US stocks ─────────────────────────
-// Free tier: 800 credits/day; each symbol = 1 credit; batch call = Σ symbols.
-// With 20 symbols and 5-min cache: ~40 fetches/day = 800 credits/day (at the limit).
-
-async function fetchGlobalStocksViaTwelveData(): Promise<EGXStockResponse[]> {
-  const apiKey = process.env.TWELVE_DATA_API_KEY;
-  if (!apiKey) { logger.warn("TWELVE_DATA_API_KEY not set"); return []; }
-
-  const symbols = GLOBAL_TICKERS.map(t => t.symbol).join(",");
-  const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbols)}&apikey=${apiKey}`;
-  const res = await safeFetch(url, { headers: { Accept: "application/json" } });
-  if (!res?.ok) {
-    logger.warn({ status: res?.status }, "Twelve Data: non-OK response");
-    return [];
-  }
-
-  const data = await res.json() as Record<string, any>;
-
-  // Top-level error (bad key, quota exceeded, etc.)
-  if (data?.status === "error" || data?.code) {
-    logger.warn({ code: data?.code, message: data?.message }, "Twelve Data: API error");
-    return [];
-  }
-
-  // Single-symbol response comes back as a flat object; multi-symbol is keyed by ticker
-  const isSingle = GLOBAL_TICKERS.length === 1;
-
-  return GLOBAL_TICKERS.map(t => {
-    const q = isSingle ? data : data[t.symbol];
-    if (!q || q.status === "error" || !q.close) {
-      return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
-    }
-    return {
-      symbol:        t.symbol,
-      name:          t.name,
-      price:         round2(parseFloat(q.close)),
-      previousClose: round2(parseFloat(q.previous_close ?? "0")),
-      change:        round2(parseFloat(q.change ?? "0")),
-      changePercent: round2(parseFloat(q.percent_change ?? "0")),
-    };
-  });
-}
-
-// ─── Stooq fallback for US stocks (truly free, no API key, different IP allowance) ──
-
-async function fetchGlobalStocksViaStooq(): Promise<EGXStockResponse[]> {
-  // Stooq format: f=sd2t2ohlcv → Symbol,Date,Time,Open,High,Low,Close,Volume
-  // Each symbol needs its own request; run in parallel.
-  const rows = await Promise.all(
-    GLOBAL_TICKERS.map(async t => {
-      const sym = t.symbol.toLowerCase() + ".us"; // e.g., AAPL → aapl.us
-      const url = `https://stooq.com/q/l/?s=${sym}&f=sd2t2ohlcv&h&e=csv`;
-      const res = await safeFetch(url, {
-        headers: { "User-Agent": BASE_HEADERS["User-Agent"], Accept: "text/csv,text/plain" },
-      });
-      if (!res?.ok) return null;
-      const text = await res.text();
-      const lines = text.trim().split("\n");
-      if (lines.length < 2) return null;
-      const parts = lines[1].split(","); // skip header row
-      // parts: [Symbol, Date, Time, Open, High, Low, Close, Volume]
-      const open  = parseFloat(parts[3]);
-      const close = parseFloat(parts[6]);
-      if (!close || isNaN(close) || close <= 0) return null;
-      const change       = round2(close - open);
-      const changePercent = open > 0 ? round2((change / open) * 100) : 0;
-      return {
-        symbol: t.symbol, name: t.name,
-        price: round2(close), previousClose: round2(open),
-        change, changePercent,
-      } as EGXStockResponse;
-    })
-  );
-  const valid = rows.filter((r): r is EGXStockResponse => r !== null);
-  logger.info({ count: valid.length }, "Global stocks via Stooq");
-  return valid;
-}
-
+// TradingView only — same explicit product decision already applied to EGX
+// and to FX (see fetchUsdToEgp / fetchStocks' own comment): one trusted
+// provider, no other source silently standing in for it. Twelve Data and
+// Stooq fallbacks were removed here; if TradingView's America scanner fails,
+// global stocks come back empty rather than from a different, unvetted
+// source or a quota-limited partial list.
 async function fetchGlobalStocks(): Promise<EGXStockResponse[]> {
-  // 1. Twelve Data — authenticated, proper change vs previous close
-  try {
-    const data = await fetchGlobalStocksViaTwelveData();
-    if (data.some(s => s.price > 0)) {
-      logger.info("Global stocks via Twelve Data");
-      return data;
-    }
-  } catch (err) {
-    logger.warn({ err }, "Global stocks: Twelve Data failed");
-  }
-
-  // 2. TradingView — same provider already trusted for gold, silver and EGX.
-  //    Replaces the Yahoo Finance quote/spark tiers removed here (2026-07-30):
-  //    no other provider silently stands in when Twelve Data is unavailable.
   try {
     const data = await fetchGlobalStocksViaTradingView();
     if (data.some(s => s.price > 0)) {
       logger.info("Global stocks via TradingView");
       return data;
     }
+    logger.warn("Global stocks: TradingView scanner returned no usable prices");
+    return [];
   } catch (err) {
-    logger.warn({ err }, "Global stocks: TradingView failed");
+    logger.warn({ err }, "Global stocks: TradingView scanner unreachable — returning empty rather than a fabricated or crashed response");
+    return [];
   }
-
-  // 3. Stooq — independent provider, free, no key
-  try {
-    const data = await fetchGlobalStocksViaStooq();
-    if (data.length > 0) return data;
-  } catch (err) {
-    logger.warn({ err }, "Global stocks: all sources failed");
-  }
-
-  return [];
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -1580,6 +1659,20 @@ router.get("/markets/global-stocks", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch global stocks");
     res.status(500).json({ error: "Failed to fetch global stocks" });
+  }
+});
+
+router.get("/markets/us-indices", async (req, res) => {
+  const cached = usIndicesCache.get();
+  if (cached) { res.setHeader("X-Cache", "HIT"); res.json(cached); return; }
+  try {
+    const data = await fetchUSIndices();
+    usIndicesCache.set(data);
+    res.setHeader("X-Cache", "MISS");
+    res.json(data);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch US indices");
+    res.status(500).json({ error: "Failed to fetch US indices" });
   }
 });
 

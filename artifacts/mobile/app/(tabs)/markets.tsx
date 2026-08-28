@@ -15,6 +15,7 @@ import { pricesAreFresh } from '@/utils/pricesCache';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { EGXMarket } from '@/components/EGXMarket';
 import { GlobalStocksMarket } from '@/components/GlobalStocksMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { BetaChip } from '@/components/BetaChip';
 import { useRealEstatePrices, RealEstateAreaLive } from '@/hooks/useRealEstatePrices';
 import { useRealEstateCompoundPrices, RealEstateCompoundLive } from '@/hooks/useRealEstateCompoundPrices';
@@ -31,7 +32,6 @@ const TABS_CONFIG = [
   { key: 'egx',        icon: { lib: 'feather', name: 'bar-chart-2' }  as TabIconSpec },
   { key: 'real_estate',icon: { lib: 'mci',    name: 'home-city' }     as TabIconSpec },
   { key: 'us_stocks',  icon: { lib: 'feather', name: 'trending-up' }  as TabIconSpec },
-  { key: 'indices',    icon: { lib: 'feather', name: 'globe' }        as TabIconSpec },
 ] as const;
 
 type TabKey = typeof TABS_CONFIG[number]['key'];
@@ -90,7 +90,6 @@ function TabBar({ active, onChange }: { active: TabKey; onChange: (k: TabKey) =>
     egx: t.tabEGX,
     real_estate: t.tabRealEstate,
     us_stocks: t.tabUsStocks,
-    indices: t.tabIndices,
   };
 
   return (
@@ -934,6 +933,16 @@ function EGXTab({ style, refreshing, onRefresh, topHeader, topInset }: {
   return <EGXMarket style={style} refreshing={refreshing} onRefresh={onRefresh} topHeader={topHeader} topInset={topInset} />;
 }
 
+function USStocksTab({ style, refreshing, onRefresh, topHeader, topInset }: {
+  style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  topHeader?: React.ReactNode;
+  topInset?: number;
+}) {
+  return <GlobalStocksMarket style={style} refreshing={refreshing} onRefresh={onRefresh} topHeader={topHeader} topInset={topInset} />;
+}
+
 const tab = StyleSheet.create({
   group: { gap: 24 },
   section: { gap: 10 },
@@ -953,6 +962,10 @@ export default function MarketsScreen() {
   // live status instead of metals'.
   const { data: egxStocks = [] } = useEGXMarket();
   const egxHasLive = egxStocks.some(s => s.isLive);
+  // Shares useGlobalStocks' own query cache (same queryKey) — same reasoning
+  // as egxHasLive above, just for the US Stocks tab's header dot.
+  const { data: globalStocksForDot = [] } = useGlobalStocks();
+  const usStocksHasLive = globalStocksForDot.some(s => s.isLive);
   const [activeTab, setActiveTab] = useState<TabKey>(_persistedTab);
   const { impact } = useHaptic();
 
@@ -1005,7 +1018,7 @@ export default function MarketsScreen() {
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      {/* EGX: own FlatList — header scrolls as ListHeaderComponent */}
+      {/* EGX and US Stocks: own FlatList each — header scrolls as ListHeaderComponent */}
       {activeTab === 'egx' ? (
         <EGXTab
           style={{ flex: 1 }}
@@ -1021,6 +1034,22 @@ export default function MarketsScreen() {
                     an "ESTIMATED" pill right below it, two contradicting
                     signals on the same screen. */}
                 <LiveDot fresh={egxHasLive} />
+              </View>
+              <TabBar active={activeTab} onChange={handleTabChange} />
+            </View>
+          }
+        />
+      ) : activeTab === 'us_stocks' ? (
+        <USStocksTab
+          style={{ flex: 1 }}
+          refreshing={isLoading}
+          onRefresh={refetch}
+          topInset={topPad}
+          topHeader={
+            <View style={{ gap: 16, paddingTop: 16 }}>
+              <View style={s.header}>
+                <Text style={[s.title, { color: colors.text }]}>{t.marketsTitle}</Text>
+                <LiveDot fresh={usStocksHasLive} />
               </View>
               <TabBar active={activeTab} onChange={handleTabChange} />
             </View>
@@ -1046,8 +1075,6 @@ export default function MarketsScreen() {
           {activeTab === 'metals'      && <MetalsTab prices={prices} />}
           {activeTab === 'currencies'  && <CurrenciesTab prices={prices} />}
           {activeTab === 'real_estate' && <RealEstateTab />}
-          {activeTab === 'us_stocks'   && <GlobalStocksMarket />}
-          {activeTab === 'indices'     && <ComingSoon icon="globe" title={t.globalIndicesTitle} description={t.globalIndicesDesc} />}
           {timestamp}
         </ScrollView>
       )}

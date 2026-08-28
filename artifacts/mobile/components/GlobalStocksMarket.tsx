@@ -1,17 +1,201 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import {
-  Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  Animated, FlatList, ListRenderItem, Platform, Pressable,
+  RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { useCounterDisplay } from '@/hooks/useCounterDisplay';
 import { useT } from '@/hooks/useTranslation';
 import {
   GLOBAL_CATEGORIES, GlobalCategory, getCategoryCounts, searchGlobalCompanies, GLOBAL_COMPANIES,
   getUSMarketStatus,
 } from '@/data/global-stocks';
 import { useGlobalStocks, GlobalStockLive } from '@/hooks/useGlobalStocks';
+import { useUSIndices, USIndexLive } from '@/hooks/useUSIndices';
 import { fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { RangeBar } from '@/components/RangeBar';
+
+// Rebuilt to match EGXMarket.tsx's structure and polish exactly: one
+// virtualized FlatList (not a ScrollView + .map, which never recycles rows),
+// a real index card at the top instead of a separate tab, the same
+// search/category-pill/result-row header, and the same expandable stock
+// card. All data still comes from TradingView (see markets.ts server-side —
+// fetchGlobalStocks / fetchUSIndices), matching EGX's own single-source
+// policy: no other provider silently standing in.
+
+// ─── Timezone helpers ─────────────────────────────────────────────────────────
+// Egypt is always UTC+2. US Eastern is EDT (UTC-4) Mar 2nd-Sun → Nov 1st-Sun, else EST (UTC-5).
+// Cairo is +6h ahead of EDT, +7h ahead of EST.
+
+function isUSOnEDT(d: Date = new Date()): boolean {
+  const y = d.getFullYear();
+  const mar1 = new Date(y, 2, 1);
+  const edtStart = new Date(y, 2, 8 + (7 - mar1.getDay()) % 7);
+  const nov1 = new Date(y, 10, 1);
+  const edtEnd = new Date(y, 10, (7 - nov1.getDay()) % 7 + 1);
+  return d >= edtStart && d < edtEnd;
+}
+
+// Returns NYSE/NASDAQ session hours in Cairo time (e.g. "15:30–22:00 Cairo")
+function nyseHoursInCairo(): string {
+  const edt = isUSOnEDT();
+  return edt ? '15:30–22:00 Cairo' : '16:30–23:00 Cairo';
+}
+
+function etLabel(): string {
+  return isUSOnEDT() ? 'EDT' : 'EST';
+}
+
+// ─── US Market Status Banner ──────────────────────────────────────────────────
+
+// Exported so nothing else needs its own copy of the session-hours logic.
+export function USMarketStatusBanner() {
+  const colors = useColors();
+  const { session, label, nextEvent } = getUSMarketStatus();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (session !== 'open') return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 900, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(pulseAnim, { toValue: 1,   duration: 900, useNativeDriver: Platform.OS !== 'web' }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [session]);
+
+  const accent =
+    session === 'open'  ? colors.green :
+    session === 'pre'   ? '#F59E0B'    :
+    session === 'post'  ? '#F97316'    :
+    '#EF4444';
+
+  return (
+    <View style={[umb.banner, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={umb.left}>
+        <Animated.View style={[umb.dot, { backgroundColor: accent, opacity: session === 'open' ? pulseAnim : 1 }]} />
+        <View style={umb.textWrap}>
+          <Text style={[umb.label, { color: accent }]}>US {label}</Text>
+          <Text style={[umb.sub, { color: colors.mutedForeground }]} numberOfLines={1}>{nextEvent}</Text>
+        </View>
+      </View>
+      <View style={umb.right}>
+        <Text style={[umb.flag, { color: colors.mutedForeground }]}>🇺🇸 NYSE · NASDAQ</Text>
+        <Text style={[umb.schedule, { color: colors.mutedForeground }]}>Mon–Fri · 9:30–16:00 {etLabel()}</Text>
+        <Text style={[umb.scheduleCairo, { color: colors.mutedForeground }]}>{nyseHoursInCairo()}</Text>
+      </View>
+    </View>
+  );
+}
+const umb = StyleSheet.create({
+  banner: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1,
+    gap: 8,
+  },
+  left:          { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
+  textWrap:      { flex: 1, minWidth: 0 },
+  dot:           { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  label:         { fontSize: 12, fontFamily: 'Inter_700Bold' },
+  sub:           { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  right:         { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
+  flag:          { fontSize: 10, fontFamily: 'Inter_500Medium' },
+  schedule:      { fontSize: 9, fontFamily: 'Inter_400Regular' },
+  scheduleCairo: { fontSize: 8, fontFamily: 'Inter_400Regular', opacity: 0.6 },
+});
+
+// ─── Index card (S&P 500 / Dow Jones / Nasdaq) ─────────────────────────────────
+// Same construction as EGXMarket's EGXIndexChips — one combined card, real
+// index values side by side split by dividers — just 3 columns instead of 2,
+// since the US has 3 headline indices where EGX has 2.
+
+const indexPriceFormatter = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function indexDesc(t: ReturnType<typeof useT>, symbol: string): string {
+  switch (symbol) {
+    case 'SPX':  return t.usIndexSpxDesc;
+    case 'DJI':  return t.usIndexDjiDesc;
+    case 'IXIC': return t.usIndexIxicDesc;
+    default:     return '';
+  }
+}
+
+function IndexThird({ index, isLast }: { index: USIndexLive; isLast: boolean }) {
+  const colors = useColors();
+  const t = useT();
+  const isFlat = Math.abs(index.changePercent) < 0.005;
+  const isPos = index.changePercent >= 0;
+  const color = index.change === 0 && !index.isLive ? colors.mutedForeground
+    : isFlat ? colors.mutedForeground : (isPos ? colors.green : colors.red);
+  const { text: priceStr } = useCounterDisplay(index.price, indexPriceFormatter, false);
+  return (
+    <>
+      <View style={ixc.third}>
+        <Text style={[ixc.name, { color: colors.mutedForeground }]} numberOfLines={1}>{index.short}</Text>
+        <Animated.Text style={[ixc.price, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+          {priceStr}
+        </Animated.Text>
+        <View style={[ixc.badge, { backgroundColor: color + '18' }]}>
+          <Feather name={isFlat ? 'minus' : isPos ? 'arrow-up-right' : 'arrow-down-right'} size={9} color={color} />
+          <Text style={[ixc.badgeTxt, { color }]}>
+            {!isFlat && isPos ? '+' : ''}{index.changePercent.toFixed(2)}%
+          </Text>
+        </View>
+        <Text style={[ixc.desc, { color: colors.mutedForeground }]} numberOfLines={1}>{indexDesc(t, index.symbol)}</Text>
+      </View>
+      {!isLast && <View style={[ixc.divider, { backgroundColor: colors.border }]} />}
+    </>
+  );
+}
+
+function USIndexChips() {
+  const colors = useColors();
+  const t = useT();
+  const { data: indices = [] } = useUSIndices();
+  const hasLive = indices.some(i => i.isLive);
+  if (indices.length < 3) return null;
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={ixc.headerRow}>
+        <Text style={[ixc.headerTitle, { color: colors.text }]}>{t.globalIndicesTitle}</Text>
+        {hasLive ? (
+          <View style={[ixc.livePill, { backgroundColor: colors.green + '18' }]}>
+            <View style={[ixc.liveDot, { backgroundColor: colors.green }]} />
+            <Text style={[ixc.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
+          </View>
+        ) : (
+          <View style={[ixc.livePill, { backgroundColor: colors.muted }]}>
+            <Text style={[ixc.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
+          </View>
+        )}
+      </View>
+      <View style={[ixc.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {indices.map((idx, i) => (
+          <IndexThird key={idx.symbol} index={idx} isLast={i === indices.length - 1} />
+        ))}
+      </View>
+    </View>
+  );
+}
+const ixc = StyleSheet.create({
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerTitle: { fontSize: 13.5, fontFamily: 'Inter_700Bold' },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  liveDot: { width: 6, height: 6, borderRadius: 3 },
+  liveTxt: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 1 },
+  card: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, paddingVertical: 12 },
+  third: { flex: 1, paddingHorizontal: 8, gap: 4, alignItems: 'center' },
+  divider: { width: StyleSheet.hairlineWidth },
+  name: { fontSize: 10.5, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  price: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: -0.3, textAlign: 'center' },
+  badge: { flexDirection: 'row', alignSelf: 'center', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
+  badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+  desc: { fontSize: 8.5, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: 1 },
+});
 
 // ─── Search Bar ───────────────────────────────────────────────────────────────
 
@@ -109,6 +293,8 @@ const cp = StyleSheet.create({
 
 // ─── Stock Card ───────────────────────────────────────────────────────────────
 
+const stockPriceFormatter = (n: number) => n.toFixed(2);
+
 function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean }) {
   const colors = useColors();
   const t = useT();
@@ -116,6 +302,7 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
   const isPos = stock.changePercent >= 0;
   const changeColor = stock.change === 0 && !stock.isLive ? colors.mutedForeground
     : isPos ? colors.green : colors.red;
+  const { text: priceStr } = useCounterDisplay(stock.price, stockPriceFormatter, false);
 
   const initials = stock.ticker.length <= 4 ? stock.ticker : stock.ticker.slice(0, 4);
 
@@ -148,9 +335,9 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
         </View>
 
         <View style={sc.priceCol}>
-          <Text style={[sc.price, { color: colors.text }]}>
-            ${stock.price.toFixed(2)}
-          </Text>
+          <Animated.Text style={[sc.price, { color: colors.text }]}>
+            ${priceStr}
+          </Animated.Text>
           <View style={[sc.changeBadge, { backgroundColor: changeColor + '15' }]}>
             <Text style={[sc.changeArrow, { color: changeColor }]}>{isPos ? '▲' : '▼'}</Text>
             <Text style={[sc.changeTxt, { color: changeColor }]}>
@@ -257,171 +444,254 @@ const sc = StyleSheet.create({
   expandRow: { alignItems: 'center', paddingVertical: 5, borderTopWidth: StyleSheet.hairlineWidth },
 });
 
-// ─── Category Group ───────────────────────────────────────────────────────────
+// ─── Category Group Header ──────────────────────────────────────────────────
 
-function CategoryGroup({ category, stocks }: { category: string; stocks: GlobalStockLive[] }) {
+function CategoryGroupHeader({ category, count }: { category: string; count: number }) {
   const colors = useColors();
   const t = useT();
   return (
-    <View style={cg.wrap}>
-      <View style={cg.header}>
-        <Text style={[cg.title, { color: colors.mutedForeground }]}>
-          {category.toUpperCase()}
-        </Text>
-        <Text style={[cg.count, { color: colors.mutedForeground }]}>
-          {stocks.length} {stocks.length === 1 ? t.tickerLabel : t.tickersLabel}
-        </Text>
-      </View>
-      {stocks.map((s, i) => (
-        <StockCard key={s.ticker} stock={s} isLast={i === stocks.length - 1} />
-      ))}
+    <View style={cg.header}>
+      <Text style={[cg.title, { color: colors.mutedForeground }]}>
+        {category.toUpperCase()}
+      </Text>
+      <Text style={[cg.count, { color: colors.mutedForeground }]}>
+        {count} {count === 1 ? t.tickerLabel : t.tickersLabel}
+      </Text>
     </View>
   );
 }
 const cg = StyleSheet.create({
-  wrap: { gap: 8 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 2, paddingTop: 12, paddingBottom: 6 },
   title: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.3 },
   count: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });
 
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 
-function LoadingSkeleton() {
+function SkeletonCard() {
   const colors = useColors();
   const anim = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(anim, { toValue: 0.9, duration: 800, useNativeDriver: true }),
         Animated.timing(anim, { toValue: 0.4, duration: 800, useNativeDriver: true }),
       ])
-    ).start();
-  }, []);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim]);
   return (
-    <>
-      {[1, 2, 3, 4, 5].map(i => (
-        <Animated.View
-          key={i}
-          style={[sk.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: anim }]}
-        />
-      ))}
-    </>
+    <Animated.View
+      style={[sk.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: anim }]}
+    />
   );
 }
 const sk = StyleSheet.create({
   card: { height: 78, borderRadius: 16, borderWidth: 1, marginBottom: 8 },
 });
 
-// ─── Timezone helpers ─────────────────────────────────────────────────────────
-// Egypt is always UTC+2. US Eastern is EDT (UTC-4) Mar 2nd-Sun → Nov 1st-Sun, else EST (UTC-5).
-// Cairo is +6h ahead of EDT, +7h ahead of EST.
+// ─── FlatList item types ────────────────────────────────────────────────────────
 
-function isUSOnEDT(d: Date = new Date()): boolean {
-  const y = d.getFullYear();
-  const mar1 = new Date(y, 2, 1);
-  const edtStart = new Date(y, 2, 8 + (7 - mar1.getDay()) % 7);
-  const nov1 = new Date(y, 10, 1);
-  const edtEnd = new Date(y, 10, (7 - nov1.getDay()) % 7 + 1);
-  return d >= edtStart && d < edtEnd;
-}
-
-// Returns NYSE/NASDAQ session hours in Cairo time (e.g. "15:30–22:00 Cairo")
-function nyseHoursInCairo(): string {
-  const edt = isUSOnEDT();
-  return edt ? '15:30–22:00 Cairo' : '16:30–23:00 Cairo';
-}
-
-function etLabel(): string {
-  return isUSOnEDT() ? 'EDT' : 'EST';
-}
-
-// ─── US Market Status Banner ──────────────────────────────────────────────────
-
-function USMarketStatusBanner() {
-  const colors = useColors();
-  const { session, label, nextEvent } = getUSMarketStatus();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (session !== 'open') return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.3, duration: 900, useNativeDriver: false }),
-        Animated.timing(pulseAnim, { toValue: 1,   duration: 900, useNativeDriver: false }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [session]);
-
-  const accent =
-    session === 'open'  ? colors.green :
-    session === 'pre'   ? '#F59E0B'    :
-    session === 'post'  ? '#F97316'    :
-    '#EF4444';
-
-  return (
-    <View style={[umb.banner, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={umb.left}>
-        <Animated.View style={[umb.dot, { backgroundColor: accent, opacity: session === 'open' ? pulseAnim : 1 }]} />
-        <View style={umb.textWrap}>
-          <Text style={[umb.label, { color: accent }]}>US {label}</Text>
-          <Text style={[umb.sub, { color: colors.mutedForeground }]} numberOfLines={1}>{nextEvent}</Text>
-        </View>
-      </View>
-      <View style={umb.right}>
-        <Text style={[umb.flag, { color: colors.mutedForeground }]}>🇺🇸 NYSE · NASDAQ</Text>
-        <Text style={[umb.schedule, { color: colors.mutedForeground }]}>Mon–Fri · 9:30–16:00 {etLabel()}</Text>
-        <Text style={[umb.scheduleCairo, { color: colors.mutedForeground }]}>{nyseHoursInCairo()}</Text>
-      </View>
-    </View>
-  );
-}
-const umb = StyleSheet.create({
-  banner: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1,
-    gap: 8,
-  },
-  left:          { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
-  textWrap:      { flex: 1, minWidth: 0 },
-  dot:           { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  label:         { fontSize: 12, fontFamily: 'Inter_700Bold' },
-  sub:           { fontSize: 10, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  right:         { alignItems: 'flex-end', gap: 1, flexShrink: 0 },
-  flag:          { fontSize: 10, fontFamily: 'Inter_500Medium' },
-  schedule:      { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  scheduleCairo: { fontSize: 8, fontFamily: 'Inter_400Regular', opacity: 0.6 },
-});
+type ListItem =
+  | { kind: 'skeleton'; id: number }
+  | { kind: 'categoryHeader'; category: string; count: number }
+  | { kind: 'stock'; stock: GlobalStockLive; isLast: boolean; isCategoryEnd: boolean };
 
 // ─── Main GlobalStocksMarket Component ────────────────────────────────────────
 
-// Only 8 tickers across 2 categories are wired up right now (see
-// data/global-stocks.ts) — too sparse to present as a finished section next
-// to EGX's 281 companies. Hidden behind this notice until real sector
-// coverage is built out; useGlobalStocks/GLOBAL_COMPANIES are untouched so
-// turning it back on later is a one-line change, not a rebuild.
-export function GlobalStocksMarket() {
+export function GlobalStocksMarket({
+  style,
+  refreshing,
+  onRefresh,
+  topHeader,
+  topInset,
+}: {
+  style?: StyleProp<ViewStyle>;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  topHeader?: React.ReactNode;
+  topInset?: number;
+} = {}) {
   const colors = useColors();
   const t = useT();
-  return (
-    <View style={gm.wrap}>
-      <View style={[gm.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Feather name="trending-up" size={28} color={colors.mutedForeground} />
-        <Text style={[gm.emptyTxt, { color: colors.mutedForeground }]}>
-          {t.globalStocksBetaTitle}
-        </Text>
-        <Text style={[gm.emptySub, { color: colors.mutedForeground }]}>
-          {t.globalStocksBetaDesc}
-        </Text>
+  const insets = useSafeAreaInsets();
+  const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
+  const { data: allStocks = [], isLoading } = useGlobalStocks();
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<GlobalCategory>('All');
+  const counts = useMemo(() => getCategoryCounts(), []);
+
+  const handleQuery = useCallback((q: string) => {
+    setQuery(q);
+    if (q.length > 0) setCategory('All');
+  }, []);
+
+  const handleCategory = useCallback((c: GlobalCategory) => {
+    setCategory(c);
+    setQuery('');
+  }, []);
+
+  const displayed = useMemo(() => {
+    if (query.trim()) {
+      const matchedSet = new Set(searchGlobalCompanies(GLOBAL_COMPANIES, query).map(c => c.ticker));
+      return allStocks.filter(s => matchedSet.has(s.ticker));
+    }
+    if (category !== 'All') return allStocks.filter(s => s.category === category);
+    return allStocks;
+  }, [allStocks, query, category]);
+
+  const grouped = useMemo(() => {
+    if (query.trim() || category !== 'All') return null;
+    const map = new Map<string, GlobalStockLive[]>();
+    for (const s of displayed) {
+      if (!map.has(s.category)) map.set(s.category, []);
+      map.get(s.category)!.push(s);
+    }
+    return map;
+  }, [displayed, query, category]);
+
+  const hasLive = allStocks.some(s => s.isLive);
+
+  const resultSuffix = query
+    ? ` ${t.matchingLabel} "${query}"`
+    : category !== 'All'
+    ? ` ${t.inLabel} ${category}`
+    : ` ${t.trackedLabel}`;
+
+  const listData = useMemo((): ListItem[] => {
+    if (isLoading && allStocks.every(s => !s.isLive)) {
+      return [1, 2, 3, 4, 5, 6].map(id => ({ kind: 'skeleton' as const, id }));
+    }
+    if (grouped) {
+      const items: ListItem[] = [];
+      for (const [cat, stocks] of grouped.entries()) {
+        items.push({ kind: 'categoryHeader', category: cat, count: stocks.length });
+        stocks.forEach((s, i) =>
+          items.push({
+            kind: 'stock',
+            stock: s,
+            isLast: i === stocks.length - 1,
+            isCategoryEnd: i === stocks.length - 1,
+          })
+        );
+      }
+      return items;
+    }
+    return displayed.map((s, i) => ({
+      kind: 'stock' as const,
+      stock: s,
+      isLast: i === displayed.length - 1,
+      isCategoryEnd: false,
+    }));
+  }, [isLoading, allStocks, grouped, displayed]);
+
+  const keyExtractor = useCallback((item: ListItem): string => {
+    if (item.kind === 'skeleton') return `skel-${item.id}`;
+    if (item.kind === 'categoryHeader') return `ch-${item.category}`;
+    return item.stock.ticker;
+  }, []);
+
+  const renderItem: ListRenderItem<ListItem> = useCallback(({ item }) => {
+    if (item.kind === 'skeleton') return <SkeletonCard />;
+    if (item.kind === 'categoryHeader') return <CategoryGroupHeader category={item.category} count={item.count} />;
+    return <StockCard stock={item.stock} isLast={item.isLast} />;
+  }, []);
+
+  const ItemSeparator = useCallback(({ leadingItem }: { leadingItem: ListItem }) => {
+    if (leadingItem.kind === 'stock' && leadingItem.isCategoryEnd) {
+      return <View style={{ height: 12 }} />;
+    }
+    return null;
+  }, []);
+
+  const ListHeader = useMemo(() => (
+    <View style={{ gap: 20 }}>
+      {topHeader}
+      <View style={gm.listHeaderWrap}>
+        <USMarketStatusBanner />
+        <USIndexChips />
+        <SearchBar value={query} onChange={handleQuery} />
+        <CategoryPills active={category} onChange={handleCategory} counts={counts} />
+        <View style={gm.resultRow}>
+          <Text style={[gm.resultTxt, { color: colors.mutedForeground }]}>
+            {displayed.length} {displayed.length === 1 ? t.tickerLabel : t.tickersLabel}
+            {resultSuffix}
+          </Text>
+          {hasLive ? (
+            <View style={[gm.livePill, { backgroundColor: colors.green + '18' }]}>
+              <View style={[gm.liveDot, { backgroundColor: colors.green }]} />
+              <Text style={[gm.liveTxt, { color: colors.green }]}>{t.liveLabel}</Text>
+            </View>
+          ) : (
+            <View style={[gm.livePill, { backgroundColor: colors.muted }]}>
+              <Text style={[gm.liveTxt, { color: colors.mutedForeground }]}>{t.estimatedLabel}</Text>
+            </View>
+          )}
+        </View>
       </View>
     </View>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [topHeader, query, category, counts, displayed.length, hasLive, resultSuffix, colors.mutedForeground, colors.green, colors.muted]);
+
+  const ListEmpty = useMemo(() => (
+    !isLoading && displayed.length === 0 ? (
+      <View style={[gm.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Feather name="search" size={28} color={colors.mutedForeground} />
+        <Text style={[gm.emptyTxt, { color: colors.mutedForeground }]}>
+          {t.noTickersFound} "{query}"
+        </Text>
+        <Text style={[gm.emptySub, { color: colors.mutedForeground }]}>
+          {t.globalSearchTip}
+        </Text>
+      </View>
+    ) : null
+  ), [isLoading, displayed.length, query, colors.card, colors.border, colors.mutedForeground, t]);
+
+  const ListFooter = useMemo(() => (
+    !hasLive ? (
+      <Text style={[gm.webNote, { color: colors.mutedForeground }]}>
+        {t.liveRequiresExpo}{'\n'}{t.webPreviewNote}
+      </Text>
+    ) : null
+  ), [hasLive, colors.mutedForeground]);
+
+  return (
+    <FlatList
+      style={[{ flex: 1 }, style]}
+      contentContainerStyle={[gm.listContent, { paddingTop: topHeader ? 0 : 16, paddingBottom: botPad + 120 }]}
+      contentInset={topInset ? { top: topInset } : undefined}
+      contentOffset={topInset ? { x: 0, y: -topInset } : undefined}
+      data={listData}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      ItemSeparatorComponent={ItemSeparator}
+      ListHeaderComponent={ListHeader}
+      ListEmptyComponent={ListEmpty}
+      ListFooterComponent={ListFooter}
+      initialNumToRender={12}
+      maxToRenderPerBatch={8}
+      windowSize={5}
+      removeClippedSubviews={true}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={!!refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        ) : undefined
+      }
+    />
   );
 }
 
 const gm = StyleSheet.create({
-  wrap: { gap: 14 },
+  listHeaderWrap: { gap: 14, paddingBottom: 8 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 40 },
   resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   resultTxt: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   livePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
