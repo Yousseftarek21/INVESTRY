@@ -16,10 +16,12 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { buildAlertPricesDict } from '@/hooks/usePriceAlerts';
 import { usePriceAlertsContext } from '@/context/PriceAlertsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { EGX_COMPANIES } from '@/data/egx-companies';
+import { GLOBAL_COMPANIES } from '@/data/global-stocks';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 
@@ -32,7 +34,7 @@ function generateId() {
 interface AssetOption {
   key: string;
   label: string;
-  group: 'metals' | 'currency' | 'stocks';
+  group: 'metals' | 'currency' | 'stocks' | 'us_stocks';
   price: number;
 }
 
@@ -45,6 +47,7 @@ export default function PriceAlertsScreen() {
   const { userId } = useAuth();
   const { data: prices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
+  const { data: globalStocks } = useGlobalStocks();
   const { alerts, addAlert, removeAlert, refresh } = usePriceAlertsContext();
   const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
 
@@ -68,7 +71,10 @@ export default function PriceAlertsScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refresh(); }, []);
 
-  const pricesDict = useMemo(() => buildAlertPricesDict(prices, egxStocks), [prices, egxStocks]);
+  const pricesDict = useMemo(
+    () => buildAlertPricesDict(prices, egxStocks, globalStocks),
+    [prices, egxStocks, globalStocks]
+  );
 
   const assetOptions = useMemo<AssetOption[]>(() => {
     const opts: AssetOption[] = [
@@ -83,6 +89,15 @@ export default function PriceAlertsScreen() {
         key: `stock_${c.ticker}`,
         label: `${c.ticker} · ${language === 'ar' ? c.nameAr : c.nameEn}`,
         group: 'stocks',
+        price,
+      });
+    });
+    [...GLOBAL_COMPANIES].sort((a, b) => a.ticker.localeCompare(b.ticker)).forEach(c => {
+      const price = pricesDict[`stock_${c.ticker}`] ?? c.fallbackPrice;
+      opts.push({
+        key: `stock_${c.ticker}`,
+        label: `${c.ticker} · ${c.name}`,
+        group: 'us_stocks',
         price,
       });
     });
@@ -340,7 +355,10 @@ export default function PriceAlertsScreen() {
               renderItem={({ item, index }) => {
                 const prevItem = filteredOptions[index - 1];
                 const showGroupHeader = !prevItem || prevItem.group !== item.group;
-                const groupLabel = item.group === 'metals' ? t.assetGroupMetals : item.group === 'currency' ? t.assetGroupCurrency : t.assetGroupStocks;
+                const groupLabel = item.group === 'metals' ? t.assetGroupMetals
+                  : item.group === 'currency' ? t.assetGroupCurrency
+                  : item.group === 'us_stocks' ? t.assetGroupUsStocks
+                  : t.assetGroupStocks;
                 const isSelected = selectedAsset?.key === item.key;
                 return (
                   <View>

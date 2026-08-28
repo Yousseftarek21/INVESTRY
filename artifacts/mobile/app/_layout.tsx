@@ -34,6 +34,7 @@ import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { Paywall } from "@/components/Paywall";
 import { ForceUpdateGate } from "@/components/ForceUpdateGate";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
+import { useNotificationTapRouting } from "@/hooks/useNotificationTapRouting";
 import { getApiBaseUrl } from "@/utils/api";
 import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled } from "@/hooks/usePrices";
 import { hydrateEGXIndicesFromCache, prefetchEGXIndices } from "@/hooks/useEGXIndices";
@@ -235,6 +236,7 @@ function NotificationsInitializer() {
     notifications.dailySummary,
     notifications.weeklySummary,
   );
+  useNotificationTapRouting();
   return null;
 }
 

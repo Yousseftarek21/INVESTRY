@@ -10,6 +10,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { HoldingCard } from '@/components/HoldingCard';
 
@@ -132,12 +133,14 @@ export default function HoldingsScreen() {
 
   const { data: rawPrices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
+  const { data: globalStocks } = useGlobalStocks();
   const prices = useMemo(() => {
     if (!rawPrices) return rawPrices;
     const egxPrices: Record<string, number> = {};
     egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
+    globalStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
     return { ...rawPrices, egxPrices };
-  }, [rawPrices, egxStocks]);
+  }, [rawPrices, egxStocks, globalStocks]);
   const { impact } = useHaptic();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');

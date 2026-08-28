@@ -804,8 +804,6 @@ const en = {
   egxSectionFunds: 'Equity Funds',
   egxFundsComingSoonTitle: 'Equity funds are not tracked yet',
   egxFundsComingSoonDesc: 'Egyptian mutual and equity funds are priced by daily NAV, not exchange trading, so they need a different data source than stocks. This section is reserved for that once it\'s added.',
-  globalStocksBetaTitle: 'US Stocks — beta preview coming soon',
-  globalStocksBetaDesc: 'Only a handful of tickers are wired up so far. This section is being expanded with proper sector coverage before it\'s shown as a finished feature.',
   currencyUSD: 'US Dollar',
   currencyEUR: 'Euro',
   currencyGBP: 'British Pound',
@@ -1079,7 +1077,7 @@ const en = {
   fixedIncomeHoldingsTitle: 'FIXED INCOME HOLDINGS',
   holdingsCountLabel: 'Holdings',
   topPerformerFooter: (label: string, pct: string) => `Top: ${label} (${pct}%)` as string,
-  egxStocksAllocLabel: 'EGX Stocks',
+  egxStocksAllocLabel: 'Stocks',
   personalAssetsAllocLabel: 'Personal Assets',
 
   // Analytics — insight text templates
@@ -1349,6 +1347,7 @@ const en = {
   assetGroupMetals: 'GOLD & SILVER',
   assetGroupCurrency: 'CURRENCY',
   assetGroupStocks: 'EGX STOCKS',
+  assetGroupUsStocks: 'US STOCKS',
 
   // Settings — privacy rows
   analyticsSharingLabel: 'Analytics Sharing',
@@ -2297,8 +2296,6 @@ const ar: typeof en = {
   egxSectionFunds: 'صناديق الأسهم',
   egxFundsComingSoonTitle: 'صناديق الأسهم غير متاحة بعد',
   egxFundsComingSoonDesc: 'صناديق الاستثمار المصرية تُسعَّر بصافي قيمة الأصول اليومي وليس بالتداول في البورصة، لذا تحتاج مصدر بيانات مختلفًا عن الأسهم. هذا القسم محجوز لذلك عند إضافته.',
-  globalStocksBetaTitle: 'الأسهم الأمريكية — معاينة تجريبية قريبًا',
-  globalStocksBetaDesc: 'عدد قليل فقط من الأسهم مُفعَّل حاليًا. يجري توسيع هذا القسم بتغطية قطاعية مناسبة قبل عرضه كميزة مكتملة.',
   currencyUSD: 'الدولار الأمريكي',
   currencyEUR: 'اليورو',
   currencyGBP: 'الجنيه الإسترليني',
@@ -2567,7 +2564,7 @@ const ar: typeof en = {
   fixedIncomeHoldingsTitle: 'مقتنيات الدخل الثابت',
   holdingsCountLabel: 'العدد',
   topPerformerFooter: (label: string, pct: string) => `الأفضل أداءً: ${label} (${pct}%)` as string,
-  egxStocksAllocLabel: 'أسهم البورصة',
+  egxStocksAllocLabel: 'الأسهم',
   personalAssetsAllocLabel: 'أصول شخصية',
 
   // Analytics — insight text templates
@@ -2837,6 +2834,7 @@ const ar: typeof en = {
   assetGroupMetals: 'الذهب والفضة',
   assetGroupCurrency: 'العملات',
   assetGroupStocks: 'أسهم البورصة المصرية',
+  assetGroupUsStocks: 'أسهم أمريكية',
 
   // Settings — privacy rows
   analyticsSharingLabel: 'مشاركة البيانات التحليلية',

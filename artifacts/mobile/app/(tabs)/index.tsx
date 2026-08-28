@@ -40,6 +40,7 @@ import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/u
 import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { useAppSettings, DisplayCurrency } from '@/context/AppSettingsContext';
 import { AllocationBar } from '@/components/AllocationBar';
@@ -335,12 +336,18 @@ export default function HomeScreen() {
   const { goals } = useGoals();
   const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
+  // US stocks merge into the same egxPrices dict (keyed by symbol, no
+  // EGX/US collisions in practice) rather than a separate field — every
+  // `prices.egxPrices?.[symbol]` lookup below already works purely by
+  // symbol, so a US holding gets priced correctly with zero other changes.
+  const { data: globalStocks } = useGlobalStocks();
   const prices = useMemo(() => {
     if (!rawPrices) return rawPrices;
     const egxPrices: Record<string, number> = {};
     egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
+    globalStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
     return { ...rawPrices, egxPrices };
-  }, [rawPrices, egxStocks]);
+  }, [rawPrices, egxStocks, globalStocks]);
   const { unreadCount: unreadNotifications } = useNotificationHistory();
   const { impact } = useHaptic();
   const { hideValues, setHideValues, displayCurrency, setDisplayCurrency, visibleCurrencies, notifications, language } = useAppSettings();
@@ -488,8 +495,9 @@ export default function HomeScreen() {
   const egxChangeByTicker = useMemo(() => {
     const m: Record<string, number> = {};
     egxStocks?.forEach(s => { m[s.ticker] = s.changePercent; });
+    globalStocks?.forEach(s => { m[s.ticker] = s.changePercent; });
     return m;
-  }, [egxStocks]);
+  }, [egxStocks, globalStocks]);
 
   const summary = useMemo(() => {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;

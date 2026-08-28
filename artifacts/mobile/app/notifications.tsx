@@ -5,11 +5,28 @@ import {
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
-import { backChevron } from '@/utils/rtl';
+import { backChevron, forwardArrow } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
+
+// Where tapping each event type should actually go — was previously a
+// dead-end list (no onPress at all), same gap as push notifications had
+// before useNotificationTapRouting.ts. Kept as its own map here rather than
+// reused from that hook since these are in-app event *types* (from
+// useNotificationHistory), not push payload *types* — they overlap in
+// spirit but aren't the same set (e.g. cash_added/holding_edited only ever
+// happen locally, never as a push).
+const EVENT_DESTINATION: Record<string, string> = {
+  price_alert: '/price-alerts',
+  portfolio_alert: '/(tabs)',
+  cash_added: '/cash-accounts',
+  cash_edited: '/cash-accounts',
+  holding_added: '/(tabs)/holdings',
+  holding_edited: '/(tabs)/holdings',
+  holding_sold: '/sold-holdings',
+};
 
 // Icon + color per Recent Alerts event type — cash events reuse the app's
 // established cash iconography (BanknoteIcon, green), holding events reuse
@@ -81,9 +98,13 @@ export default function NotificationsScreen() {
             <View style={s.list}>
               {recentEvents.map(item => {
                 const visual = eventVisual(item.type, colors);
+                const destination = EVENT_DESTINATION[item.type];
                 return (
-                  <View
+                  <TouchableOpacity
                     key={item.id}
+                    activeOpacity={destination ? 0.7 : 1}
+                    disabled={!destination}
+                    onPress={() => { if (destination) router.push(destination as any); }}
                     style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
                   >
                     <View style={[s.iconWrap, { backgroundColor: visual.color + '18' }]}>
@@ -97,7 +118,8 @@ export default function NotificationsScreen() {
                         {item.subtitle}
                       </Text>
                     </View>
-                  </View>
+                    {destination && <Feather name={forwardArrow()} size={15} color={colors.mutedForeground} />}
+                  </TouchableOpacity>
                 );
               })}
             </View>

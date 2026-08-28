@@ -16,6 +16,7 @@ import { useActivityLog } from '@/hooks/useActivityLog';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { EGX_COMPANIES } from '@/data/egx-companies';
+import { GLOBAL_COMPANIES } from '@/data/global-stocks';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
 import { RE_PRICES, REAreaPrice, RE_COMPOUNDS, RECompound } from '@/data/egypt-real-estate-prices';
 import { useRealEstateCompoundPrices } from '@/hooks/useRealEstateCompoundPrices';
@@ -135,6 +136,15 @@ const EGX_SYMBOLS = [
   ...EGX_EXTRA_SYMBOLS,
 ].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
+// ─── US stock picker list ──────────────────────────────────────────────────────
+// GLOBAL_COMPANIES already carries live prices via useGlobalStocks (see
+// GlobalStocksMarket.tsx / the Markets tab's "US Markets" tab) — same source,
+// so a holding added here is priced the same way a browsed ticker already is.
+const US_SYMBOLS = GLOBAL_COMPANIES
+  .map(c => ({ symbol: c.ticker, name: c.name }))
+  .sort((a, b) => a.symbol.localeCompare(b.symbol));
+const US_SYMBOL_SET = new Set(US_SYMBOLS.map(s => s.symbol));
+
 function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
@@ -183,14 +193,22 @@ function StockPickerModal({
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
   const [query, setQuery] = useState('');
+  // Defaults to whichever market the currently-selected symbol actually
+  // belongs to (falls back to EGX for a custom/unrecognized symbol) rather
+  // than always resetting to EGX — reopening the picker to change a US
+  // holding shouldn't dump the user back on the EGX list.
+  const [market, setMarket] = useState<'EGX' | 'US'>(
+    US_SYMBOL_SET.has(selected.symbol) ? 'US' : 'EGX'
+  );
 
+  const list = market === 'EGX' ? EGX_SYMBOLS : US_SYMBOLS;
   const filtered = useMemo(() => {
     const q = query.trim().toUpperCase();
-    if (!q) return EGX_SYMBOLS;
-    return EGX_SYMBOLS.filter(
+    if (!q) return list;
+    return list.filter(
       s => s.symbol.includes(q) || s.name.toUpperCase().includes(q)
     );
-  }, [query]);
+  }, [query, list]);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -198,10 +216,35 @@ function StockPickerModal({
       <View style={[pickerStyles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
         <View style={[pickerStyles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-          <Text style={[pickerStyles.title, { color: colors.text }]}>EGX Stocks</Text>
+          <Text style={[pickerStyles.title, { color: colors.text }]}>{t.stockSymbol}</Text>
           <TouchableOpacity onPress={onClose} style={[pickerStyles.closeBtn, { backgroundColor: colors.muted }]}>
             <Feather name="x" size={15} color={colors.mutedForeground} />
           </TouchableOpacity>
+        </View>
+
+        {/* Market tabs */}
+        <View style={pickerStyles.marketTabRow}>
+          {(['EGX', 'US'] as const).map(m => {
+            const isActive = m === market;
+            return (
+              <TouchableOpacity
+                key={m}
+                onPress={() => { impact(); setMarket(m); setQuery(''); }}
+                style={[
+                  pickerStyles.marketTab,
+                  {
+                    backgroundColor: isActive ? colors.primary : colors.muted,
+                    borderColor: isActive ? colors.primary : 'transparent',
+                  },
+                ]}
+                activeOpacity={0.8}
+              >
+                <Text style={[pickerStyles.marketTabTxt, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
+                  {m === 'EGX' ? t.tabEGX : t.tabUsStocks}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Search */}
@@ -1816,6 +1859,9 @@ const pickerStyles = StyleSheet.create({
   },
   title: { fontSize: 18, fontFamily: 'Inter_700Bold' },
   closeBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  marketTabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingTop: 14 },
+  marketTab: { flex: 1, paddingVertical: 9, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
+  marketTabTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   searchWrap: { padding: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

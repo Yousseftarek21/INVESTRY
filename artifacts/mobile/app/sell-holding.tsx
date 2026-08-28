@@ -14,6 +14,7 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { AmountInput } from '@/components/AmountInput';
 import { DatePickerField } from '@/components/DatePickerField';
 import { parseAmount } from '@/utils/parseAmount';
@@ -63,12 +64,14 @@ export default function SellHoldingScreen() {
 
   const { data: rawPrices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
+  const { data: globalStocks } = useGlobalStocks();
   const prices = useMemo(() => {
     if (!rawPrices) return rawPrices;
     const egxPrices: Record<string, number> = {};
     egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
+    globalStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
     return { ...rawPrices, egxPrices };
-  }, [rawPrices, egxStocks]);
+  }, [rawPrices, egxStocks, globalStocks]);
 
   const isFixedIncome = holding?.type === 'fixed_income';
   const currentValue = holding ? computeCurrentValue(holding, prices) : 0;

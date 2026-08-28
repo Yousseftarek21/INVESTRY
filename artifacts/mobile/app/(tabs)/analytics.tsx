@@ -24,6 +24,7 @@ import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/u
 import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useInflationRate } from '@/hooks/useInflationRate';
 import { usePortfolioBenchmark } from '@/hooks/usePortfolioBenchmark';
@@ -632,12 +633,14 @@ export default function AnalyticsScreen() {
   const { cashAccounts } = useCash();
   const { data: rawPrices, isLoading: pricesLoading, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
+  const { data: globalStocks } = useGlobalStocks();
   const prices = useMemo(() => {
     if (!rawPrices) return rawPrices;
     const egxPrices: Record<string, number> = {};
     egxStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
+    globalStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
     return { ...rawPrices, egxPrices };
-  }, [rawPrices, egxStocks]);
+  }, [rawPrices, egxStocks, globalStocks]);
   const isLoading = pricesLoading || holdingsLoading;
 
   const [period, setPeriod] = useState<Period>('ALL');
@@ -654,8 +657,9 @@ export default function AnalyticsScreen() {
   const egxChangeByTicker = useMemo(() => {
     const m: Record<string, number> = {};
     egxStocks?.forEach(s => { m[s.ticker] = s.changePercent; });
+    globalStocks?.forEach(s => { m[s.ticker] = s.changePercent; });
     return m;
-  }, [egxStocks]);
+  }, [egxStocks, globalStocks]);
 
   const sm = useMemo(() => {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;

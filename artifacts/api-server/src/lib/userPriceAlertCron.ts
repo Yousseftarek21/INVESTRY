@@ -1,6 +1,6 @@
 import { eq, isNotNull } from "drizzle-orm";
 import { db, usersTable, priceAlertsTable } from "@workspace/db";
-import { getCachedPrices, getCachedStocks } from "../routes/markets";
+import { getCachedPrices, getCachedStocks, getCachedGlobalStocks } from "../routes/markets";
 import { goldPricePerGram, silverPricePerGram } from "./portfolioValue";
 import { encryptForStorage, decryptFromStorage } from "./encryption";
 import { sendPushToTokens } from "./expoPush";
@@ -31,9 +31,10 @@ interface StoredPriceAlert {
 }
 
 async function buildPricesDict(): Promise<Record<string, number>> {
-  const [prices, stocks] = await Promise.all([
+  const [prices, stocks, globalStocks] = await Promise.all([
     getCachedPrices(),
     getCachedStocks().catch(() => []),
+    getCachedGlobalStocks().catch(() => []),
   ]);
 
   const dict: Record<string, number> = {
@@ -44,7 +45,12 @@ async function buildPricesDict(): Promise<Record<string, number>> {
     gold_18k: goldPricePerGram(prices.goldUsd, prices.usdToEgp, "18k"),
     silver_gram: silverPricePerGram(prices.silverUsd, prices.usdToEgp),
   };
+  // Same "stock_<ticker>" key for both EGX and US — the mobile picker
+  // builds this identically (see hooks/usePriceAlerts.ts's
+  // buildAlertPricesDict), and the two ticker sets never collide in
+  // practice, so no market prefix is needed to keep them apart.
   for (const s of stocks) dict[`stock_${s.symbol}`] = s.price;
+  for (const s of globalStocks) dict[`stock_${s.symbol}`] = s.price;
   return dict;
 }
 

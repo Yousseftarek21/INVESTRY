@@ -52,10 +52,18 @@ function fmtCompact(n: number): string {
   return n.toLocaleString("en-EG", { maximumFractionDigits: 0 });
 }
 
-function pctBody(current: number, baseline: number): string {
+// Full sentence, not a bare "+0.1% · 245.3k EGP" fragment sitting under a
+// "Good morning"/"Your week in review" title — matches the tone
+// portfolioAlertCron.ts's sibling push already uses ("Your portfolio is up
+// 2.7% today"). period is "today" for the daily push, "this week" for the
+// weekly one. A near-zero move reads as "steady" instead of an odd "up 0.0%".
+function pctBody(current: number, baseline: number, period: string): string {
   const pct = ((current - baseline) / baseline) * 100;
-  const dir = pct >= 0 ? "+" : "";
-  return `${dir}${pct.toFixed(1)}% · ${fmtCompact(current)} EGP`;
+  if (Math.abs(pct) < 0.05) {
+    return `Your portfolio held steady ${period}, at ${fmtCompact(current)} EGP.`;
+  }
+  const dir = pct >= 0 ? "up" : "down";
+  return `Your portfolio is ${dir} ${Math.abs(pct).toFixed(1)}% ${period}, now at ${fmtCompact(current)} EGP.`;
 }
 
 async function priorSnapshot(userId: string, before: string): Promise<number | null> {
@@ -89,7 +97,7 @@ async function sendDaily(u: User, today: string): Promise<void> {
   // this point should not retry every tick for the rest of the send window
   // and risk a duplicate if the failure was transient rather than total.
   await db.update(usersTable).set({ lastDailySummaryDate: today }).where(eq(usersTable.id, u.id));
-  await sendPushToTokens([u.pushToken], "Good morning", pctBody(current, baseline), { type: "daily_summary" });
+  await sendPushToTokens([u.pushToken], "Good Morning", pctBody(current, baseline, "today"), { type: "daily_summary" });
 }
 
 async function sendWeekly(u: User, today: string): Promise<void> {
@@ -101,7 +109,7 @@ async function sendWeekly(u: User, today: string): Promise<void> {
   if (current == null || baseline == null) return;
 
   await db.update(usersTable).set({ lastWeeklySummaryDate: today }).where(eq(usersTable.id, u.id));
-  await sendPushToTokens([u.pushToken], "Your week in review", pctBody(current, baseline), { type: "weekly_summary" });
+  await sendPushToTokens([u.pushToken], "Your Week in Review", pctBody(current, baseline, "this week"), { type: "weekly_summary" });
 }
 
 let running = false;
