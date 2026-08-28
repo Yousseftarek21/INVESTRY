@@ -73,18 +73,8 @@ export function USMarketStatusBanner() {
 
 const indexPriceFormatter = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function indexDesc(t: ReturnType<typeof useT>, symbol: string): string {
-  switch (symbol) {
-    case 'SPX':  return t.usIndexSpxDesc;
-    case 'DJI':  return t.usIndexDjiDesc;
-    case 'NDX':  return t.usIndexNdxDesc;
-    default:     return '';
-  }
-}
-
 function IndexThird({ index, isLast }: { index: USIndexLive; isLast: boolean }) {
   const colors = useColors();
-  const t = useT();
   const isFlat = Math.abs(index.changePercent) < 0.005;
   const isPos = index.changePercent >= 0;
   const color = index.change === 0 && !index.isLive ? colors.mutedForeground
@@ -103,7 +93,6 @@ function IndexThird({ index, isLast }: { index: USIndexLive; isLast: boolean }) 
             {!isFlat && isPos ? '+' : ''}{index.changePercent.toFixed(2)}%
           </Text>
         </View>
-        <Text style={[ixc.desc, { color: colors.mutedForeground }]} numberOfLines={1}>{indexDesc(t, index.symbol)}</Text>
       </View>
       {!isLast && <View style={[ixc.divider, { backgroundColor: colors.border }]} />}
     </>
@@ -152,7 +141,6 @@ const ixc = StyleSheet.create({
   price: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: -0.3, textAlign: 'center' },
   badge: { flexDirection: 'row', alignSelf: 'center', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
   badgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
-  desc: { fontSize: 8.5, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: 1 },
 });
 
 // ─── Search Bar ───────────────────────────────────────────────────────────────
