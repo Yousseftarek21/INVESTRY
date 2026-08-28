@@ -775,7 +775,7 @@ const en = {
   tabCurrencies: 'Currencies',
   tabEGX: 'EGX',
   tabRealEstate: 'Real Estate',
-  tabUsStocks: 'US Stocks',
+  tabUsStocks: 'US Markets',
   tabIndices: 'Indices',
   marketsTitle: 'Markets',
   // Gold
@@ -2271,7 +2271,7 @@ const ar: typeof en = {
   tabCurrencies: 'العملات',
   tabEGX: 'البورصة',
   tabRealEstate: 'العقارات',
-  tabUsStocks: 'أسهم أمريكية',
+  tabUsStocks: 'الأسواق الأمريكية',
   tabIndices: 'مؤشرات',
   marketsTitle: 'الأسواق',
   // Gold

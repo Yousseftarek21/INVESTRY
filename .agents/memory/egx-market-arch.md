@@ -1,6 +1,6 @@
 ---
 name: EGX Market Architecture
-description: How the EGX market section is structured — static DB + Yahoo Finance batching + UI components
+description: How the EGX market section is structured — static DB + TradingView scanner + UI components
 ---
 
 The EGX Market section is split into three files:
@@ -10,14 +10,14 @@ The EGX Market section is split into three files:
 **How to apply:** To add new companies, add to `data/egx-companies.ts` EGX_COMPANIES array. No other files need changing — the hook and UI auto-pick them up.
 
 ## data/egx-companies.ts
-- Static DB of ~50 EGX companies with: ticker, yahoo (.CA suffix), nameEn, nameAr, sector, industry, fallbackPrice
+- Static DB of 282 EGX companies with: ticker, nameEn, nameAr, sector, industry, fallbackPrice — tickers/names sourced from TradingView's Egypt scanner, no per-ticker provider suffix needed
 - `EGX_SECTORS` const array — drives sector pills
 - Helper fns: `getSectorCounts()`, `searchCompanies(query)`, `getEGXMarketStatus()`
 - EGX hours: Sunday–Thursday 10:00–15:30 Cairo time (Africa/Cairo tz)
 
 ## hooks/useEGXMarket.ts
 - `useEGXMarket()` — React Query hook, 60s stale, placeholderData = fallback prices
-- Fetches Yahoo Finance v7 quote API in parallel batches of 25 (CORS-blocked on web, works on native)
+- Fetches via the server's `GET /api/markets/stocks`, which scans TradingView's Egypt scanner (`scanner.tradingview.com/egypt/scan`) for all 282 tickers in one batched POST — TradingView is the sole source (no other provider silently stands in if it fails; see [[us-markets-arch]] for the same policy applied to US stocks)
 - Returns `EGXStockLive[]` — extends EGXCompany with price, change, changePercent, volume, marketCap, high52w, low52w, pe, dividendYield, isLive
 - On any fetch failure → graceful fallback to static prices with isLive=false
 

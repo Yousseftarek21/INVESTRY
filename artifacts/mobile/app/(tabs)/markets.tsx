@@ -31,7 +31,7 @@ const TABS_CONFIG = [
   { key: 'currencies',  icon: { lib: 'feather', name: 'dollar-sign' }  as TabIconSpec },
   { key: 'egx',        icon: { lib: 'feather', name: 'bar-chart-2' }  as TabIconSpec },
   { key: 'real_estate',icon: { lib: 'mci',    name: 'home-city' }     as TabIconSpec },
-  { key: 'us_stocks',  icon: { lib: 'feather', name: 'trending-up' }  as TabIconSpec },
+  { key: 'us_stocks',  icon: { lib: 'feather', name: 'activity' }     as TabIconSpec },
 ] as const;
 
 type TabKey = typeof TABS_CONFIG[number]['key'];

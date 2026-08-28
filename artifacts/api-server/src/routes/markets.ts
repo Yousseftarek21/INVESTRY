@@ -1344,11 +1344,11 @@ async function fetchStockNews(symbol: string): Promise<StockNewsItem[]> {
   }));
 }
 
-// TradingView only. Yahoo Finance is removed by explicit product decision
-// (2026-07-30) — the same policy already applied to FX (see fetchUsdToEgp):
-// one trusted provider, no other source silently standing in for it. There
-// is no fallback tier left; if TradingView's Egypt scanner fails, EGX prices
-// come back empty rather than from a different, unvetted source.
+// TradingView only, by explicit product decision — the same policy already
+// applied to FX (see fetchUsdToEgp): one trusted provider, no other source
+// silently standing in for it. There is no fallback tier; if TradingView's
+// Egypt scanner fails, EGX prices come back empty rather than from a
+// different, unvetted source.
 //
 // That degrade-to-empty was the stated intent but wasn't actually wired up:
 // fetchEGXViaTradingView() throws on a scanner error (e.g. a 429 during a

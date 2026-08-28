@@ -1,4 +1,5 @@
-- [EGX Market Architecture](egx-market-arch.md) — static company DB + batched Yahoo Finance fetch; lives in data/egx-companies.ts + hooks/useEGXMarket.ts + components/EGXMarket.tsx
+- [EGX Market Architecture](egx-market-arch.md) — static company DB + batched TradingView scanner fetch; lives in data/egx-companies.ts + hooks/useEGXMarket.ts + components/EGXMarket.tsx
+- [US Markets Architecture](us-markets-arch.md) — merged US Stocks+Indices tab, 100-ticker TradingView-only fetch; lives in data/global-stocks.ts + hooks/useGlobalStocks.ts + hooks/useUSIndices.ts + components/GlobalStocksMarket.tsx
 - [HoldingsContext sync key](holdings-sync.md) — cache key must stay @istithmarak_holdings (original); API migration logic runs on first sign-in when API is empty but local has data
 - [Stripe connector settings field names](stripe-connector-settings.md) — settings are `secret`/`publishable`, not `secret_key`/`publishable_key`
 - [Stripe entitlement sync](stripe-entitlement-sync.md) — stripe-replit-sync never touches app tables; must wire subscription.created/updated/deleted to your own users.plan column yourself
@@ -7,7 +8,6 @@
 - [expo-symbols SF Symbol naming](expo-symbols-naming.md) — SymbolView name strings come from sf-symbols-typescript's type, not Apple's catalog names (e.g. "rosette" not "rosette.fill")
 - [Animated.Value fixed-length ref pitfall](animated-fixed-length-refs.md) — sizing an Animated.Value[] ref off a dynamic/filtered list's initial length crashes later; key by stable ID instead
 - [Clerk unsafeMetadata for lightweight user prefs](clerk-unsafe-metadata-prefs.md) — store small client-editable user fields (e.g. display name) in user.unsafeMetadata instead of adding a DB column/table
-- [Yahoo Finance server-side rate limiting](yahoo-finance-server-rate-limit.md) — shared sandbox IP gets "Too Many Requests" from Yahoo even server-side (not just CORS); design fetch chains with a static-price fallback regardless of client vs server.
 - [Production secrets need a redeploy](production-secrets-redeploy.md) — rotating a secret only updates dev; a running production deployment keeps the old value in memory until redeployed.
 - [EGX live prices in holdings](egx-prices-in-holdings.md) — EGXCompany uses `ticker` (not `symbol`); merge egxStocks into MarketPrices.egxPrices in each screen via shadow useMemo pattern; fallback to purchasePricePerShare when live price absent.
 - [Portfolio snapshot storage](portfolio-snapshots.md) — daily AsyncStorage snapshots at @investry_portfolio_snapshots; key is YYYY-MM-DD, value is totalValue EGP; drives the portfolio chart for 1W/1M/3M/1Y/ALL filters (1D falls back to gold history).

@@ -37,7 +37,7 @@ Egypt's first investment tracking mobile app (Expo / React Native). Slogan: "Kno
 ## Architecture decisions
 
 - **Frontend-only**: No database or server used. Holdings stored in AsyncStorage on device.
-- **Triple API fallback for prices**: Yahoo Finance (primary, native-only) → goldprice.org → open.er-api.com → hardcoded fallback. On web preview, Yahoo Finance and goldprice.org are CORS-blocked — this is expected; the app works fully on native.
+- **API fallback for prices**: TradingView (primary) → goldprice.org → open.er-api.com → hardcoded fallback. On web preview, TradingView and goldprice.org are CORS-blocked — this is expected; the app works fully on native.
 - **Theme & language in context**: `AppSettingsContext` persists user preferences in AsyncStorage. `useColors()` reads the resolved theme. `useT()` returns the active language's translation object.
 - **Single translation object**: `i18n/index.ts` exports `translations.en` and `translations.ar`. Adding a new string requires updating both. TypeScript ensures parity via `typeof en`.
 - **No RTL layout flip**: Arabic mode changes text strings only. Full RTL layout (via `I18nManager.forceRTL`) would need an app restart and is not implemented yet.
@@ -71,8 +71,8 @@ Egypt's first investment tracking mobile app (Expo / React Native). Slogan: "Kno
 
 ## Gotchas
 
-- CORS blocks Yahoo Finance and goldprice.org on web preview — this is normal. All APIs work on native (Expo Go).
-- EGX stock tickers on Yahoo Finance use `.CA` suffix (e.g. `COMI.CA` for Egyptian Exchange).
+- CORS blocks TradingView and goldprice.org on web preview — this is normal. All APIs work on native (Expo Go).
+- EGX and US stock quotes come from TradingView's scanner API — no per-ticker suffix needed, just an exchange-qualified symbol (e.g. `EGX:COMI`, `NASDAQ:AAPL`).
 - `useColors()` depends on `AppSettingsContext` — must be used inside `AppSettingsProvider`.
 - UUID: use `Date.now().toString() + Math.random().toString(36).substr(2, 9)` — never `uuid` package.
 - **Never use `adjustsFontSizeToFit` on any Text inside a NativeTabs screen, modal, or sheet.** These containers complete layout asynchronously; the Text gets a zero width on the first render pass, `adjustsFontSizeToFit` collapses the font to invisible, and it never recovers. Use `flexShrink: 1` + `textAlign: 'center'` on the Text and `alignSelf: 'stretch'` on its parent row instead.
