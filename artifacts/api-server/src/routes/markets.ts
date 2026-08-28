@@ -1481,21 +1481,24 @@ async function fetchEGXIndices(): Promise<EGXStockResponse[]> {
 }
 
 // ─── US major indices (S&P 500, Dow Jones, Nasdaq Composite) ──────────────────
-// Real index values (not ETF proxies like SPY/QQQ/DIA above) via TradingView's
-// TVC exchange, the standard listing for cash index data — same "america/scan"
-// endpoint already used for individual US stocks, just a different symbol set.
+// Real index values (not ETF proxies like SPY/QQQ/DIA above). Verified live
+// against TradingView's own scanner (not guessed): these three don't resolve
+// on the "america" scanner region used for individual stocks — indices live
+// under the "global" region — and S&P 500 specifically isn't under TVC like
+// the other two, it resolves under the SP exchange (TVC:SPX returns nothing;
+// SP:SPX does).
 const US_INDICES = [
-  { symbol: "SPX", name: "S&P 500" },
-  { symbol: "DJI", name: "Dow Jones Industrial Average" },
-  { symbol: "IXIC", name: "Nasdaq Composite" },
+  { symbol: "SPX", exchange: "SP",  name: "S&P 500" },
+  { symbol: "DJI", exchange: "TVC", name: "Dow Jones Industrial Average" },
+  { symbol: "IXIC", exchange: "TVC", name: "Nasdaq Composite" },
 ] as const;
 
 async function fetchUSIndices(): Promise<EGXStockResponse[]> {
   const body = JSON.stringify({
     columns: ["close", "change_abs", "change"],
-    symbols: { tickers: US_INDICES.map(i => `TVC:${i.symbol}`) },
+    symbols: { tickers: US_INDICES.map(i => `${i.exchange}:${i.symbol}`) },
   });
-  const res = await safeFetch("https://scanner.tradingview.com/america/scan", {
+  const res = await safeFetch("https://scanner.tradingview.com/global/scan", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
     body,
