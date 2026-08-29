@@ -74,3 +74,25 @@ export async function ensureIntradayColumn(): Promise<void> {
     logger.error({ err }, "ensureIntradayColumn: failed to add column — the 1D chart will fall back to client-side samples only");
   }
 }
+
+// Same self-bootstrapping pattern for the referral_monthly_winners table
+// (see lib/db/src/schema/referralMonthlyWinners.ts) — one row per calendar
+// month, written by referralMonthlyWinnerCron.ts.
+export async function ensureReferralMonthlyWinnersTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "referral_monthly_winners" (
+        "id" text PRIMARY KEY,
+        "month" text NOT NULL,
+        "user_id" text NOT NULL,
+        "referred_count" integer NOT NULL,
+        "notified_at" timestamptz,
+        "paid_at" timestamptz,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT "referral_monthly_winners_month_unique" UNIQUE ("month")
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureReferralMonthlyWinnersTable: failed to create table — the monthly referral prize will not be detected until this is resolved");
+  }
+}

@@ -532,6 +532,16 @@ const en = {
   goalCelebrateEyebrow: 'Goal Reached',
   goalCelebrateBody: (name: string) => `You hit your "${name}" goal — every deposit added up to this.` as string,
   goalCelebrateDismiss: 'Nice!',
+  weeklyRecapEntryLabel: 'Your Week in Review',
+  weeklyRecapEyebrow: 'Weekly Recap',
+  weeklyRecapNoHistoryTitle: 'Still gathering your first week',
+  weeklyRecapNoHistoryBody: 'Come back once INVESTRY has tracked a full week of your portfolio to see your recap here.',
+  weeklyRecapBody: (isPos: boolean, amount: string, currency: string) =>
+    `Your portfolio is ${isPos ? 'up' : 'down'} ${amount} ${currency} this week.` as string,
+  weeklyRecapShare: 'Share',
+  weeklyRecapShareNoHistory: 'Tracking my portfolio with INVESTRY 📈',
+  weeklyRecapShareText: (isPos: boolean, pct: string, value: string, currency: string) =>
+    `My portfolio is ${isPos ? 'up' : 'down'} ${pct}% this week, now at ${value} ${currency} — tracking it all with INVESTRY.` as string,
   linkCashAccount: 'Link to Cash Account',
   linkCashAccountHint: 'Track this goal automatically from a cash account balance instead of updating it by hand.',
   noLinkManualEntry: 'None — enter manually',
@@ -2028,6 +2038,16 @@ const ar: typeof en = {
   goalCelebrateEyebrow: 'تم تحقيق الهدف',
   goalCelebrateBody: (name: string) => `وصلت لهدف "${name}" — كل إيداع كان له دور في الوصول.` as string,
   goalCelebrateDismiss: 'رائع!',
+  weeklyRecapEntryLabel: 'ملخص أسبوعك',
+  weeklyRecapEyebrow: 'الملخص الأسبوعي',
+  weeklyRecapNoHistoryTitle: 'لا يزال نجمع بيانات أسبوعك الأول',
+  weeklyRecapNoHistoryBody: 'عد بعد أن يتتبع إنفستري محفظتك لأسبوع كامل لترى ملخصك هنا.',
+  weeklyRecapBody: (isPos: boolean, amount: string, currency: string) =>
+    `محفظتك ${isPos ? 'ارتفعت' : 'انخفضت'} بمقدار ${amount} ${currency} هذا الأسبوع.` as string,
+  weeklyRecapShare: 'مشاركة',
+  weeklyRecapShareNoHistory: 'أتابع محفظتي الاستثمارية مع إنفستري 📈',
+  weeklyRecapShareText: (isPos: boolean, pct: string, value: string, currency: string) =>
+    `محفظتي ${isPos ? 'ارتفعت' : 'انخفضت'} ${pct}% هذا الأسبوع، وأصبحت الآن ${value} ${currency} — أتابعها مع إنفستري.` as string,
   linkCashAccount: 'ربط بحساب نقدي',
   linkCashAccountHint: 'تابع هذا الهدف تلقائيًا من رصيد حساب نقدي بدل تحديثه يدويًا.',
   noLinkManualEntry: 'بدون ربط — إدخال يدوي',

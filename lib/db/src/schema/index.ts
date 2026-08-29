@@ -15,3 +15,4 @@ export * from "./chatMessages";
 export * from "./activityLog";
 export * from "./realEstatePrices";
 export * from "./realEstateCompoundPrices";
+export * from "./referralMonthlyWinners";

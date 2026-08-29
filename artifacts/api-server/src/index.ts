@@ -6,8 +6,9 @@ import { startPortfolioDriftCron } from "./lib/portfolioDriftCron";
 import { startRealEstatePriceCron } from "./lib/realEstatePriceCron";
 import { startDailySummaryCron } from "./lib/dailySummaryCron";
 import { startLeaderboardRankCron } from "./lib/leaderboardRankCron";
+import { startReferralMonthlyWinnerCron } from "./lib/referralMonthlyWinnerCron";
 import { ensureUserColumns } from "./lib/ensureUserColumns";
-import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable } from "./lib/ensureDividendsTable";
+import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable } from "./lib/ensureDividendsTable";
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
@@ -39,6 +40,7 @@ app.listen(port, async (err) => {
   await ensureSoldHoldingsTable();
   await ensureIntradayColumn();
   await ensureDailyChangeSnapshotsTable();
+  await ensureReferralMonthlyWinnersTable();
   await sendCompetitionAnnouncement();
   startPortfolioAlertCron();
   startUserPriceAlertCron();
@@ -46,4 +48,5 @@ app.listen(port, async (err) => {
   startRealEstatePriceCron();
   startDailySummaryCron();
   startLeaderboardRankCron();
+  startReferralMonthlyWinnerCron();
 });

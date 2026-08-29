@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { forwardChevron } from '@/utils/rtl';
+import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta, todayContributionFromStamp } from '@/utils/pctDelta';
 import { tradingDayStart, touchedToday } from '@/utils/cairoDate';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
@@ -38,6 +38,7 @@ import { PerfChart } from '@/components/PerfChart';
 import { getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { useAppSettings } from '@/context/AppSettingsContext';
 import { AllocationBar, AllocationSegment } from '@/components/AllocationBar';
+import { WeeklyRecapCard } from '@/components/WeeklyRecapCard';
 import { useSoldHoldings } from '@/hooks/useSoldHoldings';
 import { useDailyChanges } from '@/hooks/useDailyChanges';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -749,6 +750,28 @@ export default function AnalyticsScreen() {
   useEffect(() => {
     if (!isPeriodAvailable(period, coverage)) setPeriod('1D');
   }, [coverage, period]);
+
+  // Weekly Recap — most recent snapshot at or before 7 days ago, same
+  // "closest prior value" approach dailySummaryCron.ts's own weekly push
+  // uses server-side (tolerant of gaps). null when there isn't one yet
+  // (account under a week old) — the recap card shows an honest "still
+  // gathering" state rather than a fabricated 0.0%.
+  const [recapVisible, setRecapVisible] = useState(false);
+  const weeklyBaseline = useMemo(() => {
+    if (snapshots.length === 0) return null;
+    const targetMs = Date.now() - 7 * 86_400_000;
+    const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+    let candidate: number | null = null;
+    for (const snap of sorted) {
+      if (new Date(`${snap.date}T00:00:00Z`).getTime() <= targetMs) candidate = snap.value;
+      else break;
+    }
+    return candidate;
+  }, [snapshots]);
+  const weeklyPctChange = weeklyBaseline && weeklyBaseline > 0
+    ? ((sm.totalValue - weeklyBaseline) / weeklyBaseline) * 100
+    : null;
+  const weeklyEgpChange = weeklyBaseline != null ? sm.totalValue - weeklyBaseline : 0;
   const { data: inflation } = useInflationRate();
   const { data: benchmark } = usePortfolioBenchmark();
   const { configured: targetsConfigured, targets } = usePortfolioTargets();
@@ -966,6 +989,30 @@ export default function AnalyticsScreen() {
       <View style={s.header}>
         <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
       </View>
+
+      {/* ── Weekly Recap entry point ──────────────────────────────────
+           Free for everyone (not behind the Portfolio Analytics
+           PremiumGate below) — it's a shareable, viral moment, gating it
+           would work against the whole point of it. */}
+      {hasHoldings && sm.totalValue > 0 && (
+        <Pressable
+          style={[s.recapCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => { impact(); setRecapVisible(true); }}
+        >
+          <View style={[s.recapIconWrap, { backgroundColor: colors.primary + '18' }]}>
+            <Feather name="bar-chart-2" size={18} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.recapTitle, { color: colors.text }]}>{t.weeklyRecapEntryLabel}</Text>
+            {weeklyPctChange != null && (
+              <Text style={[s.recapSub, { color: weeklyPctChange >= 0 ? colors.green : colors.red }]}>
+                {weeklyPctChange >= 0 ? '+' : ''}{weeklyPctChange.toFixed(1)}%
+              </Text>
+            )}
+          </View>
+          <Feather name={forwardArrow()} size={16} color={colors.mutedForeground} />
+        </Pressable>
+      )}
 
       {/* ══ SECTION 1: Planning ═══════════════════════════════════════ */}
       <View style={s.sectionHeader}>
@@ -1549,6 +1596,22 @@ export default function AnalyticsScreen() {
         )}
       </PremiumGate>
     </ScrollView>
+    <WeeklyRecapCard
+      visible={recapVisible}
+      onDismiss={() => setRecapVisible(false)}
+      pctChange={weeklyPctChange}
+      egpChange={weeklyEgpChange}
+      currentValue={sm.totalValue}
+      currencyLabel="EGP"
+      allocation={[
+        { label: t.gold, value: sm.goldV, color: colors.primary },
+        { label: t.silver, value: sm.silverV, color: colors.silverColor },
+        { label: t.egxStock, value: sm.stockV, color: '#4A9EFF' },
+        { label: t.realEstate, value: sm.reV, color: '#A47FCA' },
+        { label: t.personalAsset, value: sm.paV, color: '#E08E45' },
+        { label: t.fixedIncome, value: sm.fiV, color: '#22C55E' },
+      ]}
+    />
     </View>
   );
 }
@@ -1563,6 +1626,15 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   eyebrow: { fontSize: 10, fontFamily: 'Inter_700Bold', letterSpacing: 2.5, marginBottom: 4 },
   pageTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
+
+  recapCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 18, borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  recapIconWrap: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  recapTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  recapSub: { fontSize: 12, fontFamily: 'Inter_700Bold', marginTop: 2 },
 
   // Health hero (centrepiece)
   healthHero: {

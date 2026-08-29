@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { isNotNull, eq, asc } from "drizzle-orm";
+import { isNotNull, eq, asc, desc } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
-import { db, usersTable, holdingsTable, cashAccountsTable, soldHoldingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable } from "@workspace/db";
+import { db, usersTable, holdingsTable, cashAccountsTable, soldHoldingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable, referralMonthlyWinnersTable } from "@workspace/db";
 import { sendPushToTokens } from "../lib/expoPush";
 import { backfillDailyChanges, backfillDailyChangesFromSnapshots, resetDailyChangeHistory } from "../lib/dailyChangeBackfill";
 import { computeRankedReturns } from "../lib/leaderboardRanking";
@@ -433,6 +433,84 @@ router.post("/admin/migrate-cost-basis-field", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "POST /admin/migrate-cost-basis-field failed");
     res.status(500).json({ error: "Migration failed" });
+  }
+});
+
+// Lists every crowned referral-monthly-prize winner (see
+// referralMonthlyWinnerCron.ts and referralMonthlyWinnersTable's own
+// comment) — the record an operator actually needs to know who to pay each
+// month, newest first. A row with an empty userId means no one had a real
+// referral that month (the cron still writes a row so it doesn't rescan
+// every 6h for the rest of the month).
+//
+//   curl "https://api.investry.app/api/admin/referral-winners" \
+//     -H "x-admin-secret: <the secret>"
+router.get("/admin/referral-winners", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const rows = await db
+      .select()
+      .from(referralMonthlyWinnersTable)
+      .orderBy(desc(referralMonthlyWinnersTable.month));
+
+    const ids = rows.filter(r => r.userId).map(r => r.userId);
+    const identities = await fetchIdentities(ids);
+
+    res.json(rows.map(r => ({
+      month: r.month,
+      userId: r.userId || null,
+      name: r.userId ? (identities.get(r.userId)?.name ?? "?") : null,
+      referredCount: r.referredCount,
+      notifiedAt: r.notifiedAt,
+      paidAt: r.paidAt,
+    })));
+  } catch (err) {
+    req.log.error({ err }, "GET /admin/referral-winners failed");
+    res.status(500).json({ error: "Lookup failed" });
+  }
+});
+
+// Marks a month's winner as paid — purely a record-keeping flag for the
+// operator (prize fulfillment itself is manual/off-app, there's no in-app
+// payout), so a repeat check of /admin/referral-winners shows who's already
+// been handled.
+//
+//   curl -X POST "https://api.investry.app/api/admin/referral-winners/2026-08-01/mark-paid" \
+//     -H "x-admin-secret: <the secret>"
+router.post("/admin/referral-winners/:month/mark-paid", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const updated = await db
+      .update(referralMonthlyWinnersTable)
+      .set({ paidAt: new Date() })
+      .where(eq(referralMonthlyWinnersTable.month, req.params.month))
+      .returning({ id: referralMonthlyWinnersTable.id });
+    if (updated.length === 0) {
+      res.status(404).json({ error: "No winner record for that month" });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "POST /admin/referral-winners/:month/mark-paid failed");
+    res.status(500).json({ error: "Update failed" });
   }
 });
 

@@ -9,7 +9,7 @@ import { router } from 'expo-router';
  * be showing. Every push sent from api-server carries a `type` field in its
  * data payload (see dailySummaryCron.ts, leaderboardRankCron.ts,
  * portfolioDriftCron.ts, portfolioAlertCron.ts, userPriceAlertCron.ts,
- * routes/activity.ts) — this is the one place that maps each type to a
+ * referralMonthlyWinnerCron.ts, routes/activity.ts) — this is the one place that maps each type to a
  * destination, so a new push type needs one new entry here rather than
  * scattered routing logic per sender. Before this, no notification of any
  * kind deep-linked anywhere — tapping any push just foregrounded the app.
@@ -20,6 +20,7 @@ const DESTINATION: Record<string, string> = {
   portfolio_alert: '/(tabs)',
   leaderboard_rank: '/leaderboard',
   competition_announcement: '/leaderboard',
+  referral_monthly_winner: '/referral-leaderboard',
   drift_alert: '/target-allocation',
   price_alert: '/price-alerts',
   activity_log: '/notifications',
