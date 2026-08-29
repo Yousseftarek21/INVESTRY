@@ -906,18 +906,24 @@ export default function HomeScreen() {
               onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
               style={({ pressed }) => [
                 styles.currencyPill,
-                { backgroundColor: colors.muted + '90', borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                {
+                  backgroundColor: colors.primary + (showCurrencyPicker ? '22' : '14'),
+                  borderColor: colors.primary + '40',
+                  opacity: pressed ? 0.7 : 1,
+                },
               ]}
               accessibilityRole="button"
               accessibilityLabel={`Display currency: ${displayCurrency}. Tap to change`}
             >
-              <Text style={[styles.currencyPillText, { color: colors.mutedForeground }]}>
+              <Text style={[styles.currencyPillText, { color: colors.primary }]}>
                 {displayCurrency} {showCurrencyPicker ? '▴' : '▾'}
               </Text>
             </Pressable>
           </View>
 
-          {/* Inline currency tab strip — expands on pill tap */}
+          {/* Inline currency tab strip — expands on pill tap. Unchanged
+              from before on purpose: only the trigger pill above got the
+              gold-accent treatment, this list keeps its original look. */}
           {showCurrencyPicker && (
             <View style={styles.currencyTabStrip}>
               {DISP_CURRENCIES.map(c => {
@@ -1762,8 +1768,10 @@ const styles = StyleSheet.create({
   // frame. -1.6 rather than -2: at 46px the tighter tracking was starting to
   // close up the gap around the thousands separators.
   heroValue:      { fontSize: 46, fontFamily: 'Inter_700Bold', letterSpacing: -1.6, flexShrink: 1, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  currencyPill:       { borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 11, paddingVertical: 6 },
-  currencyPillText:   { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
+  // Gold-accented (was flat grey) — the only change here is the trigger
+  // pill's color; the expanded list below keeps its original look/behavior.
+  currencyPill:       { borderRadius: 999, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 6 },
+  currencyPillText:   { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
   // Wraps because the switcher is user-configurable now and can hold up to 11
   // currencies; a plain row clipped everything past the fourth.
   currencyTabStrip:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 4, marginBottom: 2, paddingHorizontal: 4 },
