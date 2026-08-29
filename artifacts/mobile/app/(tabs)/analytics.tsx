@@ -990,30 +990,6 @@ export default function AnalyticsScreen() {
         <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
       </View>
 
-      {/* ── Weekly Recap entry point ──────────────────────────────────
-           Free for everyone (not behind the Portfolio Analytics
-           PremiumGate below) — it's a shareable, viral moment, gating it
-           would work against the whole point of it. */}
-      {hasHoldings && sm.totalValue > 0 && (
-        <Pressable
-          style={[s.recapCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => { impact(); setRecapVisible(true); }}
-        >
-          <View style={[s.recapIconWrap, { backgroundColor: colors.primary + '18' }]}>
-            <Feather name="bar-chart-2" size={18} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.recapTitle, { color: colors.text }]}>{t.weeklyRecapEntryLabel}</Text>
-            {weeklyPctChange != null && (
-              <Text style={[s.recapSub, { color: weeklyPctChange >= 0 ? colors.green : colors.red }]}>
-                {weeklyPctChange >= 0 ? '+' : ''}{weeklyPctChange.toFixed(1)}%
-              </Text>
-            )}
-          </View>
-          <Feather name={forwardArrow()} size={16} color={colors.mutedForeground} />
-        </Pressable>
-      )}
-
       {/* ══ SECTION 1: Planning ═══════════════════════════════════════ */}
       <View style={s.sectionHeader}>
         <View style={[s.sectionIconWrap, { backgroundColor: '#22C55E18' }]}>
@@ -1595,6 +1571,33 @@ export default function AnalyticsScreen() {
           </>
         )}
       </PremiumGate>
+
+      {/* ── Weekly Recap entry point ──────────────────────────────────
+           Free for everyone (not behind the Portfolio Analytics
+           PremiumGate above) — it's a shareable, viral moment, gating it
+           would work against the whole point of it. Last thing on the
+           screen: a closing "here's your week" note after everything
+           else, not competing with the Planning/Tools/Analytics sections
+           for first attention. */}
+      {hasHoldings && sm.totalValue > 0 && (
+        <Pressable
+          style={[s.recapCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => { impact(); setRecapVisible(true); }}
+        >
+          <View style={[s.recapIconWrap, { backgroundColor: colors.primary + '18' }]}>
+            <Feather name="bar-chart-2" size={18} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.recapTitle, { color: colors.text }]}>{t.weeklyRecapEntryLabel}</Text>
+            {weeklyPctChange != null && (
+              <Text style={[s.recapSub, { color: weeklyPctChange >= 0 ? colors.green : colors.red }]}>
+                {weeklyPctChange >= 0 ? '+' : ''}{weeklyPctChange.toFixed(1)}%
+              </Text>
+            )}
+          </View>
+          <Feather name={forwardArrow()} size={16} color={colors.mutedForeground} />
+        </Pressable>
+      )}
     </ScrollView>
     <WeeklyRecapCard
       visible={recapVisible}

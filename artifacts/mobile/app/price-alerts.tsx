@@ -6,7 +6,7 @@ import {
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@clerk/expo';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -38,6 +38,21 @@ interface AssetOption {
   price: number;
 }
 
+// Market tabs — the picker used to be one continuous scroll (4 metals/FX
+// rows, then all 282 EGX tickers, then all 100 US tickers, one after
+// another with only a plain text label between them), which read as
+// unorganized: the group you actually wanted could be hundreds of rows
+// deep. Grouping into 3 tabs — Metals & FX, EGX Stocks, US Stocks —
+// mirrors the same market-tab pattern already used by the Markets tab
+// itself and by Add Investment's own stock picker (StockPickerModal).
+type AssetTab = 'macro' | 'egx' | 'us';
+
+function tabOf(group: AssetOption['group']): AssetTab {
+  if (group === 'metals' || group === 'currency') return 'macro';
+  if (group === 'stocks') return 'egx';
+  return 'us';
+}
+
 export default function PriceAlertsScreen() {
   const colors = useColors();
   const t = useT();
@@ -55,6 +70,7 @@ export default function PriceAlertsScreen() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [assetTab, setAssetTab] = useState<AssetTab>('macro');
 
   const [selectedAsset, setSelectedAsset] = useState<AssetOption | null>(null);
   const [direction, setDirection] = useState<'above' | 'below'>('above');
@@ -104,11 +120,20 @@ export default function PriceAlertsScreen() {
     return opts;
   }, [pricesDict, t, language]);
 
+  const tabOptions = useMemo(
+    () => assetOptions.filter(o => tabOf(o.group) === assetTab),
+    [assetOptions, assetTab]
+  );
+  const tabCounts = useMemo(() => {
+    const counts: Record<AssetTab, number> = { macro: 0, egx: 0, us: 0 };
+    assetOptions.forEach(o => { counts[tabOf(o.group)]++; });
+    return counts;
+  }, [assetOptions]);
   const filteredOptions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return assetOptions;
-    return assetOptions.filter(o => o.label.toLowerCase().includes(q));
-  }, [assetOptions, query]);
+    if (!q) return tabOptions;
+    return tabOptions.filter(o => o.label.toLowerCase().includes(q));
+  }, [tabOptions, query]);
 
   const resetForm = useCallback(() => {
     setShowForm(false);
@@ -256,7 +281,7 @@ export default function PriceAlertsScreen() {
                   <Text style={[s.label, { color: colors.mutedForeground }]}>{t.selectAssetLabel}</Text>
                   <TouchableOpacity
                     style={[s.pickerTrigger, { backgroundColor: colors.input, borderColor: colors.border }]}
-                    onPress={() => setPickerOpen(true)}
+                    onPress={() => { setAssetTab(selectedAsset ? tabOf(selectedAsset.group) : 'macro'); setPickerOpen(true); }}
                     activeOpacity={0.7}
                   >
                     <Text style={[s.pickerTriggerText, { color: selectedAsset ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
@@ -329,6 +354,52 @@ export default function PriceAlertsScreen() {
                 <Feather name="x" size={15} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
+
+            {/* Market tabs — same 3-way split the Markets tab and Add
+                Investment's own stock picker already use, instead of one
+                continuous 380+ row scroll. */}
+            <View style={s.assetTabRow}>
+              {([
+                { key: 'macro' as const, label: t.assetGroupMetals + ' / ' + t.assetGroupCurrency, icon: { lib: 'mci' as const, name: 'gold' } },
+                { key: 'egx' as const, label: t.assetGroupStocks, icon: { lib: 'feather' as const, name: 'bar-chart-2' } },
+                { key: 'us' as const, label: t.assetGroupUsStocks, icon: { lib: 'feather' as const, name: 'activity' } },
+              ]).map(tab => {
+                const isActive = tab.key === assetTab;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    onPress={() => { impact(); setAssetTab(tab.key); setQuery(''); }}
+                    style={[
+                      s.assetTab,
+                      {
+                        backgroundColor: isActive ? colors.primary : colors.muted,
+                        borderColor: isActive ? colors.primary : 'transparent',
+                      },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    {tab.icon.lib === 'mci' ? (
+                      <MaterialCommunityIcons name={tab.icon.name as any} size={14} color={isActive ? colors.primaryForeground : colors.mutedForeground} />
+                    ) : (
+                      <Feather name={tab.icon.name as any} size={14} color={isActive ? colors.primaryForeground : colors.mutedForeground} />
+                    )}
+                    <View style={[s.assetTabBadge, { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.border }]}>
+                      <Text style={[s.assetTabBadgeTxt, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
+                        {tabCounts[tab.key]}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {/* Full label for the active tab, since the pills above only fit
+                an icon + count — mirrors CategoryPills/StockPickerModal's own
+                truncation trade-off, just resolved with a caption instead of
+                cramming text into the pill. */}
+            <Text style={[s.assetTabActiveLabel, { color: colors.mutedForeground }]}>
+              {assetTab === 'macro' ? `${t.assetGroupMetals} & ${t.assetGroupCurrency}` : assetTab === 'egx' ? t.assetGroupStocks : t.assetGroupUsStocks}
+            </Text>
+
             <View style={[s.searchWrap, { borderBottomColor: colors.border }]}>
               <View style={[s.searchBar, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <Feather name="search" size={15} color={colors.mutedForeground} />
@@ -352,13 +423,20 @@ export default function PriceAlertsScreen() {
               keyExtractor={item => item.key}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+              ListEmptyComponent={
+                <View style={s.assetEmpty}>
+                  <Feather name="search" size={22} color={colors.mutedForeground} />
+                  <Text style={[s.assetEmptyTxt, { color: colors.mutedForeground }]}>{t.noTickersFound} "{query}"</Text>
+                </View>
+              }
               renderItem={({ item, index }) => {
+                // Within the macro tab, metals and currency still get their
+                // own small header — that's a real, useful distinction at 4
+                // items. EGX/US tabs are single-group, so no header repeats
+                // for every one of 100-280 rows.
                 const prevItem = filteredOptions[index - 1];
-                const showGroupHeader = !prevItem || prevItem.group !== item.group;
-                const groupLabel = item.group === 'metals' ? t.assetGroupMetals
-                  : item.group === 'currency' ? t.assetGroupCurrency
-                  : item.group === 'us_stocks' ? t.assetGroupUsStocks
-                  : t.assetGroupStocks;
+                const showGroupHeader = assetTab === 'macro' && (!prevItem || prevItem.group !== item.group);
+                const groupLabel = item.group === 'metals' ? t.assetGroupMetals : t.assetGroupCurrency;
                 const isSelected = selectedAsset?.key === item.key;
                 return (
                   <View>
@@ -461,6 +539,16 @@ const s = StyleSheet.create({
   pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth },
   pickerTitle: { fontSize: 17, fontFamily: 'Inter_700Bold' },
   pickerCloseBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  assetTabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 14 },
+  assetTab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 9, borderRadius: 12, borderWidth: 1,
+  },
+  assetTabBadge: { borderRadius: 9, paddingHorizontal: 6, paddingVertical: 1.5 },
+  assetTabBadgeTxt: { fontSize: 10, fontFamily: 'Inter_700Bold' },
+  assetTabActiveLabel: { fontSize: 11.5, fontFamily: 'Inter_500Medium', textAlign: 'center', paddingTop: 8 },
+  assetEmpty: { alignItems: 'center', gap: 10, paddingTop: 60, paddingHorizontal: 30 },
+  assetEmptyTxt: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   searchWrap: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
   searchInput: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular' },
