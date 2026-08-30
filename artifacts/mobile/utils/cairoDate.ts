@@ -108,6 +108,27 @@ export function isSaturday(dateKey: string): boolean {
   return new Date(`${dateKey}T00:00:00Z`).getUTCDay() === 6;
 }
 
+// A plain Cairo calendar day (midnight-to-midnight), not the trading day
+// above — genuinely a different boundary, used where the concept really is
+// "what calendar day is it in Egypt" rather than "which market session."
+// Mirrors the server's own cairoDateString in cairoDate.ts exactly.
+export function cairoDateString(d: Date = new Date()): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Cairo' });
+}
+
+// The date key (YYYY-MM-DD, Africa/Cairo) of the most recent Sunday at or
+// before `d` — the start of the current week, Egypt's Sun-Thu banking week
+// convention. Mirrors the server's own cairoWeekStart in cairoDate.ts
+// exactly — used here so the Weekly Recap card (analytics.tsx) resets on
+// the same real calendar boundary the leaderboard's weekly reset uses,
+// instead of a rolling "7 days ago" window that never actually resets on
+// Sunday and keeps blending last week's movement into "this week" forever.
+export function cairoWeekStart(d: Date = new Date()): string {
+  const today = cairoDateString(d);
+  const weekday = new Date(`${today}T00:00:00Z`).getUTCDay(); // 0=Sunday
+  return new Date(Date.parse(`${today}T00:00:00Z`) - weekday * 86_400_000).toISOString().slice(0, 10);
+}
+
 // ─── Africa/Cairo formatting ──────────────────────────────────────────────────
 // Renders the clock time of an instant in Egypt's timezone, for display next
 // to trading-day dates. Which *day* something belongs to is the trading day

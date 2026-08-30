@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron, forwardArrow } from '@/utils/rtl';
 import { pctDelta, todayContributionFromStamp } from '@/utils/pctDelta';
-import { tradingDayStart, touchedToday } from '@/utils/cairoDate';
+import { tradingDayStart, touchedToday, cairoWeekStart } from '@/utils/cairoDate';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Svg, {
   Defs, LinearGradient, Stop, Path,
@@ -751,19 +751,25 @@ export default function AnalyticsScreen() {
     if (!isPeriodAvailable(period, coverage)) setPeriod('1D');
   }, [coverage, period]);
 
-  // Weekly Recap — most recent snapshot at or before 7 days ago, same
-  // "closest prior value" approach dailySummaryCron.ts's own weekly push
-  // uses server-side (tolerant of gaps). null when there isn't one yet
-  // (account under a week old) — the recap card shows an honest "still
+  // Weekly Recap — most recent snapshot strictly before THIS calendar
+  // week's start (cairoWeekStart, the same Sunday boundary the leaderboard
+  // resets on), not a rolling "7 days ago" window. A rolling window never
+  // actually resets on Sunday — the day the week visibly starts over, it
+  // was still spanning most of last week too, showing "this week" numbers
+  // that were really "the last 7 days" and staying wrong until day 7.
+  // Tolerant of gaps (same "closest prior value" approach
+  // dailySummaryCron.ts's weekly push uses server-side). null when there
+  // isn't one yet (account under a week old, or genuinely no history
+  // before this week began) — the recap card shows an honest "still
   // gathering" state rather than a fabricated 0.0%.
   const [recapVisible, setRecapVisible] = useState(false);
   const weeklyBaseline = useMemo(() => {
     if (snapshots.length === 0) return null;
-    const targetMs = Date.now() - 7 * 86_400_000;
+    const weekStart = cairoWeekStart();
     const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
     let candidate: number | null = null;
     for (const snap of sorted) {
-      if (new Date(`${snap.date}T00:00:00Z`).getTime() <= targetMs) candidate = snap.value;
+      if (snap.date < weekStart) candidate = snap.value;
       else break;
     }
     return candidate;
