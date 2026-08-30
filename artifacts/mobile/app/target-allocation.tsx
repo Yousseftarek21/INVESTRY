@@ -12,6 +12,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { usePortfolioTargets, AllocationClass, TargetAllocation } from '@/hooks/usePortfolioTargets';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
+import { toWesternDigits } from '@/utils/parseAmount';
 
 interface ClassMeta {
   key: AllocationClass;
@@ -70,7 +71,10 @@ export default function TargetAllocationScreen() {
   const overLimit = sum > 100.5;
 
   const setValue = (key: AllocationClass, raw: string) => {
-    const cleaned = raw.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+    // toWesternDigits first — an Arabic keyboard types ٠-٩, not 0-9, and the
+    // plain [^0-9.] strip below would silently delete every digit typed on
+    // one, making the field look like it rejects all input.
+    const cleaned = toWesternDigits(raw).replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
     setValues(prev => ({ ...prev, [key]: cleaned }));
   };
 
