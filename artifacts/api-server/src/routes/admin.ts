@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { isNotNull, eq, asc, desc } from "drizzle-orm";
 import { clerkClient } from "@clerk/express";
-import { db, usersTable, holdingsTable, cashAccountsTable, soldHoldingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable, referralMonthlyWinnersTable } from "@workspace/db";
+import { db, usersTable, holdingsTable, cashAccountsTable, soldHoldingsTable, portfolioSnapshotsTable, dailyChangeSnapshotsTable, referralMonthlyWinnersTable, feedbackMessagesTable, feedbackLikesTable } from "@workspace/db";
 import { sendPushToTokens } from "../lib/expoPush";
 import { backfillDailyChanges, backfillDailyChangesFromSnapshots, resetDailyChangeHistory } from "../lib/dailyChangeBackfill";
 import { computeRankedReturns } from "../lib/leaderboardRanking";
@@ -174,6 +174,37 @@ router.get("/admin/user-debug", async (req, res) => {
 //
 //   curl "https://api.investry.app/api/admin/leaderboard-debug?period=week" \
 //     -H "x-admin-secret: <the secret>"
+// Diagnostic for the feedback chat: confirms the tables actually exist
+// (ensureFeedbackTables runs on boot but only logs on failure, never
+// crashes the process — a failed CREATE TABLE would otherwise be invisible
+// until a user's request 500s) and exercises the exact same query shape
+// GET/POST /feedback use, bypassing Clerk auth so it's testable from curl.
+router.get("/admin/feedback-debug", async (req, res) => {
+  const secret = process.env.ADMIN_BROADCAST_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "ADMIN_BROADCAST_SECRET is not configured on the server" });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const messages = await db.select().from(feedbackMessagesTable).orderBy(desc(feedbackMessagesTable.createdAt)).limit(20);
+    const likes = await db.select().from(feedbackLikesTable).limit(20);
+    const identities = await fetchIdentities(messages.map(m => m.userId));
+    res.json({
+      messageCount: messages.length,
+      likeCount: likes.length,
+      messages,
+      resolvedIdentities: Object.fromEntries(identities),
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Query failed", detail: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 router.get("/admin/leaderboard-debug", async (req, res) => {
   const secret = process.env.ADMIN_BROADCAST_SECRET;
   if (!secret) {
