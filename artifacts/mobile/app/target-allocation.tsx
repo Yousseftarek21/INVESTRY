@@ -11,11 +11,12 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { usePortfolioTargets, AllocationClass, TargetAllocation } from '@/hooks/usePortfolioTargets';
+import { BanknoteIcon } from '@/components/BanknoteIcon';
 
 interface ClassMeta {
   key: AllocationClass;
   color: string;
-  icon: { lib: 'feather'; name: keyof typeof Feather.glyphMap } | { lib: 'mci'; name: string };
+  icon: { lib: 'feather'; name: keyof typeof Feather.glyphMap } | { lib: 'mci'; name: string } | { lib: 'custom'; render: (size: number, color: string) => React.ReactNode };
 }
 
 export default function TargetAllocationScreen() {
@@ -32,7 +33,7 @@ export default function TargetAllocationScreen() {
     { key: 'realEstate', color: '#A47FCA', icon: { lib: 'mci', name: 'home-city' } },
     { key: 'personalAsset', color: '#E08E45', icon: { lib: 'mci', name: 'tag-multiple' } },
     { key: 'fixedIncome', color: '#22C55E', icon: { lib: 'mci', name: 'bank-transfer' } },
-    { key: 'cash', color: colors.green, icon: { lib: 'feather', name: 'dollar-sign' } },
+    { key: 'cash', color: colors.green, icon: { lib: 'custom', render: (s, c) => <BanknoteIcon size={s} color={c} /> } },
   ], [colors]);
 
   const CLASS_LABEL: Record<AllocationClass, string> = {
@@ -123,7 +124,9 @@ export default function TargetAllocationScreen() {
                   <View style={[s.iconBox, { backgroundColor: c.color + '1A' }]}>
                     {c.icon.lib === 'mci'
                       ? <MaterialCommunityIcons name={c.icon.name as any} size={17} color={c.color} />
-                      : <Feather name={c.icon.name} size={17} color={c.color} />}
+                      : c.icon.lib === 'feather'
+                      ? <Feather name={c.icon.name} size={17} color={c.color} />
+                      : c.icon.render(17, c.color)}
                   </View>
                   <Text style={[s.rowLabel, { color: colors.text }]}>{CLASS_LABEL[c.key]}</Text>
                   <View style={[s.inputRow, { backgroundColor: colors.input, borderColor: colors.border }]}>

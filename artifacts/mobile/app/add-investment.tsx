@@ -744,10 +744,10 @@ export default function AddInvestmentScreen() {
     { key: 'gold',           label: t.gold,         renderIcon: (s, c) => <MaterialCommunityIcons name="gold"          size={s} color={c} />, color: colors.primary },
     { key: 'silver',         label: t.silver,        renderIcon: (s, c) => <MaterialCommunityIcons name="gold" size={s} color={c} />, color: colors.silverColor },
     { key: 'stock',          label: t.egxStock,      renderIcon: (s, c) => <Feather name="bar-chart-2"                  size={s} color={c} />, color: '#4A9EFF' },
-    { key: 'us_stock',       label: t.usStockType,   renderIcon: (s, c) => <Feather name="activity"                     size={s} color={c} />, color: '#22C55E' },
+    { key: 'us_stock',       label: t.usStockType,   renderIcon: (s, c) => <Feather name="activity"                     size={s} color={c} />, color: '#14B8A6' },
     { key: 'real_estate',    label: t.realEstate,    renderIcon: (s, c) => <MaterialCommunityIcons name="home-city"     size={s} color={c} />, color: '#A47FCA' },
     { key: 'personal_asset', label: t.personalAsset, renderIcon: (s, c) => <MaterialCommunityIcons name="tag-multiple"  size={s} color={c} />, color: '#E08E45' },
-    { key: 'fixed_income',   label: t.fixedIncome,   renderIcon: (s, c) => <MaterialCommunityIcons name="bank-transfer" size={s} color={c} />, color: '#D97706' },
+    { key: 'fixed_income',   label: t.fixedIncome,   renderIcon: (s, c) => <MaterialCommunityIcons name="bank-transfer" size={s} color={c} />, color: '#22C55E' },
   ];
 
 
