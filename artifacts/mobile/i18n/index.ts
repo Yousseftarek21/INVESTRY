@@ -1129,6 +1129,19 @@ const en = {
   settingsCatPrivacySub: 'Data sharing, export, delete account',
   settingsCatSupport: 'Support & Legal',
   settingsCatSupportSub: 'Help, contact us, terms & policies',
+  settingsCatFeedback: 'Feedback & Ideas',
+  settingsCatFeedbackSub: 'Tell us what to fix or build next',
+
+  // Feedback chat screen
+  feedbackChatTitle: 'Feedback & Ideas',
+  feedbackChatSubtitle: 'Bugs, ideas, anything you want to see in INVESTRY',
+  feedbackEmptyTitle: 'Start the conversation',
+  feedbackEmptyHint: 'Be the first to share a bug, idea, or anything you want to see in INVESTRY. Every user can see and like what you post here.',
+  feedbackPlaceholder: "What's broken or missing?",
+  feedbackLoadError: 'Could not load the feed. Pull down to retry.',
+  feedbackSendError: 'Could not send your message. Try again.',
+  loadingLabel: 'Loading…',
+
   notificationsTitle: 'Notifications',
   noNotifications: 'All caught up',
   noNotificationsHint: 'Price movements and upcoming income will appear here.',
@@ -2643,6 +2656,19 @@ const ar: typeof en = {
   settingsCatPrivacySub: 'مشاركة البيانات، التصدير، حذف الحساب',
   settingsCatSupport: 'الدعم والقانونية',
   settingsCatSupportSub: 'المساعدة، تواصل معنا، الشروط والسياسات',
+  settingsCatFeedback: 'الملاحظات والأفكار',
+  settingsCatFeedbackSub: 'أخبرنا بما يجب إصلاحه أو بناؤه لاحقًا',
+
+  // Feedback chat screen
+  feedbackChatTitle: 'الملاحظات والأفكار',
+  feedbackChatSubtitle: 'أخطاء، أفكار، أي شيء تريد رؤيته في INVESTRY',
+  feedbackEmptyTitle: 'ابدأ المحادثة',
+  feedbackEmptyHint: 'كن أول من يشارك خطأ أو فكرة أو أي شيء تريد رؤيته في INVESTRY. يمكن لكل مستخدم رؤية ما تنشره هنا والإعجاب به.',
+  feedbackPlaceholder: 'ما الذي يحتاج إصلاحًا أو إضافة؟',
+  feedbackLoadError: 'تعذّر تحميل المحادثة. اسحب للأسفل لإعادة المحاولة.',
+  feedbackSendError: 'تعذّر إرسال رسالتك. حاول مرة أخرى.',
+  loadingLabel: 'جارٍ التحميل…',
+
   notificationsTitle: 'الإشعارات',
   noNotifications: 'لا توجد إشعارات',
   noNotificationsHint: 'ستظهر هنا تحركات الأسعار والدخل القادم.',

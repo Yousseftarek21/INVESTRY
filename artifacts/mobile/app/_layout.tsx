@@ -190,6 +190,10 @@ function RootLayoutNav() {
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
+        name="feedback"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
         name="tiers"
         options={{ presentation: "modal", headerShown: false }}
       />
