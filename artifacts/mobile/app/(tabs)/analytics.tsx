@@ -927,16 +927,27 @@ export default function AnalyticsScreen() {
   // portfolio is a concentration risk on its own. Still premium-gated, and it
   // still ends in the same "set a real target" CTA — this can only flag the
   // risk, not prescribe a specific fix, since there's no stated goal yet.
+  //
+  // Denominator is sm.totalValue (investments only), NOT netWorthForDrift —
+  // unlike driftRows, which deliberately includes cash because a user sets a
+  // real cash *target* alongside their other targets there. This card's own
+  // copy says "of your portfolio," which reads as investments, and idle cash
+  // diluting a 100%-in-one-thing holding down to some lower number isn't a
+  // "risk" being under-flagged, it's the card describing something that
+  // isn't a risk (cash) as if it were part of the concentration. Reported
+  // directly: a single 100%-gold holding was showing as 76% because cash
+  // accounts pulled the old denominator up.
   const CONCENTRATION_THRESHOLD_PCT = 60;
   const concentrationRisk = useMemo(() => {
-    if (targetsConfigured || netWorthForDrift <= 0) return null;
-    const top = (Object.keys(classValue) as AllocationClass[])
-      .map(k => ({ key: k, value: classValue[k], pct: (classValue[k] / netWorthForDrift) * 100 }))
+    if (targetsConfigured || sm.totalValue <= 0) return null;
+    const INVESTMENT_CLASSES: AllocationClass[] = ['gold', 'silver', 'stock', 'realEstate', 'personalAsset', 'fixedIncome'];
+    const top = INVESTMENT_CLASSES
+      .map(k => ({ key: k, value: classValue[k], pct: (classValue[k] / sm.totalValue) * 100 }))
       .filter(e => e.value > 0)
       .sort((a, b) => b.pct - a.pct)[0];
     if (!top || top.pct < CONCENTRATION_THRESHOLD_PCT) return null;
     return { ...top, ...classMeta[top.key] };
-  }, [targetsConfigured, netWorthForDrift, classValue, classMeta]);
+  }, [targetsConfigured, sm.totalValue, classValue, classMeta]);
 
   // ── Fix My Portfolio ─────────────────────────────────────────────────────────
   // driftRows only ever shows a diagnosis ("12pp off target") — this turns the
