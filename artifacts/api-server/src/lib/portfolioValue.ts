@@ -1,5 +1,5 @@
-import { db, holdingsTable, cashAccountsTable, soldHoldingsTable, marketCloseSnapshotsTable } from "@workspace/db";
-import { eq, lte, desc } from "drizzle-orm";
+import { db, holdingsTable, cashAccountsTable, soldHoldingsTable, marketCloseSnapshotsTable, egxCloseSnapshotsTable } from "@workspace/db";
+import { eq, lte, desc, and } from "drizzle-orm";
 import { decryptFromStorage } from "./encryption";
 import { getCachedPrices, getCachedStocks } from "../routes/markets";
 import { tradingDayKey } from "./cairoDate";
@@ -182,6 +182,22 @@ async function metalPriceOnOrBefore(dateKey: string): Promise<{ goldEgp24k: numb
   return row ?? null;
 }
 
+/** Real historical EGX close price for `symbol` on or before `dateKey`, from
+ * egx_close_snapshots (markets.ts's fetchStocks() writes these, throttled to
+ * once per ~5 min). Null if the table has no row that far back yet for this
+ * symbol — e.g. right after this table started being written, or a symbol
+ * that's never been fetched. Callers fall back to the cost-basis
+ * approximation in that case, same as before this existed. */
+async function stockPriceOnOrBefore(symbol: string, dateKey: string): Promise<number | null> {
+  const [row] = await db
+    .select({ closePrice: egxCloseSnapshotsTable.closePrice })
+    .from(egxCloseSnapshotsTable)
+    .where(and(eq(egxCloseSnapshotsTable.symbol, symbol), lte(egxCloseSnapshotsTable.date, dateKey)))
+    .orderBy(desc(egxCloseSnapshotsTable.date))
+    .limit(1);
+  return row?.closePrice ?? null;
+}
+
 export interface PeriodPerformance {
   /** True, computable EGP return for this period, or null if there's nothing real to measure it against. */
   pctReturn: number | null;
@@ -211,14 +227,17 @@ export interface PeriodPerformance {
  * question being answered is "how did the metal's price move," not "how
  * did this specific quantity's value move."
  *
- * EGX stocks don't have that: no historical per-stock closing price is
- * recorded anywhere in this app (confirmed — getCachedStocks() is a live
- * in-memory cache only, nothing persisted day to day, unlike gold/silver).
- * Without a real price to compare against, a stock holding that already
- * existed before the period contributes its live gain/loss vs its entered
- * cost basis (same caveat as before: cost basis is user-entered and could
- * be backdated, but EGX prices are public and checkable, unlike real
- * estate/personal-asset valuations — a materially narrower risk). A stock
+ * EGX stocks now have the same real-price-ratio treatment via
+ * egx_close_snapshots (one row per ticker per Cairo day, written by
+ * markets.ts's fetchStocks() — see that table's own schema comment for why
+ * it was added): a stock holding that predates the period ratios its
+ * CURRENT shares against its price on or before cutoffDateKey, exactly like
+ * gold/silver above, immune to cost-basis gaming/staleness and correct on
+ * any period boundary including the very first day of a new week. Only
+ * falls back to its entered cost basis (same caveat as before: user-entered,
+ * could be backdated, but EGX prices are public and checkable) when no
+ * snapshot that far back exists yet — e.g. shortly after this table started
+ * being written, before enough daily history has accumulated. A stock
  * bought (or last quantity-edited) DURING the period instead uses the
  * server-stamped priceAtCreationEgp/priceAtLastEditEgp captured the instant
  * that happened (never client-supplied — see POST/PUT /holdings) as its
@@ -276,8 +295,23 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
         // when it was added) gets the same honest cost-basis treatment as
         // any other pre-period holding, rather than being excluded just
         // because it happens to fall inside this calendar period.
+        //
+        // Real historical price first, cost basis only as a fallback: a
+        // stock's own cost basis is its ALL-TIME purchase price, not its
+        // price when this period started — using it directly is what made a
+        // holding up 58% since purchase show as "+58% this week" on the very
+        // day a new week began, with zero real movement yet to justify it.
+        // egx_close_snapshots (see markets.ts's fetchStocks()) gives a real
+        // price-ratio here, exactly like gold/silver's metalPriceOnOrBefore
+        // above — current shares on both sides, immune to cost-basis
+        // gaming/staleness. Falls back to cost basis only when no snapshot
+        // that far back exists yet (e.g. right after this table started
+        // being written) rather than excluding the holding outright.
+        const histPrice = await stockPriceOnOrBefore(String(holding.symbol), cutoffDateKey);
         stockCurrent += value;
-        stockBaselineCost += costBasisEGP(holding, prices.usdToEgp);
+        stockBaselineCost += histPrice != null
+          ? (Number(holding.shares) || 0) * histPrice
+          : costBasisEGP(holding, prices.usdToEgp);
       } else {
         // Bought (or last edited) during this period, WITH a real stamp —
         // no pre-period cost basis to ratio against, but the server-stamped

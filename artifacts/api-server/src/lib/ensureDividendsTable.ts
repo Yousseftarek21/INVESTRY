@@ -75,6 +75,28 @@ export async function ensureIntradayColumn(): Promise<void> {
   }
 }
 
+// Same self-bootstrapping pattern for the egx_close_snapshots table (see
+// lib/db/src/schema/egxCloseSnapshots.ts) — one row per EGX ticker per day,
+// written by markets.ts's fetchStocks() path, read by
+// portfolioValue.ts's stockPriceOnOrBefore for the leaderboard's period math.
+export async function ensureEgxCloseSnapshotsTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "egx_close_snapshots" (
+        "id" text PRIMARY KEY,
+        "symbol" text NOT NULL,
+        "date" text NOT NULL,
+        "open_price" real NOT NULL,
+        "close_price" real NOT NULL,
+        "updated_at" timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT "egx_close_snapshots_symbol_date_unique" UNIQUE ("symbol", "date")
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureEgxCloseSnapshotsTable: failed to create table — EGX stocks will keep using the cost-basis leaderboard approximation until this is resolved");
+  }
+}
+
 // Same self-bootstrapping pattern for the referral_monthly_winners table
 // (see lib/db/src/schema/referralMonthlyWinners.ts) — one row per calendar
 // month, written by referralMonthlyWinnerCron.ts.

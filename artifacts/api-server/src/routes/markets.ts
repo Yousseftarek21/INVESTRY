@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { lt, desc, eq } from "drizzle-orm";
-import { db, marketCloseSnapshotsTable, realEstatePricesTable, realEstateCompoundPricesTable } from "@workspace/db";
+import { db, marketCloseSnapshotsTable, egxCloseSnapshotsTable, realEstatePricesTable, realEstateCompoundPricesTable } from "@workspace/db";
 import { RE_PRICES, RE_COMPOUNDS } from "@workspace/shared-data";
 import { logger } from "../lib/logger";
 import { cairoDateString, tradingDayKey } from "../lib/cairoDate";
@@ -1364,10 +1364,59 @@ export async function fetchStocks(): Promise<EGXStockResponse[]> {
   try {
     const tvData = await fetchEGXViaTradingView();
     logger.info({ count: tvData.length }, "EGX stocks via TradingView scanner");
+    void recordEgxCloseSnapshotsThrottled(tvData);
     return tvData;
   } catch (err) {
     logger.warn({ err }, "EGX stocks: TradingView scanner unreachable — returning empty rather than a fabricated or crashed response");
     return [];
+  }
+}
+
+// ─── EGX per-stock daily close snapshots ───────────────────────────────────────
+// Same open/close pattern as market_close_snapshots (gold/silver), just one
+// row per ticker per day instead of one row total — see
+// lib/db/src/schema/egxCloseSnapshots.ts for why this exists: without it,
+// computePeriodPerformance had no real historical EGX price to ratio a
+// stock's leaderboard return against, and fell back to an all-time
+// cost-basis approximation that reads as a fresh +58%/-98% "this week" the
+// moment a new week/month starts.
+//
+// Throttled independently of stocksCache's own 10s TTL — fetchStocks() can
+// be called that often under real traffic, and upserting 280+ rows every
+// 10s forever is real, unnecessary DB load for a value that only needs to
+// be captured once and then refreshed every few minutes at most.
+const EGX_SNAPSHOT_THROTTLE_MS = 5 * 60_000;
+let lastEgxSnapshotWriteAt = 0;
+
+async function recordEgxCloseSnapshotsThrottled(stocks: EGXStockResponse[]): Promise<void> {
+  if (stocks.length === 0) return;
+  const now = Date.now();
+  if (now - lastEgxSnapshotWriteAt < EGX_SNAPSHOT_THROTTLE_MS) return;
+  lastEgxSnapshotWriteAt = now;
+
+  const today = cairoDateString();
+  try {
+    for (const s of stocks) {
+      if (!(s.price > 0)) continue; // don't snapshot a zeroed/failed quote as if it were real
+      await db
+        .insert(egxCloseSnapshotsTable)
+        .values({
+          id: `${s.symbol}::${today}`,
+          symbol: s.symbol,
+          date: today,
+          openPrice: s.price,
+          closePrice: s.price,
+        })
+        .onConflictDoUpdate({
+          // Only close updates on repeat writes the same day — open is set
+          // once at insert and never touched again, same as
+          // market_close_snapshots.
+          target: egxCloseSnapshotsTable.id,
+          set: { closePrice: s.price, updatedAt: new Date() },
+        });
+    }
+  } catch (err) {
+    logger.warn({ err }, "recordEgxCloseSnapshotsThrottled: failed to write EGX close snapshots");
   }
 }
 
