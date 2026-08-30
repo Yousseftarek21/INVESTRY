@@ -22,6 +22,7 @@ import activityRouter from "./activity";
 import ttsRouter from "./tts";
 import competitionRouter from "./competition";
 import adminRouter from "./admin";
+import feedbackRouter from "./feedback";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(activityRouter);
 router.use(ttsRouter);
 router.use(competitionRouter);
 router.use(adminRouter);
+router.use(feedbackRouter);
 
 export default router;

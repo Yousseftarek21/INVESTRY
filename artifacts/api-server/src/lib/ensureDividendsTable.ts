@@ -118,3 +118,31 @@ export async function ensureReferralMonthlyWinnersTable(): Promise<void> {
     logger.error({ err }, "ensureReferralMonthlyWinnersTable: failed to create table — the monthly referral prize will not be detected until this is resolved");
   }
 }
+
+// Same self-bootstrapping pattern for the feedback_messages/feedback_likes
+// tables (see lib/db/src/schema/feedbackMessages.ts and feedbackLikes.ts) —
+// the shared in-app feedback chat, routes/feedback.ts.
+export async function ensureFeedbackTables(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "feedback_messages" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "message" text NOT NULL,
+        "like_count" integer NOT NULL DEFAULT 0,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "feedback_likes" (
+        "id" text PRIMARY KEY,
+        "message_id" text NOT NULL,
+        "user_id" text NOT NULL,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT "feedback_likes_message_user_unique" UNIQUE ("message_id", "user_id")
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureFeedbackTables: failed to create tables — the feedback chat will not work until this is resolved");
+  }
+}
