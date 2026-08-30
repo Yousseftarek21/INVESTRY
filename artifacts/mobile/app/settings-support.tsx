@@ -41,9 +41,17 @@ export default function SettingsSupportScreen() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: botPad + 32 }]} showsVerticalScrollIndicator={false}>
           <Sect label={t.settingsSectSupport}>
             <NavRow icon="help-circle" iconBg="#0EA5E9" label={t.helpCenter} onPress={() => { haptic(); router.push('/help-center' as any); }} />
-            <NavRow icon="mail" iconBg="#10B981" label={t.contactSupport} onPress={() => openURL('mailto:support@investry.app?subject=INVESTRY Support')} />
-            <NavRow icon="flag" iconBg="#F59E0B" label={t.reportBug} onPress={() => openURL(`mailto:bugs@investry.app?subject=Bug Report — INVESTRY v${APP_VERSION}`)} />
-            <NavRow icon="edit-2" iconBg="#8B5CF6" label={t.requestFeature} onPress={() => openURL('mailto:feedback@investry.app?subject=Feature Request')} />
+            {/* @investry.app has no real mailbox behind it — every one of
+                these used to send into the void. investryapp@gmail.com is
+                the one address that's actually read; the +support/+bugs/
+                +feedback tags are Gmail's own alias feature (delivers to
+                the same inbox, filterable/labelable by tag, zero setup) so
+                the three flows stay distinguishable without needing three
+                real mailboxes. Swap to real support@/bugs@/feedback@
+                addresses here the day a custom domain inbox exists. */}
+            <NavRow icon="mail" iconBg="#10B981" label={t.contactSupport} onPress={() => openURL('mailto:investryapp+support@gmail.com?subject=INVESTRY Support')} />
+            <NavRow icon="flag" iconBg="#F59E0B" label={t.reportBug} onPress={() => openURL(`mailto:investryapp+bugs@gmail.com?subject=Bug Report — INVESTRY v${APP_VERSION}`)} />
+            <NavRow icon="edit-2" iconBg="#8B5CF6" label={t.requestFeature} onPress={() => openURL('mailto:investryapp+feedback@gmail.com?subject=Feature Request')} />
             <NavRow icon="star" iconBg="#EF4444" label={t.rateAppStore} onPress={() =>
               openURL(Platform.OS === 'ios'
                 ? 'https://apps.apple.com/app/id6787447052?action=write-review'

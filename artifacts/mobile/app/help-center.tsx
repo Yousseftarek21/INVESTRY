@@ -145,7 +145,9 @@ export default function HelpCenterScreen() {
             <Text style={[s.contactDesc, { color: colors.mutedForeground }]}>{t.helpContactDesc}</Text>
             <TouchableOpacity
               style={[s.contactBtn, { backgroundColor: colors.primary }]}
-              onPress={() => Linking.openURL('mailto:support@investry.app')}
+              // @investry.app has no real mailbox — see settings-support.tsx's
+              // own comment. investryapp+support@gmail.com actually delivers.
+              onPress={() => Linking.openURL('mailto:investryapp+support@gmail.com')}
               activeOpacity={0.85}
             >
               <Feather name="mail" size={15} color={colors.primaryForeground} />

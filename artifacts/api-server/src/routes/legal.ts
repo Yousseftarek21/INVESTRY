@@ -2,6 +2,15 @@ import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
+// Contact addresses below are investryapp+<tag>@gmail.com, not a real
+// @investry.app mailbox — that domain has no email hosted on it, so
+// privacy@investry.app / support@investry.app would have silently gone
+// nowhere. investryapp@gmail.com is the one inbox that's actually read;
+// Gmail's "+tag" aliasing delivers to that same inbox (filterable/labelable
+// by tag, zero setup) without needing a real mailbox per contact type. Swap
+// to real addresses here the day a custom-domain inbox exists — same
+// convention used in mobile's settings-support.tsx/help-center.tsx.
+
 const PAGE_STYLE = `
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -59,7 +68,7 @@ router.get("/legal/privacy", (_req, res) => {
   <p>You can permanently delete your account and all associated data at any time from within the app (Settings → Delete Account). This immediately and permanently removes your portfolio data, cash accounts, and authentication account from our servers.</p>
 
   <h2>Contact</h2>
-  <p>Questions about this policy? Email <a href="mailto:privacy@investry.app">privacy@investry.app</a>.</p>
+  <p>Questions about this policy? Email <a href="mailto:investryapp+privacy@gmail.com">investryapp+privacy@gmail.com</a>.</p>
 </body>
 </html>`);
 });
@@ -89,7 +98,7 @@ router.get("/legal/terms", (_req, res) => {
   <p>We make no guarantees about the accuracy of market data. INVESTRY is not liable for financial decisions made using data shown in the app.</p>
 
   <h2>Contact</h2>
-  <p>Questions? Email <a href="mailto:support@investry.app">support@investry.app</a>.</p>
+  <p>Questions? Email <a href="mailto:investryapp+support@gmail.com">investryapp+support@gmail.com</a>.</p>
 </body>
 </html>`);
 });
