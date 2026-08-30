@@ -1141,6 +1141,7 @@ const en = {
   feedbackLoadError: 'Could not load the feed. Pull down to retry.',
   feedbackSendError: 'Could not send your message. Try again.',
   loadingLabel: 'Loading…',
+  retryLabel: 'Retry',
 
   notificationsTitle: 'Notifications',
   noNotifications: 'All caught up',
@@ -2668,6 +2669,7 @@ const ar: typeof en = {
   feedbackLoadError: 'تعذّر تحميل المحادثة. اسحب للأسفل لإعادة المحاولة.',
   feedbackSendError: 'تعذّر إرسال رسالتك. حاول مرة أخرى.',
   loadingLabel: 'جارٍ التحميل…',
+  retryLabel: 'إعادة المحاولة',
 
   notificationsTitle: 'الإشعارات',
   noNotifications: 'لا توجد إشعارات',

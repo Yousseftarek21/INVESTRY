@@ -1,35 +1,26 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
-  Image, KeyboardAvoidingView, Platform, RefreshControl, ScrollView,
+  ActivityIndicator, Image, KeyboardAvoidingView, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useAuth } from '@clerk/expo';
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
-import { apiFetch } from '@/utils/api';
+import { useFeedback, type FeedbackMessage } from '@/hooks/useFeedback';
 
 // Shared app-wide accent for this screen, distinct from the AI Assistant's
 // violet (AI_ACCENT in ai-assistant.tsx) and the app's own gold — this is a
-// general product feature, not tied to either of those identities.
+// general product feature, not tied to either of those identities. Deeper
+// than a flat pink to read as premium against the dark navy background
+// rather than neon.
 const FEEDBACK_ACCENT = '#EC4899';
-
-interface FeedbackMessage {
-  id: string;
-  userId: string;
-  message: string;
-  likeCount: number;
-  hasLiked: boolean;
-  createdAt: string;
-  senderName: string;
-  senderImageUrl: string | null;
-  isMe: boolean;
-}
+const FEEDBACK_ACCENT_DEEP = '#BE185D';
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name;
@@ -56,83 +47,81 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function Bubble({ m, onLike }: { m: FeedbackMessage; onLike: (id: string) => void }) {
+  const colors = useColors();
+  return (
+    <View style={[s.row, m.isMe && s.rowMe]}>
+      {!m.isMe && (
+        m.senderImageUrl ? (
+          <Image source={{ uri: m.senderImageUrl }} style={[s.avatar, { borderColor: FEEDBACK_ACCENT + '40' }]} />
+        ) : (
+          <View style={[s.avatar, s.avatarFallback, { backgroundColor: FEEDBACK_ACCENT + '1E', borderColor: FEEDBACK_ACCENT + '40' }]}>
+            <Text style={[s.avatarInitials, { color: FEEDBACK_ACCENT }]}>{initials(m.senderName)}</Text>
+          </View>
+        )
+      )}
+      <View style={[s.bubbleCol, m.isMe && s.bubbleColMe]}>
+        {!m.isMe && (
+          <Text style={[s.senderName, { color: colors.mutedForeground }]}>{firstName(m.senderName)}</Text>
+        )}
+        {m.isMe ? (
+          <ExpoLinearGradient
+            colors={[FEEDBACK_ACCENT, FEEDBACK_ACCENT_DEEP]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[s.bubble, s.bubbleMe]}
+          >
+            <Text style={[s.bubbleText, { color: '#FFFFFF' }]}>{m.message}</Text>
+          </ExpoLinearGradient>
+        ) : (
+          <View style={[s.bubble, s.bubbleOther, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[s.bubbleText, { color: colors.text }]}>{m.message}</Text>
+          </View>
+        )}
+        <TouchableOpacity style={[s.likeRow, m.isMe && s.likeRowMe]} onPress={() => onLike(m.id)} hitSlop={6}>
+          <Feather name="heart" size={12} color={m.hasLiked ? FEEDBACK_ACCENT : colors.mutedForeground} />
+          {m.likeCount > 0 && (
+            <Text style={[s.likeCount, { color: m.hasLiked ? FEEDBACK_ACCENT : colors.mutedForeground }]}>{m.likeCount}</Text>
+          )}
+          <Text style={[s.timeText, { color: colors.mutedForeground }]}>· {relativeTime(m.createdAt)}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function FeedbackScreen() {
   const colors = useColors();
   const t = useT();
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
-  const { getToken } = useAuth();
+  const { messages, isLoading, isError, isFetching, refetch, sendMessage, toggleLike } = useFeedback();
 
-  const [messages, setMessages] = useState<FeedbackMessage[]>([]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
-
-  const load = useCallback(async (isRefresh: boolean) => {
-    if (isRefresh) setRefreshing(true); else setLoading(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('no-token');
-      const res = await apiFetch('/api/feedback', token);
-      if (!res.ok) throw new Error(`status-${res.status}`);
-      const data = (await res.json()) as FeedbackMessage[];
-      setMessages(data);
-    } catch {
-      setError(t.feedbackLoadError);
-    } finally {
-      if (isRefresh) setRefreshing(false); else setLoading(false);
-    }
-  }, [getToken, t]);
-
-  useEffect(() => { load(false); }, [load]);
 
   const send = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || sending) return;
     impact(Haptics.ImpactFeedbackStyle.Light);
     setSending(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('no-token');
-      const res = await apiFetch('/api/feedback', token, {
-        method: 'POST',
-        body: JSON.stringify({ message: trimmed }),
-      });
-      if (!res.ok) throw new Error(`status-${res.status}`);
-      const created = (await res.json()) as FeedbackMessage;
+    setSendError(null);
+    const ok = await sendMessage(trimmed);
+    setSending(false);
+    if (ok) {
       setInput('');
-      setMessages(prev => [...prev, created]);
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
-    } catch {
-      setError(t.feedbackSendError);
-    } finally {
-      setSending(false);
+    } else {
+      setSendError(t.feedbackSendError);
     }
-  }, [input, sending, getToken, impact, t]);
+  }, [input, sending, sendMessage, impact, t]);
 
-  const toggleLike = useCallback(async (id: string) => {
+  const handleLike = useCallback((id: string) => {
     impact(Haptics.ImpactFeedbackStyle.Light);
-    // Optimistic — flip immediately, roll back only if the request fails.
-    const prevState = messages;
-    setMessages(prev => prev.map(m => m.id === id
-      ? { ...m, hasLiked: !m.hasLiked, likeCount: m.likeCount + (m.hasLiked ? -1 : 1) }
-      : m));
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('no-token');
-      const res = await apiFetch(`/api/feedback/${id}/like`, token, { method: 'POST' });
-      if (!res.ok) throw new Error(`status-${res.status}`);
-      const { likeCount, hasLiked } = (await res.json()) as { likeCount: number; hasLiked: boolean };
-      setMessages(prev => prev.map(m => m.id === id ? { ...m, likeCount, hasLiked } : m));
-    } catch {
-      setMessages(prevState);
-    }
-  }, [messages, getToken, impact]);
+    toggleLike(id);
+  }, [toggleLike, impact]);
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -146,7 +135,10 @@ export default function FeedbackScreen() {
             <Feather name={backChevron()} size={22} color={colors.text} />
           </TouchableOpacity>
           <View style={{ alignItems: 'center' }}>
-            <Text style={[s.headerTitle, { color: colors.text }]}>{t.feedbackChatTitle}</Text>
+            <View style={s.headerTitleRow}>
+              <View style={[s.headerDot, { backgroundColor: FEEDBACK_ACCENT }]} />
+              <Text style={[s.headerTitle, { color: colors.text }]}>{t.feedbackChatTitle}</Text>
+            </View>
             <Text style={[s.headerSub, { color: colors.mutedForeground }]}>{t.feedbackChatSubtitle}</Text>
           </View>
           <View style={{ width: 22 }} />
@@ -160,12 +152,23 @@ export default function FeedbackScreen() {
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} colors={[colors.primary]} />
+              <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={FEEDBACK_ACCENT} colors={[FEEDBACK_ACCENT]} />
             }
           >
-            {loading ? (
+            {isLoading ? (
               <View style={s.empty}>
-                <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.loadingLabel}</Text>
+                <ActivityIndicator size="small" color={FEEDBACK_ACCENT} />
+                <Text style={[s.emptyHint, { color: colors.mutedForeground, marginTop: 10 }]}>{t.loadingLabel}</Text>
+              </View>
+            ) : isError ? (
+              <View style={s.empty}>
+                <View style={[s.emptyIcon, { backgroundColor: colors.red + '18' }]}>
+                  <Feather name="wifi-off" size={26} color={colors.red} />
+                </View>
+                <Text style={[s.emptyTitle, { color: colors.text }]}>{t.feedbackLoadError}</Text>
+                <TouchableOpacity onPress={() => refetch()} style={[s.retryBtn, { borderColor: colors.border }]}>
+                  <Text style={[s.retryTxt, { color: colors.text }]}>{t.retryLabel}</Text>
+                </TouchableOpacity>
               </View>
             ) : messages.length === 0 ? (
               <View style={s.empty}>
@@ -176,53 +179,13 @@ export default function FeedbackScreen() {
                 <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.feedbackEmptyHint}</Text>
               </View>
             ) : (
-              messages.map(m => (
-                <View key={m.id} style={[s.row, m.isMe && s.rowMe]}>
-                  {!m.isMe && (
-                    m.senderImageUrl ? (
-                      <Image source={{ uri: m.senderImageUrl }} style={s.avatar} />
-                    ) : (
-                      <View style={[s.avatar, s.avatarFallback, { backgroundColor: colors.primary + '22' }]}>
-                        <Text style={[s.avatarInitials, { color: colors.primary }]}>{initials(m.senderName)}</Text>
-                      </View>
-                    )
-                  )}
-                  <View style={[s.bubbleCol, m.isMe && s.bubbleColMe]}>
-                    {!m.isMe && (
-                      <Text style={[s.senderName, { color: colors.mutedForeground }]}>{firstName(m.senderName)}</Text>
-                    )}
-                    <View
-                      style={[
-                        s.bubble,
-                        m.isMe
-                          ? [s.bubbleMe, { backgroundColor: FEEDBACK_ACCENT }]
-                          : [s.bubbleOther, { backgroundColor: colors.card, borderColor: colors.border }],
-                      ]}
-                    >
-                      <Text style={[s.bubbleText, { color: m.isMe ? '#FFFFFF' : colors.text }]}>{m.message}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[s.likeRow, m.isMe && s.likeRowMe]}
-                      onPress={() => toggleLike(m.id)}
-                      hitSlop={6}
-                    >
-                      <Feather name="heart" size={12} color={m.hasLiked ? colors.primary : colors.mutedForeground} />
-                      {m.likeCount > 0 && (
-                        <Text style={[s.likeCount, { color: m.hasLiked ? colors.primary : colors.mutedForeground }]}>
-                          {m.likeCount}
-                        </Text>
-                      )}
-                      <Text style={[s.timeText, { color: colors.mutedForeground }]}>· {relativeTime(m.createdAt)}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
+              messages.map(m => <Bubble key={m.id} m={m} onLike={handleLike} />)
             )}
 
-            {error && <Text style={[s.errorText, { color: colors.red }]}>{error}</Text>}
+            {sendError && <Text style={[s.errorText, { color: colors.red }]}>{sendError}</Text>}
           </ScrollView>
 
-          <View style={[s.inputBar, { paddingBottom: botPad + 10, borderTopColor: colors.border }]}>
+          <View style={[s.inputBar, { paddingBottom: botPad + 10, borderTopColor: colors.border, backgroundColor: colors.background }]}>
             <View style={[s.inputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <TextInput
                 style={[s.input, { color: colors.text }]}
@@ -231,6 +194,7 @@ export default function FeedbackScreen() {
                 value={input}
                 onChangeText={setInput}
                 multiline
+                maxLength={500}
                 editable={!sending}
                 onSubmitEditing={send}
               />
@@ -239,7 +203,7 @@ export default function FeedbackScreen() {
                 disabled={sending || !input.trim()}
                 style={[s.sendBtn, { backgroundColor: FEEDBACK_ACCENT, opacity: sending || !input.trim() ? 0.4 : 1 }]}
               >
-                <Feather name="arrow-up" size={18} color="#FFFFFF" />
+                {sending ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Feather name="arrow-up" size={18} color="#FFFFFF" />}
               </TouchableOpacity>
             </View>
           </View>
@@ -252,24 +216,31 @@ export default function FeedbackScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerDot: { width: 6, height: 6, borderRadius: 3 },
   headerTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  headerSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  headerSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
   content: { padding: 16, gap: 14, flexGrow: 1 },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 60 },
   emptyIcon: { width: 60, height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
   emptyHint: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 19, paddingHorizontal: 24 },
+  retryBtn: { marginTop: 4, borderRadius: 12, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 9 },
+  retryTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   rowMe: { justifyContent: 'flex-end' },
-  avatar: { width: 26, height: 26, borderRadius: 13 },
+  avatar: { width: 26, height: 26, borderRadius: 13, borderWidth: 1 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   avatarInitials: { fontSize: 10, fontFamily: 'Inter_700Bold' },
   bubbleCol: { maxWidth: '78%', gap: 3 },
   bubbleColMe: { alignItems: 'flex-end' },
   senderName: { fontSize: 11, fontFamily: 'Inter_600SemiBold', marginLeft: 2 },
-  bubble: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
+  bubble: {
+    borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 1,
+  },
   bubbleMe: { borderBottomRightRadius: 4 },
   bubbleOther: { borderWidth: 1, borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 14.5, fontFamily: 'Inter_400Regular', lineHeight: 21 },
