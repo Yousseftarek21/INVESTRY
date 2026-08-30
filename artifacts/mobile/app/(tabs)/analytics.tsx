@@ -300,6 +300,8 @@ const fp = StyleSheet.create({
   move: { fontSize: 13.5, fontFamily: 'Inter_600SemiBold', lineHeight: 19, marginTop: 2 },
   detail: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
   disclaimer: { fontSize: 10.5, fontFamily: 'Inter_400Regular', marginTop: 4, opacity: 0.75 },
+  ctaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  ctaTxt: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
 });
 
 // ─── Insight cards (bordered left accent) ─────────────────────────────────────
@@ -888,31 +890,53 @@ export default function AnalyticsScreen() {
   // other use of sm.totalValue on this screen (gain %, health score,
   // benchmark), which stay investment-only on purpose.
   const netWorthForDrift = sm.totalValue + cashTotalEGP;
+  // Shared by driftRows (needs a target to compare against) and
+  // concentrationRisk below (doesn't — it only looks at what you actually
+  // hold), so both read the same label/color/icon per class.
+  const classValue = useMemo((): Record<AllocationClass, number> => ({
+    gold: sm.goldV, silver: sm.silverV, stock: sm.stockV,
+    realEstate: sm.reV, personalAsset: sm.paV, fixedIncome: sm.fiV, cash: cashTotalEGP,
+  }), [sm, cashTotalEGP]);
+  const classMeta = useMemo((): Record<AllocationClass, { label: string; color: string; icon: React.ReactNode }> => ({
+    gold: { label: t.gold, color: colors.primary, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.primary} /> },
+    silver: { label: t.silver, color: colors.silverColor, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.silverColor} /> },
+    stock: { label: t.egxStocksAllocLabel, color: '#4A9EFF', icon: <Feather name="bar-chart-2" size={16} color="#4A9EFF" /> },
+    realEstate: { label: t.realEstate, color: '#A47FCA', icon: <MaterialCommunityIcons name="home-city" size={16} color="#A47FCA" /> },
+    personalAsset: { label: t.personalAssetsAllocLabel, color: '#E08E45', icon: <MaterialCommunityIcons name="tag-multiple" size={16} color="#E08E45" /> },
+    fixedIncome: { label: t.fixedIncome, color: '#22C55E', icon: <MaterialCommunityIcons name="bank-transfer" size={16} color="#22C55E" /> },
+    cash: { label: t.cash, color: colors.green, icon: <BanknoteIcon size={16} color={colors.green} /> },
+  }), [colors, t]);
   const driftRows = useMemo(() => {
     if (!targetsConfigured || netWorthForDrift <= 0) return [];
-    const classValue: Record<AllocationClass, number> = {
-      gold: sm.goldV, silver: sm.silverV, stock: sm.stockV,
-      realEstate: sm.reV, personalAsset: sm.paV, fixedIncome: sm.fiV, cash: cashTotalEGP,
-    };
-    const meta: Record<AllocationClass, { label: string; color: string; icon: React.ReactNode }> = {
-      gold: { label: t.gold, color: colors.primary, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.primary} /> },
-      silver: { label: t.silver, color: colors.silverColor, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.silverColor} /> },
-      stock: { label: t.egxStocksAllocLabel, color: '#4A9EFF', icon: <Feather name="bar-chart-2" size={16} color="#4A9EFF" /> },
-      realEstate: { label: t.realEstate, color: '#A47FCA', icon: <MaterialCommunityIcons name="home-city" size={16} color="#A47FCA" /> },
-      personalAsset: { label: t.personalAssetsAllocLabel, color: '#E08E45', icon: <MaterialCommunityIcons name="tag-multiple" size={16} color="#E08E45" /> },
-      fixedIncome: { label: t.fixedIncome, color: '#22C55E', icon: <MaterialCommunityIcons name="bank-transfer" size={16} color="#22C55E" /> },
-      cash: { label: t.cash, color: colors.green, icon: <BanknoteIcon size={16} color={colors.green} /> },
-    };
     return (Object.keys(targets) as AllocationClass[])
       .filter(k => targets[k] !== undefined)
       .map(k => ({
         key: k,
-        ...meta[k],
+        ...classMeta[k],
         currentPct: (classValue[k] / netWorthForDrift) * 100,
         targetPct: targets[k] as number,
       }))
       .sort((a, b) => Math.abs(b.currentPct - b.targetPct) - Math.abs(a.currentPct - a.targetPct));
-  }, [targetsConfigured, targets, sm, cashTotalEGP, netWorthForDrift, colors, t]);
+  }, [targetsConfigured, targets, classValue, netWorthForDrift, classMeta]);
+
+  // ── Concentration risk (no target needed) ───────────────────────────────────
+  // driftRows/fixPlan both require a saved target to compare against — a user
+  // who's never configured one (e.g. 100% in a single asset class) would only
+  // ever see the plain "No targets set" prompt. This catches that case with an
+  // objective fact that needs no target at all: one class carrying most of the
+  // portfolio is a concentration risk on its own. Still premium-gated, and it
+  // still ends in the same "set a real target" CTA — this can only flag the
+  // risk, not prescribe a specific fix, since there's no stated goal yet.
+  const CONCENTRATION_THRESHOLD_PCT = 60;
+  const concentrationRisk = useMemo(() => {
+    if (targetsConfigured || netWorthForDrift <= 0) return null;
+    const top = (Object.keys(classValue) as AllocationClass[])
+      .map(k => ({ key: k, value: classValue[k], pct: (classValue[k] / netWorthForDrift) * 100 }))
+      .filter(e => e.value > 0)
+      .sort((a, b) => b.pct - a.pct)[0];
+    if (!top || top.pct < CONCENTRATION_THRESHOLD_PCT) return null;
+    return { ...top, ...classMeta[top.key] };
+  }, [targetsConfigured, netWorthForDrift, classValue, classMeta]);
 
   // ── Fix My Portfolio ─────────────────────────────────────────────────────────
   // driftRows only ever shows a diagnosis ("12pp off target") — this turns the
@@ -1431,19 +1455,42 @@ export default function AnalyticsScreen() {
                   sub={targetsConfigured ? t.rebalancingSub(String(driftRows.length)) : undefined}
                 />
                 {!targetsConfigured ? (
-                  <Pressable
-                    style={[dr.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                    onPress={() => { impact(); router.push('/target-allocation' as any); }}
-                  >
-                    <View style={[dr.iconBox, { backgroundColor: colors.primary + '1A' }]}>
-                      <Feather name="target" size={16} color={colors.primary} />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text style={[dr.emptyTitle, { color: colors.text }]}>{t.rebalancingEmptyTitle}</Text>
-                      <Text style={[dr.sub, { color: colors.mutedForeground }]}>{t.rebalancingEmptyHint}</Text>
-                    </View>
-                    <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
-                  </Pressable>
+                  concentrationRisk ? (
+                    <PremiumGate feature={t.fixPlanTitle} description={t.fixPlanGateDesc}>
+                      <Pressable onPress={() => { impact(); router.push('/target-allocation' as any); }}>
+                        <View style={[fp.card, { backgroundColor: colors.red + '0D', borderColor: colors.red + '30' }]}>
+                          <View style={fp.header}>
+                            <View style={[fp.iconBox, { backgroundColor: colors.red + '1E' }]}>
+                              <Feather name="alert-triangle" size={15} color={colors.red} />
+                            </View>
+                            <Text style={[fp.title, { color: colors.text }]}>{t.fixPlanTitle}</Text>
+                          </View>
+                          <Text style={[fp.diagnosis, { color: colors.mutedForeground }]}>
+                            {t.concentrationRiskDiagnosis(concentrationRisk.pct.toFixed(0), concentrationRisk.label)}
+                          </Text>
+                          <Text style={[fp.move, { color: colors.text }]}>{t.concentrationRiskHint}</Text>
+                          <View style={fp.ctaRow}>
+                            <Text style={[fp.ctaTxt, { color: colors.primary }]}>{t.rebalancingEmptyBtn}</Text>
+                            <Feather name={forwardChevron()} size={13} color={colors.primary} />
+                          </View>
+                        </View>
+                      </Pressable>
+                    </PremiumGate>
+                  ) : (
+                    <Pressable
+                      style={[dr.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      onPress={() => { impact(); router.push('/target-allocation' as any); }}
+                    >
+                      <View style={[dr.iconBox, { backgroundColor: colors.primary + '1A' }]}>
+                        <Feather name="target" size={16} color={colors.primary} />
+                      </View>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={[dr.emptyTitle, { color: colors.text }]}>{t.rebalancingEmptyTitle}</Text>
+                        <Text style={[dr.sub, { color: colors.mutedForeground }]}>{t.rebalancingEmptyHint}</Text>
+                      </View>
+                      <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
+                    </Pressable>
+                  )
                 ) : (
                   <View style={[s.performersList, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14 }]}>
                     {driftRows.map(r => (

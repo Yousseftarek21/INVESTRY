@@ -1349,6 +1349,9 @@ const en = {
     `Start with your ${holdingLabel} position (${value} EGP) — it's your largest in that class.` as string,
   fixPlanAddGrams: (grams: string, metal: string) => `That's about ${grams}g of ${metal} at today's price.` as string,
   fixPlanDisclaimer: 'Based on the targets you set yourself — not investment advice.',
+  concentrationRiskDiagnosis: (pct: string, label: string) =>
+    `${pct}% of your portfolio is in ${label} alone — a single asset class carrying that much weight is a real concentration risk.` as string,
+  concentrationRiskHint: 'Set a target allocation to get a specific plan for spreading it out.',
 
   // Price Alerts screen
   addPriceAlert: 'Add Alert',
@@ -2859,6 +2862,9 @@ const ar: typeof en = {
     `ابدأ بمركز ${holdingLabel} لديك (${value} جنيه) — فهو الأكبر في هذه الفئة.` as string,
   fixPlanAddGrams: (grams: string, metal: string) => `هذا يعادل حوالي ${grams} جم من ${metal} بسعر اليوم.` as string,
   fixPlanDisclaimer: 'بناءً على الأهداف التي حددتها بنفسك — وليست نصيحة استثمارية.',
+  concentrationRiskDiagnosis: (pct: string, label: string) =>
+    `${pct}% من محفظتك في ${label} فقط — تركيز بهذا الحجم في فئة واحدة يمثل مخاطرة حقيقية.` as string,
+  concentrationRiskHint: 'حدد توزيعًا مستهدفًا للحصول على خطة محددة لتوزيع محفظتك.',
 
   // Price Alerts screen
   addPriceAlert: 'إضافة تنبيه',
