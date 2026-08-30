@@ -1338,6 +1338,18 @@ const en = {
   rebalancingOnTrack: 'On track',
   rebalancingDrifted: (pp: string) => `${pp}pp off target` as string,
 
+  // Analytics — Fix My Portfolio
+  fixPlanTitle: 'Fix My Portfolio',
+  fixPlanGateDesc: 'A concrete move to bring your portfolio back to the targets you set — not just a diagnosis.',
+  fixPlanDiagnosis: (overLabel: string, overPP: string, underLabel: string, underPP: string) =>
+    `${overLabel} is ${overPP}pp over target, ${underLabel} is ${underPP}pp under.` as string,
+  fixPlanMove: (egp: string, fromLabel: string, toLabel: string) =>
+    `Move ~${egp} EGP from ${fromLabel} to ${toLabel} to get back on target.` as string,
+  fixPlanStartWith: (holdingLabel: string, value: string) =>
+    `Start with your ${holdingLabel} position (${value} EGP) — it's your largest in that class.` as string,
+  fixPlanAddGrams: (grams: string, metal: string) => `That's about ${grams}g of ${metal} at today's price.` as string,
+  fixPlanDisclaimer: 'Based on the targets you set yourself — not investment advice.',
+
   // Price Alerts screen
   addPriceAlert: 'Add Alert',
   noPriceAlerts: 'No price alerts yet',
@@ -2835,6 +2847,18 @@ const ar: typeof en = {
   rebalancingEmptyBtn: 'تحديد الأهداف',
   rebalancingOnTrack: 'على المسار الصحيح',
   rebalancingDrifted: (pp: string) => `${pp} نقطة عن الهدف` as string,
+
+  // Analytics — Fix My Portfolio
+  fixPlanTitle: 'إصلاح محفظتي',
+  fixPlanGateDesc: 'خطوة محددة لإعادة محفظتك إلى الأهداف التي حددتها — وليس مجرد تشخيص.',
+  fixPlanDiagnosis: (overLabel: string, overPP: string, underLabel: string, underPP: string) =>
+    `${overLabel} أعلى من الهدف بـ ${overPP} نقطة، و${underLabel} أقل من الهدف بـ ${underPP} نقطة.` as string,
+  fixPlanMove: (egp: string, fromLabel: string, toLabel: string) =>
+    `انقل حوالي ${egp} جنيه من ${fromLabel} إلى ${toLabel} للعودة إلى هدفك.` as string,
+  fixPlanStartWith: (holdingLabel: string, value: string) =>
+    `ابدأ بمركز ${holdingLabel} لديك (${value} جنيه) — فهو الأكبر في هذه الفئة.` as string,
+  fixPlanAddGrams: (grams: string, metal: string) => `هذا يعادل حوالي ${grams} جم من ${metal} بسعر اليوم.` as string,
+  fixPlanDisclaimer: 'بناءً على الأهداف التي حددتها بنفسك — وليست نصيحة استثمارية.',
 
   // Price Alerts screen
   addPriceAlert: 'إضافة تنبيه',

@@ -290,6 +290,18 @@ const dr = StyleSheet.create({
   emptyTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 });
 
+// ─── Fix My Portfolio card ───────────────────────────────────────────────────
+const fp = StyleSheet.create({
+  card: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 6, marginTop: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconBox: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  diagnosis: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
+  move: { fontSize: 13.5, fontFamily: 'Inter_600SemiBold', lineHeight: 19, marginTop: 2 },
+  detail: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 17 },
+  disclaimer: { fontSize: 10.5, fontFamily: 'Inter_400Regular', marginTop: 4, opacity: 0.75 },
+});
+
 // ─── Insight cards (bordered left accent) ─────────────────────────────────────
 
 function InsightCard({ icon, color, text }: {
@@ -902,6 +914,51 @@ export default function AnalyticsScreen() {
       .sort((a, b) => Math.abs(b.currentPct - b.targetPct) - Math.abs(a.currentPct - a.targetPct));
   }, [targetsConfigured, targets, sm, cashTotalEGP, netWorthForDrift, colors, t]);
 
+  // ── Fix My Portfolio ─────────────────────────────────────────────────────────
+  // driftRows only ever shows a diagnosis ("12pp off target") — this turns the
+  // worst overweight/underweight pair into one concrete move: how much EGP to
+  // shift, and — when the overweight side has real holdings to point at — which
+  // specific position is the obvious one to trim first (its largest by value).
+  // Premium-gated: this is the one card in the app that says what to *do*, not
+  // just what the numbers are, so it's the natural upsell moment on this screen.
+  const REBALANCE_TYPE: Partial<Record<AllocationClass, Holding['type']>> = {
+    gold: 'gold', silver: 'silver', stock: 'stock',
+    realEstate: 'real_estate', personalAsset: 'personal_asset', fixedIncome: 'fixed_income',
+  };
+  const fixPlan = useMemo(() => {
+    const DRIFT_THRESHOLD_PP = 5; // below this, "fixing" it isn't worth suggesting
+    const overweight = driftRows
+      .filter(r => r.currentPct - r.targetPct >= DRIFT_THRESHOLD_PP)
+      .sort((a, b) => (b.currentPct - b.targetPct) - (a.currentPct - a.targetPct))[0];
+    const underweight = driftRows
+      .filter(r => r.targetPct - r.currentPct >= DRIFT_THRESHOLD_PP)
+      .sort((a, b) => (b.targetPct - b.currentPct) - (a.targetPct - a.currentPct))[0];
+    if (!overweight || !underweight || netWorthForDrift <= 0) return null;
+
+    const moveEGP = Math.min(
+      ((overweight.currentPct - overweight.targetPct) / 100) * netWorthForDrift,
+      ((underweight.targetPct - underweight.currentPct) / 100) * netWorthForDrift,
+    );
+    if (moveEGP < 500) return null; // too small an amount to bother suggesting
+
+    const overweightType = REBALANCE_TYPE[overweight.key];
+    const topHolding = overweightType
+      ? holdings
+          .filter(h => h.type === overweightType)
+          .map(h => ({ h, v: computeValue(h, prices) }))
+          .sort((a, b) => b.v - a.v)[0]
+      : undefined;
+    const trimLabel = topHolding ? holdingLabel(topHolding.h, { gold: t.gold, silver: t.silver, realEstate: t.realEstate }) : null;
+
+    let addGramsNote: string | null = null;
+    if (prices) {
+      if (underweight.key === 'gold') addGramsNote = t.fixPlanAddGrams((moveEGP / goldPricePerGram(prices, '21k')).toFixed(1), t.gold);
+      else if (underweight.key === 'silver') addGramsNote = t.fixPlanAddGrams((moveEGP / silverPricePerGram(prices)).toFixed(1), t.silver);
+    }
+
+    return { overweight, underweight, moveEGP, trimLabel, trimValue: topHolding?.v, addGramsNote };
+  }, [driftRows, netWorthForDrift, holdings, prices, t]);
+
   // ── Insights ──────────────────────────────────────────────────────────────────
   const insights = useMemo(() => {
     type I = { icon: keyof typeof Feather.glyphMap; color: string; text: string };
@@ -1393,6 +1450,37 @@ export default function AnalyticsScreen() {
                       <DriftRow key={r.key} label={r.label} icon={r.icon} color={r.color} currentPct={r.currentPct} targetPct={r.targetPct} />
                     ))}
                   </View>
+                )}
+
+                {fixPlan && (
+                  <PremiumGate feature={t.fixPlanTitle} description={t.fixPlanGateDesc}>
+                    <View style={[fp.card, { backgroundColor: colors.primary + '0D', borderColor: colors.primary + '30' }]}>
+                      <View style={fp.header}>
+                        <View style={[fp.iconBox, { backgroundColor: colors.primary + '1E' }]}>
+                          <Feather name="tool" size={15} color={colors.primary} />
+                        </View>
+                        <Text style={[fp.title, { color: colors.text }]}>{t.fixPlanTitle}</Text>
+                      </View>
+                      <Text style={[fp.diagnosis, { color: colors.mutedForeground }]}>
+                        {t.fixPlanDiagnosis(
+                          fixPlan.overweight.label, (fixPlan.overweight.currentPct - fixPlan.overweight.targetPct).toFixed(0),
+                          fixPlan.underweight.label, (fixPlan.underweight.targetPct - fixPlan.underweight.currentPct).toFixed(0),
+                        )}
+                      </Text>
+                      <Text style={[fp.move, { color: colors.text }]}>
+                        {t.fixPlanMove(fmtEGP(fixPlan.moveEGP), fixPlan.overweight.label, fixPlan.underweight.label)}
+                      </Text>
+                      {fixPlan.trimLabel && fixPlan.trimValue != null && (
+                        <Text style={[fp.detail, { color: colors.mutedForeground }]}>
+                          {t.fixPlanStartWith(fixPlan.trimLabel, fmtEGP(fixPlan.trimValue))}
+                        </Text>
+                      )}
+                      {fixPlan.addGramsNote && (
+                        <Text style={[fp.detail, { color: colors.mutedForeground }]}>{fixPlan.addGramsNote}</Text>
+                      )}
+                      <Text style={[fp.disclaimer, { color: colors.mutedForeground }]}>{t.fixPlanDisclaimer}</Text>
+                    </View>
+                  </PremiumGate>
                 )}
               </View>
             )}
