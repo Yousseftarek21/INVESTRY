@@ -1,5 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApiBaseUrl } from '@/utils/api';
+import { loadCachedUSIndices, saveCachedUSIndices } from '@/utils/usIndicesCache';
 
 export interface USIndexMeta {
   symbol: string;
@@ -36,7 +38,9 @@ interface ApiIndex {
   changePercent: number;
 }
 
-function placeholderIndices(): USIndexLive[] {
+// Static, hardcoded reference prices — last-resort *render* fallback only
+// (GlobalStocksMarket.tsx), never stored as this hook's actual query data.
+export function usIndicesStaticFallback(): USIndexLive[] {
   return US_INDICES.map(idx => ({
     ...idx,
     price: idx.fallbackPrice,
@@ -69,21 +73,47 @@ async function fetchUSIndicesViaApi(): Promise<USIndexLive[]> {
   });
 }
 
+const US_INDICES_KEY = ['us-indices'];
+
+// Throws on failure instead of quietly falling back to fallbackPrice — see
+// useGlobalStocks.ts's fetchAllGlobalStocks for the same reasoning: a
+// silent fallback looks like a successful fetch to react-query (never
+// retries) and can overwrite real live data with static numbers on one
+// transient blip.
 async function fetchAllUSIndices(): Promise<USIndexLive[]> {
-  try {
-    return await fetchUSIndicesViaApi();
-  } catch {
-    return placeholderIndices();
-  }
+  const data = await fetchUSIndicesViaApi();
+  void saveCachedUSIndices(data);
+  return data;
+}
+
+// Same startup pre-warming pattern as useGlobalStocks.ts/useEGXIndices.ts —
+// see those for the full reasoning.
+export async function hydrateUSIndicesFromCache(queryClient: QueryClient): Promise<void> {
+  if (queryClient.getQueryState(US_INDICES_KEY)?.dataUpdatedAt) return;
+  const cached = await loadCachedUSIndices();
+  if (!cached) return;
+  if (queryClient.getQueryState(US_INDICES_KEY)?.dataUpdatedAt) return;
+  queryClient.setQueryData(US_INDICES_KEY, cached);
+}
+
+export function prefetchUSIndices(queryClient: QueryClient): void {
+  void queryClient.prefetchQuery({
+    queryKey: US_INDICES_KEY,
+    queryFn: fetchAllUSIndices,
+    staleTime: 30_000,
+  });
 }
 
 export function useUSIndices() {
+  const queryClient = useQueryClient();
+  useEffect(() => { void hydrateUSIndicesFromCache(queryClient); }, [queryClient]);
+
   return useQuery<USIndexLive[]>({
-    queryKey: ['us-indices'],
+    queryKey: US_INDICES_KEY,
     queryFn: fetchAllUSIndices,
     staleTime: 30_000,
     refetchInterval: 30_000,
-    retry: 1,
-    placeholderData: placeholderIndices(),
+    retry: 2,
+    // No placeholderData — see useGlobalStocks.ts's own reasoning.
   });
 }

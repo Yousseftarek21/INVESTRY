@@ -40,6 +40,8 @@ import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled }
 import { hydrateEGXIndicesFromCache, prefetchEGXIndices } from "@/hooks/useEGXIndices";
 import { hydrateRealEstatePricesFromCache, prefetchRealEstatePrices } from "@/hooks/useRealEstatePrices";
 import { hydrateRealEstateCompoundsFromCache, prefetchRealEstateCompounds } from "@/hooks/useRealEstateCompoundPrices";
+import { hydrateGlobalStocksFromCache, prefetchGlobalStocks } from "@/hooks/useGlobalStocks";
+import { hydrateUSIndicesFromCache, prefetchUSIndices } from "@/hooks/useUSIndices";
 import { initMetaSDK } from "@/utils/metaSdk";
 import { syncRevenueCatUser, clearRevenueCatUser } from "@/utils/revenuecat";
 import * as Updates from "expo-updates";
@@ -109,6 +111,13 @@ void hydrateRealEstatePricesFromCache(queryClient);
 prefetchRealEstatePrices(queryClient);
 void hydrateRealEstateCompoundsFromCache(queryClient);
 prefetchRealEstateCompounds(queryClient);
+// Same reasoning again — US Markets (100 stocks + 3 indices) had none of
+// this, so it was the one tab that visibly lagged behind EGX/Metals/Real
+// Estate on every cold open instead of showing real data immediately.
+void hydrateGlobalStocksFromCache(queryClient);
+prefetchGlobalStocks(queryClient);
+void hydrateUSIndicesFromCache(queryClient);
+prefetchUSIndices(queryClient);
 
 interface ClerkConfig {
   publishableKey: string;

@@ -183,9 +183,21 @@ export function getUSMarketStatus(): {
   label: string;
   nextEvent: string;
 } {
-  const et   = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const day  = et.getDay(); // 0=Sun, 6=Sat
-  const time = et.getHours() * 60 + et.getMinutes();
+  // NOT `new Date(new Date().toLocaleString(...))` — re-parsing a
+  // locale-formatted string back into a Date is exactly the anti-pattern
+  // utils/cairoDate.ts's own top comment warns against: unreliable on
+  // Hermes (React Native's JS engine), which is what made this banner's
+  // open/closed state and weekend handling read wrong. toLocaleDateString/
+  // toLocaleTimeString with an explicit timeZone are the dependable calls;
+  // getUTCDay() on a plain "YYYY-MM-DD" string is safe since that string
+  // never round-trips through a locale format.
+  const dateKey = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const [etHour, etMinute] = new Date()
+    .toLocaleTimeString('en-GB', { timeZone: 'America/New_York', hour12: false })
+    .split(':')
+    .map(Number);
+  const day  = new Date(`${dateKey}T00:00:00Z`).getUTCDay(); // 0=Sun, 6=Sat
+  const time = etHour * 60 + etMinute;
 
   const PRE_START  = 4  * 60;      // 04:00 ET
   const REG_OPEN   = 9  * 60 + 30; // 09:30 ET

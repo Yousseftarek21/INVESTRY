@@ -12,8 +12,8 @@ import {
   GLOBAL_CATEGORIES, GlobalCategory, getCategoryCounts, searchGlobalCompanies, GLOBAL_COMPANIES,
   getUSMarketStatus,
 } from '@/data/global-stocks';
-import { useGlobalStocks, GlobalStockLive } from '@/hooks/useGlobalStocks';
-import { useUSIndices, USIndexLive } from '@/hooks/useUSIndices';
+import { useGlobalStocks, GlobalStockLive, GLOBAL_STOCKS_STATIC_FALLBACK } from '@/hooks/useGlobalStocks';
+import { useUSIndices, USIndexLive, usIndicesStaticFallback } from '@/hooks/useUSIndices';
 import { fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { RangeBar } from '@/components/RangeBar';
 import { MarketStatusCard } from '@/components/MarketStatusCard';
@@ -102,7 +102,11 @@ function IndexThird({ index, isLast }: { index: USIndexLive; isLast: boolean }) 
 function USIndexChips() {
   const colors = useColors();
   const t = useT();
-  const { data: indices = [] } = useUSIndices();
+  const { data: liveIndices, isError } = useUSIndices();
+  // Static fallback only as a genuine last resort — every live source
+  // failed AND there's no cached last-good fetch (hydrateUSIndicesFromCache
+  // covers the far more common case of "cache exists, just stale").
+  const indices = liveIndices ?? (isError ? usIndicesStaticFallback() : []);
   const hasLive = indices.some(i => i.isLive);
   if (indices.length < 3) return null;
   return (
@@ -463,7 +467,12 @@ export function GlobalStocksMarket({
   const t = useT();
   const insets = useSafeAreaInsets();
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
-  const { data: allStocks = [], isLoading } = useGlobalStocks();
+  const { data: liveStocks, isLoading, isError } = useGlobalStocks();
+  // Static list only as a genuine last resort — every live source failed
+  // AND there's no cached last-good fetch (hydrateGlobalStocksFromCache
+  // covers the far more common "cache exists, just stale" case). Matches
+  // EGXMarket.tsx's own EGX_STATIC_FALLBACK pattern.
+  const allStocks = liveStocks ?? (isError ? GLOBAL_STOCKS_STATIC_FALLBACK : []);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<GlobalCategory>('All');
   const counts = useMemo(() => getCategoryCounts(), []);
