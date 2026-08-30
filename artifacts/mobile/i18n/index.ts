@@ -1337,6 +1337,7 @@ const en = {
   rebalancingEmptyBtn: 'Set Targets',
   rebalancingOnTrack: 'On track',
   rebalancingDrifted: (pp: string) => `${pp}pp off target` as string,
+  editTargetsLabel: 'Edit Targets',
 
   // Analytics — Fix My Portfolio
   fixPlanTitle: 'Fix My Portfolio',
@@ -2850,6 +2851,7 @@ const ar: typeof en = {
   rebalancingEmptyBtn: 'تحديد الأهداف',
   rebalancingOnTrack: 'على المسار الصحيح',
   rebalancingDrifted: (pp: string) => `${pp} نقطة عن الهدف` as string,
+  editTargetsLabel: 'تعديل الأهداف',
 
   // Analytics — Fix My Portfolio
   fixPlanTitle: 'إصلاح محفظتي',

@@ -288,6 +288,11 @@ const dr = StyleSheet.create({
     borderRadius: 16, borderWidth: 1, padding: 14,
   },
   emptyTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  editRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  editTxt: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
 });
 
 // ─── Fix My Portfolio card ───────────────────────────────────────────────────
@@ -885,10 +890,10 @@ export default function AnalyticsScreen() {
   ], [sm, colors, t]);
 
   // ── Rebalancing / drift ──────────────────────────────────────────────────────
-  // Net worth (investments + cash), not sm.totalValue — target allocation is
-  // about the whole mix a user might set a cash target against, unlike every
-  // other use of sm.totalValue on this screen (gain %, health score,
-  // benchmark), which stay investment-only on purpose.
+  // Net worth (investments + cash) — used as driftRows' denominator only when
+  // the user has actually set a cash target (see driftDenominator below); every
+  // other use of sm.totalValue on this screen (gain %, health score, benchmark)
+  // stays investment-only on purpose regardless.
   const netWorthForDrift = sm.totalValue + cashTotalEGP;
   // Shared by driftRows (needs a target to compare against) and
   // concentrationRisk below (doesn't — it only looks at what you actually
@@ -906,18 +911,29 @@ export default function AnalyticsScreen() {
     fixedIncome: { label: t.fixedIncome, color: '#22C55E', icon: <MaterialCommunityIcons name="bank-transfer" size={16} color="#22C55E" /> },
     cash: { label: t.cash, color: colors.green, icon: <BanknoteIcon size={16} color={colors.green} /> },
   }), [colors, t]);
+  // Only fold cash into the denominator when the user actually set a cash
+  // target — reported directly: gold targeted at 100% with no cash target
+  // showed as "76% · target 100%" forever, because untargeted cash sitting
+  // in Cash Accounts was silently diluting gold's share of net worth even
+  // though the user never asked the app to weigh cash against it. Without
+  // a cash target, drift should only be measured across what was actually
+  // targeted, same reasoning as concentrationRisk's investments-only fix.
+  // Shared with fixPlan below so its EGP math is computed against the exact
+  // same base as the percentages driftRows shows — using a different one
+  // there would make the two disagree with each other.
+  const driftDenominator = targets.cash !== undefined ? netWorthForDrift : sm.totalValue;
   const driftRows = useMemo(() => {
-    if (!targetsConfigured || netWorthForDrift <= 0) return [];
+    if (!targetsConfigured || driftDenominator <= 0) return [];
     return (Object.keys(targets) as AllocationClass[])
       .filter(k => targets[k] !== undefined)
       .map(k => ({
         key: k,
         ...classMeta[k],
-        currentPct: (classValue[k] / netWorthForDrift) * 100,
+        currentPct: (classValue[k] / driftDenominator) * 100,
         targetPct: targets[k] as number,
       }))
       .sort((a, b) => Math.abs(b.currentPct - b.targetPct) - Math.abs(a.currentPct - a.targetPct));
-  }, [targetsConfigured, targets, classValue, netWorthForDrift, classMeta]);
+  }, [targetsConfigured, targets, classValue, driftDenominator, classMeta]);
 
   // ── Concentration risk (no target needed) ───────────────────────────────────
   // driftRows/fixPlan both require a saved target to compare against — a user
@@ -968,11 +984,11 @@ export default function AnalyticsScreen() {
     const underweight = driftRows
       .filter(r => r.targetPct - r.currentPct >= DRIFT_THRESHOLD_PP)
       .sort((a, b) => (b.targetPct - b.currentPct) - (a.targetPct - a.currentPct))[0];
-    if (!overweight || !underweight || netWorthForDrift <= 0) return null;
+    if (!overweight || !underweight || driftDenominator <= 0) return null;
 
     const moveEGP = Math.min(
-      ((overweight.currentPct - overweight.targetPct) / 100) * netWorthForDrift,
-      ((underweight.targetPct - underweight.currentPct) / 100) * netWorthForDrift,
+      ((overweight.currentPct - overweight.targetPct) / 100) * driftDenominator,
+      ((underweight.targetPct - underweight.currentPct) / 100) * driftDenominator,
     );
     if (moveEGP < 500) return null; // too small an amount to bother suggesting
 
@@ -992,7 +1008,7 @@ export default function AnalyticsScreen() {
     }
 
     return { overweight, underweight, moveEGP, trimLabel, trimValue: topHolding?.v, addGramsNote };
-  }, [driftRows, netWorthForDrift, holdings, prices, t]);
+  }, [driftRows, driftDenominator, holdings, prices, t]);
 
   // ── Insights ──────────────────────────────────────────────────────────────────
   const insights = useMemo(() => {
@@ -1503,11 +1519,17 @@ export default function AnalyticsScreen() {
                     </Pressable>
                   )
                 ) : (
-                  <View style={[s.performersList, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14 }]}>
-                    {driftRows.map(r => (
-                      <DriftRow key={r.key} label={r.label} icon={r.icon} color={r.color} currentPct={r.currentPct} targetPct={r.targetPct} />
-                    ))}
-                  </View>
+                  <Pressable onPress={() => { impact(); router.push('/target-allocation' as any); }}>
+                    <View style={[s.performersList, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14 }]}>
+                      {driftRows.map(r => (
+                        <DriftRow key={r.key} label={r.label} icon={r.icon} color={r.color} currentPct={r.currentPct} targetPct={r.targetPct} />
+                      ))}
+                      <View style={[dr.editRow, { borderTopColor: colors.border }]}>
+                        <Feather name="edit-2" size={12} color={colors.primary} />
+                        <Text style={[dr.editTxt, { color: colors.primary }]}>{t.editTargetsLabel}</Text>
+                      </View>
+                    </View>
+                  </Pressable>
                 )}
 
                 {fixPlan && (
