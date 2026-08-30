@@ -575,10 +575,10 @@ export default function SettingsScreen() {
               { icon: 'briefcase' as const, bg: '#059669', label: t.settingsCatPortfolio, sub: t.settingsCatPortfolioSub, path: '/settings-portfolio' },
               { icon: 'shield' as const, bg: '#047857', label: t.settingsCatPrivacy, sub: t.settingsCatPrivacySub, path: '/settings-privacy' },
               { icon: 'help-circle' as const, bg: '#0EA5E9', label: t.settingsCatSupport, sub: t.settingsCatSupportSub, path: '/settings-support' },
-              { icon: 'message-circle' as const, bg: '#EC4899', label: t.settingsCatFeedback, sub: t.settingsCatFeedbackSub, path: '/feedback' },
+              { icon: 'message-circle' as const, bg: '#EC4899', label: t.settingsCatFeedback, sub: t.settingsCatFeedbackSub, path: '/feedback', badge: { text: t.liveLabel, color: '#EC4899' } },
             ].map(c => (
               <View key={c.path} style={[cat.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <NavRow icon={c.icon} iconBg={c.bg} label={c.label} sublabel={c.sub} onPress={() => goTo(c.path)} last />
+                <NavRow icon={c.icon} iconBg={c.bg} label={c.label} sublabel={c.sub} badge={c.badge} onPress={() => goTo(c.path)} last />
               </View>
             ))}
           </View>

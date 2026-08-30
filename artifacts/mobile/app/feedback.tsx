@@ -14,13 +14,15 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useFeedback, type FeedbackMessage } from '@/hooks/useFeedback';
 
-// Shared app-wide accent for this screen, distinct from the AI Assistant's
-// violet (AI_ACCENT in ai-assistant.tsx) and the app's own gold — this is a
-// general product feature, not tied to either of those identities. Deeper
-// than a flat pink to read as premium against the dark navy background
-// rather than neon.
+// Two-color system, not one flat accent: rose is this screen's own identity
+// (distinct from the AI Assistant's violet and the app's gold) — used for
+// "this is you" (your bubbles, the send button, the header). Likes use the
+// app's real gold instead of rose, deliberately: gold already means
+// "appreciated/valued" everywhere else in the app (Fix My Portfolio,
+// price alerts), so a liked message rewards with that same color instead of
+// competing with the identity color for attention.
 const FEEDBACK_ACCENT = '#EC4899';
-const FEEDBACK_ACCENT_DEEP = '#BE185D';
+const FEEDBACK_ACCENT_DEEP = '#9D174D';
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name;
@@ -53,9 +55,9 @@ function Bubble({ m, onLike }: { m: FeedbackMessage; onLike: (id: string) => voi
     <View style={[s.row, m.isMe && s.rowMe]}>
       {!m.isMe && (
         m.senderImageUrl ? (
-          <Image source={{ uri: m.senderImageUrl }} style={[s.avatar, { borderColor: FEEDBACK_ACCENT + '40' }]} />
+          <Image source={{ uri: m.senderImageUrl }} style={[s.avatar, { borderColor: FEEDBACK_ACCENT + '50' }]} />
         ) : (
-          <View style={[s.avatar, s.avatarFallback, { backgroundColor: FEEDBACK_ACCENT + '1E', borderColor: FEEDBACK_ACCENT + '40' }]}>
+          <View style={[s.avatar, s.avatarFallback, { backgroundColor: FEEDBACK_ACCENT + '1E', borderColor: FEEDBACK_ACCENT + '50' }]}>
             <Text style={[s.avatarInitials, { color: FEEDBACK_ACCENT }]}>{initials(m.senderName)}</Text>
           </View>
         )
@@ -69,7 +71,7 @@ function Bubble({ m, onLike }: { m: FeedbackMessage; onLike: (id: string) => voi
             colors={[FEEDBACK_ACCENT, FEEDBACK_ACCENT_DEEP]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[s.bubble, s.bubbleMe]}
+            style={[s.bubble, s.bubbleMe, { shadowColor: FEEDBACK_ACCENT_DEEP, shadowOpacity: 0.35 }]}
           >
             <Text style={[s.bubbleText, { color: '#FFFFFF' }]}>{m.message}</Text>
           </ExpoLinearGradient>
@@ -78,10 +80,10 @@ function Bubble({ m, onLike }: { m: FeedbackMessage; onLike: (id: string) => voi
             <Text style={[s.bubbleText, { color: colors.text }]}>{m.message}</Text>
           </View>
         )}
-        <TouchableOpacity style={[s.likeRow, m.isMe && s.likeRowMe]} onPress={() => onLike(m.id)} hitSlop={6}>
-          <Feather name="heart" size={12} color={m.hasLiked ? FEEDBACK_ACCENT : colors.mutedForeground} />
+        <TouchableOpacity style={[s.likeRow, m.isMe && s.likeRowMe, m.hasLiked && { backgroundColor: colors.primary + '16' }]} onPress={() => onLike(m.id)} hitSlop={6}>
+          <Feather name="heart" size={12} color={m.hasLiked ? colors.primary : colors.mutedForeground} />
           {m.likeCount > 0 && (
-            <Text style={[s.likeCount, { color: m.hasLiked ? FEEDBACK_ACCENT : colors.mutedForeground }]}>{m.likeCount}</Text>
+            <Text style={[s.likeCount, { color: m.hasLiked ? colors.primary : colors.mutedForeground }]}>{m.likeCount}</Text>
           )}
           <Text style={[s.timeText, { color: colors.mutedForeground }]}>· {relativeTime(m.createdAt)}</Text>
         </TouchableOpacity>
@@ -100,6 +102,7 @@ export default function FeedbackScreen() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [inputFocused, setInputFocused] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const send = useCallback(async () => {
@@ -130,19 +133,26 @@ export default function FeedbackScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={[s.screen, { backgroundColor: colors.background }]}>
-        <View style={[s.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
+        <ExpoLinearGradient
+          colors={[FEEDBACK_ACCENT + '1C', FEEDBACK_ACCENT + '00']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={[s.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}
+        >
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
             <Feather name={backChevron()} size={22} color={colors.text} />
           </TouchableOpacity>
-          <View style={{ alignItems: 'center' }}>
-            <View style={s.headerTitleRow}>
-              <View style={[s.headerDot, { backgroundColor: FEEDBACK_ACCENT }]} />
-              <Text style={[s.headerTitle, { color: colors.text }]}>{t.feedbackChatTitle}</Text>
+          <View style={s.headerCenter}>
+            <View style={[s.headerIcon, { backgroundColor: FEEDBACK_ACCENT + '22' }]}>
+              <Feather name="message-circle" size={14} color={FEEDBACK_ACCENT} />
             </View>
-            <Text style={[s.headerSub, { color: colors.mutedForeground }]}>{t.feedbackChatSubtitle}</Text>
+            <View>
+              <Text style={[s.headerTitle, { color: colors.text }]}>{t.feedbackChatTitle}</Text>
+              <Text style={[s.headerSub, { color: colors.mutedForeground }]}>{t.feedbackChatSubtitle}</Text>
+            </View>
           </View>
           <View style={{ width: 22 }} />
-        </View>
+        </ExpoLinearGradient>
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <ScrollView
@@ -172,8 +182,10 @@ export default function FeedbackScreen() {
               </View>
             ) : messages.length === 0 ? (
               <View style={s.empty}>
-                <View style={[s.emptyIcon, { backgroundColor: FEEDBACK_ACCENT + '18' }]}>
-                  <Feather name="message-circle" size={28} color={FEEDBACK_ACCENT} />
+                <View style={[s.emptyIconRing, { backgroundColor: FEEDBACK_ACCENT + '0C' }]}>
+                  <View style={[s.emptyIcon, { backgroundColor: FEEDBACK_ACCENT + '20' }]}>
+                    <Feather name="message-circle" size={26} color={FEEDBACK_ACCENT} />
+                  </View>
                 </View>
                 <Text style={[s.emptyTitle, { color: colors.text }]}>{t.feedbackEmptyTitle}</Text>
                 <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.feedbackEmptyHint}</Text>
@@ -186,13 +198,15 @@ export default function FeedbackScreen() {
           </ScrollView>
 
           <View style={[s.inputBar, { paddingBottom: botPad + 10, borderTopColor: colors.border, backgroundColor: colors.background }]}>
-            <View style={[s.inputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[s.inputRow, { backgroundColor: colors.card, borderColor: inputFocused ? FEEDBACK_ACCENT + '80' : colors.border }]}>
               <TextInput
                 style={[s.input, { color: colors.text }]}
                 placeholder={t.feedbackPlaceholder}
                 placeholderTextColor={colors.mutedForeground}
                 value={input}
                 onChangeText={setInput}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
                 multiline
                 maxLength={500}
                 editable={!sending}
@@ -216,14 +230,15 @@ export default function FeedbackScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  headerDot: { width: 6, height: 6, borderRadius: 3 },
-  headerTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  headerSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerIcon: { width: 26, height: 26, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 15.5, fontFamily: 'Inter_600SemiBold' },
+  headerSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
   content: { padding: 16, gap: 14, flexGrow: 1 },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 60 },
-  emptyIcon: { width: 60, height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyIconRing: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyIcon: { width: 60, height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
   emptyHint: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 19, paddingHorizontal: 24 },
   retryBtn: { marginTop: 4, borderRadius: 12, borderWidth: 1, paddingHorizontal: 18, paddingVertical: 9 },
@@ -238,13 +253,16 @@ const s = StyleSheet.create({
   bubbleColMe: { alignItems: 'flex-end' },
   senderName: { fontSize: 11, fontFamily: 'Inter_600SemiBold', marginLeft: 2 },
   bubble: {
-    borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 1,
+    borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 2,
   },
-  bubbleMe: { borderBottomRightRadius: 4 },
-  bubbleOther: { borderWidth: 1, borderBottomLeftRadius: 4 },
+  bubbleMe: { borderBottomRightRadius: 5 },
+  bubbleOther: { borderWidth: 1, borderBottomLeftRadius: 5 },
   bubbleText: { fontSize: 14.5, fontFamily: 'Inter_400Regular', lineHeight: 21 },
-  likeRow: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 4 },
+  likeRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, marginTop: 1,
+  },
   likeRowMe: { alignSelf: 'flex-end' },
   likeCount: { fontSize: 11, fontFamily: 'Inter_600SemiBold' },
   timeText: { fontSize: 10.5, fontFamily: 'Inter_400Regular', marginLeft: 2 },
@@ -252,7 +270,10 @@ const s = StyleSheet.create({
   errorText: { fontSize: 12.5, fontFamily: 'Inter_500Medium', textAlign: 'center', paddingTop: 4 },
 
   inputBar: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 10 },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', borderRadius: 20, borderWidth: 1, paddingLeft: 16, paddingRight: 6, paddingVertical: 6, gap: 8 },
+  inputRow: { flexDirection: 'row', alignItems: 'flex-end', borderRadius: 22, borderWidth: 1.5, paddingLeft: 16, paddingRight: 6, paddingVertical: 6, gap: 8 },
   input: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular', maxHeight: 100, paddingVertical: 6 },
-  sendBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: {
+    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+    shadowColor: FEEDBACK_ACCENT_DEEP, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 2,
+  },
 });
