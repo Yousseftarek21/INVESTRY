@@ -1,4 +1,4 @@
-import { db, holdingsTable, cashAccountsTable, soldHoldingsTable, marketCloseSnapshotsTable, egxCloseSnapshotsTable } from "@workspace/db";
+import { db, holdingsTable, cashAccountsTable, soldHoldingsTable, marketCloseSnapshotsTable, egxCloseSnapshotsTable, type DbHolding } from "@workspace/db";
 import { eq, lte, desc, and } from "drizzle-orm";
 import { decryptFromStorage } from "./encryption";
 import { getCachedPrices, getCachedStocks } from "../routes/markets";
@@ -233,6 +233,97 @@ export interface PeriodPerformance {
   pctReturn: number | null;
 }
 
+// Mirrors artifacts/mobile/utils/pctDelta.ts exactly (same two functions,
+// same formulas) — kept as its own small server-side copy rather than a
+// shared package, same call this codebase already made for cairoDate.ts.
+// Converts "today's value + today's live % change" into the EGP delta since
+// the trading day began, without the v*pct shortcut (which applies the
+// percentage to TODAY's value instead of the day's start and
+// under/overstates the delta as the move gets bigger).
+function pctDelta(todaysValue: number, pctChange: number): number {
+  const f = pctChange / 100;
+  if (f <= -1) return -todaysValue;
+  return (todaysValue * f) / (1 + f);
+}
+
+// Same as todayContributionFromStamp in pctDelta.ts — the honest, unfakeable
+// contribution for a lot added/edited today: current value minus what it
+// was worth at the server-stamped price captured that instant. Null (not 0)
+// when no stamp exists, so the caller can exclude the lot entirely exactly
+// like the client does, rather than fabricating a baseline.
+function todayContributionFromStamp(
+  stampedPricePerUnit: number | null | undefined,
+  quantity: number,
+  currentValueEGP: number,
+): number | null {
+  if (stampedPricePerUnit == null || !Number.isFinite(stampedPricePerUnit)) return null;
+  return currentValueEGP - quantity * stampedPricePerUnit;
+}
+
+/**
+ * The leaderboard's return for a period that starts TODAY (the first day of
+ * a new week/month) — used instead of the historical-ratio method below so
+ * the number a user sees on the leaderboard for "today" is IDENTICAL to
+ * what their own portfolio card's Today chip shows, not a separately
+ * re-derived approximation. Ports (tabs)/index.tsx's `summary` useMemo
+ * byte-for-byte for the gold/silver/stock buckets specifically — same
+ * pctDelta formula, same live goldChangePercentEgp/silverChangePercentEgp/
+ * EGX changePercent inputs, same server-stamped-price fallback for a lot
+ * touched today — restricted to gold/silver/EGX stock only (no Fixed
+ * Income, no real estate/personal assets), matching computePeriodPerformance's
+ * own scope and anti-gaming boundary exactly.
+ *
+ * Deliberately does NOT touch sold_holdings — the client's own Today chip
+ * only ever iterates currently-held holdings too, so a lot sold today
+ * simply drops out of both totalValue and todayGain with no special case,
+ * and this mirrors that.
+ */
+async function computeTodayEligiblePerformance(
+  holdingRows: DbHolding[],
+  prices: Awaited<ReturnType<typeof getCachedPrices>>,
+  egxStocks: Awaited<ReturnType<typeof getCachedStocks>>,
+): Promise<PeriodPerformance> {
+  const egxPrices: Record<string, number> = {};
+  const egxChangePercent: Record<string, number> = {};
+  for (const s of egxStocks) { egxPrices[s.symbol] = s.price; egxChangePercent[s.symbol] = s.changePercent; }
+
+  const today = tradingDayKey();
+  let eligibleValue = 0;
+  let todayGain = 0;
+
+  for (const row of holdingRows) {
+    const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
+    if (holding.type !== "gold" && holding.type !== "silver" && holding.type !== "stock") continue;
+
+    const value = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
+    eligibleValue += value;
+    // touchedToday, mirroring utils/cairoDate.ts's own touchedToday exactly:
+    // true when this row's updatedAt falls on today's TRADING day (the
+    // 18:00 New York boundary), not the calendar day.
+    const touchedToday = tradingDayKey(row.updatedAt) === today;
+
+    if (!touchedToday) {
+      if (holding.type === "gold") {
+        todayGain += pctDelta(value, prices.goldChangePercentEgp);
+      } else if (holding.type === "silver") {
+        todayGain += pctDelta(value, prices.silverChangePercentEgp);
+      } else {
+        todayGain += pctDelta(value, egxChangePercent[String(holding.symbol)] ?? 0);
+      }
+    } else {
+      const stampedPrice = (holding.priceAtLastEditEgp ?? holding.priceAtCreationEgp) as number | undefined;
+      const quantity = holding.type === "stock" ? Number(holding.shares) || 0 : Number(holding.grams) || 0;
+      const contribution = todayContributionFromStamp(stampedPrice, quantity, value);
+      if (contribution != null) todayGain += contribution;
+    }
+  }
+
+  if (eligibleValue <= 0) return { pctReturn: null };
+  const startOfDayValue = eligibleValue - todayGain;
+  if (startOfDayValue <= 0) return { pctReturn: null };
+  return { pctReturn: (todayGain / startOfDayValue) * 100 };
+}
+
 /**
  * The leaderboard's period return, restricted to gold, silver, and EGX
  * stocks — the only holding types with real, live, objective market prices.
@@ -286,6 +377,12 @@ export interface PeriodPerformance {
  * Returns pctReturn: null when the user has nothing eligible to measure at
  * all (no gold/silver held and no pre-existing stock holdings/sales) — not
  * a fabricated 0% or -100%, genuinely "nothing to rank yet."
+ *
+ * Everything above describes the historical-ratio path, used once a period
+ * is at least a day old. When cutoffDateKey IS today (the period just
+ * started), this delegates entirely to computeTodayEligiblePerformance
+ * instead — see that function's own comment for why "today" needs a
+ * genuinely different method, not just a special case of the ratio above.
  */
 export async function computePeriodPerformance(userId: string, cutoffDateKey: string): Promise<PeriodPerformance> {
   const [holdingRows, soldRows, prices, egxStocks, baselineMetal] = await Promise.all([
@@ -295,6 +392,20 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
     getCachedStocks().catch(() => []),
     metalPriceOnOrBefore(cutoffDateKey),
   ]);
+
+  // The period starts TODAY (day one of a new week/month) — delegate to the
+  // exact-match-with-the-client method instead of the historical-ratio one
+  // below. See computeTodayEligiblePerformance's own comment for why: any
+  // ratio computed against "today" ends up comparing the live price to
+  // itself no matter how carefully the open/close distinction is handled,
+  // and more importantly, the user's own portfolio card already shows a
+  // real, live "Today" number for these same assets — this makes sure the
+  // leaderboard shows that same number instead of an independently-derived
+  // one that can drift from it.
+  if (cutoffDateKey === cairoDateString()) {
+    return computeTodayEligiblePerformance(holdingRows, prices, egxStocks);
+  }
+
   // The genuine live price right now — computed directly from prices
   // (already fetched above), not looked up via metalPriceOnOrBefore. That
   // function's job is resolving a *past* boundary date to a real frozen
