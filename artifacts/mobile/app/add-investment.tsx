@@ -179,11 +179,17 @@ function lookupREArea(gov: string, cityName: string, districtName: string): REAr
 
 function StockPickerModal({
   visible,
+  market,
   selected,
   onSelect,
   onClose,
 }: {
   visible: boolean;
+  /** Which market this picker lists — decided by the top-level "EGX Stock" /
+      "US Stock" type chip the user already tapped, not chosen inside the
+      picker itself. Matches how Gold/Silver/every other type has no
+      internal sub-picker of its own. */
+  market: 'EGX' | 'US';
   selected: { symbol: string; name: string };
   onSelect: (s: { symbol: string; name: string }) => void;
   onClose: () => void;
@@ -193,13 +199,6 @@ function StockPickerModal({
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
   const [query, setQuery] = useState('');
-  // Defaults to whichever market the currently-selected symbol actually
-  // belongs to (falls back to EGX for a custom/unrecognized symbol) rather
-  // than always resetting to EGX — reopening the picker to change a US
-  // holding shouldn't dump the user back on the EGX list.
-  const [market, setMarket] = useState<'EGX' | 'US'>(
-    US_SYMBOL_SET.has(selected.symbol) ? 'US' : 'EGX'
-  );
 
   const list = market === 'EGX' ? EGX_SYMBOLS : US_SYMBOLS;
   const filtered = useMemo(() => {
@@ -216,35 +215,12 @@ function StockPickerModal({
       <View style={[pickerStyles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
         <View style={[pickerStyles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 16 }]}>
-          <Text style={[pickerStyles.title, { color: colors.text }]}>{t.stockSymbol}</Text>
+          <Text style={[pickerStyles.title, { color: colors.text }]}>
+            {market === 'EGX' ? t.tabEGX : t.tabUsStocks}
+          </Text>
           <TouchableOpacity onPress={onClose} style={[pickerStyles.closeBtn, { backgroundColor: colors.muted }]}>
             <Feather name="x" size={15} color={colors.mutedForeground} />
           </TouchableOpacity>
-        </View>
-
-        {/* Market tabs */}
-        <View style={pickerStyles.marketTabRow}>
-          {(['EGX', 'US'] as const).map(m => {
-            const isActive = m === market;
-            return (
-              <TouchableOpacity
-                key={m}
-                onPress={() => { impact(); setMarket(m); setQuery(''); }}
-                style={[
-                  pickerStyles.marketTab,
-                  {
-                    backgroundColor: isActive ? colors.primary : colors.muted,
-                    borderColor: isActive ? colors.primary : 'transparent',
-                  },
-                ]}
-                activeOpacity={0.8}
-              >
-                <Text style={[pickerStyles.marketTabTxt, { color: isActive ? colors.primaryForeground : colors.mutedForeground }]}>
-                  {m === 'EGX' ? t.tabEGX : t.tabUsStocks}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
         </View>
 
         {/* Search */}
@@ -585,6 +561,14 @@ export default function AddInvestmentScreen() {
   const [selectedStock, setSelectedStock] = useState(EGX_SYMBOLS[0]);
   const [customSymbol, setCustomSymbol] = useState('');
   const [stockPickerVisible, setStockPickerVisible] = useState(false);
+  // Which market the "EGX Stock" / "US Stock" type chip the user tapped
+  // committed them to — decided outside the picker now, not inside it (see
+  // StockPickerModal's own comment). Both chips still save a holding with
+  // type: 'stock' (every downstream valuation/leaderboard/export path
+  // already keys pricing purely off `symbol`, matching both markets — see
+  // hooks/useGlobalStocks.ts's egxPrices merge); this only decides which
+  // symbol list the picker shows and which chip renders as active.
+  const [stockMarket, setStockMarket] = useState<'EGX' | 'US'>('EGX');
   const [shares, setShares] = useState('');
   const [purchasePricePerShare, setPurchasePricePerShare] = useState('');
   const [propertyType, setPropertyType] = useState<PropertyType>('apartment');
@@ -670,9 +654,19 @@ export default function AddInvestmentScreen() {
       setPurchasePricePerGram(String(editingHolding.purchasePricePerGram ?? 0));
       setPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
     } else if (editingHolding.type === 'stock') {
-      const match = EGX_SYMBOLS.find(s => s.symbol === editingHolding.symbol);
-      if (match) { setSelectedStock(match); setCustomSymbol(''); }
-      else setCustomSymbol(editingHolding.symbol ?? '');
+      // Was EGX-only — editing an existing US stock holding never matched
+      // anything here (only EGX_SYMBOLS was checked), so it silently fell
+      // into "custom symbol" instead of being recognized as the real US
+      // stock it is. Check both lists now, and set stockMarket so the
+      // right "EGX Stock"/"US Stock" chip shows as active on open.
+      const egxMatch = EGX_SYMBOLS.find(s => s.symbol === editingHolding.symbol);
+      const usMatch = !egxMatch ? US_SYMBOLS.find(s => s.symbol === editingHolding.symbol) : undefined;
+      if (egxMatch) { setSelectedStock(egxMatch); setCustomSymbol(''); setStockMarket('EGX'); }
+      else if (usMatch) { setSelectedStock(usMatch); setCustomSymbol(''); setStockMarket('US'); }
+      else {
+        setCustomSymbol(editingHolding.symbol ?? '');
+        setStockMarket(US_SYMBOL_SET.has(editingHolding.symbol ?? '') ? 'US' : 'EGX');
+      }
       setShares(String(editingHolding.shares ?? 0));
       setPurchasePricePerShare(String(editingHolding.purchasePricePerShare ?? 0));
       setPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
@@ -742,13 +736,18 @@ export default function AddInvestmentScreen() {
 
   const KARATS: GoldKarat[] = ['24k', '22k', '21k', '18k'];
 
-  const TYPES: { key: InvestmentType; label: string; renderIcon: (size: number, color: string) => React.ReactNode; color: string }[] = [
+  // 'us_stock' is a UI-only chip key, not a real InvestmentType — both it
+  // and 'stock' save a holding as type: 'stock' (see the stockMarket state
+  // declaration's own comment for why that's correct, not a shortcut).
+  type TypeChipKey = InvestmentType | 'us_stock';
+  const TYPES: { key: TypeChipKey; label: string; renderIcon: (size: number, color: string) => React.ReactNode; color: string }[] = [
     { key: 'gold',           label: t.gold,         renderIcon: (s, c) => <MaterialCommunityIcons name="gold"          size={s} color={c} />, color: colors.primary },
     { key: 'silver',         label: t.silver,        renderIcon: (s, c) => <MaterialCommunityIcons name="gold" size={s} color={c} />, color: colors.silverColor },
     { key: 'stock',          label: t.egxStock,      renderIcon: (s, c) => <Feather name="bar-chart-2"                  size={s} color={c} />, color: '#4A9EFF' },
+    { key: 'us_stock',       label: t.usStockType,   renderIcon: (s, c) => <Feather name="activity"                     size={s} color={c} />, color: '#22C55E' },
     { key: 'real_estate',    label: t.realEstate,    renderIcon: (s, c) => <MaterialCommunityIcons name="home-city"     size={s} color={c} />, color: '#A47FCA' },
     { key: 'personal_asset', label: t.personalAsset, renderIcon: (s, c) => <MaterialCommunityIcons name="tag-multiple"  size={s} color={c} />, color: '#E08E45' },
-    { key: 'fixed_income',   label: t.fixedIncome,   renderIcon: (s, c) => <MaterialCommunityIcons name="bank-transfer" size={s} color={c} />, color: '#22C55E' },
+    { key: 'fixed_income',   label: t.fixedIncome,   renderIcon: (s, c) => <MaterialCommunityIcons name="bank-transfer" size={s} color={c} />, color: '#D97706' },
   ];
 
 
@@ -821,22 +820,39 @@ export default function AddInvestmentScreen() {
     rePurchasePriceNum > rePricePerM2Num * 0.2 &&
     rePurchasePriceNum < rePricePerM2Num * 5;
 
-  const typeCardAnims = useRef<Record<InvestmentType, Animated.Value>>({
+  const typeCardAnims = useRef<Record<'gold' | 'silver' | 'stock' | 'us_stock' | 'real_estate' | 'personal_asset' | 'fixed_income', Animated.Value>>({
     gold: new Animated.Value(1),
     silver: new Animated.Value(1),
     stock: new Animated.Value(1),
+    us_stock: new Animated.Value(1),
     real_estate: new Animated.Value(1),
     personal_asset: new Animated.Value(1),
     fixed_income: new Animated.Value(1),
   }).current;
 
-  const selectType = (key: InvestmentType) => {
+  // 'stock' and 'us_stock' both commit to type: 'stock' — only stockMarket
+  // (and which symbol list/chip is shown) differs. Switching market resets
+  // the selected symbol to that market's first entry rather than leaving a
+  // stale EGX pick showing while the US list is active, or vice versa.
+  const selectType = (key: TypeChipKey) => {
     if (isEditing) return;
     Animated.sequence([
       Animated.timing(typeCardAnims[key], { toValue: 0.94, duration: 80, useNativeDriver: true }),
       Animated.timing(typeCardAnims[key], { toValue: 1, duration: 120, useNativeDriver: true }),
     ]).start();
-    setType(key);
+    if (key === 'us_stock') {
+      setType('stock');
+      setStockMarket('US');
+      setSelectedStock(US_SYMBOLS[0]);
+      setCustomSymbol('');
+    } else if (key === 'stock') {
+      setType('stock');
+      setStockMarket('EGX');
+      setSelectedStock(EGX_SYMBOLS[0]);
+      setCustomSymbol('');
+    } else {
+      setType(key);
+    }
   };
 
   const Chip = ({ value, selected, onPress, label }: { value: string; selected: boolean; onPress: () => void; label?: string }) => (
@@ -1065,7 +1081,9 @@ export default function AddInvestmentScreen() {
             <Text style={labelStyle}>{t.investmentType}</Text>
             <View style={styles.typeGrid}>
               {TYPES.map(tp => {
-                const isActive = type === tp.key;
+                const isActive = tp.key === 'stock' ? (type === 'stock' && stockMarket === 'EGX')
+                  : tp.key === 'us_stock' ? (type === 'stock' && stockMarket === 'US')
+                  : type === tp.key;
                 const isDisabled = isEditing && !isActive;
                 return (
                   <Animated.View
@@ -1699,6 +1717,7 @@ export default function AddInvestmentScreen() {
       {/* Stock Picker Modal */}
       <StockPickerModal
         visible={stockPickerVisible}
+        market={stockMarket}
         selected={selectedStock}
         onSelect={(s) => { setSelectedStock(s); setCustomSymbol(''); }}
         onClose={() => setStockPickerVisible(false)}
@@ -1859,9 +1878,6 @@ const pickerStyles = StyleSheet.create({
   },
   title: { fontSize: 18, fontFamily: 'Inter_700Bold' },
   closeBtn: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  marketTabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingTop: 14 },
-  marketTab: { flex: 1, paddingVertical: 9, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
-  marketTabTxt: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   searchWrap: { padding: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
