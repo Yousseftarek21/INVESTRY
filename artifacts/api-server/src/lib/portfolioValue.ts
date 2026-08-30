@@ -2,7 +2,7 @@ import { db, holdingsTable, cashAccountsTable, soldHoldingsTable, marketCloseSna
 import { eq, lte, desc, and } from "drizzle-orm";
 import { decryptFromStorage } from "./encryption";
 import { getCachedPrices, getCachedStocks } from "../routes/markets";
-import { tradingDayKey } from "./cairoDate";
+import { tradingDayKey, cairoDateString } from "./cairoDate";
 
 const TROY_OZ_TO_GRAMS = 31.1034768;
 
@@ -171,15 +171,39 @@ export async function computeUserPortfolioValue(userId: string): Promise<number>
   }, 0);
 }
 
-/** Real historical gold/silver EGP-24k-equivalent prices on or before `dateKey` (Cairo calendar day), from market_close_snapshots — the same table markets.ts's own "today vs yesterday" gold/silver change already reads from. Null if the table has no row that far back (e.g. before it started being written). */
+/** Real historical gold/silver EGP-24k-equivalent prices on or before
+ * `dateKey` (Cairo calendar day), from market_close_snapshots — the same
+ * table markets.ts's own "today vs yesterday" gold/silver change already
+ * reads from. Null if the table has no row that far back (e.g. before it
+ * started being written).
+ *
+ * If the matched row IS today's (still in progress), returns its fixed
+ * OPEN price, never its continuously-updating close — that close column is
+ * overwritten with the live price on every fetch (see markets.ts's
+ * recordAndGetPrevClose), so "the price on or before today" would otherwise
+ * always converge to "the price right now": comparing a period's baseline
+ * against essentially itself, showing a permanent ~0% for everyone on the
+ * exact day a new week/month starts, no matter how far the market actually
+ * moved that day. Any date strictly BEFORE today has a real frozen close
+ * (untouched since that day rolled over), so that case is unaffected. */
 async function metalPriceOnOrBefore(dateKey: string): Promise<{ goldEgp24k: number; silverEgp: number } | null> {
   const [row] = await db
-    .select({ goldEgp24k: marketCloseSnapshotsTable.goldEgp24k, silverEgp: marketCloseSnapshotsTable.silverEgp })
+    .select({
+      date: marketCloseSnapshotsTable.date,
+      goldEgp24k: marketCloseSnapshotsTable.goldEgp24k,
+      silverEgp: marketCloseSnapshotsTable.silverEgp,
+      openGoldEgp24k: marketCloseSnapshotsTable.openGoldEgp24k,
+      openSilverEgp: marketCloseSnapshotsTable.openSilverEgp,
+    })
     .from(marketCloseSnapshotsTable)
     .where(lte(marketCloseSnapshotsTable.date, dateKey))
     .orderBy(desc(marketCloseSnapshotsTable.date))
     .limit(1);
-  return row ?? null;
+  if (!row) return null;
+  if (row.date === cairoDateString()) {
+    return { goldEgp24k: row.openGoldEgp24k, silverEgp: row.openSilverEgp };
+  }
+  return { goldEgp24k: row.goldEgp24k, silverEgp: row.silverEgp };
 }
 
 /** Real historical EGX close price for `symbol` on or before `dateKey`, from
@@ -187,15 +211,21 @@ async function metalPriceOnOrBefore(dateKey: string): Promise<{ goldEgp24k: numb
  * once per ~5 min). Null if the table has no row that far back yet for this
  * symbol — e.g. right after this table started being written, or a symbol
  * that's never been fetched. Callers fall back to the cost-basis
- * approximation in that case, same as before this existed. */
+ * approximation in that case, same as before this existed.
+ *
+ * Same "today's row uses OPEN, not the continuously-updating close" rule as
+ * metalPriceOnOrBefore above, for the same reason — without it, a period
+ * that starts today would always ratio a stock's current price against
+ * itself and show ~0% no matter how much the stock actually moved today. */
 async function stockPriceOnOrBefore(symbol: string, dateKey: string): Promise<number | null> {
   const [row] = await db
-    .select({ closePrice: egxCloseSnapshotsTable.closePrice })
+    .select({ date: egxCloseSnapshotsTable.date, closePrice: egxCloseSnapshotsTable.closePrice, openPrice: egxCloseSnapshotsTable.openPrice })
     .from(egxCloseSnapshotsTable)
     .where(and(eq(egxCloseSnapshotsTable.symbol, symbol), lte(egxCloseSnapshotsTable.date, dateKey)))
     .orderBy(desc(egxCloseSnapshotsTable.date))
     .limit(1);
-  return row?.closePrice ?? null;
+  if (!row) return null;
+  return row.date === cairoDateString() ? row.openPrice : row.closePrice;
 }
 
 export interface PeriodPerformance {
@@ -265,7 +295,18 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
     getCachedStocks().catch(() => []),
     metalPriceOnOrBefore(cutoffDateKey),
   ]);
-  const todayMetal = await metalPriceOnOrBefore(tradingDayKey());
+  // The genuine live price right now — computed directly from prices
+  // (already fetched above), not looked up via metalPriceOnOrBefore. That
+  // function's job is resolving a *past* boundary date to a real frozen
+  // price (and, for today specifically, today's OPEN — see its own
+  // comment); routing "the current price" through it too would have
+  // returned today's OPEN here as well, converging "current" toward
+  // "baseline" and producing the same permanent ~0% bug this whole fix
+  // exists to remove.
+  const todayMetal = {
+    goldEgp24k: goldPricePerGram(prices.goldUsd, prices.usdToEgp, "24k"),
+    silverEgp: silverPricePerGram(prices.silverUsd, prices.usdToEgp),
+  };
 
   const egxPrices: Record<string, number> = {};
   for (const s of egxStocks) egxPrices[s.symbol] = s.price;
@@ -367,12 +408,9 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
   let baseline = stockBaselineCost + stockSaleAmountInvested + metalSaleAmountInvested;
   let current = stockCurrent + stockSaleProceeds + metalSaleProceeds;
   if (hasMetal) {
-    const today = todayMetal ?? await metalPriceOnOrBefore(tradingDayKey());
-    const base = baselineMetal ?? today; // no historical row on record yet (table too new) — fall back to today's price on both sides rather than fabricate a number, so still-held metal contributes its live value with zero assumed movement
-    if (today && base) {
-      baseline += pureGoldGrams * base.goldEgp24k + silverGrams * base.silverEgp;
-      current += pureGoldGrams * today.goldEgp24k + silverGrams * today.silverEgp;
-    }
+    const base = baselineMetal ?? todayMetal; // no historical row on record yet (table too new) — fall back to today's live price on both sides rather than fabricate a number, so still-held metal contributes its live value with zero assumed movement
+    baseline += pureGoldGrams * base.goldEgp24k + silverGrams * base.silverEgp;
+    current += pureGoldGrams * todayMetal.goldEgp24k + silverGrams * todayMetal.silverEgp;
   }
 
   if (baseline <= 0) return { pctReturn: null };
