@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
-import { useFeedback, type FeedbackMessage } from '@/hooks/useFeedback';
+import { useFeedback, markFeedbackSeen, type FeedbackMessage } from '@/hooks/useFeedback';
 
 // Two-color system, not one flat accent: rose is this screen's own identity
 // (distinct from the AI Assistant's violet and the app's gold) — used for
@@ -103,6 +103,15 @@ export default function FeedbackScreen() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
+
+  // Marks the feed as seen once it's actually loaded (not on mount — a
+  // failed/still-loading fetch shouldn't clear the Settings badge for a
+  // feed the user hasn't really seen yet). Re-marks on every fresh
+  // successful load, including the periodic poll, so leaving the screen
+  // open counts the same as re-opening it.
+  useEffect(() => {
+    if (!isLoading && !isError) markFeedbackSeen();
+  }, [isLoading, isError, messages.length]);
   const scrollRef = useRef<ScrollView>(null);
 
   const send = useCallback(async () => {

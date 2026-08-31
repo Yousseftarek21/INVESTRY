@@ -31,6 +31,7 @@ import { isIOSIAPAvailable } from '@/utils/revenuecat';
 import { ManageSubscriptionSheet } from '@/components/ManageSubscriptionSheet';
 import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
+import { useFeedbackUnread } from '@/hooks/useFeedback';
 
 // Read live from the running binary/update instead of a hand-maintained
 // constant, so this can never silently drift out of sync with reality.
@@ -409,6 +410,7 @@ export default function SettingsScreen() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const { holdings } = useHoldings();
+  const hasUnreadFeedback = useFeedbackUnread();
 
   const [modal, setModal]         = useState<{ title: string; content: string } | null>(null);
   const [confirm, setConfirm]     = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
@@ -570,12 +572,20 @@ export default function SettingsScreen() {
           <View style={cat.stack}>
             {[
               { icon: 'user' as const, bg: '#1D4ED8', label: t.settingsCatAccount, sub: t.settingsCatAccountSub, path: '/settings-account' },
+              // Second, not last — a card seven items deep in a list nobody
+              // scrolls to the bottom of doesn't get discovered. This is the
+              // one entry point into a brand-new, actively-posted-to feature,
+              // so it sits right after Account instead of behind five other
+              // settings categories nobody's specifically looking for.
+              {
+                icon: 'message-circle' as const, bg: '#EC4899', label: t.settingsCatFeedback, sub: t.settingsCatFeedbackSub, path: '/feedback',
+                badge: hasUnreadFeedback ? { text: t.newLabel, color: '#EF4444' } : { text: t.liveLabel, color: '#EC4899' },
+              },
               { icon: 'sliders' as const, bg: '#8B5CF6', label: t.settingsCatAppearance, sub: t.settingsCatAppearanceSub, path: '/settings-appearance' },
               { icon: 'bell' as const, bg: '#F59E0B', label: t.settingsCatNotifications, sub: t.settingsCatNotificationsSub, path: '/settings-notifications' },
               { icon: 'briefcase' as const, bg: '#059669', label: t.settingsCatPortfolio, sub: t.settingsCatPortfolioSub, path: '/settings-portfolio' },
               { icon: 'shield' as const, bg: '#047857', label: t.settingsCatPrivacy, sub: t.settingsCatPrivacySub, path: '/settings-privacy' },
               { icon: 'help-circle' as const, bg: '#0EA5E9', label: t.settingsCatSupport, sub: t.settingsCatSupportSub, path: '/settings-support' },
-              { icon: 'message-circle' as const, bg: '#EC4899', label: t.settingsCatFeedback, sub: t.settingsCatFeedbackSub, path: '/feedback', badge: { text: t.liveLabel, color: '#EC4899' } },
             ].map(c => (
               <View key={c.path} style={[cat.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <NavRow icon={c.icon} iconBg={c.bg} label={c.label} sublabel={c.sub} badge={c.badge} onPress={() => goTo(c.path)} last />

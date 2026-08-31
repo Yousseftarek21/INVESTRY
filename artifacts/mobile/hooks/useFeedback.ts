@@ -1,4 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
@@ -36,6 +38,11 @@ export function useFeedback() {
     enabled: !!isSignedIn,
     staleTime: 15 * 1000,
     retry: 1,
+    // Polls while the screen is on-screen and focused (react-query pauses
+    // refetchInterval when the app backgrounds) so other people's messages
+    // and likes show up on their own — a chat that only updates on manual
+    // pull-to-refresh doesn't read as live.
+    refetchInterval: 15 * 1000,
     queryFn: async () => {
       const token = await getToken();
       if (!token) throw new Error('no-token');
@@ -90,4 +97,54 @@ export function useFeedback() {
     sendMessage,
     toggleLike,
   };
+}
+
+const LAST_SEEN_KEY = '@investry_feedback_last_seen';
+
+// Drives the "something new" badge on the Settings entry row — a card
+// that always shows a static "LIVE" pill regardless of whether anything
+// actually happened doesn't give anyone a reason to tap back in. There's
+// no per-user read-state on the server (that's real scope for a feature
+// this size); this is the lightweight version: a local "last time I
+// opened the chat" marker compared against the feed's real latest-message
+// timestamp from the cheap /feedback/summary endpoint, re-checked every
+// time Settings regains focus (including right after leaving the chat
+// itself, which is what clears the badge).
+export function useFeedbackUnread() {
+  const { getToken, isSignedIn } = useAuth();
+  const [hasUnread, setHasUnread] = useState(false);
+
+  const check = useCallback(async () => {
+    if (!isSignedIn) return;
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await apiFetch('/api/feedback/summary', token);
+      if (!res.ok) return;
+      const { latestCreatedAt } = (await res.json()) as { count: number; latestCreatedAt: string | null };
+      if (!latestCreatedAt) { setHasUnread(false); return; }
+      const lastSeen = await AsyncStorage.getItem(LAST_SEEN_KEY);
+      setHasUnread(!lastSeen || new Date(latestCreatedAt) > new Date(lastSeen));
+    } catch {
+      // Leave hasUnread at its previous value — a failed check shouldn't
+      // flip a real badge off, and showing a stale "new" badge one extra
+      // visit is harmless.
+    }
+  }, [getToken, isSignedIn]);
+
+  useFocusEffect(useCallback(() => { check(); }, [check]));
+
+  return hasUnread;
+}
+
+// Called once app/feedback.tsx has actually loaded the feed — marks
+// everything up to now as seen. Uses the current time rather than the
+// latest message's own timestamp: anything that existed before this
+// screen opened is, by definition, something the user just saw.
+export async function markFeedbackSeen(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LAST_SEEN_KEY, new Date().toISOString());
+  } catch {
+    // Best-effort — worst case the badge shows again next visit.
+  }
 }

@@ -947,6 +947,7 @@ const en = {
   noTickersFound: 'No tickers found for',
   globalSearchTip: 'Try the ticker (e.g. AAPL) or company name',
   liveLabel: 'LIVE',
+  newLabel: 'NEW',
 
   // Settings — subcomponents
   editProfile: 'Edit Profile',
@@ -2475,6 +2476,7 @@ const ar: typeof en = {
   noTickersFound: 'لا توجد رموز تطابق',
   globalSearchTip: 'جرب رمز السهم مثل AAPL أو اسم الشركة',
   liveLabel: 'LIVE',
+  newLabel: 'جديد',
 
   // Settings — subcomponents
   editProfile: 'تعديل الملف الشخصي',
