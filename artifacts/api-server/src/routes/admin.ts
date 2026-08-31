@@ -22,7 +22,13 @@ const router: IRouter = Router();
 //   curl -X POST https://api.investry.app/api/admin/broadcast-push \
 //     -H "x-admin-secret: <the secret>" \
 //     -H "Content-Type: application/json" \
-//     -d '{"title": "...", "body": "..."}'
+//     -d '{"title": "...", "body": "...", "route": "/feedback"}'
+//
+// `route` is optional — an in-app path (see useNotificationTapRouting.ts's
+// DESTINATION map for the shape every other push type already uses) that
+// tapping the notification navigates straight to, instead of just
+// foregrounding the app wherever it happened to be. Added specifically so a
+// "check out this new feature" broadcast can actually land on that feature.
 router.post("/admin/broadcast-push", async (req, res) => {
   const secret = process.env.ADMIN_BROADCAST_SECRET;
   if (!secret) {
@@ -37,6 +43,7 @@ router.post("/admin/broadcast-push", async (req, res) => {
   const body = req.body as Record<string, unknown>;
   const title = typeof body?.title === "string" ? body.title.trim() : "";
   const message = typeof body?.body === "string" ? body.body.trim() : "";
+  const route = typeof body?.route === "string" ? body.route.trim() : undefined;
   if (!title || !message) {
     res.status(400).json({ error: "title and body are required" });
     return;
@@ -49,7 +56,7 @@ router.post("/admin/broadcast-push", async (req, res) => {
       .where(isNotNull(usersTable.pushToken));
 
     const tokens = rows.map(r => r.pushToken!).filter(Boolean);
-    await sendPushToTokens(tokens, title, message, { type: "admin_broadcast" });
+    await sendPushToTokens(tokens, title, message, { type: "admin_broadcast", ...(route ? { route } : {}) });
 
     res.json({ success: true, recipientCount: tokens.length });
   } catch (err) {
