@@ -22,16 +22,13 @@ const router: IRouter = Router();
 //   curl -X POST https://api.investry.app/api/admin/broadcast-push \
 //     -H "x-admin-secret: <the secret>" \
 //     -H "Content-Type: application/json" \
-//     -d '{"title": "...", "body": "...", "titleAr": "...", "bodyAr": "...", "route": "/feedback"}'
+//     -d '{"title": "...", "body": "...", "route": "/feedback"}'
 //
-// `titleAr`/`bodyAr` are optional — when given, each recipient's stored
-// usersTable.language (synced from routes/account.ts's PUT /account/language)
-// decides which version they get; 'ar' users get the Arabic pair, everyone
-// else (including anyone with no stored language) gets the plain title/body.
-// Omitting them just sends title/body to everyone, same as before this
-// existed. `route` is likewise optional — an in-app path (see
-// useNotificationTapRouting.ts's DESTINATION map) that tapping the
-// notification navigates straight to.
+// `route` is optional — an in-app path (see useNotificationTapRouting.ts's
+// DESTINATION map for the shape every other push type already uses) that
+// tapping the notification navigates straight to, instead of just
+// foregrounding the app wherever it happened to be. Added specifically so a
+// "check out this new feature" broadcast can actually land on that feature.
 router.post("/admin/broadcast-push", async (req, res) => {
   const secret = process.env.ADMIN_BROADCAST_SECRET;
   if (!secret) {
@@ -46,8 +43,6 @@ router.post("/admin/broadcast-push", async (req, res) => {
   const body = req.body as Record<string, unknown>;
   const title = typeof body?.title === "string" ? body.title.trim() : "";
   const message = typeof body?.body === "string" ? body.body.trim() : "";
-  const titleAr = typeof body?.titleAr === "string" ? body.titleAr.trim() : "";
-  const bodyAr = typeof body?.bodyAr === "string" ? body.bodyAr.trim() : "";
   const route = typeof body?.route === "string" ? body.route.trim() : undefined;
   if (!title || !message) {
     res.status(400).json({ error: "title and body are required" });
@@ -56,21 +51,14 @@ router.post("/admin/broadcast-push", async (req, res) => {
 
   try {
     const rows = await db
-      .select({ pushToken: usersTable.pushToken, language: usersTable.language })
+      .select({ pushToken: usersTable.pushToken })
       .from(usersTable)
       .where(isNotNull(usersTable.pushToken));
 
-    const hasArabicCopy = !!titleAr && !!bodyAr;
-    const arTokens = hasArabicCopy ? rows.filter(r => r.language === "ar").map(r => r.pushToken!).filter(Boolean) : [];
-    const enTokens = rows.filter(r => !arTokens.includes(r.pushToken!)).map(r => r.pushToken!).filter(Boolean);
+    const tokens = rows.map(r => r.pushToken!).filter(Boolean);
+    await sendPushToTokens(tokens, title, message, { type: "admin_broadcast", ...(route ? { route } : {}) });
 
-    const data = { type: "admin_broadcast", ...(route ? { route } : {}) };
-    await Promise.all([
-      enTokens.length > 0 ? sendPushToTokens(enTokens, title, message, data) : Promise.resolve(),
-      arTokens.length > 0 ? sendPushToTokens(arTokens, titleAr, bodyAr, data) : Promise.resolve(),
-    ]);
-
-    res.json({ success: true, recipientCount: enTokens.length + arTokens.length, sentEnglish: enTokens.length, sentArabic: arTokens.length });
+    res.json({ success: true, recipientCount: tokens.length });
   } catch (err) {
     req.log.error({ err }, "POST /admin/broadcast-push failed");
     res.status(500).json({ error: "Failed to send broadcast" });
