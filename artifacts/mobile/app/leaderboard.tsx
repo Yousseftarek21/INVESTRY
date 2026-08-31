@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Image, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, Alert, FlatList, Image, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -156,6 +156,17 @@ export default function LeaderboardScreen() {
           <View style={s.headerTitleRow}>
             <Text style={[s.headerTitle, { color: colors.text }]}>{t.leaderboardTitle}</Text>
             <BetaChip label={t.leaderboardBetaChip} />
+            {/* Explains why this ranking can read differently from the
+                Week in Review recap on Analytics — both are legitimate,
+                they just measure different things (see leaderboardScopeNote
+                for why the leaderboard can't safely include everything
+                Week in Review does). */}
+            <TouchableOpacity
+              onPress={() => Alert.alert(t.leaderboardScopeTitle, t.leaderboardScopeNote)}
+              hitSlop={8}
+            >
+              <Feather name="info" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
           <View style={{ width: 22 }} />
         </View>
