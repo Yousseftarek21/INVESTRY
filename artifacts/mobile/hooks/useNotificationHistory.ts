@@ -7,7 +7,7 @@ import { useT } from '@/hooks/useTranslation';
 
 export interface NotificationEvent {
   id: string;
-  type: 'price_alert' | 'portfolio_alert' | 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited' | 'holding_sold';
+  type: 'price_alert' | 'portfolio_alert' | 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited' | 'holding_sold' | 'income_added' | 'income_edited' | 'income_collected';
   title: string;
   subtitle: string;
   at: string; // ISO timestamp

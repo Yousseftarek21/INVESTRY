@@ -291,6 +291,7 @@ export function Paywall() {
             <PlanCompareRow label={t.aiAssistantTitle} freeValue={t.subCompareAiFree} proValue={t.subCompareAiPro} locked />
             <PlanCompareRow label={t.subMarketIntelligence} freeValue={t.subCompareMarketIntelFree} proValue={t.subCompareMarketIntelPro} locked />
             <PlanCompareRow label={t.subPortfolioAnalytics} freeValue={t.subComparePortfolioAnalyticsFree} proValue={t.subComparePortfolioAnalyticsPro} locked />
+            <PlanCompareRow label={t.fixPlanTitle} freeValue={t.subCompareFixPlanFree} proValue={t.subCompareFixPlanPro} locked />
           </View>
 
           {/* Most of the app isn't a paywall at all — make that explicit

@@ -26,6 +26,9 @@ const EVENT_DESTINATION: Record<string, string> = {
   holding_added: '/(tabs)/holdings',
   holding_edited: '/(tabs)/holdings',
   holding_sold: '/sold-holdings',
+  income_added: '/recurring-income',
+  income_edited: '/recurring-income',
+  income_collected: '/recurring-income',
 };
 
 // Icon + color per Recent Alerts event type — cash events reuse the app's
@@ -43,6 +46,11 @@ function eventVisual(type: string, colors: ReturnType<typeof useColors>) {
     case 'holding_edited':
       return { icon: <Feather name="trending-up" size={18} color={colors.primary} />, color: colors.primary };
     case 'holding_sold':
+      return { icon: <Feather name="check-circle" size={18} color={colors.green} />, color: colors.green };
+    case 'income_added':
+    case 'income_edited':
+      return { icon: <Feather name="repeat" size={18} color="#8B5CF6" />, color: '#8B5CF6' };
+    case 'income_collected':
       return { icon: <Feather name="check-circle" size={18} color={colors.green} />, color: colors.green };
     case 'portfolio_alert':
     default:

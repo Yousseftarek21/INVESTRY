@@ -183,8 +183,8 @@ const en = {
   addInvestmentOptionDesc: 'Gold, silver, stocks, real estate & more',
   addCashOption: 'Cash Account',
   addCashOptionDesc: 'Bank accounts, cash & foreign currency',
-  addRecurringIncomeOption: 'Recurring Income',
-  addRecurringIncomeOptionDesc: 'Salary, rent & other monthly income',
+  addRecurringIncomeOption: 'Income',
+  addRecurringIncomeOptionDesc: 'Monthly salary, or money someone owes you',
   addDividendOption: 'Dividend',
   addDividendOptionDesc: 'Log a cash distribution you received on a stock',
   back: 'Back',
@@ -223,6 +223,12 @@ const en = {
   activityHoldingAddedTitle: 'Investment Added',
   activityHoldingEditedTitle: 'Investment Updated',
   activityHoldingSoldTitle: 'Investment Sold',
+  activityIncomeAddedTitle: 'New Income Entry',
+  activityIncomeAddedSubtitle: (name: string, amount: string, currency: string) => `${name} — ${amount} ${currency}` as string,
+  activityIncomeEditedTitle: 'Income Entry Updated',
+  activityIncomeEditedSubtitle: (name: string, amount: string, currency: string) => `${name} — ${amount} ${currency}` as string,
+  activityIncomeCollectedTitle: 'Income Collected',
+  activityIncomeCollectedSubtitle: (name: string, amount: string, currency: string, accountName: string) => `${name}: ${amount} ${currency} → ${accountName}` as string,
   accountCurrency: 'Currency',
   accountCurrencyLockedHint: "Currency can't be changed after an account is created — delete and re-add it if you need a different one.",
   dateAdded: 'Date Added',
@@ -334,11 +340,12 @@ const en = {
   deleteDividendConfirm: 'This will permanently delete this dividend record.',
 
   recurringIncome: 'Recurring Income',
+  incomeScreenTitle: 'Income',
   autoMonthlyIncome: 'Automatic monthly credits',
   addRecurringIncome: 'Add Recurring Income',
   editRecurringIncome: 'Edit Recurring Income',
-  noRecurringIncomes: 'No recurring incomes yet',
-  noRecurringIncomesHint: 'Automatically credit salary or other income each month',
+  noRecurringIncomes: 'No income yet',
+  noRecurringIncomesHint: 'Track a salary that credits monthly, or money someone owes you until it is collected',
   amount: 'Amount',
   incomeName: 'Income Name',
   incomeNamePlaceholder: 'e.g. Salary',
@@ -357,7 +364,7 @@ const en = {
   paused: 'Paused',
   monthlyOnDay: 'Monthly · Day',
   neverCredited: 'Not yet credited',
-  deleteRecurringIncome: 'Delete Recurring Income',
+  deleteRecurringIncome: 'Delete Income Entry',
   deleteRecurringIncomeConfirm: 'Future credits will stop. Past credits remain unchanged.',
   noMatchingAccounts: 'No cash accounts match this currency. Add one first.',
   saveIncome: 'Save Income',
@@ -365,6 +372,28 @@ const en = {
   notYetCredited: 'Never credited',
   creditHistory: 'Credit History',
   noCreditHistory: 'No credits recorded yet',
+
+  // Pending income (a one-off receivable — e.g. an unpaid client invoice —
+  // that isn't in any account yet) alongside the existing recurring flow.
+  // Added after a real user's feedback that there was no way to count
+  // money owed to them toward their portfolio total.
+  incomeKindLabel: 'Type',
+  incomeKindRecurring: 'Recurring',
+  incomeKindPending: 'Pending',
+  pendingIncomeNamePlaceholder: 'e.g. Client project payment',
+  pendingIncomeSectionHint: 'Counted in your net worth right away — mark it collected once it is actually paid.',
+  expectedDate: 'Expected Date',
+  expectedDateOptional: 'Expected Date (Optional)',
+  noExpectedDate: 'No expected date',
+  markCollected: 'Mark Collected',
+  markCollectedPickAccountHint: 'Which account did the money land in?',
+  collectedLabel: 'Collected',
+  pendingIncomeLabel: 'Pending Income',
+  addPendingIncome: 'Add Pending Income',
+  editPendingIncome: 'Edit Pending Income',
+  // Generic CTA for the empty state — shown before the user has picked
+  // Recurring or Pending, so it can't presuppose either one.
+  addIncomeEntry: 'Add Income',
 
   deleteHolding: 'Delete Investment',
   deleteHoldingConfirm: 'Are you sure you want to delete this investment? This cannot be undone.',
@@ -579,9 +608,20 @@ const en = {
   subUnlimitedInvestments: 'Unlimited investments — hold as many as you want',
   subUnlimitedCash: 'Unlimited cash accounts',
   subUnlimitedGoals: 'Unlimited savings goals',
-  subRecurringIncomeFull: 'Automatic recurring income tracking',
+  subRecurringIncomeFull: 'Unlimited income tracking — recurring, or money owed to you',
   subAiAssistantFull: 'Full access to the AI Financial Assistant',
-  subNotificationsFull: 'Portfolio alerts, price alerts, daily & weekly summaries',
+  subNotificationsFull: 'Unlimited portfolio & price alerts, plus daily & weekly summaries',
+  // A free user can't even open Settings → Notifications — the paywall
+  // used to only mention receiving alerts, not that managing them at all
+  // is Pro-only (see app/settings-notifications.tsx's full-screen gate).
+  subNotificationsControl: 'Full control over every notification setting',
+  // Named explicitly rather than folded into "Portfolio Analytics" — a
+  // real user's feedback was that the paywall didn't make Pro's actual
+  // capabilities feel different from Free; this one especially (a
+  // concrete rebalancing move, not just a diagnosis) had no bullet or
+  // comparison row of its own anywhere before this.
+  subFixMyPortfolio: 'Fix My Portfolio — a concrete rebalancing plan, not just a diagnosis',
+  subBenchmarkCompare: 'Compare your portfolio to the community benchmark',
   subSaveVsMonthly: 'vs. paying monthly',
   subManageSubscription: 'Manage Subscription',
   subUpgradeToProDesc: 'Unlimited investments, AI Assistant & more',
@@ -646,6 +686,8 @@ const en = {
   subCompareMarketIntelPro: 'Full access',
   subComparePortfolioAnalyticsFree: 'Locked',
   subComparePortfolioAnalyticsPro: 'Full access',
+  subCompareFixPlanFree: 'Locked',
+  subCompareFixPlanPro: 'Full access',
 
   // Footer
   footerTagline: 'Egypt · Live Market Data · 2024',
@@ -774,6 +816,11 @@ const en = {
   todayBreakdownExcludedNote: "Real estate & personal assets aren't included — they don't have live daily pricing, so they're left out rather than guessed at.",
   interestAccruedToday: 'Interest accrued today',
   currencyFxLabel: 'Currency (EGP/USD)',
+  // A real user (Ahmed, Feedback & Ideas chat) reported this row as
+  // confusing — he doesn't hold "currency," so a loss here read as a
+  // phantom holding. It's the FX component of gold/silver's EGP
+  // valuation; see the comment above todayBreakdown in (tabs)/index.tsx.
+  currencyFxExplainer: "You hold gold/silver, not currency. Gold and silver are priced in USD, then converted to EGP. This row separates the exchange-rate effect on that conversion from the metal's own price move, so a flat gold day with EGP/USD movement doesn't look like a gold loss.",
   todayNoChangeTitle: 'No Changes Yet',
   todayNoChangeHint: "Gold, silver, stocks, and the EGP/USD rate haven't moved since yesterday's close.",
   manageBtnLabel: 'Manage',
@@ -1739,8 +1786,8 @@ const ar: typeof en = {
   addInvestmentOptionDesc: 'ذهب، فضة، أسهم، عقارات والمزيد',
   addCashOption: 'حساب نقدي',
   addCashOptionDesc: 'حسابات بنكية، نقد وعملات أجنبية',
-  addRecurringIncomeOption: 'الدخل المتكرر',
-  addRecurringIncomeOptionDesc: 'راتب، إيجار ودخل شهري آخر',
+  addRecurringIncomeOption: 'الدخل',
+  addRecurringIncomeOptionDesc: 'راتب شهري، أو مبلغ يدين لك به أحدهم',
   addDividendOption: 'توزيعات نقدية',
   addDividendOptionDesc: 'سجّل توزيعات نقدية حصلت عليها من أحد أسهمك',
   back: 'رجوع',
@@ -1779,6 +1826,12 @@ const ar: typeof en = {
   activityHoldingAddedTitle: 'تمت إضافة استثمار',
   activityHoldingEditedTitle: 'تم تحديث استثمار',
   activityHoldingSoldTitle: 'تم بيع استثمار',
+  activityIncomeAddedTitle: 'دخل جديد',
+  activityIncomeAddedSubtitle: (name: string, amount: string, currency: string) => `${name} — ${amount} ${currency}` as string,
+  activityIncomeEditedTitle: 'تم تحديث الدخل',
+  activityIncomeEditedSubtitle: (name: string, amount: string, currency: string) => `${name} — ${amount} ${currency}` as string,
+  activityIncomeCollectedTitle: 'تم تحصيل الدخل',
+  activityIncomeCollectedSubtitle: (name: string, amount: string, currency: string, accountName: string) => `${name}: ${amount} ${currency} → ${accountName}` as string,
   accountCurrency: 'العملة',
   accountCurrencyLockedHint: 'لا يمكن تغيير العملة بعد إنشاء الحساب — احذف الحساب وأضفه من جديد إذا احتجت عملة مختلفة.',
   dateAdded: 'تاريخ الإضافة',
@@ -1876,11 +1929,12 @@ const ar: typeof en = {
   deleteDividendConfirm: 'سيتم حذف سجل هذه التوزيعات نهائيًا.',
 
   recurringIncome: 'الدخل المتكرر',
+  incomeScreenTitle: 'الدخل',
   autoMonthlyIncome: 'إيداعات شهرية تلقائية',
   addRecurringIncome: 'إضافة دخل متكرر',
   editRecurringIncome: 'تعديل الدخل المتكرر',
-  noRecurringIncomes: 'لا يوجد دخل متكرر بعد',
-  noRecurringIncomesHint: 'أضف راتبك أو دخلاً متكرراً ليُضاف تلقائياً كل شهر',
+  noRecurringIncomes: 'لا يوجد دخل بعد',
+  noRecurringIncomesHint: 'تتبّع راتباً يُودَع شهرياً، أو مبلغاً يدين لك به أحدهم حتى تحصّله',
   amount: 'المبلغ',
   incomeName: 'اسم الدخل',
   incomeNamePlaceholder: 'مثال: الراتب',
@@ -1899,13 +1953,32 @@ const ar: typeof en = {
   paused: 'موقوف',
   monthlyOnDay: 'شهرياً · يوم',
   neverCredited: 'لم يُودَع بعد',
-  deleteRecurringIncome: 'حذف الدخل المتكرر',
+  deleteRecurringIncome: 'حذف الدخل',
   deleteRecurringIncomeConfirm: 'ستتوقف الإيداعات المستقبلية. الإيداعات السابقة لن تتأثر.',
   noMatchingAccounts: 'لا توجد حسابات نقدية بهذه العملة. أضف حساباً أولاً.',
   saveIncome: 'حفظ الدخل',
   lastCredited: 'آخر إيداع',
   notYetCredited: 'لم يُودَع بعد',
   creditHistory: 'سجل الإيداعات',
+
+  // دخل معلّق (مبلغ يدين به أحدهم للمستخدم — مثل فاتورة عميل لم تُحصَّل بعد)
+  // إلى جانب مسار الدخل المتكرر الحالي — أُضيف بعد ملاحظة مستخدم حقيقي بأنه
+  // لا توجد طريقة لاحتساب المبالغ المستحقة له ضمن إجمالي محفظته.
+  incomeKindLabel: 'النوع',
+  incomeKindRecurring: 'متكرر',
+  incomeKindPending: 'قيد التحصيل',
+  pendingIncomeNamePlaceholder: 'مثال: دفعة مشروع من عميل',
+  pendingIncomeSectionHint: 'يُحتسب ضمن صافي ثروتك فوراً — علّمه كمُحصَّل بعد استلامه فعلياً.',
+  expectedDate: 'التاريخ المتوقع',
+  expectedDateOptional: 'التاريخ المتوقع (اختياري)',
+  noExpectedDate: 'لا يوجد تاريخ متوقع',
+  markCollected: 'تعليم كمُحصَّل',
+  markCollectedPickAccountHint: 'في أي حساب استلمت المبلغ؟',
+  collectedLabel: 'مُحصَّل',
+  pendingIncomeLabel: 'دخل قيد التحصيل',
+  addPendingIncome: 'إضافة دخل قيد التحصيل',
+  editPendingIncome: 'تعديل دخل قيد التحصيل',
+  addIncomeEntry: 'إضافة دخل',
   noCreditHistory: 'لا توجد إيداعات مسجلة بعد',
 
   deleteHolding: 'حذف الأصل',
@@ -2121,9 +2194,12 @@ const ar: typeof en = {
   subUnlimitedInvestments: 'استثمارات غير محدودة — احتفظ بما تشاء',
   subUnlimitedCash: 'حسابات نقدية غير محدودة',
   subUnlimitedGoals: 'أهداف ادخار غير محدودة',
-  subRecurringIncomeFull: 'تتبّع تلقائي للدخل المتكرر',
+  subRecurringIncomeFull: 'تتبّع دخل غير محدود — متكرر، أو مبالغ مستحقة لك',
   subAiAssistantFull: 'وصول كامل للمساعد المالي الذكي',
-  subNotificationsFull: 'تنبيهات المحفظة، تنبيهات الأسعار، الملخصات اليومية والأسبوعية',
+  subNotificationsFull: 'تنبيهات محفظة وأسعار غير محدودة، بالإضافة إلى الملخصات اليومية والأسبوعية',
+  subNotificationsControl: 'تحكم كامل في كل إعدادات الإشعارات',
+  subFixMyPortfolio: 'إصلاح محفظتي — خطة إعادة توازن ملموسة، لا مجرد تشخيص',
+  subBenchmarkCompare: 'قارن محفظتك بمتوسط أداء المجتمع',
   subSaveVsMonthly: 'مقارنة بالدفع الشهري',
   subManageSubscription: 'إدارة الاشتراك',
   subUpgradeToProDesc: 'استثمارات غير محدودة، المساعد الذكي والمزيد',
@@ -2184,6 +2260,8 @@ const ar: typeof en = {
   subCompareMarketIntelPro: 'وصول كامل',
   subComparePortfolioAnalyticsFree: 'مقفل',
   subComparePortfolioAnalyticsPro: 'وصول كامل',
+  subCompareFixPlanFree: 'مقفل',
+  subCompareFixPlanPro: 'وصول كامل',
 
   // Footer
   footerTagline: 'مصر · بيانات حية · ٢٠٢٤',
@@ -2312,6 +2390,7 @@ const ar: typeof en = {
   todayBreakdownExcludedNote: 'العقارات والأصول الشخصية غير مدرجة — لا تتوفر لها تسعيرة يومية حية، لذا تُستبعد بدلاً من تخمينها.',
   interestAccruedToday: 'فائدة متراكمة اليوم',
   currencyFxLabel: 'العملة (جنيه/دولار)',
+  currencyFxExplainer: 'أنت لا تملك عملة، بل ذهباً/فضة. يُسعَّر الذهب والفضة بالدولار ثم يُحوَّل إلى الجنيه المصري. يفصل هذا السطر أثر سعر الصرف على هذا التحويل عن حركة سعر المعدن نفسه، حتى لا يبدو يوم استقر فيه الذهب مع تحرك سعر الصرف وكأنه خسارة في الذهب.',
   todayNoChangeTitle: 'لا تغييرات بعد',
   todayNoChangeHint: 'الذهب والفضة والأسهم وسعر الجنيه/الدولار لم تتحرك منذ إغلاق الأمس.',
   manageBtnLabel: 'إدارة',

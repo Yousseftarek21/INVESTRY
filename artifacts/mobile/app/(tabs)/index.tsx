@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import {
-  ActivityIndicator, Animated, AppState, Image, LayoutChangeEvent, Modal, Platform, Pressable, RefreshControl,
+  ActivityIndicator, Alert, Animated, AppState, Image, LayoutChangeEvent, Modal, Platform, Pressable, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +33,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
+import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useGoals } from '@/context/GoalsContext';
 import { GoalRing } from '@/components/GoalRing';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
@@ -46,7 +47,7 @@ import { AllocationBar } from '@/components/AllocationBar';
 import { DetailModal } from '@/components/DetailModal';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding, MarketPrices } from '@/types';
-import { computeCashTotalEGP } from '@/utils/cash';
+import { computeCashTotalEGP, computePendingIncomeEGP } from '@/utils/cash';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -332,6 +333,7 @@ export default function HomeScreen() {
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
   const { cashAccounts } = useCash();
+  const { recurringIncomes } = useRecurringIncome();
   const { goals } = useGoals();
   const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
@@ -388,6 +390,11 @@ export default function HomeScreen() {
   }, [holdingsSyncError]);
 
   const cashTotalEGP = useMemo(() => computeCashTotalEGP(cashAccounts, prices), [cashAccounts, prices]);
+  // Uncollected 'pending' income (money owed to the user, not yet in any
+  // account — see Income screen / IncomeKind) counts toward net worth
+  // directly, the same way cash does, so it stops being invisible in the
+  // one number the user actually cares about.
+  const pendingIncomeEGP = useMemo(() => computePendingIncomeEGP(recurringIncomes, prices), [recurringIncomes, prices]);
   // Real balances in the currencies they're actually held in — the single
   // converted total necessarily hides this, and someone holding dollars
   // thinks in dollars, not in a converted equivalent. Largest first, and
@@ -666,7 +673,7 @@ export default function HomeScreen() {
   // "Net Worth incl. cash" under the hero, so the badge and that number can
   // never disagree. Always EGP, never the display currency: switching to USD
   // must not look like a demotion.
-  const netWorthEgp = summary.totalValue + cashTotalEGP;
+  const netWorthEgp = summary.totalValue + cashTotalEGP + pendingIncomeEGP;
   const { tier, since: tierSince, change: tierChange, clearChange: clearTierChange } = usePortfolioTier(netWorthEgp);
   const [showTierCard, setShowTierCard] = useState(false);
 
@@ -951,14 +958,30 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Net worth (investments + cash) — additive row, only when user has cash accounts */}
-          {cashTotalEGP > 0 && (
+          {/* Net worth (investments + cash + pending income) — additive row,
+              only when the user has cash accounts and/or pending income. */}
+          {(cashTotalEGP > 0 || pendingIncomeEGP > 0) && (
             <View style={styles.netWorthRow}>
               <Feather name="plus-circle" size={10} color={colors.mutedForeground + '88'} />
               <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]}>
                 {hideValues
                   ? `${t.netWorthLabel}: ••••••`
-                  : `${t.netWorthLabel}: ${fmtCompact(toDisp(summary.totalValue + cashTotalEGP))} ${displayCurrency}`}
+                  : `${t.netWorthLabel}: ${fmtCompact(toDisp(netWorthEgp))} ${displayCurrency}`}
+              </Text>
+            </View>
+          )}
+
+          {/* Pending income called out on its own — it's counted in the net
+              worth line above, but showing it as its own line means it's
+              never mistaken for cash already in hand (the exact confusion
+              a real user's "money owed to me" feedback flagged). */}
+          {pendingIncomeEGP > 0 && (
+            <View style={styles.netWorthRow}>
+              <Feather name="clock" size={10} color="#F59E0B" />
+              <Text style={[styles.netWorthTxt, { color: '#F59E0B' }]}>
+                {hideValues
+                  ? `${t.pendingIncomeLabel}: ••••••`
+                  : `${t.pendingIncomeLabel}: ${fmtCompact(toDisp(pendingIncomeEGP))} ${displayCurrency}`}
               </Text>
             </View>
           )}
@@ -1629,7 +1652,25 @@ function TodayBreakdownModal({
                 <View key={r.key} style={tb.row}>
                   <View style={[tb.iconBox, { backgroundColor: r.color + '1A' }]}>{r.icon}</View>
                   <View style={tb.rowBody}>
-                    <Text style={[tb.rowLabel, { color: colors.text }]}>{r.label}</Text>
+                    <View style={tb.rowLabelWrap}>
+                      <Text style={[tb.rowLabel, { color: colors.text }]}>{r.label}</Text>
+                      {r.key === 'fx' && (
+                        // Ahmed (real user, Feedback & Ideas chat) reported this row
+                        // as confusing — he doesn't hold "currency," so a "Currency"
+                        // loss read as a phantom holding. It's actually correct: the
+                        // FX component of gold/silver's EGP valuation, broken out on
+                        // its own (see the comment above todayBreakdown). Explaining
+                        // it in place is simpler and safer than renaming a label
+                        // that's technically accurate everywhere else it appears.
+                        <TouchableOpacity
+                          onPress={() => Alert.alert(t.currencyFxLabel, t.currencyFxExplainer)}
+                          hitSlop={8}
+                          style={tb.infoBtn}
+                        >
+                          <Feather name="info" size={12} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                     {r.key === 'fixedIncome' ? (
                       <Text style={[tb.rowSub, { color: colors.mutedForeground }]}>{t.interestAccruedToday}</Text>
                     ) : r.pct !== null ? (
@@ -1666,7 +1707,9 @@ const tb = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBox: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   rowBody: { flex: 1, minWidth: 0, gap: 1 },
+  rowLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   rowLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  infoBtn: { padding: 1 },
   rowSub: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   rowAmount: { fontSize: 14, fontFamily: 'Inter_700Bold' },
   emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', paddingVertical: 20 },

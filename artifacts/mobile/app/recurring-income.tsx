@@ -6,7 +6,7 @@ import {
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
-import { backChevron } from '@/utils/rtl';
+import { backChevron, forwardArrow } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerField } from '@/components/DatePickerField';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -16,9 +16,10 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useSubscription } from '@/context/SubscriptionContext';
+import { useActivityLog } from '@/hooks/useActivityLog';
 import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
-import { RecurringIncome } from '@/types';
+import { IncomeKind, RecurringIncome } from '@/types';
 
 // Recurring income tracking is a Pro-only feature — Free shows the screen
 // (so an existing entry from before a downgrade is still visible) but
@@ -57,14 +58,20 @@ export default function RecurringIncomeScreen() {
     addRecurringIncome,
     updateRecurringIncome,
     removeRecurringIncome,
+    markIncomeCollected,
   } = useRecurringIncome();
   const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
+  const { logActivity } = useActivityLog();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [showAccountPicker, setShowAccountPicker] = useState(false);
+  // Set while the account picker is open to collect a pending entry instead
+  // of to pick the deposit account on the form — same modal, two purposes.
+  const [collectingId, setCollectingId] = useState<string | null>(null);
 
+  const [kind, setKind] = useState<IncomeKind>('recurring');
   const [name, setName] = useState('');
   const [amountRaw, setAmountRaw] = useState('');
   const [currency, setCurrency] = useState('EGP');
@@ -72,11 +79,16 @@ export default function RecurringIncomeScreen() {
   const [creditDayRaw, setCreditDayRaw] = useState('25');
   const [startDate, setStartDate] = useState(todayISO());
   const [endDate, setEndDate] = useState('');
+  const [expectedDate, setExpectedDate] = useState('');
   const [active, setActive] = useState(true);
+
+  const recurringEntries = recurringIncomes.filter(inc => inc.kind !== 'pending');
+  const pendingEntries = recurringIncomes.filter(inc => inc.kind === 'pending');
 
   const selectedAccount = cashAccounts.find(a => a.id === cashAccountId);
 
   const resetForm = useCallback(() => {
+    setKind('recurring');
     setName('');
     setAmountRaw('');
     setCurrency('EGP');
@@ -84,6 +96,7 @@ export default function RecurringIncomeScreen() {
     setCreditDayRaw('25');
     setStartDate(todayISO());
     setEndDate('');
+    setExpectedDate('');
     setActive(true);
     setEditingId(null);
     setShowForm(false);
@@ -96,13 +109,15 @@ export default function RecurringIncomeScreen() {
 
   const openEdit = (inc: RecurringIncome) => {
     setEditingId(inc.id);
+    setKind(inc.kind ?? 'recurring');
     setName(inc.name);
     setAmountRaw(String(inc.amount));
     setCurrency(inc.currency);
-    setCashAccountId(inc.cashAccountId);
-    setCreditDayRaw(String(inc.creditDay));
+    setCashAccountId(inc.cashAccountId ?? '');
+    setCreditDayRaw(String(inc.creditDay ?? 25));
     setStartDate(inc.startDate);
     setEndDate(inc.endDate ?? '');
+    setExpectedDate(inc.expectedDate ?? '');
     setActive(inc.active);
     setShowForm(true);
   };
@@ -111,6 +126,7 @@ export default function RecurringIncomeScreen() {
     const trimmed = name.trim();
     const amount = parseAmount(amountRaw);
     const creditDay = Math.min(31, Math.max(1, parseInt(creditDayRaw, 10) || 1));
+    const isPending = kind === 'pending';
 
     if (!trimmed) {
       Alert.alert(t.incomeName, t.incomeNameError);
@@ -120,7 +136,9 @@ export default function RecurringIncomeScreen() {
       Alert.alert(t.amount, t.incomeAmountError);
       return;
     }
-    if (!cashAccountId) {
+    // A pending entry doesn't have a destination account yet — that's
+    // chosen later, when the user marks it collected.
+    if (!isPending && !cashAccountId) {
       Alert.alert(t.depositInto, t.incomeAccountError);
       return;
     }
@@ -131,40 +149,55 @@ export default function RecurringIncomeScreen() {
 
     impact(Haptics.ImpactFeedbackStyle.Light);
 
+    const amountText = amount.toLocaleString('en-EG', { maximumFractionDigits: 0 });
+
     try {
       if (editingId) {
         const existing = recurringIncomes.find(r => r.id === editingId);
         if (!existing) return;
         await updateRecurringIncome({
           ...existing,
+          kind,
           name: trimmed,
           amount,
           currency,
-          cashAccountId,
-          creditDay,
+          cashAccountId: isPending ? existing.cashAccountId : cashAccountId,
+          creditDay: isPending ? existing.creditDay : creditDay,
           startDate,
-          endDate: endDate || undefined,
-          active,
+          endDate: isPending ? undefined : (endDate || undefined),
+          expectedDate: isPending ? (expectedDate || undefined) : undefined,
+          active: isPending ? existing.active : active,
         });
+        logActivity('income_edited', t.activityIncomeEditedTitle, t.activityIncomeEditedSubtitle(trimmed, amountText, currency), editingId);
       } else {
+        const id = generateId();
         await addRecurringIncome({
-          id: generateId(),
+          id,
+          kind,
           name: trimmed,
           amount,
           currency,
-          cashAccountId,
-          creditDay,
+          cashAccountId: isPending ? undefined : cashAccountId,
+          creditDay: isPending ? undefined : creditDay,
           startDate,
-          endDate: endDate || undefined,
-          active,
+          endDate: isPending ? undefined : (endDate || undefined),
+          expectedDate: isPending ? (expectedDate || undefined) : undefined,
+          collected: isPending ? false : undefined,
+          active: true,
           lastProcessedMonth: null,
           createdAt: new Date().toISOString(),
         });
+        logActivity('income_added', t.activityIncomeAddedTitle, t.activityIncomeAddedSubtitle(trimmed, amountText, currency), id);
       }
       resetForm();
     } catch {
       Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc);
     }
+  };
+
+  const handleMarkCollected = (id: string) => {
+    setCollectingId(id);
+    setShowAccountPicker(true);
   };
 
   const handleDelete = (id: string) => {
@@ -211,8 +244,10 @@ export default function RecurringIncomeScreen() {
           </TouchableOpacity>
           <Text style={[s.headerTitle, { color: colors.text }]}>
             {showForm
-              ? (editingId ? t.editRecurringIncome : t.addRecurringIncome)
-              : t.recurringIncome}
+              ? (editingId
+                  ? (kind === 'pending' ? t.editPendingIncome : t.editRecurringIncome)
+                  : (kind === 'pending' ? t.addPendingIncome : t.addRecurringIncome))
+              : t.incomeScreenTitle}
           </Text>
           {!showForm ? (
             <TouchableOpacity onPress={openAdd} hitSlop={8}>
@@ -244,68 +279,185 @@ export default function RecurringIncomeScreen() {
                     activeOpacity={0.85}
                   >
                     <Feather name="plus" size={16} color={colors.primaryForeground} />
-                    <Text style={[s.emptyBtnText, { color: colors.primaryForeground }]}>{t.addRecurringIncome}</Text>
+                    <Text style={[s.emptyBtnText, { color: colors.primaryForeground }]}>{t.addIncomeEntry}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={s.list}>
-                  {recurringIncomes.map(inc => (
-                    <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
-                      <TouchableOpacity
-                        style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-                        onPress={() => openEdit(inc)}
-                        activeOpacity={0.85}
-                      >
-                        <View style={[s.cardIcon, { backgroundColor: colors.primary + '18' }]}>
-                          <Feather name="repeat" size={18} color={colors.primary} />
-                        </View>
-                        <View style={s.cardBody}>
-                          <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
-                            {inc.name}
-                          </Text>
-                          <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {inc.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {inc.currency}
-                            {' · '}{t.monthlyOnDay} {inc.creditDay}
-                          </Text>
-                          <Text style={[s.cardAccount, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            → {cashAccounts.find(a => a.id === inc.cashAccountId)?.accountName ?? '—'}
-                          </Text>
-                          {(inc.transactions?.length ?? 0) > 0 ? (
-                            <Text style={[s.cardLastCredited, { color: colors.mutedForeground }]} numberOfLines={1}>
-                              {t.lastCredited}: {formatMonth(inc.transactions![inc.transactions!.length - 1].month)}
-                            </Text>
-                          ) : (
-                            <Text style={[s.cardLastCredited, { color: colors.mutedForeground, opacity: 0.6 }]} numberOfLines={1}>
-                              {t.notYetCredited}
-                            </Text>
-                          )}
-                        </View>
-                        <View style={s.cardSideCol}>
-                          <View style={[s.badge, {
-                            backgroundColor: inc.active ? colors.primary + '18' : colors.muted,
-                          }]}>
-                            <Text style={[s.badgeText, {
-                              color: inc.active ? colors.primary : colors.mutedForeground,
-                            }]}>
-                              {inc.active ? t.active : t.paused}
-                            </Text>
-                          </View>
+                  {pendingEntries.length > 0 && (
+                    <>
+                      {recurringEntries.length > 0 && (
+                        <Text style={[s.sectionHeader, { color: colors.mutedForeground }]}>{t.pendingIncomeLabel}</Text>
+                      )}
+                      {pendingEntries.map(inc => {
+                        const stateColor = inc.collected ? colors.green : '#F59E0B';
+                        const destAccount = inc.collected ? cashAccounts.find(a => a.id === inc.cashAccountId) : undefined;
+                        return (
+                        <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
                           <TouchableOpacity
-                            style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
-                            onPress={() => handleDelete(inc.id)}
-                            hitSlop={8}
+                            style={[s.pendingCard, {
+                              backgroundColor: colors.card, borderColor: colors.border,
+                              borderStartWidth: 3, borderStartColor: stateColor,
+                            }]}
+                            onPress={() => openEdit(inc)}
+                            activeOpacity={0.85}
                           >
-                            <Feather name="trash-2" size={13} color={colors.red} />
+                            <View style={s.pendingHeaderRow}>
+                              <View style={[s.cardIcon, { backgroundColor: stateColor + '18' }]}>
+                                <Feather name={inc.collected ? 'check-circle' : 'clock'} size={18} color={stateColor} />
+                              </View>
+                              <View style={s.cardBody}>
+                                <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
+                                  {inc.name}
+                                </Text>
+                                <View style={s.pendingAmountRow}>
+                                  <Text style={[s.pendingAmount, { color: colors.text }]} numberOfLines={1}>
+                                    {inc.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+                                  </Text>
+                                  <Text style={[s.pendingCurrency, { color: colors.mutedForeground }]}>{inc.currency}</Text>
+                                </View>
+                              </View>
+                              <View style={[s.pendingBadge, { backgroundColor: stateColor + '1F', borderColor: stateColor + '40' }]}>
+                                <Text style={[s.pendingBadgeText, { color: stateColor }]}>
+                                  {inc.collected ? t.collectedLabel : t.incomeKindPending}
+                                </Text>
+                              </View>
+                            </View>
+
+                            {(inc.expectedDate || destAccount || !inc.collected) && (
+                              <View style={[s.pendingFooterRow, { borderTopColor: colors.border }]}>
+                                <View style={s.pendingCaption}>
+                                  {inc.collected ? (
+                                    destAccount && (
+                                      <>
+                                        <Feather name={forwardArrow()} size={11} color={colors.mutedForeground} />
+                                        <Text style={[s.pendingCaptionText, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                          {destAccount.accountName}
+                                        </Text>
+                                      </>
+                                    )
+                                  ) : inc.expectedDate ? (
+                                    <>
+                                      <Feather name="calendar" size={11} color={colors.mutedForeground} />
+                                      <Text style={[s.pendingCaptionText, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                        {t.expectedDate}: {inc.expectedDate}
+                                      </Text>
+                                    </>
+                                  ) : null}
+                                </View>
+                                {!inc.collected && (
+                                  <TouchableOpacity
+                                    style={[s.collectBtn, { backgroundColor: colors.green }]}
+                                    onPress={() => handleMarkCollected(inc.id)}
+                                    hitSlop={8}
+                                    activeOpacity={0.85}
+                                  >
+                                    <Feather name="check" size={12} color={colors.primaryForeground} />
+                                    <Text style={[s.collectBtnText, { color: colors.primaryForeground }]}>{t.markCollected}</Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            )}
                           </TouchableOpacity>
-                        </View>
-                      </TouchableOpacity>
-                    </SwipeToDelete>
-                  ))}
+                        </SwipeToDelete>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {recurringEntries.length > 0 && (
+                    <>
+                      {pendingEntries.length > 0 && (
+                        <Text style={[s.sectionHeader, { color: colors.mutedForeground }]}>{t.incomeKindRecurring}</Text>
+                      )}
+                      {recurringEntries.map(inc => (
+                        <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
+                          <TouchableOpacity
+                            style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+                            onPress={() => openEdit(inc)}
+                            activeOpacity={0.85}
+                          >
+                            <View style={[s.cardIcon, { backgroundColor: colors.primary + '18' }]}>
+                              <Feather name="repeat" size={18} color={colors.primary} />
+                            </View>
+                            <View style={s.cardBody}>
+                              <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
+                                {inc.name}
+                              </Text>
+                              <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                {inc.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {inc.currency}
+                                {' · '}{t.monthlyOnDay} {inc.creditDay}
+                              </Text>
+                              <Text style={[s.cardAccount, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                → {cashAccounts.find(a => a.id === inc.cashAccountId)?.accountName ?? '—'}
+                              </Text>
+                              {(inc.transactions?.length ?? 0) > 0 ? (
+                                <Text style={[s.cardLastCredited, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                  {t.lastCredited}: {formatMonth(inc.transactions![inc.transactions!.length - 1].month)}
+                                </Text>
+                              ) : (
+                                <Text style={[s.cardLastCredited, { color: colors.mutedForeground, opacity: 0.6 }]} numberOfLines={1}>
+                                  {t.notYetCredited}
+                                </Text>
+                              )}
+                            </View>
+                            <View style={s.cardSideCol}>
+                              <View style={[s.badge, {
+                                backgroundColor: inc.active ? colors.primary + '18' : colors.muted,
+                              }]}>
+                                <Text style={[s.badgeText, {
+                                  color: inc.active ? colors.primary : colors.mutedForeground,
+                                }]}>
+                                  {inc.active ? t.active : t.paused}
+                                </Text>
+                              </View>
+                              <TouchableOpacity
+                                style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
+                                onPress={() => handleDelete(inc.id)}
+                                hitSlop={8}
+                              >
+                                <Feather name="trash-2" size={13} color={colors.red} />
+                              </TouchableOpacity>
+                            </View>
+                          </TouchableOpacity>
+                        </SwipeToDelete>
+                      ))}
+                    </>
+                  )}
                 </View>
               )
             ) : (
               /* ── FORM ── */
               <View style={s.form}>
+
+                {/* Recurring vs Pending — only choosable when adding; an
+                    existing entry's kind is fixed once created (converting
+                    a live recurring schedule into a one-off receivable, or
+                    back, isn't a meaningful edit). */}
+                {!editingId && (
+                  <View style={s.field}>
+                    <Text style={[s.label, { color: colors.mutedForeground }]}>{t.incomeKindLabel}</Text>
+                    <View style={s.kindToggle}>
+                      {(['recurring', 'pending'] as const).map(k => (
+                        <TouchableOpacity
+                          key={k}
+                          style={[s.kindChip, {
+                            backgroundColor: kind === k ? colors.primary : colors.input,
+                            borderColor: kind === k ? colors.primary : colors.border,
+                          }]}
+                          onPress={() => setKind(k)}
+                        >
+                          <Text style={[s.kindChipText, { color: kind === k ? colors.primaryForeground : colors.text }]}>
+                            {k === 'recurring' ? t.incomeKindRecurring : t.incomeKindPending}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    {kind === 'pending' && (
+                      <Text style={[s.hint, { color: colors.mutedForeground }]}>{t.pendingIncomeSectionHint}</Text>
+                    )}
+                  </View>
+                )}
 
                 {/* Income Name */}
                 <View style={s.field}>
@@ -314,7 +466,7 @@ export default function RecurringIncomeScreen() {
                     style={[s.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
                     value={name}
                     onChangeText={setName}
-                    placeholder={t.incomeNamePlaceholder}
+                    placeholder={kind === 'pending' ? t.pendingIncomeNamePlaceholder : t.incomeNamePlaceholder}
                     placeholderTextColor={colors.mutedForeground}
                     returnKeyType="next"
                   />
@@ -353,6 +505,21 @@ export default function RecurringIncomeScreen() {
                   </ScrollView>
                 </View>
 
+                {kind === 'pending' ? (
+                  /* Expected Date — informational only, no cron/processor
+                     depends on it. No account picker: which account this
+                     lands in is chosen later, when marked collected. */
+                  <View style={s.field}>
+                    <DatePickerField
+                      label={t.expectedDateOptional}
+                      value={expectedDate}
+                      onChange={setExpectedDate}
+                      onClear={() => setExpectedDate('')}
+                      placeholder={t.noExpectedDate}
+                    />
+                  </View>
+                ) : (
+                <>
                 {/* Deposit Into */}
                 <View style={s.field}>
                   <Text style={[s.label, { color: colors.mutedForeground }]}>{t.depositInto}</Text>
@@ -424,9 +591,12 @@ export default function RecurringIncomeScreen() {
                     thumbColor={active ? colors.primary : colors.mutedForeground}
                   />
                 </View>
+                </>
+                )}
 
-                {/* Credit History (edit mode only) */}
-                {editingId && (() => {
+                {/* Credit History (edit mode only, recurring entries only —
+                    pending entries have no monthly credit schedule). */}
+                {editingId && kind === 'recurring' && (() => {
                   const editing = recurringIncomes.find(r => r.id === editingId);
                   const txs = editing?.transactions ?? [];
                   return (
@@ -473,20 +643,39 @@ export default function RecurringIncomeScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* ── Account Picker Modal ── */}
+        {/* ── Account Picker Modal ──
+            Doubles as "pick a deposit account for the form" (collectingId
+            null) and "pick which account this pending entry landed in"
+            (collectingId set) — same list, different action on select. */}
         <Modal
           visible={showAccountPicker}
           animationType="slide"
           transparent
-          onRequestClose={() => setShowAccountPicker(false)}
+          onRequestClose={() => { setShowAccountPicker(false); setCollectingId(null); }}
         >
           <TouchableOpacity
             style={s.pickerOverlay}
             activeOpacity={1}
-            onPress={() => setShowAccountPicker(false)}
+            onPress={() => { setShowAccountPicker(false); setCollectingId(null); }}
           >
             <View style={[s.pickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[s.pickerSheetTitle, { color: colors.text }]}>{t.selectAccount}</Text>
+              <View style={s.pickerSheetHeaderRow}>
+                {!!collectingId && (
+                  <View style={[s.pickerSheetIcon, { backgroundColor: colors.green + '18' }]}>
+                    <Feather name="check" size={14} color={colors.green} />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.pickerSheetTitle, { color: colors.text }]}>
+                    {collectingId ? t.markCollected : t.selectAccount}
+                  </Text>
+                  {!!collectingId && (
+                    <Text style={[s.pickerSheetSubtitle, { color: colors.mutedForeground }]}>
+                      {t.markCollectedPickAccountHint}
+                    </Text>
+                  )}
+                </View>
+              </View>
               {cashAccounts.length === 0 ? (
                 <Text style={[s.pickerOptionSub, { color: colors.mutedForeground, textAlign: 'center', paddingVertical: 16 }]}>
                   {t.noCashAccounts}
@@ -497,16 +686,40 @@ export default function RecurringIncomeScreen() {
                     key={a.id}
                     style={[s.pickerOption, {
                       borderColor: colors.border,
-                      backgroundColor: cashAccountId === a.id ? colors.primary + '14' : 'transparent',
+                      backgroundColor: !collectingId && cashAccountId === a.id ? colors.primary + '14' : 'transparent',
                     }]}
                     onPress={() => {
-                      setCashAccountId(a.id);
-                      setCurrency(a.currency);
+                      if (collectingId) {
+                        impact(Haptics.ImpactFeedbackStyle.Medium);
+                        const collected = recurringIncomes.find(r => r.id === collectingId);
+                        markIncomeCollected(collectingId, a.id)
+                          .then(() => {
+                            if (!collected) return;
+                            logActivity(
+                              'income_collected',
+                              t.activityIncomeCollectedTitle,
+                              t.activityIncomeCollectedSubtitle(
+                                collected.name,
+                                collected.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                                collected.currency,
+                                a.accountName,
+                              ),
+                              collectingId,
+                            );
+                          })
+                          .catch(() => {
+                            Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc);
+                          });
+                        setCollectingId(null);
+                      } else {
+                        setCashAccountId(a.id);
+                        setCurrency(a.currency);
+                      }
                       setShowAccountPicker(false);
                     }}
                   >
                     <Text style={[s.pickerOptionText, {
-                      color: cashAccountId === a.id ? colors.primary : colors.text,
+                      color: !collectingId && cashAccountId === a.id ? colors.primary : colors.text,
                     }]}>
                       {a.accountName}
                     </Text>
@@ -565,6 +778,7 @@ const s = StyleSheet.create({
   emptyBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
 
   list: { gap: 10 },
+  sectionHeader: { fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 4, marginBottom: 2 },
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1, padding: 14 },
   cardIcon:    { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   cardBody:    { flex: 1, gap: 2 },
@@ -577,6 +791,26 @@ const s = StyleSheet.create({
   cardSideCol: { alignItems: 'flex-end', gap: 8 },
   deleteBtn:   { borderRadius: 8, padding: 6 },
 
+  // Pending-income card — a distinct two-row shape (stat header + a
+  // footer that's either the expected date or the Mark Collected action)
+  // rather than the recurring card's single row, since a receivable has
+  // a lifecycle (pending → collected) the recurring card doesn't.
+  pendingCard:       { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  pendingHeaderRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  pendingAmountRow:  { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 1 },
+  pendingAmount:     { fontSize: 17, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
+  pendingCurrency:   { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  pendingBadge:      { borderRadius: 6, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 3, alignSelf: 'flex-start' },
+  pendingBadgeText:  { fontSize: 10.5, fontFamily: 'Inter_700Bold', letterSpacing: 0.3 },
+  pendingFooterRow:  {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  pendingCaption:     { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1, minWidth: 0 },
+  pendingCaptionText: { fontSize: 12, fontFamily: 'Inter_400Regular', flexShrink: 1 },
+  collectBtn:      { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  collectBtnText:  { fontSize: 12, fontFamily: 'Inter_700Bold' },
+
   form:    { gap: 16, paddingTop: 8 },
   field:   { gap: 6 },
   label:   { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.3 },
@@ -585,6 +819,9 @@ const s = StyleSheet.create({
   chips:   { flexDirection: 'row', gap: 8, paddingVertical: 2 },
   chip:    { borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 8 },
   chipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  kindToggle:  { flexDirection: 'row', gap: 8 },
+  kindChip:    { flex: 1, borderRadius: 10, borderWidth: 1, paddingVertical: 10, alignItems: 'center' },
+  kindChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
 
   noAccounts:     { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, padding: 14 },
   noAccountsText: { fontSize: 13, fontFamily: 'Inter_400Regular', flex: 1 },
@@ -603,7 +840,10 @@ const s = StyleSheet.create({
 
   pickerOverlay:     { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   pickerSheet:       { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, gap: 4 },
-  pickerSheetTitle:  { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 8 },
+  pickerSheetHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  pickerSheetIcon:   { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  pickerSheetTitle:  { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  pickerSheetSubtitle: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   pickerOption:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
   pickerOptionText:  { fontSize: 15, fontFamily: 'Inter_500Medium' },
   pickerOptionSub:   { fontSize: 13, fontFamily: 'Inter_400Regular' },

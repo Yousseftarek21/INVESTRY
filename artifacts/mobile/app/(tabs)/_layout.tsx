@@ -116,7 +116,12 @@ function ClassicTabLayout() {
             <Pressable
               onPress={() => router.push('/(tabs)/holdings')}
               style={tabStyles.addWrap}
-              accessibilityLabel={t.addInvestment}
+              // Was t.addInvestment ("Add Investment") — this tab actually
+              // opens a general Investment/Cash/Income/Dividends chooser
+              // (via Holdings' own "+ Add" button), so the narrower label
+              // over-promised. t.addTab is the same generic "Add" already
+              // used for this tab's own title, just below.
+              accessibilityLabel={t.addTab}
             >
               <View style={[tabStyles.addBtn, { backgroundColor: colors.primary }]}>
                 <Feather name="plus" size={26} color="#000" />

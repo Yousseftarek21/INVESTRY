@@ -41,6 +41,11 @@ interface RecurringIncomeContextValue {
   addRecurringIncome: (r: RecurringIncome) => Promise<void>;
   updateRecurringIncome: (r: RecurringIncome) => Promise<void>;
   removeRecurringIncome: (id: string) => Promise<void>;
+  /** 'pending' entries only — deposits the amount into the chosen cash
+      account and flips `collected`, taking it out of the pending net-worth
+      total. Kept (not deleted) so it still shows in history, same as a
+      recurring entry's credited-month transactions. */
+  markIncomeCollected: (id: string, cashAccountId: string) => Promise<void>;
   isLoading: boolean;
   syncError: string | null;
 }
@@ -222,6 +227,20 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
     }
   }, [token, persist, userId]);
 
+  // ── Mark a pending entry collected ─────────────────────────────────────────
+  // Deposits the amount into the chosen cash account (same balance-bump the
+  // credit processor does for recurring entries) and flips `collected` so
+  // it drops out of the pending net-worth total, without deleting the entry.
+  const markIncomeCollected = useCallback(async (id: string, cashAccountId: string) => {
+    const inc = incomes.find(x => x.id === id);
+    if (!inc || inc.collected) return;
+    const account = cashAccounts.find(a => a.id === cashAccountId);
+    if (!account) return;
+
+    await updateCashAccount({ ...account, balance: (Number(account.balance) || 0) + inc.amount });
+    await updateRecurringIncome({ ...inc, cashAccountId, collected: true });
+  }, [incomes, cashAccounts, updateCashAccount, updateRecurringIncome]);
+
   // ── Credit processor ───────────────────────────────────────────────────────
   // Credits ALL missed months since lastProcessedMonth, not just the current one.
   // For past months the credit day is irrelevant (it already passed).
@@ -244,6 +263,12 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
     const changedIncomes: RecurringIncome[] = [];
 
     incomes.forEach(inc => {
+      // 'pending' entries (one-off, uncollected receivables) have no
+      // credit schedule at all — they count toward net worth directly
+      // (see the pending-income total in app/(tabs)/index.tsx) until
+      // markIncomeCollected deposits them, so this monthly processor must
+      // never touch them.
+      if (inc.kind === 'pending') return;
       if (!inc.active) return;
       if (now < new Date(inc.startDate)) return;
 
@@ -251,7 +276,8 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
       // credit to land. Leave lastProcessedMonth untouched (don't fabricate
       // a "credited" transaction for money that never moved) so it can
       // catch up correctly if the account is ever recreated.
-      if (!cashAccounts.some(a => a.id === inc.cashAccountId)) return;
+      const targetAccountId = inc.cashAccountId;
+      if (!targetAccountId || !cashAccounts.some(a => a.id === targetAccountId)) return;
 
       const startYM = currentYearMonth(new Date(inc.startDate));
       const endYM = inc.endDate ? currentYearMonth(new Date(inc.endDate)) : null;
@@ -264,7 +290,7 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
         if (month < startYM) return false;
         if (endYM && month > endYM) return false;
         if (month === ym) {
-          return now.getDate() >= effectiveCreditDay(inc.creditDay, now);
+          return now.getDate() >= effectiveCreditDay(inc.creditDay ?? 1, now);
         }
         return true;
       });
@@ -272,7 +298,7 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
       if (monthsToCredit.length === 0) return;
 
       const totalCredit = inc.amount * monthsToCredit.length;
-      deltas[inc.cashAccountId] = (deltas[inc.cashAccountId] || 0) + totalCredit;
+      deltas[targetAccountId] = (deltas[targetAccountId] || 0) + totalCredit;
 
       const newTx: IncomeTransaction[] = monthsToCredit.map(month => ({
         month,
@@ -304,6 +330,7 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
       addRecurringIncome,
       updateRecurringIncome,
       removeRecurringIncome,
+      markIncomeCollected,
       isLoading,
       syncError,
     }}>

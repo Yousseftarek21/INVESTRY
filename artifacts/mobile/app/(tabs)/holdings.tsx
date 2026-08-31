@@ -360,7 +360,12 @@ export default function HoldingsScreen() {
               activeOpacity={0.85}
             >
               <Feather name="plus" size={17} color={colors.primaryForeground} />
-              <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>{t.addInvestment}</Text>
+              {/* Was t.addInvestment — this button opens the same general
+                  Investment/Cash/Income/Dividends chooser as the header's
+                  own "+ Add" button just above (openAdd -> /add-choose),
+                  not an investment-only form, so it shouldn't promise
+                  narrower than that. */}
+              <Text style={[styles.inlineBtnText, { color: colors.primaryForeground }]}>{t.addTab}</Text>
             </TouchableOpacity>
           </View>
         ) : searchQuery.trim() && filtered.length === 0 ? (

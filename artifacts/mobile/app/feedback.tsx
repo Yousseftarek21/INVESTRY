@@ -1,8 +1,26 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, RefreshControl, ScrollView,
+  ActivityIndicator, Animated, Image, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+// Every "behavior"-driven keyboard-avoidance approach tried here tonight —
+// react-native's own KeyboardAvoidingView, this library's KeyboardAvoidingView
+// (padding and translate-with-padding), KeyboardStickyView — relies on some
+// component's own automatic keyboard-height measurement, and that
+// measurement is exactly what's unreliable under this app's setup
+// (KeyboardProvider + New Architecture). This instead reads the real
+// keyboard height directly and applies it as literal, fully-visible
+// padding: no "behavior" prop, no internal transform math to go wrong.
+// useReanimatedKeyboardAnimation specifically (not the plain useKeyboardState
+// hook) because its shared value is driven straight from the native
+// keyboard event on the UI thread, tracking the keyboard's own animation
+// in real time — a plain React-state version of this same fix showed a
+// visible delay/pop versus the keyboard, since a state update only lands a
+// frame or two behind the native animation.
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+// Reanimated's own Animated.View, aliased — react-native's own Animated
+// (below) already drives Bubble's entrance/like animations under that name.
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
@@ -254,6 +272,16 @@ export default function FeedbackScreen() {
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
+  // `height` is a Reanimated shared value driven straight from the native
+  // keyboard event on the UI thread — the library's own docs use it
+  // directly as `transform: translateY`, negative as the keyboard rises.
+  // Negated here for a bottom-padding equivalent, so this column's height
+  // shrinks in perfect real-time sync with the keyboard's own animation,
+  // not a frame behind it like a React-state-driven padding would be.
+  const { height: keyboardHeightSV } = useReanimatedKeyboardAnimation();
+  const keyboardPaddingStyle = useAnimatedStyle(() => ({
+    paddingBottom: -keyboardHeightSV.value,
+  }));
 
   return (
     <>
@@ -280,7 +308,7 @@ export default function FeedbackScreen() {
           <View style={{ width: 22 }} />
         </ExpoLinearGradient>
 
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Reanimated.View style={[{ flex: 1 }, keyboardPaddingStyle]}>
           <ScrollView
             ref={scrollRef}
             style={{ flex: 1 }}
@@ -369,7 +397,7 @@ export default function FeedbackScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </Reanimated.View>
       </View>
     </>
   );

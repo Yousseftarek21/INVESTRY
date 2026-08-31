@@ -1,8 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView,
+  ActivityIndicator, Alert, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+// See feedback.tsx for the full rationale — every "behavior"-driven
+// keyboard-avoidance approach relies on some component's own automatic
+// keyboard-height measurement, which is what's unreliable here. This reads
+// the real keyboard height directly, via a Reanimated shared value driven
+// straight from the native keyboard event (not React state, which lands a
+// frame or two behind), and applies it as real-time literal padding.
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+// Reanimated's own Animated.View — no naming collision in this file.
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
@@ -234,6 +243,10 @@ export default function AIAssistantScreen() {
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
+  const { height: keyboardHeightSV } = useReanimatedKeyboardAnimation();
+  const keyboardPaddingStyle = useAnimatedStyle(() => ({
+    paddingBottom: -keyboardHeightSV.value,
+  }));
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -312,7 +325,7 @@ export default function AIAssistantScreen() {
             <LockedFeatureCard feature={t.aiAssistantTitle} description={t.subAiAssistantFull} fullScreen />
           </View>
         ) : (
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+        <Reanimated.View style={[{ flex: 1 }, keyboardPaddingStyle]}>
           <ScrollView
             ref={scrollRef}
             style={{ flex: 1 }}
@@ -428,7 +441,7 @@ export default function AIAssistantScreen() {
               )}
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </Reanimated.View>
         )}
       </View>
     </>

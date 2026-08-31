@@ -195,19 +195,36 @@ export interface Dividend {
   createdAt: string;
 }
 
+// 'recurring' (default, and the only kind that existed before this field was
+// added — missing `kind` on an old stored record means 'recurring') is a
+// fixed monthly auto-deposit into a cash account, unchanged from before.
+// 'pending' is a one-off amount someone owes the user (e.g. an unpaid
+// freelance invoice) that isn't in any account yet: no cashAccountId/
+// creditDay required up front, it's excluded from the auto-credit
+// processor entirely, and it counts toward net worth directly (as its own
+// line, not folded into cash) until markIncomeCollected deposits it into a
+// chosen account and flips `collected`.
+export type IncomeKind = 'recurring' | 'pending';
+
 export interface RecurringIncome {
   id: string;
   name: string;
   amount: number;
   currency: string;
-  cashAccountId: string;
-  creditDay: number;
+  kind?: IncomeKind;
+  cashAccountId?: string;
+  /** Required for 'recurring', unused for 'pending'. */
+  creditDay?: number;
   startDate: string;
   endDate?: string;
   active: boolean;
   lastProcessedMonth: string | null;
   createdAt: string;
   transactions?: IncomeTransaction[];
+  /** 'pending' entries only — informational, no cron/processor depends on it. */
+  expectedDate?: string;
+  /** 'pending' entries only — true once markIncomeCollected has deposited it. */
+  collected?: boolean;
 }
 
 export interface MarketPrices {
