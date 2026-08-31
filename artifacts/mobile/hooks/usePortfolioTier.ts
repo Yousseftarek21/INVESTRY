@@ -94,24 +94,43 @@ export function usePortfolioTier(netWorthEgp: number) {
     const nextId = next?.id ?? null;
     if (nextId === held) return;
 
-    const persist = () => {
-      const nowIso = new Date().toISOString();
-      setHeld(nextId);
-      setSince(nextId ? nowIso : null);
-      if (nextId) {
-        AsyncStorage.multiSet([[heldKey(userId), nextId], [sinceKey(userId), nowIso]]).catch(() => null);
-      } else {
-        AsyncStorage.multiRemove([heldKey(userId), sinceKey(userId)]).catch(() => null);
-      }
-    };
-
     // Any change from what's on record celebrates — including from `null`
     // (nothing recorded yet, whether a fresh user or a tier id invalidated
     // by a rename). `from` stays null in that case; TierCelebration reads
     // that as "no previous tier to name," not "nothing happened."
     const from = held ? tierById(held) : null;
-    setChange({ from, to: next, promoted: (next?.level ?? -1) > (from?.level ?? -1) });
-    persist();
+    const nextChange: TierChange = { from, to: next, promoted: (next?.level ?? -1) > (from?.level ?? -1) };
+
+    // Persisted BEFORE the celebration ever renders, and awaited rather than
+    // fire-and-forget — a real incident showed exactly why: a crash the
+    // instant the celebration's dismiss button was tapped (see
+    // app/(tabs)/index.tsx's onDismiss) meant the fire-and-forget write
+    // sometimes never reached disk before the process died, so the *same*
+    // promotion re-detected as "new" on every subsequent cold start,
+    // re-showing the celebration (and re-hitting the crash) forever. The
+    // underlying crash is fixed separately, but this durably closes the
+    // "the record of what already happened depends on nothing interrupting
+    // the app afterward" gap regardless of what interrupts it next time.
+    (async () => {
+      const nowIso = new Date().toISOString();
+      try {
+        if (nextId) {
+          await AsyncStorage.multiSet([[heldKey(userId), nextId], [sinceKey(userId), nowIso]]);
+        } else {
+          await AsyncStorage.multiRemove([heldKey(userId), sinceKey(userId)]);
+        }
+      } catch {
+        // Storage write failed — do not advance `held`/show the
+        // celebration on a change that isn't actually durable yet; the
+        // next render of this effect will simply retry from the same
+        // starting point instead of silently drifting out of sync with
+        // what's on disk.
+        return;
+      }
+      setHeld(nextId);
+      setSince(nextId ? nowIso : null);
+      setChange(nextChange);
+    })();
   }, [userId, loaded, netWorthEgp, held]);
 
   const clearChange = useCallback(() => setChange(null), []);

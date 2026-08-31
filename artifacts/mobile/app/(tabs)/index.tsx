@@ -20,7 +20,6 @@ import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 import { usePortfolioTier } from '@/hooks/usePortfolioTier';
 import { TierCelebration } from '@/components/TierCelebration';
-import { maybeRequestReview } from '@/utils/appReview';
 import { TierSeal } from '@/components/TierSeal';
 import { TierCard } from '@/components/TierCard';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
@@ -1521,10 +1520,18 @@ export default function HomeScreen() {
     <TierCelebration
       change={tierChange}
       onDismiss={() => {
-        // A tier promotion is the most genuinely positive moment this app
-        // has — ask here, not after any other action, and never on a
-        // demotion (maybeRequestReview also self-limits to once ever).
-        if (tierChange?.promoted) void maybeRequestReview();
+        // maybeRequestReview() deliberately NOT called here anymore — a
+        // real user's own screen recording showed this exact flow (tier
+        // card -> tap Continue) hard-crashing the app, every single time,
+        // for two weeks. expo-store-review's native binding calls
+        // requireNativeModule('ExpoStoreReview'), which throws OUTSIDE
+        // catchable JS when the native module isn't compiled into the
+        // running binary — appReview.ts's own try/catch (added for exactly
+        // this risk) can't protect against a crash that happens below the
+        // JS layer, especially with the New Architecture enabled here. A
+        // "please review us" prompt is not worth risking that again until
+        // a real native rebuild ships the module and this is verified safe
+        // on-device first, not just reasoned about from the SDK source.
         clearTierChange();
       }}
       returnHint={
