@@ -16,6 +16,12 @@ const RANK_COPY: Record<number, { title: string; body: string }> = {
   3: { title: "🥉 You're #3 this week!", body: "You've made the top 3 on the Performance Leaderboard. Keep going!" },
 };
 
+const RANK_COPY_AR: Record<number, { title: string; body: string }> = {
+  1: { title: "🥇 أنت الأول هذا الأسبوع!", body: "أنت في صدارة لوحة الأداء. واصل التقدم!" },
+  2: { title: "🥈 أنت الثاني هذا الأسبوع!", body: "تقدمت إلى المركز الثاني في لوحة الأداء. واصل التقدم!" },
+  3: { title: "🥉 أنت الثالث هذا الأسبوع!", body: "وصلت إلى المراكز الثلاثة الأولى في لوحة الأداء. واصل التقدم!" },
+};
+
 let running = false;
 
 // Congratulates the current top 3 on the WEEKLY performance leaderboard —
@@ -46,6 +52,7 @@ async function checkTopRanks(): Promise<void> {
         pushToken: usersTable.pushToken,
         notifiedRank: usersTable.perfLeaderboardNotifiedRank,
         notifiedWeek: usersTable.perfLeaderboardNotifiedWeek,
+        language: usersTable.language,
       })
       .from(usersTable)
       .where(inArray(usersTable.id, top3.map(r => r.id)));
@@ -79,7 +86,7 @@ async function checkTopRanks(): Promise<void> {
       if (updated.length === 0) continue; // lost the race, or already congratulated for this-or-better
 
       if (u.pushToken) {
-        const copy = RANK_COPY[entry.rank];
+        const copy = (u.language === "ar" ? RANK_COPY_AR : RANK_COPY)[entry.rank];
         await sendPushToTokens([u.pushToken], copy.title, copy.body, { type: "leaderboard_rank", rank: entry.rank });
       }
     }

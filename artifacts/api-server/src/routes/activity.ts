@@ -28,6 +28,24 @@ const activityLogLimit = rateLimit({
 
 const VALID_TYPES = new Set(["cash_added", "cash_edited", "holding_added", "holding_edited", "holding_sold"]);
 
+// Generic, per-type push copy in the recipient's device language. The
+// activity-log ROW keeps the client's own specific title/subtitle exactly
+// as sent (e.g. "Gold Added" / "5g at 21k, 12,450 EGP") — those are
+// authored across many different screens (add-investment, cash-accounts,
+// sell-holding, ...) using the app's own in-app language, which is a
+// different, correct thing for the bell to follow. But localizing the PUSH
+// itself by device language would mean every one of those call sites
+// authoring a second, device-language version of its own specific message
+// — real scope, not a one-file fix. This trades some specificity in the
+// push text for being reliably in the right language everywhere.
+const PUSH_COPY: Record<string, { en: [string, string]; ar: [string, string] }> = {
+  cash_added:     { en: ["Cash Account Added", "Your cash account was saved."], ar: ["تمت إضافة حساب نقدي", "تم حفظ حسابك النقدي."] },
+  cash_edited:    { en: ["Cash Account Updated", "Your cash account was updated."], ar: ["تم تحديث الحساب النقدي", "تم تحديث حسابك النقدي."] },
+  holding_added:  { en: ["Investment Added", "Your new investment was saved."], ar: ["تمت إضافة استثمار", "تم حفظ استثمارك الجديد."] },
+  holding_edited: { en: ["Investment Updated", "Your investment was updated."], ar: ["تم تحديث الاستثمار", "تم تحديث استثمارك."] },
+  holding_sold:   { en: ["Investment Sold", "Your investment sale was recorded."], ar: ["تم بيع الاستثمار", "تم تسجيل عملية بيع استثمارك."] },
+};
+
 function generateActivityId(): string {
   return `act_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -86,7 +104,7 @@ router.post("/activity", activityLogLimit, async (req, res) => {
 
   try {
     const [user] = await db
-      .select({ pushToken: usersTable.pushToken, alertsEnabled: usersTable.activityAlertsEnabled })
+      .select({ pushToken: usersTable.pushToken, alertsEnabled: usersTable.activityAlertsEnabled, language: usersTable.language })
       .from(usersTable)
       .where(eq(usersTable.id, userId));
 
@@ -103,8 +121,11 @@ router.post("/activity", activityLogLimit, async (req, res) => {
     await db.insert(activityLogTable).values(row);
     res.status(201).json(row);
     // sendPushToTokens is itself best-effort and never rejects, so nothing
-    // further to await/catch here — the response has already gone out.
-    void sendPushToTokens([user.pushToken], title, subtitle, { type: "activity_log" });
+    // further to await/catch here — the response has already gone out. Push
+    // text is the generic device-language PUSH_COPY, not the client's own
+    // title/subtitle just stored above — see PUSH_COPY's comment.
+    const [pushTitle, pushBody] = PUSH_COPY[type][user.language === "ar" ? "ar" : "en"];
+    void sendPushToTokens([user.pushToken], pushTitle, pushBody, { type: "activity_log" });
   } catch (err) {
     req.log.error({ err }, "POST /activity failed");
     res.status(500).json({ error: "Failed to log activity" });

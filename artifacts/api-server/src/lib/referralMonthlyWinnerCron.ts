@@ -70,19 +70,19 @@ async function checkMonthlyWinner(): Promise<void> {
     }
 
     const [user] = await db
-      .select({ pushToken: usersTable.pushToken })
+      .select({ pushToken: usersTable.pushToken, language: usersTable.language })
       .from(usersTable)
       .where(eq(usersTable.id, winner.referrerId));
 
-    const monthLabel = lastMonthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     let notifiedAt: Date | null = null;
     if (user?.pushToken) {
-      await sendPushToTokens(
-        [user.pushToken],
-        "🏆 You won this month's referral prize!",
-        `You referred the most friends in ${monthLabel} — we'll be in touch about your prize soon.`,
-        { type: "referral_monthly_winner" },
-      );
+      const isAr = user.language === "ar";
+      const monthLabel = lastMonthStart.toLocaleDateString(isAr ? "ar-EG" : "en-US", { month: "long", year: "numeric" });
+      const title = isAr ? "🏆 لقد فزت بجائزة الإحالة لهذا الشهر!" : "🏆 You won this month's referral prize!";
+      const body = isAr
+        ? `أحلت أكبر عدد من الأصدقاء في ${monthLabel} — سنتواصل معك قريبًا بخصوص جائزتك.`
+        : `You referred the most friends in ${monthLabel} — we'll be in touch about your prize soon.`;
+      await sendPushToTokens([user.pushToken], title, body, { type: "referral_monthly_winner" });
       notifiedAt = new Date();
     }
 

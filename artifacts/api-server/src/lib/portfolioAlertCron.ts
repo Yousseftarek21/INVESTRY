@@ -51,7 +51,7 @@ function portfolioActivityId(userId: string, date: string): string {
 // day baseline. A move that only crosses ±1% later in the day still gets
 // caught, instead of being missed because an early, unrepresentative
 // snapshot already used up the day's one check.
-async function checkUser(userId: string, today: string, pushToken: string | null): Promise<void> {
+async function checkUser(userId: string, today: string, pushToken: string | null, language: "en" | "ar"): Promise<void> {
   const totalValue = await computeUserPortfolioValue(userId);
   if (totalValue <= 0) return; // nothing to track yet
 
@@ -183,6 +183,12 @@ async function checkUser(userId: string, today: string, pushToken: string | null
   if (updated.length === 0) return; // this milestone (or a further one) was already notified today
 
   const dir = pctChange > 0 ? "up" : "down";
+  // activityLogTable's copy stays English regardless of push language — the
+  // in-app notification bell is rendered by the client, which already has
+  // its own separate in-app language setting (AppSettingsContext) driving
+  // everything else it shows; this text is out of scope for "push
+  // notifications follow the device language" and changing it would risk a
+  // mismatch against whatever the client is otherwise displaying in.
   const title = "Portfolio Update";
   const subtitle = `Your portfolio is ${dir} ${Math.abs(pctChange).toFixed(1)}% today`;
 
@@ -201,7 +207,11 @@ async function checkUser(userId: string, today: string, pushToken: string | null
       set: { title, subtitle, createdAt: new Date() },
     });
 
-  await sendPushToTokens([pushToken], title, subtitle, { type: "portfolio_alert" });
+  const pushTitle = language === "ar" ? "تحديث المحفظة" : title;
+  const pushBody = language === "ar"
+    ? `محفظتك ${dir === "up" ? "ارتفعت" : "انخفضت"} بنسبة ${Math.abs(pctChange).toFixed(1)}% اليوم`
+    : subtitle;
+  await sendPushToTokens([pushToken], pushTitle, pushBody, { type: "portfolio_alert" });
 }
 
 let running = false;
@@ -215,13 +225,13 @@ async function checkAllUsers(): Promise<void> {
     // same escape hatch /api/subscription uses.
     const betaUnlockAll = process.env.BETA_UNLOCK_ALL === "true";
     const users = await db
-      .select({ id: usersTable.id, pushToken: usersTable.pushToken, alertsEnabled: usersTable.portfolioAlertsEnabled, plan: usersTable.plan })
+      .select({ id: usersTable.id, pushToken: usersTable.pushToken, alertsEnabled: usersTable.portfolioAlertsEnabled, plan: usersTable.plan, language: usersTable.language })
       .from(usersTable);
 
     for (const u of users) {
       try {
         const isPro = u.plan === "pro" || betaUnlockAll;
-        await checkUser(u.id, today, isPro && u.alertsEnabled ? u.pushToken : null);
+        await checkUser(u.id, today, isPro && u.alertsEnabled ? u.pushToken : null, u.language === "ar" ? "ar" : "en");
       } catch (err) {
         logger.warn({ err, userId: u.id }, "Portfolio alert check failed for user");
       }

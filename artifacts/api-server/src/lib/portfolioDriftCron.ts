@@ -28,11 +28,22 @@ const CLASS_LABEL: Record<AllocationClass, string> = {
   cash: "cash",
 };
 
+const CLASS_LABEL_AR: Record<AllocationClass, string> = {
+  gold: "الذهب",
+  silver: "الفضة",
+  stock: "الأسهم",
+  realEstate: "العقارات",
+  personalAsset: "الأصول الشخصية",
+  fixedIncome: "الدخل الثابت",
+  cash: "النقد",
+};
+
 interface TargetRow {
   userId: string;
   data: unknown;
   lastDriftAlertAt: Date | null;
   pushToken: string | null;
+  language: "en" | "ar";
 }
 
 function parseTargets(data: unknown): Partial<Record<AllocationClass, number>> {
@@ -70,7 +81,6 @@ async function checkUser(row: TargetRow): Promise<void> {
 
   const currentPct = (byClass[worstClass] / totalValue) * 100;
   const targetPct = targets[worstClass] as number;
-  const label = CLASS_LABEL[worstClass];
   const dir = worstDrift > 0 ? "above" : "below";
 
   await db
@@ -78,12 +88,12 @@ async function checkUser(row: TargetRow): Promise<void> {
     .set({ lastDriftAlertAt: new Date() })
     .where(eq(portfolioTargetsTable.userId, row.userId));
 
-  await sendPushToTokens(
-    [row.pushToken],
-    "Portfolio Drifted From Target",
-    `Your ${label} allocation is ${currentPct.toFixed(0)}% — ${Math.abs(worstDrift).toFixed(0)}pp ${dir} your ${targetPct.toFixed(0)}% target`,
-    { type: "drift_alert" },
-  );
+  const title = row.language === "ar" ? "انحراف المحفظة عن الهدف" : "Portfolio Drifted From Target";
+  const body = row.language === "ar"
+    ? `توزيع ${CLASS_LABEL_AR[worstClass]} لديك ${currentPct.toFixed(0)}% — ${Math.abs(worstDrift).toFixed(0)} نقطة ${dir === "above" ? "أعلى" : "أقل"} من هدفك ${targetPct.toFixed(0)}%`
+    : `Your ${CLASS_LABEL[worstClass]} allocation is ${currentPct.toFixed(0)}% — ${Math.abs(worstDrift).toFixed(0)}pp ${dir} your ${targetPct.toFixed(0)}% target`;
+
+  await sendPushToTokens([row.pushToken], title, body, { type: "drift_alert" });
 }
 
 let running = false;
@@ -98,6 +108,7 @@ async function checkAllUsers(): Promise<void> {
         data: portfolioTargetsTable.data,
         lastDriftAlertAt: portfolioTargetsTable.lastDriftAlertAt,
         pushToken: usersTable.pushToken,
+        language: usersTable.language,
       })
       .from(portfolioTargetsTable)
       .innerJoin(usersTable, eq(usersTable.id, portfolioTargetsTable.userId))
@@ -105,7 +116,7 @@ async function checkAllUsers(): Promise<void> {
 
     for (const row of rows) {
       try {
-        await checkUser(row);
+        await checkUser({ ...row, language: row.language === "ar" ? "ar" : "en" });
       } catch (err) {
         logger.warn({ err, userId: row.userId }, "Drift alert check failed for user");
       }
