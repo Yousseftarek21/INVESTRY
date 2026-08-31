@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -137,7 +137,7 @@ export function useAppUpdateCheck() {
     // into it would throw.
     if (!Updates.isEnabled) return;
 
-    (async () => {
+    const checkForOtaUpdate = async () => {
       try {
         const result = await Updates.checkForUpdateAsync();
         if (!result.isAvailable) return;
@@ -153,7 +153,31 @@ export function useAppUpdateCheck() {
       } catch {
         // Silent, same reasoning as the native check above.
       }
-    })();
+    };
+
+    checkForOtaUpdate();
+
+    // A single check-on-mount only ever catches an update that already
+    // existed the moment this screen first rendered — someone who keeps
+    // the app open, or backgrounds and returns without a full relaunch,
+    // across a publish would otherwise never learn about it until their
+    // next cold start. Directly caused a real "why didn't I get notified"
+    // report on a night with many rapid publishes. Re-checks periodically
+    // while foregrounded, and immediately on every return-to-foreground,
+    // so a long-lived session still converges on "latest" instead of only
+    // ever reflecting what was true at launch.
+    const OTA_RECHECK_MS = 5 * 60 * 1000;
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') checkForOtaUpdate();
+    }, OTA_RECHECK_MS);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') checkForOtaUpdate();
+    });
+
+    return () => {
+      clearInterval(interval);
+      sub.remove();
+    };
   }, []);
 
   const dismiss = () => {
