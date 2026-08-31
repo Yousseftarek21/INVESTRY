@@ -50,6 +50,14 @@ export const usersTable = pgTable("users", {
   // user is sent the "leaderboard launched" push so a redeploy/restart of
   // the boot-time sender (see competitionAnnouncement.ts) can't resend it.
   competitionAnnouncementSentAt: timestamp("competition_announcement_sent_at", { withTimezone: true }),
+  // The client's own language setting (AppSettingsContext) synced server-side
+  // — without this, every server-sent push (daily/weekly summary, drift
+  // alerts, admin broadcasts, etc.) has no way to know which language to
+  // send in and defaults to English for everyone regardless of their actual
+  // in-app setting. Synced from routes/account.ts's PUT /account/language,
+  // called both on explicit change and once on app hydration to backfill
+  // existing users who set Arabic before this column existed.
+  language:               text("language").notNull().default("en"), // 'en' | 'ar'
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -24,7 +24,8 @@ export async function ensureUserColumns(): Promise<void> {
         ADD COLUMN IF NOT EXISTS "competition_announcement_sent_at" timestamptz,
         ADD COLUMN IF NOT EXISTS "referral_redeemed_at" timestamptz,
         ADD COLUMN IF NOT EXISTS "perf_leaderboard_notified_rank" integer,
-        ADD COLUMN IF NOT EXISTS "perf_leaderboard_notified_week" text
+        ADD COLUMN IF NOT EXISTS "perf_leaderboard_notified_week" text,
+        ADD COLUMN IF NOT EXISTS "language" text NOT NULL DEFAULT 'en'
     `);
   } catch (err) {
     // Fails open, not closed: every caller of these columns already treats a
