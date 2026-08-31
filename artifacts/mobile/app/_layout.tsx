@@ -35,7 +35,7 @@ import { Paywall } from "@/components/Paywall";
 import { ForceUpdateGate } from "@/components/ForceUpdateGate";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { useNotificationTapRouting } from "@/hooks/useNotificationTapRouting";
-import { getApiBaseUrl } from "@/utils/api";
+import { getApiBaseUrl, apiFetch } from "@/utils/api";
 import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled } from "@/hooks/usePrices";
 import { hydrateEGXIndicesFromCache, prefetchEGXIndices } from "@/hooks/useEGXIndices";
 import { hydrateRealEstatePricesFromCache, prefetchRealEstatePrices } from "@/hooks/useRealEstatePrices";
@@ -276,6 +276,43 @@ function RevenueCatInitializer() {
   return null;
 }
 
+// Syncs AppSettingsContext's language to usersTable.language so server-sent
+// pushes (broadcast-push today, eventually the summary/alert crons) know
+// which language to send in — without this, every push defaults to English
+// regardless of the device's actual setting. Lives here, not inside
+// AppSettingsProvider itself, because that provider sits outside
+// ClerkProvider in the tree below (so it can theme/localize the loading
+// screen before Clerk is even ready) — useAuth() isn't safe to call there.
+// Same bridge-component pattern as NotificationsInitializer/
+// RevenueCatInitializer just above. Fires on every `language` change,
+// which also covers the one-time backfill for existing accounts: the
+// effect runs once more as soon as hydration replaces the 'en' default
+// with whatever was actually stored, so an existing Arabic user's real
+// preference reaches the server even though they never explicitly
+// re-triggered setLanguage.
+function LanguageSyncInitializer() {
+  const { language, isLoaded } = useAppSettings();
+  const { getToken, isSignedIn } = useAuth();
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        await apiFetch('/api/account/language', token, {
+          method: 'PUT',
+          body: JSON.stringify({ language }),
+        });
+      } catch {
+        // Best-effort — a failed sync just means the next server push
+        // falls back to English for this user until it succeeds another
+        // time; never worth surfacing to the user over.
+      }
+    })();
+  }, [language, isLoaded, isSignedIn, getToken]);
+  return null;
+}
+
 function DirectionWrapper({ children }: { children: React.ReactNode }) {
   const { language } = useAppSettings();
   return (
@@ -346,6 +383,7 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
       <NotificationsInitializer />
       <MetaSDKInitializer />
       <RevenueCatInitializer />
+      <LanguageSyncInitializer />
       <Paywall />
       {children}
     </>

@@ -167,6 +167,14 @@ export function AppSettingsProvider({ children }: { children: React.ReactNode })
     I18nManager.allowRTL(true);
     I18nManager.forceRTL(lang === 'ar');
     await AsyncStorage.setItem(K.lang, lang);
+    // Server sync deliberately isn't here — this provider sits outside
+    // ClerkProvider in the tree (see _layout.tsx), so useAuth() isn't safe
+    // to call from it. LanguageSyncInitializer (mounted inside
+    // ClerkProvider, same pattern as NotificationsInitializer/
+    // RevenueCatInitializer) watches `language` from this context instead
+    // and syncs from there — covers both this explicit change and, via its
+    // own effect firing on mount with the hydrated value, backfilling
+    // existing accounts that set a language before the sync existed.
   }, []);
 
   const setWeightUnit = useCallback(async (unit: WeightUnit) => {
