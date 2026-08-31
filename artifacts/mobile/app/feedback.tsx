@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Image, KeyboardAvoidingView, Platform, RefreshControl, ScrollView,
+  ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
@@ -23,6 +23,50 @@ import { useFeedback, markFeedbackSeen, type FeedbackMessage } from '@/hooks/use
 // competing with the identity color for attention.
 const FEEDBACK_ACCENT = '#EC4899';
 const FEEDBACK_ACCENT_DEEP = '#9D174D';
+
+// A pure client-side convention, not a schema field — a leading emoji marker
+// on the message text itself. Chosen over a real category column so this
+// stays a genuine "type and send" chat (no form fields, per the original
+// direction) while still letting bug reports and feature ideas visually
+// stand apart from general chatter, which is the whole point of a board
+// meant for exactly those two things. Older messages with no marker (or
+// anything sent from outside these three chips) just render as plain
+// "General" — nothing breaks, nothing requires a migration.
+const CATEGORY_MARKERS: Record<string, { color: string; icon: keyof typeof Feather.glyphMap }> = {
+  '🐛': { color: '#F87171', icon: 'alert-triangle' },
+  '💡': { color: '#38BDF8', icon: 'zap' },
+};
+
+// Labels resolved separately (not baked into CATEGORY_MARKERS) so they can
+// go through the app's own translation table — the marker/color/icon are
+// language-independent, but "Bug"/"Idea" as shown on-screen shouldn't be
+// the one English-only string on a screen everything else here translates.
+function categoryLabel(marker: string, t: ReturnType<typeof useT>): string {
+  return marker === '🐛' ? t.feedbackCatBug : t.feedbackCatIdea;
+}
+
+function parseCategory(message: string, t: ReturnType<typeof useT>): { color: string; label: string; icon: keyof typeof Feather.glyphMap; body: string } | null {
+  const trimmed = message.trim();
+  for (const marker of Object.keys(CATEGORY_MARKERS)) {
+    if (trimmed.startsWith(marker)) {
+      return { ...CATEGORY_MARKERS[marker], label: categoryLabel(marker, t), body: trimmed.slice(marker.length).trim() };
+    }
+  }
+  return null;
+}
+
+// Every "other" sender gets a real, stable color instead of one flat neutral
+// gray for everyone who isn't you — a chat where every other participant
+// looks identical doesn't read as a room full of people. Deliberately clear
+// of rose (this screen's own "you" identity) and gold (reserved for likes)
+// so neither meaning gets diluted by coincidentally matching a sender's
+// color.
+const SENDER_PALETTE = ['#38BDF8', '#A78BFA', '#34D399', '#FB923C', '#22D3EE', '#FBBF24'];
+function senderColor(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) hash = (hash * 31 + userId.charCodeAt(i)) >>> 0;
+  return SENDER_PALETTE[hash % SENDER_PALETTE.length];
+}
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name;
@@ -49,22 +93,66 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function Bubble({ m, onLike }: { m: FeedbackMessage; onLike: (id: string) => void }) {
+function Bubble({ m, onLike, isNew }: { m: FeedbackMessage; onLike: (id: string) => void; isNew: boolean }) {
   const colors = useColors();
+  const t = useT();
+  const category = parseCategory(m.message, t);
+  const displayText = category ? category.body : m.message;
+  const accent = m.isMe ? FEEDBACK_ACCENT : senderColor(m.userId);
+
+  // Plays once, only for a message that just arrived (a poll tick or your
+  // own send) — not replayed on every re-render of the same bubble (a like
+  // count changing shouldn't re-trigger the entrance), and not played at
+  // all for the batch that was already there when the screen opened, which
+  // would just read as the whole history cascading in rather than "this
+  // one is new."
+  const wasNew = useRef(isNew).current;
+  const enter = useRef(new Animated.Value(wasNew ? 0 : 1)).current;
+  useEffect(() => {
+    if (!wasNew) return;
+    Animated.spring(enter, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }).start();
+  }, [wasNew, enter]);
+
+  // A little more than a flat color swap on like — a quick scale-bounce on
+  // the heart itself makes tapping it feel like it actually did something,
+  // instead of just toggling a css-like state.
+  const heartScale = useRef(new Animated.Value(1)).current;
+  const handleLike = () => {
+    Animated.sequence([
+      Animated.spring(heartScale, { toValue: 1.35, friction: 3, tension: 200, useNativeDriver: true }),
+      Animated.spring(heartScale, { toValue: 1, friction: 4, tension: 150, useNativeDriver: true }),
+    ]).start();
+    onLike(m.id);
+  };
+
   return (
-    <View style={[s.row, m.isMe && s.rowMe]}>
+    <Animated.View
+      style={[
+        s.row, m.isMe && s.rowMe,
+        {
+          opacity: enter,
+          transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
+        },
+      ]}
+    >
       {!m.isMe && (
         m.senderImageUrl ? (
-          <Image source={{ uri: m.senderImageUrl }} style={[s.avatar, { borderColor: FEEDBACK_ACCENT + '50' }]} />
+          <Image source={{ uri: m.senderImageUrl }} style={[s.avatar, { borderColor: accent + '70' }]} />
         ) : (
-          <View style={[s.avatar, s.avatarFallback, { backgroundColor: FEEDBACK_ACCENT + '1E', borderColor: FEEDBACK_ACCENT + '50' }]}>
-            <Text style={[s.avatarInitials, { color: FEEDBACK_ACCENT }]}>{initials(m.senderName)}</Text>
+          <View style={[s.avatar, s.avatarFallback, { backgroundColor: accent + '22', borderColor: accent + '70' }]}>
+            <Text style={[s.avatarInitials, { color: accent }]}>{initials(m.senderName)}</Text>
           </View>
         )
       )}
       <View style={[s.bubbleCol, m.isMe && s.bubbleColMe]}>
         {!m.isMe && (
-          <Text style={[s.senderName, { color: colors.mutedForeground }]}>{firstName(m.senderName)}</Text>
+          <Text style={[s.senderName, { color: accent }]}>{firstName(m.senderName)}</Text>
+        )}
+        {category && (
+          <View style={[s.catTag, m.isMe && s.catTagMe, { backgroundColor: category.color + '1E', borderColor: category.color + '40' }]}>
+            <Feather name={category.icon} size={9} color={category.color} />
+            <Text style={[s.catTagTxt, { color: category.color }]}>{category.label}</Text>
+          </View>
         )}
         {m.isMe ? (
           <ExpoLinearGradient
@@ -73,22 +161,24 @@ function Bubble({ m, onLike }: { m: FeedbackMessage; onLike: (id: string) => voi
             end={{ x: 1, y: 1 }}
             style={[s.bubble, s.bubbleMe, { shadowColor: FEEDBACK_ACCENT_DEEP, shadowOpacity: 0.35 }]}
           >
-            <Text style={[s.bubbleText, { color: '#FFFFFF' }]}>{m.message}</Text>
+            <Text style={[s.bubbleText, { color: '#FFFFFF' }]}>{displayText}</Text>
           </ExpoLinearGradient>
         ) : (
-          <View style={[s.bubble, s.bubbleOther, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.bubbleText, { color: colors.text }]}>{m.message}</Text>
+          <View style={[s.bubble, s.bubbleOther, { backgroundColor: colors.card, borderColor: accent + '2A' }]}>
+            <Text style={[s.bubbleText, { color: colors.text }]}>{displayText}</Text>
           </View>
         )}
-        <TouchableOpacity style={[s.likeRow, m.isMe && s.likeRowMe, m.hasLiked && { backgroundColor: colors.primary + '16' }]} onPress={() => onLike(m.id)} hitSlop={6}>
-          <Feather name="heart" size={12} color={m.hasLiked ? colors.primary : colors.mutedForeground} />
+        <TouchableOpacity style={[s.likeRow, m.isMe && s.likeRowMe, m.hasLiked && { backgroundColor: colors.primary + '16' }]} onPress={handleLike} hitSlop={6}>
+          <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+            <Feather name="heart" size={12} color={m.hasLiked ? colors.primary : colors.mutedForeground} />
+          </Animated.View>
           {m.likeCount > 0 && (
             <Text style={[s.likeCount, { color: m.hasLiked ? colors.primary : colors.mutedForeground }]}>{m.likeCount}</Text>
           )}
           <Text style={[s.timeText, { color: colors.mutedForeground }]}>· {relativeTime(m.createdAt)}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -103,6 +193,17 @@ export default function FeedbackScreen() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  // Which message ids have already been rendered once — anything not in
+  // here the first time it's seen gets Bubble's entrance animation; after
+  // that first render it's added and never animates again. Seeded from the
+  // very first successful load so opening the chat doesn't cascade-animate
+  // the entire history.
+  const seenIdsRef = useRef<Set<string> | null>(null);
+  if (!isLoading && !isError && seenIdsRef.current === null) {
+    seenIdsRef.current = new Set(messages.map(m => m.id));
+  }
 
   // Marks the feed as seen once it's actually loaded (not on mount — a
   // failed/still-loading fetch shouldn't clear the Settings badge for a
@@ -124,6 +225,7 @@ export default function FeedbackScreen() {
     setSending(false);
     if (ok) {
       setInput('');
+      setActiveCategory(null);
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     } else {
       setSendError(t.feedbackSendError);
@@ -131,9 +233,23 @@ export default function FeedbackScreen() {
   }, [input, sending, sendMessage, impact, t]);
 
   const handleLike = useCallback((id: string) => {
-    impact(Haptics.ImpactFeedbackStyle.Light);
     toggleLike(id);
-  }, [toggleLike, impact]);
+  }, [toggleLike]);
+
+  // Tapping a chip prepends its marker to whatever's already typed (minus
+  // any other marker already there, so switching category doesn't stack
+  // them); tapping the same chip again removes it — a real toggle, not a
+  // one-way stamp.
+  const toggleCategory = useCallback((marker: string) => {
+    impact(Haptics.ImpactFeedbackStyle.Light);
+    setInput(prev => {
+      const existing = parseCategory(prev, t);
+      const bareText = existing ? existing.body : prev.trim();
+      if (activeCategory === marker) return bareText;
+      return bareText ? `${marker} ${bareText}` : `${marker} `;
+    });
+    setActiveCategory(prev => (prev === marker ? null : marker));
+  }, [activeCategory, impact, t]);
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -200,13 +316,35 @@ export default function FeedbackScreen() {
                 <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.feedbackEmptyHint}</Text>
               </View>
             ) : (
-              messages.map(m => <Bubble key={m.id} m={m} onLike={handleLike} />)
+              messages.map(m => {
+                const isNew = !seenIdsRef.current!.has(m.id);
+                seenIdsRef.current!.add(m.id);
+                return <Bubble key={m.id} m={m} onLike={handleLike} isNew={isNew} />;
+              })
             )}
 
             {sendError && <Text style={[s.errorText, { color: colors.red }]}>{sendError}</Text>}
           </ScrollView>
 
           <View style={[s.inputBar, { paddingBottom: botPad + 10, borderTopColor: colors.border, backgroundColor: colors.background }]}>
+            <View style={s.chipsRow}>
+              {Object.entries(CATEGORY_MARKERS).map(([marker, cat]) => {
+                const active = activeCategory === marker;
+                return (
+                  <TouchableOpacity
+                    key={marker}
+                    onPress={() => toggleCategory(marker)}
+                    style={[
+                      s.catChip,
+                      { backgroundColor: active ? cat.color + '22' : colors.card, borderColor: active ? cat.color + '60' : colors.border },
+                    ]}
+                  >
+                    <Feather name={cat.icon} size={11} color={active ? cat.color : colors.mutedForeground} />
+                    <Text style={[s.catChipTxt, { color: active ? cat.color : colors.mutedForeground }]}>{categoryLabel(marker, t)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             <View style={[s.inputRow, { backgroundColor: colors.card, borderColor: inputFocused ? FEEDBACK_ACCENT + '80' : colors.border }]}>
               <TextInput
                 style={[s.input, { color: colors.text }]}
@@ -261,6 +399,12 @@ const s = StyleSheet.create({
   bubbleCol: { maxWidth: '78%', gap: 3 },
   bubbleColMe: { alignItems: 'flex-end' },
   senderName: { fontSize: 11, fontFamily: 'Inter_600SemiBold', marginLeft: 2 },
+  catTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start',
+    borderRadius: 7, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 1,
+  },
+  catTagMe: { alignSelf: 'flex-end' },
+  catTagTxt: { fontSize: 9.5, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.3 },
   bubble: {
     borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 2,
@@ -279,6 +423,12 @@ const s = StyleSheet.create({
   errorText: { fontSize: 12.5, fontFamily: 'Inter_500Medium', textAlign: 'center', paddingTop: 4 },
 
   inputBar: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingTop: 10 },
+  chipsRow: { flexDirection: 'row', gap: 7, marginBottom: 8 },
+  catChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6,
+  },
+  catChipTxt: { fontSize: 11.5, fontFamily: 'Inter_600SemiBold' },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', borderRadius: 22, borderWidth: 1.5, paddingLeft: 16, paddingRight: 6, paddingVertical: 6, gap: 8 },
   input: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular', maxHeight: 100, paddingVertical: 6 },
   sendBtn: {

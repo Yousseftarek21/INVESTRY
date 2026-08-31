@@ -1141,6 +1141,8 @@ const en = {
   feedbackPlaceholder: "What's broken or missing?",
   feedbackLoadError: 'Could not load the feed. Pull down to retry.',
   feedbackSendError: 'Could not send your message. Try again.',
+  feedbackCatBug: 'Bug',
+  feedbackCatIdea: 'Idea',
   loadingLabel: 'Loading…',
   retryLabel: 'Retry',
 
@@ -2670,6 +2672,8 @@ const ar: typeof en = {
   feedbackPlaceholder: 'ما الذي يحتاج إصلاحًا أو إضافة؟',
   feedbackLoadError: 'تعذّر تحميل المحادثة. اسحب للأسفل لإعادة المحاولة.',
   feedbackSendError: 'تعذّر إرسال رسالتك. حاول مرة أخرى.',
+  feedbackCatBug: 'خطأ',
+  feedbackCatIdea: 'فكرة',
   loadingLabel: 'جارٍ التحميل…',
   retryLabel: 'إعادة المحاولة',
 
