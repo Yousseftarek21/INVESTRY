@@ -538,10 +538,22 @@ export default function RootLayout() {
     return () => { _hideSplash = null; _onClerkReady = null; };
   }, []);
 
-  // Safety net: dismiss splash after 8 s no matter what.
+  // Safety net: dismiss splash after this long no matter what.
   // Also force-resolves clerkConfig if still pending — ensures the app tree
   // always renders.  If Clerk hasn't loaded by then, flag a network error so
   // the user sees an actionable "No connection" screen instead of a blank one.
+  //
+  // 15s, not 8s — raised after directly measuring Clerk's own custom-domain
+  // (clerk.investry.app) response time during a real slowdown and seeing it
+  // swing between ~2s and ~10s on ordinary requests, DNS/TLS instant both
+  // times (so the variance is Clerk's own server-side processing, nothing
+  // this app or its server can control). An 8s cutoff was firing on totally
+  // recoverable requests that finish moments later — this screen auto-
+  // dismisses the instant Clerk actually succeeds (_onClerkReady below
+  // clears networkError), so a longer wait here only delays the scary
+  // full-screen error for a slow-but-working connection; it doesn't delay
+  // the app itself, which is already usable the moment Clerk responds,
+  // whether that's at 3s or 12s.
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowCustomSplash(false);
@@ -554,7 +566,7 @@ export default function RootLayout() {
       if (!clerkReadyRef.current) {
         setNetworkError(true);
       }
-    }, 8000);
+    }, 15000);
     return () => clearTimeout(timer);
   }, []);
 
