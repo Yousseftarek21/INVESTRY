@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, feedbackMessagesTable, feedbackLikesTable } from "@workspace/db";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, sql, count } from "drizzle-orm";
 import crypto from "crypto";
 import { fetchIdentities, FALLBACK_NAME } from "../lib/clerkIdentity";
 
@@ -53,6 +53,27 @@ router.get("/feedback", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "GET /feedback failed");
     res.status(500).json({ error: "Failed to fetch feedback" });
+  }
+});
+
+// GET /api/feedback/summary — total message count + the newest message's
+// timestamp, cheap enough to poll from Settings (a COUNT + a MAX, not the
+// whole feed) so a "new since you last opened it" badge can show up
+// without fetching every message just to count them. The client compares
+// this against a locally-stored "last seen" marker (see feedback.tsx) —
+// nothing server-side tracks per-user read state, so this alone can't tell
+// you *how many* are unread, just whether anything changed since a given
+// point, which is all the badge needs.
+router.get("/feedback/summary", async (req, res) => {
+  try {
+    const [row] = await db.select({
+      count: count(),
+      latestCreatedAt: sql<string | null>`max(${feedbackMessagesTable.createdAt})`,
+    }).from(feedbackMessagesTable);
+    res.json({ count: row?.count ?? 0, latestCreatedAt: row?.latestCreatedAt ?? null });
+  } catch (err) {
+    req.log.error({ err }, "GET /feedback/summary failed");
+    res.status(500).json({ error: "Failed to fetch summary" });
   }
 });
 
