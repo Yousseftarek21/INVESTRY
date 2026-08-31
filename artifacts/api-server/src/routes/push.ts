@@ -77,8 +77,11 @@ router.post("/push/unregister", async (req, res) => {
 // pushes (see lib/userPriceAlertCron.ts); activityAlertsEnabled gates the
 // "you just added/edited X" push (see routes/activity.ts);
 // dailySummaryEnabled/weeklySummaryEnabled gate the morning/weekly recap push
-// (see lib/dailySummaryCron.ts). All optional so any one can be updated
-// independently.
+// (see lib/dailySummaryCron.ts); feedbackAlertsEnabled gates the "someone
+// posted in Feedback & Ideas" push (see routes/feedback.ts) — opt-in only,
+// unlike the others, by explicit product decision (a push on every message
+// in a shared chat is real spam risk if it's on by default). All optional
+// so any one can be updated independently.
 router.put("/push/preferences", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -86,9 +89,9 @@ router.put("/push/preferences", async (req, res) => {
   const body = req.body as Record<string, unknown>;
   const {
     portfolioAlertsEnabled, priceAlertsEnabled, activityAlertsEnabled,
-    dailySummaryEnabled, weeklySummaryEnabled,
+    dailySummaryEnabled, weeklySummaryEnabled, feedbackAlertsEnabled,
   } = body;
-  const bools = { portfolioAlertsEnabled, priceAlertsEnabled, activityAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled };
+  const bools = { portfolioAlertsEnabled, priceAlertsEnabled, activityAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled, feedbackAlertsEnabled };
   for (const [key, val] of Object.entries(bools)) {
     if (val !== undefined && typeof val !== "boolean") {
       res.status(400).json({ error: `${key} must be a boolean` });
@@ -106,6 +109,7 @@ router.put("/push/preferences", async (req, res) => {
   if (activityAlertsEnabled !== undefined) set.activityAlertsEnabled = activityAlertsEnabled;
   if (dailySummaryEnabled !== undefined) set.dailySummaryEnabled = dailySummaryEnabled;
   if (weeklySummaryEnabled !== undefined) set.weeklySummaryEnabled = weeklySummaryEnabled;
+  if (feedbackAlertsEnabled !== undefined) set.feedbackAlertsEnabled = feedbackAlertsEnabled;
 
   try {
     await db

@@ -1,9 +1,12 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
-import { db, feedbackMessagesTable, feedbackLikesTable } from "@workspace/db";
-import { eq, and, asc, sql, count } from "drizzle-orm";
+import { db, feedbackMessagesTable, feedbackLikesTable, usersTable } from "@workspace/db";
+import { eq, and, asc, sql, count, isNotNull, ne } from "drizzle-orm";
 import crypto from "crypto";
 import { fetchIdentities, FALLBACK_NAME } from "../lib/clerkIdentity";
+import { sendPushToTokens } from "../lib/expoPush";
+
+const PUSH_PREVIEW_LENGTH = 100;
 
 const router: IRouter = Router();
 
@@ -112,6 +115,41 @@ router.post("/feedback", async (req, res) => {
       senderImageUrl: identity.imageUrl,
       isMe: true,
     });
+
+    // Notified on every message, to every OTHER user who has opted in —
+    // explicit product choice on "every message" (a throttled digest was
+    // flagged as the safer default against notification fatigue on a board
+    // that could get busy), but opt-in-only is the safeguard against that
+    // same risk: feedbackAlertsEnabled defaults false, so nobody gets this
+    // unless they deliberately turned it on (Settings -> Notifications).
+    // Response has already gone out above; this runs after, same
+    // "best-effort, never blocks the request" pattern as activity.ts's own
+    // push send.
+    void (async () => {
+      try {
+        const rows = await db
+          .select({ pushToken: usersTable.pushToken })
+          .from(usersTable)
+          .where(and(
+            isNotNull(usersTable.pushToken),
+            ne(usersTable.id, userId),
+            eq(usersTable.feedbackAlertsEnabled, true),
+          ));
+        const tokens = rows.map(r => r.pushToken!).filter(Boolean);
+        if (tokens.length === 0) return;
+
+        const senderFirstName = identity.name.trim().split(/\s+/)[0] || identity.name;
+        const preview = message.length > PUSH_PREVIEW_LENGTH ? `${message.slice(0, PUSH_PREVIEW_LENGTH)}…` : message;
+        await sendPushToTokens(
+          tokens,
+          "💬 New in Feedback & Ideas",
+          `${senderFirstName}: ${preview}`,
+          { type: "feedback_message" },
+        );
+      } catch (err) {
+        req.log.error({ err }, "POST /feedback: notification broadcast failed");
+      }
+    })();
   } catch (err) {
     req.log.error({ err }, "POST /feedback failed");
     res.status(500).json({ error: "Failed to send message" });

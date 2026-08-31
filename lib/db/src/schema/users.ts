@@ -20,6 +20,11 @@ export const usersTable = pgTable("users", {
   // Opt-in, default false — matches the client's own default before this
   // existed server-side. See lib/dailySummaryCron.ts.
   dailySummaryEnabled:    boolean("daily_summary_enabled").notNull().default(false),
+  // Opt-in by explicit product decision, not the default like the alert
+  // toggles above — a push on every single message in a shared community
+  // chat (routes/feedback.ts) is real spam risk if it fired for everyone
+  // by default; "must accept" first keeps it opt-in only.
+  feedbackAlertsEnabled:  boolean("feedback_alerts_enabled").notNull().default(false),
   weeklySummaryEnabled:   boolean("weekly_summary_enabled").notNull().default(false),
   // Trading-day key (see cairoDate.ts) of the last summary actually sent —
   // the idempotency guard for a poll-interval cron: without this, two ticks
