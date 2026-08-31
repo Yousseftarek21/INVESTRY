@@ -36,6 +36,9 @@ interface NotificationPrefs {
   portfolioAlerts: boolean;
   dailySummary: boolean;
   weeklySummary: boolean;
+  /** Opt-in only, default false — a push per message on a shared community
+   * chat (app/feedback.tsx) is real spam risk if it defaulted on. */
+  feedbackAlerts: boolean;
 }
 
 interface AppSettingsValue {
@@ -85,6 +88,7 @@ const DEFAULT_NOTIF: NotificationPrefs = {
   portfolioAlerts: true,
   dailySummary: false,
   weeklySummary: false,
+  feedbackAlerts: false,
 };
 
 const AppSettingsContext = createContext<AppSettingsValue | null>(null);

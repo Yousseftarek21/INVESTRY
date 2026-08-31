@@ -24,6 +24,7 @@ const DESTINATION: Record<string, string> = {
   drift_alert: '/target-allocation',
   price_alert: '/price-alerts',
   activity_log: '/notifications',
+  feedback_message: '/feedback',
 };
 
 function routeFromResponse(response: Notifications.NotificationResponse): void {

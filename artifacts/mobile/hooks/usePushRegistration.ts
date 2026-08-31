@@ -15,8 +15,8 @@ import { useStableGetToken } from './useStableGetToken';
  * token for the user.
  *
  * Also keeps the server's portfolioAlertsEnabled/priceAlertsEnabled/
- * dailySummaryEnabled/weeklySummaryEnabled flags in sync with the user's
- * local Settings toggles — without this, the toggles would only affect a
+ * dailySummaryEnabled/weeklySummaryEnabled/feedbackAlertsEnabled flags in
+ * sync with the user's local Settings toggles — without this, the toggles would only affect a
  * since-removed local notification path and do nothing to the server-driven
  * one (see hooks/useNotifications.ts and lib/dailySummaryCron.ts).
  *
@@ -36,6 +36,7 @@ export function usePushRegistration(
   priceAlertsEnabled: boolean,
   dailySummaryEnabled: boolean,
   weeklySummaryEnabled: boolean,
+  feedbackAlertsEnabled: boolean,
 ) {
   const { isSignedIn, userId } = useAuth();
   const getToken = useStableGetToken();
@@ -45,6 +46,7 @@ export function usePushRegistration(
   const lastSyncedPriceAlertsPref = useRef<boolean | null>(null);
   const lastSyncedDailySummaryPref = useRef<boolean | null>(null);
   const lastSyncedWeeklySummaryPref = useRef<boolean | null>(null);
+  const lastSyncedFeedbackAlertsPref = useRef<boolean | null>(null);
   const syncingPrefsInFlight = useRef(false);
 
   useEffect(() => {
@@ -99,6 +101,7 @@ export function usePushRegistration(
     if (lastSyncedPriceAlertsPref.current !== priceAlertsEnabled) body.priceAlertsEnabled = priceAlertsEnabled;
     if (lastSyncedDailySummaryPref.current !== dailySummaryEnabled) body.dailySummaryEnabled = dailySummaryEnabled;
     if (lastSyncedWeeklySummaryPref.current !== weeklySummaryEnabled) body.weeklySummaryEnabled = weeklySummaryEnabled;
+    if (lastSyncedFeedbackAlertsPref.current !== feedbackAlertsEnabled) body.feedbackAlertsEnabled = feedbackAlertsEnabled;
     if (Object.keys(body).length === 0) return;
 
     syncingPrefsInFlight.current = true;
@@ -115,6 +118,7 @@ export function usePushRegistration(
           if ('priceAlertsEnabled' in body) lastSyncedPriceAlertsPref.current = priceAlertsEnabled;
           if ('dailySummaryEnabled' in body) lastSyncedDailySummaryPref.current = dailySummaryEnabled;
           if ('weeklySummaryEnabled' in body) lastSyncedWeeklySummaryPref.current = weeklySummaryEnabled;
+          if ('feedbackAlertsEnabled' in body) lastSyncedFeedbackAlertsPref.current = feedbackAlertsEnabled;
         }
       } catch {
         // Silent — will retry next time any of these values change or the app restarts.
@@ -122,5 +126,5 @@ export function usePushRegistration(
         syncingPrefsInFlight.current = false;
       }
     })();
-  }, [isSignedIn, userId, getToken, portfolioAlertsEnabled, priceAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled]);
+  }, [isSignedIn, userId, getToken, portfolioAlertsEnabled, priceAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled, feedbackAlertsEnabled]);
 }

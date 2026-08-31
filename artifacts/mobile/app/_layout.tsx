@@ -248,6 +248,7 @@ function NotificationsInitializer() {
     notifications.priceAlerts,
     notifications.dailySummary,
     notifications.weeklySummary,
+    notifications.feedbackAlerts,
   );
   useNotificationTapRouting();
   return null;

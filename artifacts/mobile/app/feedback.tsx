@@ -221,7 +221,12 @@ export default function FeedbackScreen() {
     impact(Haptics.ImpactFeedbackStyle.Light);
     setSending(true);
     setSendError(null);
-    const ok = await sendMessage(trimmed);
+    // The marker is only ever added to the text that actually gets sent —
+    // the input the user is looking at and typing into never shows it (see
+    // toggleCategory below for why), so it's stitched on right here instead
+    // of living in `input` itself.
+    const toSend = activeCategory ? `${activeCategory} ${trimmed}` : trimmed;
+    const ok = await sendMessage(toSend);
     setSending(false);
     if (ok) {
       setInput('');
@@ -230,26 +235,22 @@ export default function FeedbackScreen() {
     } else {
       setSendError(t.feedbackSendError);
     }
-  }, [input, sending, sendMessage, impact, t]);
+  }, [input, sending, sendMessage, impact, t, activeCategory]);
 
   const handleLike = useCallback((id: string) => {
     toggleLike(id);
   }, [toggleLike]);
 
-  // Tapping a chip prepends its marker to whatever's already typed (minus
-  // any other marker already there, so switching category doesn't stack
-  // them); tapping the same chip again removes it — a real toggle, not a
-  // one-way stamp.
+  // A pure toggle on `activeCategory` only — deliberately does NOT touch
+  // `input`. Stamping the marker emoji directly into the text field looked
+  // cluttered and redundant with the chip's own highlighted state (the chip
+  // already shows which category is selected), so the input stays exactly
+  // what the user actually typed; the marker is stitched onto the message
+  // only at send time.
   const toggleCategory = useCallback((marker: string) => {
     impact(Haptics.ImpactFeedbackStyle.Light);
-    setInput(prev => {
-      const existing = parseCategory(prev, t);
-      const bareText = existing ? existing.body : prev.trim();
-      if (activeCategory === marker) return bareText;
-      return bareText ? `${marker} ${bareText}` : `${marker} `;
-    });
     setActiveCategory(prev => (prev === marker ? null : marker));
-  }, [activeCategory, impact, t]);
+  }, [impact]);
 
   const topPad = Platform.OS === 'web' ? 16 : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;

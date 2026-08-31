@@ -47,7 +47,8 @@ export default function SettingsNotificationsScreen() {
             <NavRow icon="pie-chart" iconBg="#8B5CF6" label={t.rebalancingAlertsLabel} sublabel={t.rebalancingAlertsDesc}
               onPress={() => router.push('/target-allocation' as any)} />
             <ToggleRow icon="sun" iconBg="#EF4444" label={t.dailySummaryLabel} sublabel={t.dailySummaryDesc} value={notifications.dailySummary} onChange={v => setNotification('dailySummary', v)} />
-            <ToggleRow icon="calendar" iconBg="#10B981" label={t.weeklyReportLabel} sublabel={t.weeklyReportDesc} value={notifications.weeklySummary} onChange={v => setNotification('weeklySummary', v)} last />
+            <ToggleRow icon="calendar" iconBg="#10B981" label={t.weeklyReportLabel} sublabel={t.weeklyReportDesc} value={notifications.weeklySummary} onChange={v => setNotification('weeklySummary', v)} />
+            <ToggleRow icon="message-circle" iconBg="#EC4899" label={t.feedbackAlertsLabel} sublabel={t.feedbackAlertsDesc} value={notifications.feedbackAlerts} onChange={v => setNotification('feedbackAlerts', v)} last />
           </Sect>
         </ScrollView>
         )}
