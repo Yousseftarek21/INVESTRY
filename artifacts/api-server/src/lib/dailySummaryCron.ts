@@ -57,19 +57,13 @@ function fmtCompact(n: number): string {
 // portfolioAlertCron.ts's sibling push already uses ("Your portfolio is up
 // 2.7% today"). period is "today" for the daily push, "this week" for the
 // weekly one. A near-zero move reads as "steady" instead of an odd "up 0.0%".
-function pctBody(current: number, baseline: number, period: "today" | "this week", lang: "en" | "ar"): string {
+function pctBody(current: number, baseline: number, period: string): string {
   const pct = ((current - baseline) / baseline) * 100;
-  const periodAr = period === "today" ? "اليوم" : "هذا الأسبوع";
   if (Math.abs(pct) < 0.05) {
-    return lang === "ar"
-      ? `ظلت محفظتك مستقرة ${periodAr}، عند ${fmtCompact(current)} جنيه.`
-      : `Your portfolio held steady ${period}, at ${fmtCompact(current)} EGP.`;
+    return `Your portfolio held steady ${period}, at ${fmtCompact(current)} EGP.`;
   }
-  const dir = pct >= 0;
-  if (lang === "ar") {
-    return `محفظتك ${dir ? "ارتفعت" : "انخفضت"} بنسبة ${Math.abs(pct).toFixed(1)}% ${periodAr}، لتصبح ${fmtCompact(current)} جنيه.`;
-  }
-  return `Your portfolio is ${dir ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% ${period}, now at ${fmtCompact(current)} EGP.`;
+  const dir = pct >= 0 ? "up" : "down";
+  return `Your portfolio is ${dir} ${Math.abs(pct).toFixed(1)}% ${period}, now at ${fmtCompact(current)} EGP.`;
 }
 
 async function priorSnapshot(userId: string, before: string): Promise<number | null> {
@@ -90,7 +84,6 @@ interface User {
   lastDaily: string | null;
   lastWeekly: string | null;
   isPro: boolean;
-  language: "en" | "ar";
 }
 
 async function sendDaily(u: User, today: string): Promise<void> {
@@ -104,8 +97,7 @@ async function sendDaily(u: User, today: string): Promise<void> {
   // this point should not retry every tick for the rest of the send window
   // and risk a duplicate if the failure was transient rather than total.
   await db.update(usersTable).set({ lastDailySummaryDate: today }).where(eq(usersTable.id, u.id));
-  const title = u.language === "ar" ? "صباح الخير" : "Good Morning";
-  await sendPushToTokens([u.pushToken], title, pctBody(current, baseline, "today", u.language), { type: "daily_summary" });
+  await sendPushToTokens([u.pushToken], "Good Morning", pctBody(current, baseline, "today"), { type: "daily_summary" });
 }
 
 async function sendWeekly(u: User, today: string): Promise<void> {
@@ -117,8 +109,7 @@ async function sendWeekly(u: User, today: string): Promise<void> {
   if (current == null || baseline == null) return;
 
   await db.update(usersTable).set({ lastWeeklySummaryDate: today }).where(eq(usersTable.id, u.id));
-  const title = u.language === "ar" ? "أسبوعك بالمراجعة" : "Your Week in Review";
-  await sendPushToTokens([u.pushToken], title, pctBody(current, baseline, "this week", u.language), { type: "weekly_summary" });
+  await sendPushToTokens([u.pushToken], "Your Week in Review", pctBody(current, baseline, "this week"), { type: "weekly_summary" });
 }
 
 let running = false;
@@ -142,10 +133,9 @@ async function checkAllUsers(): Promise<void> {
         lastDaily: usersTable.lastDailySummaryDate,
         lastWeekly: usersTable.lastWeeklySummaryDate,
         plan: usersTable.plan,
-        language: usersTable.language,
       })
       .from(usersTable);
-    const users: User[] = rows.map(r => ({ ...r, isPro: r.plan === "pro" || betaUnlockAll, language: r.language === "ar" ? "ar" : "en" }));
+    const users: User[] = rows.map(r => ({ ...r, isPro: r.plan === "pro" || betaUnlockAll }));
 
     for (const u of users) {
       try {

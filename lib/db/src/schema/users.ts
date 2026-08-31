@@ -50,12 +50,6 @@ export const usersTable = pgTable("users", {
   // user is sent the "leaderboard launched" push so a redeploy/restart of
   // the boot-time sender (see competitionAnnouncement.ts) can't resend it.
   competitionAnnouncementSentAt: timestamp("competition_announcement_sent_at", { withTimezone: true }),
-  // The device's OS-level language (NOT INVESTRY's own in-app language
-  // toggle — a deliberately different question, see LanguageSyncInitializer
-  // in app/_layout.tsx) synced server-side so every server-sent push knows
-  // which language to send in. Without this every push defaulted to English
-  // for everyone regardless of their phone's actual setting.
-  language:               text("language").notNull().default("en"), // 'en' | 'ar'
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

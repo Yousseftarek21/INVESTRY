@@ -68,12 +68,11 @@ async function checkAllAlerts(): Promise<void> {
     const [priceDict, alertRows, users] = await Promise.all([
       buildPricesDict(),
       db.select().from(priceAlertsTable),
-      db.select({ id: usersTable.id, pushToken: usersTable.pushToken, enabled: usersTable.priceAlertsEnabled, plan: usersTable.plan, language: usersTable.language }).from(usersTable).where(isNotNull(usersTable.pushToken)),
+      db.select({ id: usersTable.id, pushToken: usersTable.pushToken, enabled: usersTable.priceAlertsEnabled, plan: usersTable.plan }).from(usersTable).where(isNotNull(usersTable.pushToken)),
     ]);
 
     const tokenByUser = new Map(
-      users.filter(u => u.enabled && (u.plan === "pro" || betaUnlockAll))
-        .map(u => [u.id, { token: u.pushToken as string, language: (u.language === "ar" ? "ar" : "en") as "en" | "ar" }])
+      users.filter(u => u.enabled && (u.plan === "pro" || betaUnlockAll)).map(u => [u.id, u.pushToken as string])
     );
 
     for (const row of alertRows) {
@@ -94,16 +93,12 @@ async function checkAllAlerts(): Promise<void> {
           (alert.direction === "below" && current <= alert.targetPrice);
         if (!crossed) continue;
 
-        const entry = tokenByUser.get(row.userId);
-        if (entry) {
-          const priceStr = alert.targetPrice.toLocaleString("en-EG", { maximumFractionDigits: 2 });
-          const body = entry.language === "ar"
-            ? `${alert.direction === "above" ? "↑" : "↓"} تم بلوغ الهدف ${priceStr} جنيه`
-            : `${alert.direction === "above" ? "↑" : "↓"} Target ${priceStr} EGP reached`;
+        const token = tokenByUser.get(row.userId);
+        if (token) {
           await sendPushToTokens(
-            [entry.token],
+            [token],
             alert.assetLabel,
-            body,
+            `${alert.direction === "above" ? "↑" : "↓"} Target ${alert.targetPrice.toLocaleString("en-EG", { maximumFractionDigits: 2 })} EGP reached`,
             { type: "price_alert", assetKey: alert.assetKey },
           );
         }

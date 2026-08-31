@@ -13,22 +13,19 @@ import { logger } from "./logger";
 export async function sendCompetitionAnnouncement(): Promise<void> {
   try {
     const rows = await db
-      .select({ id: usersTable.id, pushToken: usersTable.pushToken, language: usersTable.language })
+      .select({ id: usersTable.id, pushToken: usersTable.pushToken })
       .from(usersTable)
       .where(and(isNotNull(usersTable.pushToken), isNull(usersTable.competitionAnnouncementSentAt)));
 
     if (rows.length === 0) return;
 
-    const enTokens = rows.filter(r => r.language !== "ar").map(r => r.pushToken!).filter(Boolean);
-    const arTokens = rows.filter(r => r.language === "ar").map(r => r.pushToken!).filter(Boolean);
-    await Promise.all([
-      enTokens.length > 0
-        ? sendPushToTokens(enTokens, "New: Weekly Challenge 🏆", "Compete with other investors on % return — join free from the app.", { type: "competition_announcement" })
-        : Promise.resolve(),
-      arTokens.length > 0
-        ? sendPushToTokens(arTokens, "جديد: التحدي الأسبوعي 🏆", "نافس مستثمرين آخرين على نسبة العائد — انضم مجانًا من التطبيق.", { type: "competition_announcement" })
-        : Promise.resolve(),
-    ]);
+    const tokens = rows.map(r => r.pushToken!).filter(Boolean);
+    await sendPushToTokens(
+      tokens,
+      "New: Weekly Challenge 🏆",
+      "Compete with other investors on % return — join free from the app.",
+      { type: "competition_announcement" },
+    );
 
     await db
       .update(usersTable)
