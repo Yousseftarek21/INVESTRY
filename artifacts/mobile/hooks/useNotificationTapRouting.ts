@@ -27,8 +27,12 @@ const DESTINATION: Record<string, string> = {
 };
 
 function routeFromResponse(response: Notifications.NotificationResponse): void {
-  const data = response.notification.request.content.data as { type?: string } | undefined;
-  const destination = data?.type ? DESTINATION[data.type] : undefined;
+  const data = response.notification.request.content.data as { type?: string; route?: string } | undefined;
+  // admin_broadcast carries its own destination per-send (see
+  // routes/admin.ts's broadcast-push) rather than a fixed one in
+  // DESTINATION — a general-purpose broadcast tool can't know in advance
+  // what any given announcement is about.
+  const destination = data?.type === 'admin_broadcast' ? data.route : (data?.type ? DESTINATION[data.type] : undefined);
   if (destination) router.push(destination as any);
 }
 
