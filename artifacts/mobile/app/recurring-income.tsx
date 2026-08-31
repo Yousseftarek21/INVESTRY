@@ -317,10 +317,23 @@ export default function RecurringIncomeScreen() {
                                   <Text style={[s.pendingCurrency, { color: colors.mutedForeground }]}>{inc.currency}</Text>
                                 </View>
                               </View>
-                              <View style={[s.pendingBadge, { backgroundColor: stateColor + '1F', borderColor: stateColor + '40' }]}>
-                                <Text style={[s.pendingBadgeText, { color: stateColor }]}>
-                                  {inc.collected ? t.collectedLabel : t.incomeKindPending}
-                                </Text>
+                              <View style={s.cardSideCol}>
+                                <View style={[s.pendingBadge, { backgroundColor: stateColor + '1F', borderColor: stateColor + '40' }]}>
+                                  <Text style={[s.pendingBadgeText, { color: stateColor }]}>
+                                    {inc.collected ? t.collectedLabel : t.incomeKindPending}
+                                  </Text>
+                                </View>
+                                {/* Explicit delete affordance, not just swipe — a
+                                    pending entry may simply never arrive (deal fell
+                                    through, client backed out), and a user shouldn't
+                                    have to discover swipe-to-delete to remove it. */}
+                                <TouchableOpacity
+                                  style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
+                                  onPress={() => handleDelete(inc.id)}
+                                  hitSlop={8}
+                                >
+                                  <Feather name="trash-2" size={13} color={colors.red} />
+                                </TouchableOpacity>
                               </View>
                             </View>
 

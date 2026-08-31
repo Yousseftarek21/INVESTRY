@@ -1094,15 +1094,17 @@ export default function CashAccountsScreen() {
                   </SwipeToDelete>
                 ))}
 
-                {/* Pending income — money owed, not yet collected. A start-edge
-                    accent stripe + state-colored icon (amber while waiting,
-                    green once collected) marks its lifecycle at a glance, and
-                    Mark Collected is filled/green rather than a same-weight
-                    outline square — it's the one action here that moves real
-                    money, so it shouldn't look identical to Edit. */}
-                {recurringIncomes.filter(r => r.kind === 'pending').map(r => {
-                  const stateColor = r.collected ? colors.green : '#F59E0B';
-                  const destAccount = r.collected ? cashAccounts.find(a => a.id === r.cashAccountId) : undefined;
+                {/* Pending income — money owed, not yet collected. Once
+                    collected it drops out of this list entirely: its amount
+                    is already reflected in the real cash account's balance
+                    and, since RecurringIncomeContext now logs a balance
+                    update on collect, in that account's own Recent updates
+                    feed too — leaving it here as well made a collected entry
+                    render as its own full account-style card, indistinguishable
+                    from a real cash account. The Income screen (its own
+                    dedicated history view) still shows it after collecting. */}
+                {recurringIncomes.filter(r => r.kind === 'pending' && !r.collected).map(r => {
+                  const stateColor = '#F59E0B';
                   return (
                   <SwipeToDelete key={r.id} onDelete={() => handleDelete(r.id, true)}>
                     <View style={[styles.accountCard, {
@@ -1110,34 +1112,27 @@ export default function CashAccountsScreen() {
                       borderStartWidth: 3, borderStartColor: stateColor,
                     }]}>
                       <View style={[styles.accountIconWrap, { backgroundColor: stateColor + '18' }]}>
-                        <Feather name={r.collected ? 'check-circle' : 'clock'} size={18} color={stateColor} />
+                        <Feather name="clock" size={18} color={stateColor} />
                       </View>
                       <View style={styles.accountInfo}>
                         <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{r.name}</Text>
                         <Text style={[styles.accountType, { color: stateColor }]}>
-                          {r.collected ? t.collectedLabel : t.incomeKindPending}
-                          {!r.collected && r.expectedDate ? ` · ${t.expectedDate}: ${r.expectedDate}` : ''}
+                          {t.incomeKindPending}
+                          {r.expectedDate ? ` · ${t.expectedDate}: ${r.expectedDate}` : ''}
                         </Text>
                         <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
                           {r.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {r.currency}
                         </Text>
-                        {destAccount && (
-                          <Text style={[styles.accountType, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {'→ '}{destAccount.accountName}
-                          </Text>
-                        )}
                       </View>
                       <View style={styles.accountActions}>
-                        {!r.collected && (
-                          <TouchableOpacity
-                            onPress={() => handleMarkCollected(r.id)}
-                            style={[styles.actionBtn, { backgroundColor: colors.green }]}
-                            hitSlop={8}
-                            activeOpacity={0.85}
-                          >
-                            <Feather name="check" size={14} color={colors.primaryForeground} />
-                          </TouchableOpacity>
-                        )}
+                        <TouchableOpacity
+                          onPress={() => handleMarkCollected(r.id)}
+                          style={[styles.actionBtn, { backgroundColor: colors.green }]}
+                          hitSlop={8}
+                          activeOpacity={0.85}
+                        >
+                          <Feather name="check" size={14} color={colors.primaryForeground} />
+                        </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => openEditIncome(r)}
                           style={[styles.actionBtn, { backgroundColor: colors.primary + '14' }]}

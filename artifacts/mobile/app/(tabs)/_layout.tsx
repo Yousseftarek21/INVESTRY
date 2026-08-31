@@ -26,27 +26,37 @@ function LoadingScreen() {
 
 
 function NativeTabLayout() {
+  const t = useT();
+  // Real labels, not empty strings: expo-router's NativeTabs.Trigger only
+  // applies a <Label> override once a tab has been focused at least once
+  // (see NativeTabTrigger's useSafeLayoutEffect, gated on isFocused). Until
+  // then, the native tab bar falls back to that route screen's own title
+  // (e.g. holdings.tsx's <Stack.Screen options={{ title: t.holdings }}>,
+  // "Investments") — which is why an empty <Label>{''}</Label> here used to
+  // show the wrong text under the "+" icon on first load. Giving every tab
+  // its real, correct label keeps the pre-focus fallback and the post-focus
+  // override consistent, and matches standard iOS tab bar convention.
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>{''}</Label>
+        <Label>{t.portfolio}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="markets">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>{''}</Label>
+        <Label>{t.markets}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="holdings">
         <Icon sf={{ default: "plus.circle.fill", selected: "plus.circle.fill" }} />
-        <Label>{''}</Label>
+        <Label>{t.addTab}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="analytics">
         <Icon sf={{ default: "chart.xyaxis.line", selected: "chart.xyaxis.line" }} />
-        <Label>{''}</Label>
+        <Label>{t.analytics}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
-        <Label>{''}</Label>
+        <Label>{t.settings}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

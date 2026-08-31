@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { IncomeTransaction, RecurringIncome } from '@/types';
 import { useCash } from '@/context/CashContext';
+import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
 import { apiFetch } from '@/utils/api';
 
 function storageKey(userId: string) {
@@ -61,6 +62,12 @@ export function useRecurringIncome() {
 export function RecurringIncomeProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isSignedIn, userId } = useAuth();
   const { cashAccounts, updateCashAccount, isLoading: cashLoading } = useCash();
+  // Only the write path (logUpdate) is used here — per-account history is
+  // read elsewhere (cash-accounts.tsx). Without this, a credit deposited
+  // into a cash account (mark-collected, or the monthly recurring credit)
+  // silently bumped the account's balance field with no logged transaction,
+  // so it never showed up under that account's "Recent updates" feed.
+  const { logUpdate: logBalanceUpdate } = useCashBalanceUpdates(null);
 
   const [incomes, setIncomes] = useState<RecurringIncome[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -237,9 +244,11 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
     const account = cashAccounts.find(a => a.id === cashAccountId);
     if (!account) return;
 
-    await updateCashAccount({ ...account, balance: (Number(account.balance) || 0) + inc.amount });
+    const resultingBalance = (Number(account.balance) || 0) + inc.amount;
+    await updateCashAccount({ ...account, balance: resultingBalance });
+    logBalanceUpdate(account.id, inc.amount, resultingBalance);
     await updateRecurringIncome({ ...inc, cashAccountId, collected: true });
-  }, [incomes, cashAccounts, updateCashAccount, updateRecurringIncome]);
+  }, [incomes, cashAccounts, updateCashAccount, updateRecurringIncome, logBalanceUpdate]);
 
   // ── Credit processor ───────────────────────────────────────────────────────
   // Credits ALL missed months since lastProcessedMonth, not just the current one.
@@ -317,12 +326,14 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
       Object.entries(deltas).forEach(([accountId, delta]) => {
         const account = cashAccounts.find(a => a.id === accountId);
         if (account) {
-          updateCashAccount({ ...account, balance: (Number(account.balance) || 0) + delta });
+          const resultingBalance = (Number(account.balance) || 0) + delta;
+          updateCashAccount({ ...account, balance: resultingBalance });
+          logBalanceUpdate(accountId, delta, resultingBalance);
         }
       });
       changedIncomes.forEach(inc => { updateRecurringIncome(inc).catch(() => null); });
     }
-  }, [incomes, cashAccounts, cashLoading, isLoading, userId, updateCashAccount, updateRecurringIncome]);
+  }, [incomes, cashAccounts, cashLoading, isLoading, userId, updateCashAccount, updateRecurringIncome, logBalanceUpdate]);
 
   return (
     <RecurringIncomeContext.Provider value={{

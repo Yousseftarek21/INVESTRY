@@ -249,7 +249,15 @@ export default function HoldingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ title: t.holdings, headerShown: false }} />
+      {/* title is t.addTab ("Add"), not t.holdings ("Investments"): the
+          header itself is hidden below, so this value is invisible in-app
+          EXCEPT as the fallback the "+" native tab bar item shows before
+          that tab has ever been focused this session (expo-router's
+          NativeTabs.Trigger only applies its own <Label> override once
+          isFocused fires — see app/(tabs)/_layout.tsx). Keeping this in
+          sync with the tab's real label avoids the "+" tab reading
+          "Investments" on cold start. */}
+      <Stack.Screen options={{ title: t.addTab, headerShown: false }} />
 
       {/* Sync error toast — floats above content, auto-dismisses in 4s */}
       {showSyncError && (
