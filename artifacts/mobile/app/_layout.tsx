@@ -13,7 +13,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef, useState } from "react";
-import { Platform, View } from "react-native";
+import { NativeModules, Platform, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -35,7 +35,7 @@ import { Paywall } from "@/components/Paywall";
 import { ForceUpdateGate } from "@/components/ForceUpdateGate";
 import { usePushRegistration } from "@/hooks/usePushRegistration";
 import { useNotificationTapRouting } from "@/hooks/useNotificationTapRouting";
-import { getApiBaseUrl } from "@/utils/api";
+import { getApiBaseUrl, apiFetch } from "@/utils/api";
 import { hydratePricesFromCache, prefetchMarketPrices, whenMarketPricesSettled } from "@/hooks/usePrices";
 import { hydrateEGXIndicesFromCache, prefetchEGXIndices } from "@/hooks/useEGXIndices";
 import { hydrateRealEstatePricesFromCache, prefetchRealEstatePrices } from "@/hooks/useRealEstatePrices";
@@ -276,6 +276,65 @@ function RevenueCatInitializer() {
   return null;
 }
 
+// Reads the phone's actual OS-level language setting — deliberately NOT
+// AppSettingsContext's `language`, which is INVESTRY's own in-app toggle
+// and answers a different question ("what language does this person want
+// the app's UI in") than what this needs ("what language does their phone
+// itself speak"). Push notifications should follow the device, the way
+// every other app's system notifications do, independent of whatever this
+// one app happens to be displaying in.
+//
+// No expo-localization package here on purpose — this app currently has no
+// working native build (see tonight's EAS build failure), so adding a new
+// native dependency would be unusable until that's fixed and a fresh binary
+// reaches every device via app-store release; an OTA update can ship new JS
+// but never a new native module. NativeModules.SettingsManager/I18nManager
+// are core React Native, already linked in any RN app with zero extra
+// native work, and are the long-standing standard way RN apps read device
+// locale without expo-localization.
+function getDeviceLanguage(): 'en' | 'ar' {
+  const raw = Platform.OS === 'ios'
+    ? NativeModules.SettingsManager?.settings?.AppleLocale
+      ?? NativeModules.SettingsManager?.settings?.AppleLanguages?.[0]
+    : NativeModules.I18nManager?.localeIdentifier;
+  return typeof raw === 'string' && raw.toLowerCase().startsWith('ar') ? 'ar' : 'en';
+}
+
+// Syncs the device's language to usersTable.language so server-sent pushes
+// (see routes/admin.ts, dailySummaryCron.ts, portfolioAlertCron.ts,
+// userPriceAlertCron.ts, portfolioDriftCron.ts, leaderboardRankCron.ts,
+// referralMonthlyWinnerCron.ts, competitionAnnouncement.ts, routes/
+// activity.ts) know which language to send in — without this, every push
+// defaults to English regardless of the phone's actual setting. Lives here,
+// not inside AppSettingsProvider, because that provider sits outside
+// ClerkProvider in the tree below (so it can theme/localize the loading
+// screen before Clerk is even ready) — useAuth() isn't safe to call from
+// there. Same bridge-component pattern as NotificationsInitializer/
+// RevenueCatInitializer just above. The device's language can't change
+// while the app is running, so this only needs to fire once per sign-in,
+// not on every render.
+function LanguageSyncInitializer() {
+  const { getToken, isSignedIn } = useAuth();
+  useEffect(() => {
+    if (!isSignedIn) return;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        await apiFetch('/api/account/language', token, {
+          method: 'PUT',
+          body: JSON.stringify({ language: getDeviceLanguage() }),
+        });
+      } catch {
+        // Best-effort — a failed sync just means the next server push
+        // falls back to English for this user until it succeeds another
+        // time; never worth surfacing to the user over.
+      }
+    })();
+  }, [isSignedIn, getToken]);
+  return null;
+}
+
 function DirectionWrapper({ children }: { children: React.ReactNode }) {
   const { language } = useAppSettings();
   return (
@@ -346,6 +405,7 @@ function AppWithPaywall({ children }: { children: React.ReactNode }) {
       <NotificationsInitializer />
       <MetaSDKInitializer />
       <RevenueCatInitializer />
+      <LanguageSyncInitializer />
       <Paywall />
       {children}
     </>
