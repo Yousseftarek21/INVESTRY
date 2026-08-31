@@ -82,7 +82,18 @@ export function usePushRegistration(
         registeringInFlight.current = false;
       }
     })();
-  }, [isSignedIn, userId, getToken]);
+    // Every alert boolean is a dep, not just isSignedIn/userId/getToken: this
+    // used to run exactly once per sign-in, so if the very first OS
+    // permission prompt (often shown before the user has any reason to say
+    // yes) was denied or dismissed, registeredForUserId.current never got
+    // set and nothing ever retried for the rest of that session — a user
+    // could flip every Settings toggle on, feedbackAlertsEnabled etc. would
+    // genuinely reach the server as true, but pushToken stayed NULL in the
+    // DB forever, so the server's broadcast query silently excluded them.
+    // Turning a toggle on now re-attempts permission + registration; iOS
+    // only re-shows its own prompt if the status is still 'undetermined',
+    // so this is silent/harmless once already granted or denied.
+  }, [isSignedIn, userId, getToken, portfolioAlertsEnabled, priceAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled, feedbackAlertsEnabled]);
 
   // One combined effect for all four preferences: on cold mount every
   // lastSynced* ref starts null, so without batching each of the four
