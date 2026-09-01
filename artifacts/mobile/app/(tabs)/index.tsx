@@ -976,14 +976,19 @@ export default function HomeScreen() {
               never mistaken for cash already in hand (the exact confusion
               a real user's "money owed to me" feedback flagged). */}
           {pendingIncomeEGP > 0 && (
-            <View style={styles.netWorthRow}>
+            <Pressable
+              style={styles.netWorthRow}
+              onPress={() => { impact(); router.push('/recurring-income'); }}
+              hitSlop={8}
+            >
               <Feather name="clock" size={10} color="#F59E0B" />
               <Text style={[styles.netWorthTxt, { color: '#F59E0B' }]}>
                 {hideValues
                   ? `${t.pendingIncomeLabel}: ••••••`
                   : `${t.pendingIncomeLabel}: ${fmtCompact(toDisp(pendingIncomeEGP))} ${displayCurrency}`}
               </Text>
-            </View>
+              <Feather name={forwardArrow()} size={9} color="#F59E0B" style={{ opacity: 0.7 }} />
+            </Pressable>
           )}
 
           {/* Invested · Current · Return strip */}

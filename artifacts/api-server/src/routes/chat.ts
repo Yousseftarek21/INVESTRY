@@ -107,6 +107,19 @@ function summarizeHoldings(
   return `Holdings (with live current value):\n${lines.join("\n")}`;
 }
 
+// Same per-currency conversion as computeUserPortfolioAllocation in
+// portfolioValue.ts (USD via the dedicated usdToEgp field, everything else
+// via fxRates, unknown currencies falling back to face value) — duplicated
+// here as a small pure function rather than imported, since that function
+// does its own DB fetches and buildPortfolioContext below already has
+// holdings/cash/prices in scope from its own single Promise.all.
+function toEGP(amount: number, currency: string | undefined, prices: MarketPricesResponse): number {
+  if (!currency || currency === "EGP") return amount;
+  if (currency === "USD" && prices.usdToEgp) return amount * prices.usdToEgp;
+  const rate = prices.fxRates?.[currency];
+  return rate ? amount * rate : amount;
+}
+
 function summarizeCash(accounts: DecodedRow[]): string {
   if (accounts.length === 0) return "No cash accounts recorded.";
   const lines = accounts.map((a) => `- ${a.accountName} (${a.type}): ${a.balance} ${a.currency}`);
@@ -144,13 +157,43 @@ function summarizePriceAlerts(alerts: Record<string, unknown>[]): string {
   return `Active price alerts:\n${lines.join("\n")}`;
 }
 
+// entries are a mix of two shapes (RecurringIncome's IncomeKind, see
+// types/index.ts in the mobile app): 'recurring' (the only kind that
+// existed before pending was added — missing `kind` on an old record means
+// 'recurring') is a fixed monthly credit into a cash account; 'pending' is
+// a one-off receivable with no schedule, counted toward the user's net
+// worth immediately and until marked collected. Previously this function
+// treated every entry as a recurring monthly credit regardless of kind —
+// a pending entry (no creditDay at all) rendered as "credited on day
+// undefined of each month", and nothing here ever told the assistant
+// pending income counts toward net worth, which is exactly the wrong
+// answer a real user got asking about it.
 function summarizeRecurringIncome(entries: Record<string, unknown>[]): string {
-  const active = entries.filter((e) => e.active);
-  if (active.length === 0) return "No recurring income entries set up.";
-  const lines = active.map(
-    (e) => `- ${e.name}: ${e.amount} ${e.currency}/month, credited on day ${e.creditDay} of each month`,
-  );
-  return `Recurring income:\n${lines.join("\n")}`;
+  const recurring = entries.filter((e) => (e.kind ?? "recurring") === "recurring" && e.active);
+  const pending = entries.filter((e) => e.kind === "pending");
+  if (recurring.length === 0 && pending.length === 0) return "No recurring or pending income entries set up.";
+
+  const parts: string[] = [];
+  if (recurring.length > 0) {
+    const lines = recurring.map(
+      (e) => `- ${e.name}: ${e.amount} ${e.currency}/month, credited on day ${e.creditDay} of each month`,
+    );
+    parts.push(`Recurring income (fixed monthly credit into a cash account):\n${lines.join("\n")}`);
+  }
+  if (pending.length > 0) {
+    const lines = pending.map((e) => {
+      const status = e.collected
+        ? "collected — already deposited, no longer counted toward net worth separately (it's now part of the destination cash account's balance)"
+        : "NOT yet collected — counted toward net worth right now as a receivable";
+      const expected = e.expectedDate ? `, expected ${e.expectedDate}` : "";
+      return `- ${e.name}: ${e.amount} ${e.currency}${expected} — ${status}`;
+    });
+    parts.push(
+      `Pending income (one-off receivables — money owed to the user, not yet in any cash account):\n${lines.join("\n")}\n` +
+      `Rule: an uncollected pending entry counts toward the user's net worth immediately, exactly like a cash balance — it stops being counted separately the moment it's marked collected, since its amount is then already reflected in the destination cash account.`,
+    );
+  }
+  return parts.join("\n\n");
 }
 
 // Top movers across the whole EGX, not just what the user holds — already
@@ -279,6 +322,29 @@ async function buildPortfolioContext(
   const egxPrices: Record<string, number> = {};
   for (const s of egxStocks) egxPrices[s.symbol] = s.price;
 
+  // portfolio_snapshots.totalValue (written by portfolioAlertCron, via
+  // computeUserPortfolioValue) is holdings ONLY — it has never included
+  // cash or pending income, so it's kept below purely as the source for a
+  // historical trend line, clearly labeled as such, not conflated with net
+  // worth. The actual net-worth figure the assistant should quote is
+  // computed fresh right here instead, from data already fetched above —
+  // this is what was missing before: nothing ever added cash + uncollected
+  // pending income into a single number, so the assistant had no correct
+  // total to reference at all, only three separate lines it would have had
+  // to add up itself.
+  const holdingsValueEGP = holdings.reduce(
+    (sum, h) => sum + computeHoldingValue(h, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices),
+    0,
+  );
+  const cashValueEGP = cash.reduce(
+    (sum, a) => sum + toEGP(Number((a as { balance?: number }).balance) || 0, (a as { currency?: string }).currency, prices),
+    0,
+  );
+  const pendingIncomeEGP = income
+    .filter((e) => e.kind === "pending" && !e.collected)
+    .reduce((sum, e) => sum + toEGP(Number(e.amount) || 0, e.currency as string | undefined, prices), 0);
+  const netWorthEGP = holdingsValueEGP + cashValueEGP + pendingIncomeEGP;
+
   const latestSnapshot = snapshotRows[snapshotRows.length - 1];
   const latestValue = latestSnapshot?.totalValue ?? 0;
   const trends = [
@@ -287,9 +353,12 @@ async function buildPortfolioContext(
   ].filter((t): t is string => t !== null);
 
   const context = [
+    `Net worth right now (investment holdings + cash + uncollected pending income): ${netWorthEGP.toFixed(0)} EGP. ` +
+      `Breakdown — investment holdings: ${holdingsValueEGP.toFixed(0)} EGP, cash accounts: ${cashValueEGP.toFixed(0)} EGP, uncollected pending income: ${pendingIncomeEGP.toFixed(0)} EGP. ` +
+      `This is the correct total for "net worth" or "how much am I worth" — always include all three parts, not just holdings.`,
     latestSnapshot
-      ? `Total portfolio value (as of ${latestSnapshot.date}): ${latestSnapshot.totalValue} EGP.${trends.length ? ` ${trends.join("; ")}.` : ""}`
-      : "No portfolio value history yet.",
+      ? `Investment holdings value trend (holdings only, NOT net worth — as of ${latestSnapshot.date}): ${latestSnapshot.totalValue} EGP.${trends.length ? ` ${trends.join("; ")}.` : ""}`
+      : "No holdings-value history yet.",
     summarizeHoldings(holdings, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices),
     summarizeCash(cash),
     summarizeGoals(goals, cash),
@@ -306,7 +375,9 @@ async function buildPortfolioContext(
 
 const SYSTEM_PREAMBLE = `You are the INVESTRY AI Financial Assistant, built into the INVESTRY portfolio-tracking app. You help the user understand their own portfolio and general investing/personal-finance concepts.
 
-INVESTRY tracks: investment holdings (gold, silver, EGX stocks, real estate, personal assets, fixed income), cash accounts, savings goals, recurring income, and custom price alerts. The data below reflects live current market values (gold/silver spot prices and EGX stock prices), not just what the user originally paid — use it to answer questions about current value and unrealized gain/loss directly, not just historical cost.
+INVESTRY tracks: investment holdings (gold, silver, EGX stocks, real estate, personal assets, fixed income), cash accounts, savings goals, recurring income (fixed monthly credits) and pending income (one-off receivables — money owed to the user, not yet collected), and custom price alerts. The data below reflects live current market values (gold/silver spot prices and EGX stock prices), not just what the user originally paid — use it to answer questions about current value and unrealized gain/loss directly, not just historical cost.
+
+Net worth = investment holdings + cash accounts + uncollected pending income. A pre-computed, correct total for this is given to you directly below (labeled "Net worth right now") — always use that figure and its breakdown when asked about net worth or "how much am I worth," don't try to add up holdings/cash/pending yourself from their separate sections, and never say pending income isn't counted — it is, until the moment it's marked collected.
 
 Beyond the user's own data, you also have: Egypt's current annual inflation rate, today's EGX market movers (top gainers/losers across the whole exchange, not just what the user holds), and a curated Egypt-wide real estate price-per-m² guide covering dozens of areas — so you can answer general market questions (e.g. "what's the going rate in Sheikh Zayed", "is EGX up today", "how does my return compare to inflation") even about things the user doesn't personally own.
 
