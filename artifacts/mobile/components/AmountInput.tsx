@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { TextInput, TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, TextInputProps } from 'react-native';
 import { cleanAmountInput, formatAmountInput } from '@/utils/parseAmount';
 
 interface AmountInputProps extends Omit<TextInputProps, 'value' | 'onChangeText'> {
@@ -105,6 +105,7 @@ export function AmountInput({ value, onChangeText, keyboardType, ...rest }: Amou
   return (
     <TextInput
       {...rest}
+      style={[rest.style, st.ltr]}
       value={displayValue}
       onChangeText={handleChangeText}
       selection={selection}
@@ -112,3 +113,18 @@ export function AmountInput({ value, onChangeText, keyboardType, ...rest }: Amou
     />
   );
 }
+
+const st = StyleSheet.create({
+  // Digits are always read left-to-right, in Arabic UI same as English — but
+  // when the app is in Arabic (I18nManager.forceRTL(true) in
+  // AppSettingsContext), a plain TextInput inherits RTL writing direction
+  // from the app, and every cursor-index computed above (cursorIndexForDigitCount,
+  // digitCountBefore) assumes a plain left-to-right character offset. Under
+  // native RTL rendering those two stop agreeing — the logical position this
+  // file computes and the position the OS actually renders the cursor at
+  // diverge, which is what showed up as digits landing in the wrong spot and
+  // the cursor jumping around while typing an amount in Arabic. Forcing this
+  // one field back to ltr makes the field's own visual/logical mapping match
+  // what this file's math assumes, regardless of the app's overall language.
+  ltr: { writingDirection: 'ltr' },
+});

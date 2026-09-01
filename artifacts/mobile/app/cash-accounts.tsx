@@ -18,7 +18,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { CashAccount, CashAccountType, IncomeKind, RecurringIncome } from '@/types';
+import { CashAccount, CashAccountType, RecurringIncome } from '@/types';
 import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { fmtCompact } from '@/utils/formatNumber';
 import { tradingDayLabel, tradingDaysAgo } from '@/utils/cairoDate';
@@ -104,16 +104,13 @@ export default function CashAccountsScreen() {
   const [dateAdded, setDateAdded] = useState(todayISO());
   const [notes, setNotes] = useState('');
 
-  // ── Recurring/pending income form state ───────────────────────────────────
-  // incomeKind is independent of `entryType` — the type-grid tile stays a
-  // single "Recurring Income" entry point (unchanged), and this toggle
-  // (shown inside that form) picks which of the two IncomeKind shapes is
-  // actually being created. Mirrors app/recurring-income.tsx's own toggle.
-  const [incomeKind, setIncomeKind] = useState<IncomeKind>('recurring');
+  // ── Recurring income form state ───────────────────────────────────────────
+  // Recurring only — pending income can only be created/managed on the
+  // Income screen (app/recurring-income.tsx) now, so there's no kind toggle
+  // here anymore.
   const [incomeAmount, setIncomeAmount] = useState('');
   const [creditDay, setCreditDay] = useState('25');
   const [startDate, setStartDate] = useState(todayISO());
-  const [incomeExpectedDate, setIncomeExpectedDate] = useState('');
   const [depositAccountId, setDepositAccountId] = useState('');
   const [showAccountPicker, setShowAccountPicker] = useState(false);
 
@@ -204,11 +201,9 @@ export default function CashAccountsScreen() {
     setCurrency('EGP');
     setDateAdded(todayISO());
     setNotes('');
-    setIncomeKind('recurring');
     setIncomeAmount('');
     setCreditDay('25');
     setStartDate(todayISO());
-    setIncomeExpectedDate('');
     setDepositAccountId('');
   };
 
@@ -247,20 +242,17 @@ export default function CashAccountsScreen() {
     setEditingId(r.id);
     setIsEditingIncome(true);
     setEntryType('recurring_income');
-    setIncomeKind(r.kind ?? 'recurring');
     setAccountName(r.name);
     setIncomeAmount(String(r.amount));
     setCurrency(r.currency);
     setCreditDay(String(r.creditDay ?? 25));
     setStartDate(r.startDate);
-    setIncomeExpectedDate(r.expectedDate ?? '');
     setDepositAccountId(r.cashAccountId ?? '');
     setShowForm(true);
   };
 
   const handleSave = async () => {
     if (entryType === 'recurring_income') {
-      const isPendingIncome = incomeKind === 'pending';
       const parsedAmount = parseAmount(incomeAmount);
       if (!accountName.trim()) {
         Alert.alert(t.incomeName, t.enterIncomeName);
@@ -270,11 +262,7 @@ export default function CashAccountsScreen() {
         Alert.alert(t.amount, t.enterValidMonthlyAmount);
         return;
       }
-      // A pending entry has no destination account yet — that's chosen
-      // later, when marked collected. Saving a recurring one with no
-      // linked account produced a record the processor skips forever,
-      // while the UI still showed it as configured.
-      if (!isPendingIncome && !depositAccountId) {
+      if (!depositAccountId) {
         Alert.alert(t.depositInto, cashAccounts.length > 0 ? t.selectAccount : t.incomeNeedsAccountFirst);
         return;
       }
@@ -292,21 +280,19 @@ export default function CashAccountsScreen() {
         // would start crediting forever after an unrelated name change.
         ...(existingIncome ?? {}),
         id: editingId ?? generateId(),
-        kind: incomeKind,
+        kind: 'recurring',
         name: accountName.trim(),
         amount: parsedAmount,
         // Always the deposit account's own currency — recurring income has
         // no currency conversion, so letting these diverge would silently
-        // corrupt the account's balance once credited. Pending entries
-        // have no deposit account yet, so they keep whatever currency the
-        // form's own picker was set to.
-        currency: isPendingIncome ? currency : (depositAccount?.currency ?? currency),
-        cashAccountId: isPendingIncome ? existingIncome?.cashAccountId : depositAccountId,
-        creditDay: isPendingIncome ? existingIncome?.creditDay : day,
+        // corrupt the account's balance once credited.
+        currency: depositAccount?.currency ?? currency,
+        cashAccountId: depositAccountId,
+        creditDay: day,
         startDate,
-        expectedDate: isPendingIncome ? (incomeExpectedDate || undefined) : undefined,
-        collected: isPendingIncome ? (existingIncome?.collected ?? false) : undefined,
-        active: isPendingIncome ? (existingIncome?.active ?? true) : (existingIncome?.active ?? true),
+        expectedDate: undefined,
+        collected: undefined,
+        active: existingIncome?.active ?? true,
         createdAt: isEditingIncome
           ? (recurringIncomes.find(r => r.id === editingId)?.createdAt ?? todayISO())
           : todayISO(),
@@ -541,12 +527,8 @@ export default function CashAccountsScreen() {
         <Text style={[styles.modalTitle, { color: colors.text }]}>
           {showForm
             ? (editingId
-                ? (isEditingIncome
-                    ? (incomeKind === 'pending' ? t.editPendingIncome : t.editRecurringIncome)
-                    : t.editCashAccount)
-                : (entryType === 'recurring_income'
-                    ? (incomeKind === 'pending' ? t.addPendingIncome : t.addRecurringIncome)
-                    : t.addCashAccount))
+                ? (isEditingIncome ? t.editRecurringIncome : t.editCashAccount)
+                : (entryType === 'recurring_income' ? t.addRecurringIncome : t.addCashAccount))
             : t.cashAccounts}
         </Text>
         {showForm ? (
@@ -606,33 +588,6 @@ export default function CashAccountsScreen() {
               </View>
             )}
 
-            {/* ── Recurring vs Pending — only choosable when adding; an
-                 existing entry's kind is fixed once created. ─────────── */}
-            {entryType === 'recurring_income' && !isEditingIncome && (
-              <View style={styles.section}>
-                <Text style={labelStyle}>{t.incomeKindLabel}</Text>
-                <View style={styles.incomeKindToggle}>
-                  {(['recurring', 'pending'] as const).map(k => (
-                    <TouchableOpacity
-                      key={k}
-                      style={[styles.incomeKindChip, {
-                        backgroundColor: incomeKind === k ? colors.primary : colors.card,
-                        borderColor: incomeKind === k ? colors.primary : colors.border,
-                      }]}
-                      onPress={() => setIncomeKind(k)}
-                    >
-                      <Text style={[styles.incomeKindChipText, { color: incomeKind === k ? colors.primaryForeground : colors.text }]}>
-                        {k === 'recurring' ? t.incomeKindRecurring : t.incomeKindPending}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {incomeKind === 'pending' && (
-                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>{t.pendingIncomeSectionHint}</Text>
-                )}
-              </View>
-            )}
-
             {/* ── Name / Income Name ──────────────────────────────── */}
             <View style={styles.section}>
               <Text style={labelStyle}>
@@ -641,11 +596,7 @@ export default function CashAccountsScreen() {
               <TextInput
                 ref={nameInputRef}
                 style={inputStyle}
-                placeholder={
-                  entryType === 'recurring_income' && incomeKind === 'pending'
-                    ? t.pendingIncomeNamePlaceholder
-                    : NAME_PLACEHOLDER[entryType]
-                }
+                placeholder={NAME_PLACEHOLDER[entryType]}
                 placeholderTextColor={colors.mutedForeground}
                 value={accountName}
                 onChangeText={setAccountName}
@@ -666,43 +617,6 @@ export default function CashAccountsScreen() {
                   />
                 </View>
 
-                {incomeKind === 'pending' ? (
-                  <>
-                  {/* ── Currency — a pending entry has no deposit account
-                       to infer it from (that's chosen later, when marked
-                       collected), so it needs its own picker here. ────── */}
-                  <View style={styles.section}>
-                    <Text style={labelStyle}>{t.assetCurrency}</Text>
-                    <View style={styles.chips}>
-                      {CURRENCIES_DEFAULT.map(c => (
-                        <TouchableOpacity
-                          key={c}
-                          style={[styles.chip, {
-                            borderColor: currency === c ? colors.primary : colors.border,
-                            backgroundColor: currency === c ? colors.primary + '10' : colors.card,
-                          }]}
-                          onPress={() => setCurrency(c)}
-                        >
-                          <Text style={styles.chipFlag}>{CURRENCY_FLAGS[c]}</Text>
-                          <Text style={[styles.chipText, { color: currency === c ? colors.primary : colors.text }]}>{c}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* ── Expected Date — informational only ────────────── */}
-                  <View style={styles.section}>
-                    <DatePickerField
-                      label={t.expectedDateOptional}
-                      value={incomeExpectedDate}
-                      onChange={setIncomeExpectedDate}
-                      onClear={() => setIncomeExpectedDate('')}
-                      placeholder={t.noExpectedDate}
-                    />
-                  </View>
-                  </>
-                ) : (
-                <>
                 {/* ── Credit Day ──────────────────────────────────── */}
                 <View style={styles.section}>
                   <Text style={labelStyle}>{t.creditDay}</Text>
@@ -750,8 +664,6 @@ export default function CashAccountsScreen() {
                     </Text>
                   )}
                 </View>
-                </>
-                )}
               </>
             ) : (
               <>
@@ -1443,9 +1355,6 @@ const styles = StyleSheet.create({
   typeLabel: { fontSize: 11, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
-  incomeKindToggle: { flexDirection: 'row', gap: 8 },
-  incomeKindChip: { flex: 1, borderRadius: 10, borderWidth: 1, paddingVertical: 10, alignItems: 'center' },
-  incomeKindChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
   chipFlag: { fontSize: 16 },
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
