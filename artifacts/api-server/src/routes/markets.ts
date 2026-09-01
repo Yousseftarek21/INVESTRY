@@ -268,6 +268,7 @@ const EGX_TICKERS = [
   { symbol: "ACFR",   name: "Alexandria Company for Refractories"          },
   { symbol: "ANCC",   name: "ALNAHDA Industrial Co."                       },
   // ARVA (Arab Valves) removed — absent from TradingView scanner, no live data available.
+  { symbol: "AMII",   name: "Arabian Metal Industries & Industrial Investments" },
   { symbol: "ATQA",   name: "Misr National Steel"                          },
   { symbol: "DTPP",   name: "Delta for Printing & Packaging"               },
   { symbol: "ELEC",   name: "Electro Cable Egypt"                          },

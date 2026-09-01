@@ -175,6 +175,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
   { ticker: 'ACFR',  nameEn: 'Alexandria Company For Refractories',      nameAr: 'الإسكندرية للحراريات',                  sector: 'Industrial', industry: 'Diversified Industrials',    fallbackPrice: 10.00  },
   { ticker: 'ANCC',  nameEn: 'ALNAHDA Industrial Co.',                   nameAr: 'النهضة للصناعات الوطنية',               sector: 'Industrial', industry: 'Diversified Industrials',    fallbackPrice: 10.00  },
   // ARVA (Arab Valves) removed — absent from TradingView scanner, no live data available.
+  { ticker: 'AMII',  nameEn: 'Arabian Metal Industries & Industrial Investments', nameAr: 'العربية للصناعات المعدنية والاستثمارات الصناعية', sector: 'Industrial', industry: 'Metals & Mining', fallbackPrice: 16.00 },
   { ticker: 'ATQA',  nameEn: 'Misr National Steel',                      nameAr: 'مصر الوطنية للصلب',                     sector: 'Industrial', industry: 'Metals & Mining',            fallbackPrice: 9.59   },
   { ticker: 'DTPP',  nameEn: 'Delta for Printing & Packaging',           nameAr: 'دلتا للطباعة والتغليف',                 sector: 'Industrial', industry: 'Packaging & Containers',     fallbackPrice: 207.52 },
   { ticker: 'ELEC',  nameEn: 'Electro Cable Egypt',                      nameAr: 'إليكترو كابل مصر',                      sector: 'Industrial', industry: 'Electrical Equipment',       fallbackPrice: 2.16   },
