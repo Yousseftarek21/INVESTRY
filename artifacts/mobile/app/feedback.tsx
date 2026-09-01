@@ -42,6 +42,18 @@ import { useFeedback, markFeedbackSeen, type FeedbackMessage } from '@/hooks/use
 const FEEDBACK_ACCENT = '#EC4899';
 const FEEDBACK_ACCENT_DEEP = '#9D174D';
 
+// Must match the server's own MAX_MESSAGE_LENGTH (routes/feedback.ts) — the
+// server is the real enforcement point, this is just so the input's own
+// maxLength and the character counter agree with what will actually be
+// accepted, instead of a client guess that could silently drift from it.
+const MESSAGE_MAX_LENGTH = 2000;
+// A message longer than this collapses behind "Show more" in the bubble —
+// character count, not line count: RN's onTextLayout reports lines
+// relative to whatever numberOfLines is already applied, which makes
+// detecting "is this actually truncated" unreliable across platforms: a
+// fixed character threshold is simple and deterministic instead.
+const BUBBLE_COLLAPSE_LENGTH = 320;
+
 // A pure client-side convention, not a schema field — a leading emoji marker
 // on the message text itself. Chosen over a real category column so this
 // stays a genuine "type and send" chat (no form fields, per the original
@@ -117,6 +129,15 @@ function Bubble({ m, onLike, onDelete, isNew }: { m: FeedbackMessage; onLike: (i
   const category = parseCategory(m.message, t);
   const displayText = category ? category.body : m.message;
   const accent = m.isMe ? FEEDBACK_ACCENT : senderColor(m.userId);
+
+  // Long messages (the higher MESSAGE_MAX_LENGTH exists precisely so a real
+  // bug report has room) collapse behind "Show more" by default so one post
+  // doesn't dominate the whole feed — same reasoning Instagram/Twitter-style
+  // caption truncation exists for. Per-bubble local state, not global: each
+  // message expands independently.
+  const [expanded, setExpanded] = useState(false);
+  const isLong = displayText.length > BUBBLE_COLLAPSE_LENGTH;
+  const shownText = expanded || !isLong ? displayText : `${displayText.slice(0, BUBBLE_COLLAPSE_LENGTH).trimEnd()}…`;
 
   // Plays once, only for a message that just arrived (a poll tick or your
   // own send) — not replayed on every re-render of the same bubble (a like
@@ -194,13 +215,18 @@ function Bubble({ m, onLike, onDelete, isNew }: { m: FeedbackMessage; onLike: (i
               end={{ x: 1, y: 1 }}
               style={[s.bubble, s.bubbleMe, { shadowColor: FEEDBACK_ACCENT_DEEP, shadowOpacity: 0.35 }]}
             >
-              <Text style={[s.bubbleText, { color: '#FFFFFF' }]}>{displayText}</Text>
+              <Text style={[s.bubbleText, { color: '#FFFFFF' }]}>{shownText}</Text>
             </ExpoLinearGradient>
           </TouchableOpacity>
         ) : (
           <View style={[s.bubble, s.bubbleOther, { backgroundColor: colors.card, borderColor: accent + '2A' }]}>
-            <Text style={[s.bubbleText, { color: colors.text }]}>{displayText}</Text>
+            <Text style={[s.bubbleText, { color: colors.text }]}>{shownText}</Text>
           </View>
+        )}
+        {isLong && (
+          <TouchableOpacity onPress={() => setExpanded(v => !v)} hitSlop={6} style={m.isMe ? s.showMoreMe : s.showMoreOther}>
+            <Text style={[s.showMoreTxt, { color: accent }]}>{expanded ? t.showLess : t.showMore}</Text>
+          </TouchableOpacity>
         )}
         <TouchableOpacity style={[s.likeRow, m.isMe && s.likeRowMe, m.hasLiked && { backgroundColor: colors.primary + '16' }]} onPress={handleLike} hitSlop={6}>
           <Animated.View style={{ transform: [{ scale: heartScale }] }}>
@@ -433,17 +459,17 @@ export default function FeedbackScreen() {
                 );
               })}
             </View>
-            {/* The input already hard-stops typing at 500 chars via
+            {/* The input already hard-stops typing at MESSAGE_MAX_LENGTH via
                 maxLength below — that part always worked. What didn't:
-                pasting text longer than 500 chars gets silently truncated
+                pasting text longer than the limit gets silently truncated
                 by the same maxLength with zero indication anything was
                 cut, which is exactly what happened to a real sent message.
                 This counter appears once you're close enough to the limit
                 to actually notice before it bites, so a paste that's about
                 to lose content is visible before sending, not after. */}
-            {input.length > 400 && (
-              <Text style={[s.charCount, { color: input.length >= 500 ? colors.red : colors.mutedForeground }]}>
-                {input.length}/500
+            {input.length > MESSAGE_MAX_LENGTH - 100 && (
+              <Text style={[s.charCount, { color: input.length >= MESSAGE_MAX_LENGTH ? colors.red : colors.mutedForeground }]}>
+                {input.length}/{MESSAGE_MAX_LENGTH}
               </Text>
             )}
             <View style={[s.inputRow, { backgroundColor: colors.card, borderColor: inputFocused ? FEEDBACK_ACCENT + '80' : colors.border }]}>
@@ -456,7 +482,7 @@ export default function FeedbackScreen() {
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
                 multiline
-                maxLength={500}
+                maxLength={MESSAGE_MAX_LENGTH}
                 editable={!sending}
                 onSubmitEditing={send}
               />
@@ -513,6 +539,9 @@ const s = StyleSheet.create({
   bubbleMe: { borderBottomRightRadius: 5 },
   bubbleOther: { borderWidth: 1, borderBottomLeftRadius: 5 },
   bubbleText: { fontSize: 14.5, fontFamily: 'Inter_400Regular', lineHeight: 21 },
+  showMoreMe: { alignSelf: 'flex-end', marginTop: 2, paddingHorizontal: 2 },
+  showMoreOther: { alignSelf: 'flex-start', marginTop: 2, paddingHorizontal: 2 },
+  showMoreTxt: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   likeRow: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, marginTop: 1,

@@ -10,7 +10,15 @@ const PUSH_PREVIEW_LENGTH = 100;
 
 const router: IRouter = Router();
 
-const MAX_MESSAGE_LENGTH = 500;
+// Raised from 500 — a real bug report (e.g. describing a multi-step
+// financial scenario) routinely needs more room than a short chat message,
+// and 500 was tight enough that a legitimate paste got silently truncated
+// with no warning (the actual incident that also led to the delete-own-
+// message feature and the client-side character counter). Still bounded,
+// not unlimited — long messages get a collapse/"show more" treatment
+// client-side (app/feedback.tsx) so a 2000-char post doesn't dominate the
+// whole feed by default.
+const MAX_MESSAGE_LENGTH = 2000;
 
 // Require a valid Clerk session for every feedback route — this is a shared
 // board across all users, not admin-only, so any signed-in user passes.
