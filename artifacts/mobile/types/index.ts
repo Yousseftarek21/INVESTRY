@@ -225,6 +225,10 @@ export interface RecurringIncome {
   expectedDate?: string;
   /** 'pending' entries only — true once markIncomeCollected has deposited it. */
   collected?: boolean;
+  /** 'pending' entries only — server-managed, set by pendingIncomeReminderCron
+      once its one-time "did this arrive?" push has been sent for this entry,
+      so it never sends twice. Not read or written by the client. */
+  reminderSentAt?: string;
 }
 
 export interface MarketPrices {

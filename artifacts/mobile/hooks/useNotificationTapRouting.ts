@@ -25,6 +25,7 @@ const DESTINATION: Record<string, string> = {
   price_alert: '/price-alerts',
   activity_log: '/notifications',
   feedback_message: '/feedback',
+  pending_income_reminder: '/recurring-income',
 };
 
 function routeFromResponse(response: Notifications.NotificationResponse): void {

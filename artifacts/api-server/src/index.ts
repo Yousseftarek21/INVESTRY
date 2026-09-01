@@ -7,6 +7,7 @@ import { startRealEstatePriceCron } from "./lib/realEstatePriceCron";
 import { startDailySummaryCron } from "./lib/dailySummaryCron";
 import { startLeaderboardRankCron } from "./lib/leaderboardRankCron";
 import { startReferralMonthlyWinnerCron } from "./lib/referralMonthlyWinnerCron";
+import { startPendingIncomeReminderCron } from "./lib/pendingIncomeReminderCron";
 import { ensureUserColumns } from "./lib/ensureUserColumns";
 import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable, ensureEgxCloseSnapshotsTable, ensureFeedbackTables } from "./lib/ensureDividendsTable";
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
@@ -51,4 +52,5 @@ app.listen(port, async (err) => {
   startDailySummaryCron();
   startLeaderboardRankCron();
   startReferralMonthlyWinnerCron();
+  startPendingIncomeReminderCron();
 });
