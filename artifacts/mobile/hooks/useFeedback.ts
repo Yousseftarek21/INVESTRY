@@ -85,6 +85,37 @@ export function useFeedback() {
     }
   }, [getToken, queryClient]);
 
+  // Optimistic, with rollback — unlike toggleLike (which reconciles via a
+  // refetch on failure), a delete that fails on the server must bring the
+  // message BACK, not just leave the list stale, or the user would see
+  // their own message vanish and reappear on the next poll with no
+  // explanation. Own messages only — the server enforces this too
+  // (WHERE userId = ...), this is just the same check client-side so the
+  // delete action isn't even offered on someone else's message.
+  const deleteMessage = useCallback(async (id: string): Promise<boolean> => {
+    let removed: FeedbackMessage | undefined;
+    queryClient.setQueryData<FeedbackMessage[]>(QUERY_KEY, prev => {
+      removed = prev?.find(m => m.id === id);
+      return prev?.filter(m => m.id !== id);
+    });
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('no-token');
+      const res = await apiFetch(`/api/feedback/${id}`, token, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      return true;
+    } catch {
+      if (removed) {
+        queryClient.setQueryData<FeedbackMessage[]>(QUERY_KEY, prev =>
+          prev?.some(m => m.id === id) ? prev : [...(prev ?? []), removed!].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+          ),
+        );
+      }
+      return false;
+    }
+  }, [getToken, queryClient]);
+
   return {
     messages: query.data ?? [],
     // Only true on the very first fetch with no cached data yet — a
@@ -96,6 +127,7 @@ export function useFeedback() {
     refetch: query.refetch,
     sendMessage,
     toggleLike,
+    deleteMessage,
   };
 }
 

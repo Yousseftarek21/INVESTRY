@@ -203,4 +203,40 @@ router.post("/feedback/:id/like", async (req, res) => {
   }
 });
 
+// DELETE /api/feedback/:id — delete your own message. Ownership enforced
+// via WHERE id = ... AND userId = ... (same pattern as every other owned-
+// row DELETE in this app, e.g. routes/cash.ts) — no one can delete
+// someone else's message. Added after a real incident: this app's own
+// 500-char limit silently truncated a pasted message with no warning,
+// and there was no way for the sender to fix or remove it afterward.
+//
+// feedback_likes.messageId is a plain text column, not a real FK (see
+// schema/feedbackLikes.ts), so nothing cascades automatically — clean up
+// this message's own likes explicitly so a deleted message doesn't leave
+// orphaned like rows behind.
+router.delete("/feedback/:id", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { id } = req.params;
+
+  try {
+    const deleted = await db
+      .delete(feedbackMessagesTable)
+      .where(and(eq(feedbackMessagesTable.id, id), eq(feedbackMessagesTable.userId, userId)))
+      .returning({ id: feedbackMessagesTable.id });
+
+    if (deleted.length === 0) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    await db.delete(feedbackLikesTable).where(eq(feedbackLikesTable.messageId, id));
+
+    res.json({ deleted: id });
+  } catch (err) {
+    req.log.error({ err }, "DELETE /feedback/:id failed");
+    res.status(500).json({ error: "Failed to delete message" });
+  }
+});
+
 export default router;

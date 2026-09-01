@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Image, NativeScrollEvent, NativeSyntheticEvent,
+  ActivityIndicator, Alert, Animated, Image, NativeScrollEvent, NativeSyntheticEvent,
   Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 // Every "behavior"-driven keyboard-avoidance approach tried here tonight —
@@ -111,7 +111,7 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function Bubble({ m, onLike, isNew }: { m: FeedbackMessage; onLike: (id: string) => void; isNew: boolean }) {
+function Bubble({ m, onLike, onDelete, isNew }: { m: FeedbackMessage; onLike: (id: string) => void; onDelete: (id: string) => void; isNew: boolean }) {
   const colors = useColors();
   const t = useT();
   const category = parseCategory(m.message, t);
@@ -173,14 +173,30 @@ function Bubble({ m, onLike, isNew }: { m: FeedbackMessage; onLike: (id: string)
           </View>
         )}
         {m.isMe ? (
-          <ExpoLinearGradient
-            colors={[FEEDBACK_ACCENT, FEEDBACK_ACCENT_DEEP]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[s.bubble, s.bubbleMe, { shadowColor: FEEDBACK_ACCENT_DEEP, shadowOpacity: 0.35 }]}
+          // Long-press to delete — own messages only (the server enforces
+          // this too). Added after a real incident: a message got silently
+          // truncated by this app's own 500-char limit on paste, and there
+          // was no way to fix or remove it afterward.
+          <TouchableOpacity
+            activeOpacity={0.85}
+            delayLongPress={400}
+            onLongPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              Alert.alert(t.deleteFeedbackMessage, t.deleteFeedbackMessageConfirm, [
+                { text: t.cancel, style: 'cancel' },
+                { text: t.delete, style: 'destructive', onPress: () => onDelete(m.id) },
+              ]);
+            }}
           >
-            <Text style={[s.bubbleText, { color: '#FFFFFF' }]}>{displayText}</Text>
-          </ExpoLinearGradient>
+            <ExpoLinearGradient
+              colors={[FEEDBACK_ACCENT, FEEDBACK_ACCENT_DEEP]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[s.bubble, s.bubbleMe, { shadowColor: FEEDBACK_ACCENT_DEEP, shadowOpacity: 0.35 }]}
+            >
+              <Text style={[s.bubbleText, { color: '#FFFFFF' }]}>{displayText}</Text>
+            </ExpoLinearGradient>
+          </TouchableOpacity>
         ) : (
           <View style={[s.bubble, s.bubbleOther, { backgroundColor: colors.card, borderColor: accent + '2A' }]}>
             <Text style={[s.bubbleText, { color: colors.text }]}>{displayText}</Text>
@@ -205,7 +221,7 @@ export default function FeedbackScreen() {
   const t = useT();
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
-  const { messages, isLoading, isError, refetch, sendMessage, toggleLike } = useFeedback();
+  const { messages, isLoading, isError, refetch, sendMessage, toggleLike, deleteMessage } = useFeedback();
 
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -291,6 +307,12 @@ export default function FeedbackScreen() {
   const handleLike = useCallback((id: string) => {
     toggleLike(id);
   }, [toggleLike]);
+
+  const handleDeleteMessage = useCallback(async (id: string) => {
+    impact(Haptics.ImpactFeedbackStyle.Medium);
+    const ok = await deleteMessage(id);
+    if (!ok) Alert.alert(t.deleteFeedbackMessage, t.deleteFeedbackMessageError);
+  }, [deleteMessage, impact, t]);
 
   // A pure toggle on `activeCategory` only — deliberately does NOT touch
   // `input`. Stamping the marker emoji directly into the text field looked
@@ -385,7 +407,7 @@ export default function FeedbackScreen() {
               messages.map(m => {
                 const isNew = !seenIdsRef.current!.has(m.id);
                 seenIdsRef.current!.add(m.id);
-                return <Bubble key={m.id} m={m} onLike={handleLike} isNew={isNew} />;
+                return <Bubble key={m.id} m={m} onLike={handleLike} onDelete={handleDeleteMessage} isNew={isNew} />;
               })
             )}
 
@@ -411,6 +433,19 @@ export default function FeedbackScreen() {
                 );
               })}
             </View>
+            {/* The input already hard-stops typing at 500 chars via
+                maxLength below — that part always worked. What didn't:
+                pasting text longer than 500 chars gets silently truncated
+                by the same maxLength with zero indication anything was
+                cut, which is exactly what happened to a real sent message.
+                This counter appears once you're close enough to the limit
+                to actually notice before it bites, so a paste that's about
+                to lose content is visible before sending, not after. */}
+            {input.length > 400 && (
+              <Text style={[s.charCount, { color: input.length >= 500 ? colors.red : colors.mutedForeground }]}>
+                {input.length}/500
+              </Text>
+            )}
             <View style={[s.inputRow, { backgroundColor: colors.card, borderColor: inputFocused ? FEEDBACK_ACCENT + '80' : colors.border }]}>
               <TextInput
                 style={[s.input, { color: colors.text }]}
@@ -495,6 +530,7 @@ const s = StyleSheet.create({
     borderRadius: 12, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6,
   },
   catChipTxt: { fontSize: 11.5, fontFamily: 'Inter_600SemiBold' },
+  charCount: { fontSize: 11, fontFamily: 'Inter_500Medium', textAlign: 'right', marginBottom: 4, marginRight: 4 },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', borderRadius: 22, borderWidth: 1.5, paddingLeft: 16, paddingRight: 6, paddingVertical: 6, gap: 8 },
   input: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular', maxHeight: 100, paddingVertical: 6 },
   sendBtn: {
