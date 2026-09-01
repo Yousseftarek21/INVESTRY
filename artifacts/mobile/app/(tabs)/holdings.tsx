@@ -12,7 +12,10 @@ import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/u
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { getRECurrentValue } from '@/utils/rePrice';
+import { computePendingIncomeEGP } from '@/utils/cash';
+import { forwardChevron } from '@/utils/rtl';
 import { HoldingCard } from '@/components/HoldingCard';
+import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 
 import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { Holding, MarketPrices } from '@/types';
@@ -117,6 +120,7 @@ export default function HoldingsScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { holdings, removeHolding, isLoading, syncError } = useHoldings();
+  const { recurringIncomes } = useRecurringIncome();
 
   // Auto-dismissing sync error toast
   const [showSyncError, setShowSyncError] = useState(false);
@@ -141,6 +145,16 @@ export default function HoldingsScreen() {
     globalStocks?.forEach(s => { egxPrices[s.ticker] = s.price; });
     return { ...rawPrices, egxPrices };
   }, [rawPrices, egxStocks, globalStocks]);
+  // Pending income (money owed to the user, not yet collected) is a
+  // RecurringIncome, not a Holding — structurally separate context, and
+  // deliberately kept outside `grouped`/TYPE_ORDER below rather than folded
+  // into the Holding type system: it has no cost basis or gain/loss, so it
+  // doesn't fit the per-type aggregation those groups do. Same total this
+  // screen's own net-worth row on Home already uses (utils/cash.ts).
+  const pendingIncomeEGP = useMemo(
+    () => computePendingIncomeEGP(recurringIncomes, prices),
+    [recurringIncomes, prices],
+  );
   const { impact } = useHaptic();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -310,6 +324,33 @@ export default function HoldingsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* ── Pending income tile — a real user's complaint was that this
+             was only visible via a small text row on Home or by digging
+             into the Income screen directly; it now shows here too,
+             prominently, the way an investment category tile would.
+             Deliberately NOT one of the TYPE_ORDER groups below — see the
+             pendingIncomeEGP comment above for why. Shown in every state
+             (loading/empty/populated investments) since it's independent
+             of whether the user holds any investments at all. */}
+        {pendingIncomeEGP > 0 && (
+          <TouchableOpacity
+            style={[styles.pendingTile, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => { impact(); router.push('/recurring-income'); }}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.pendingTileIcon, { backgroundColor: '#F59E0B18' }]}>
+              <Feather name="clock" size={18} color="#F59E0B" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.pendingTileLabel, { color: colors.mutedForeground }]}>{t.pendingIncomeLabel}</Text>
+              <Text style={[styles.pendingTileValue, { color: colors.text }]}>
+                {pendingIncomeEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+              </Text>
+            </View>
+            <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        )}
 
         {/* ── Search bar + filter icon ── */}
         {holdings.length > 0 && (
@@ -576,6 +617,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14,
   },
   syncToastText: { color: '#fff', fontSize: 13, fontFamily: 'Inter_500Medium', flex: 1 },
+
+  pendingTile: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 16, borderWidth: 1, padding: 14,
+  },
+  pendingTileIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  pendingTileLabel: { fontSize: 12, fontFamily: 'Inter_500Medium' },
+  pendingTileValue: { fontSize: 16, fontFamily: 'Inter_700Bold', marginTop: 2 },
 
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: -8,
