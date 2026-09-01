@@ -73,9 +73,24 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
         // nothing — verified by reading the component's own source, not
         // assumed). Raising this makes the swipe gesture claim a real touch
         // more decisively before it can lose the race to a child
-        // touchable's own tap recognizer — see the TouchableOpacity import
-        // note on each screen using this for the other, structural half of
-        // that same fix.
+        // touchable's own tap recognizer.
+        //
+        // A second, structural half of this fix was tried and reverted:
+        // swapping each card's own TouchableOpacity (and its nested
+        // buttons) to react-native-gesture-handler's own TouchableOpacity
+        // did stop the swipe-vs-tap race, but nesting native gesture-handler
+        // buttons two levels deep inside this Swipeable broke those nested
+        // buttons instead — their tap registered visually (a press flash)
+        // without ever completing. Reverted to plain RN TouchableOpacity
+        // everywhere (recurring-income.tsx, dividends.tsx) to guarantee
+        // Mark Collected/delete actually work; this threshold widening is
+        // what's left carrying the swipe-vs-tap fix on its own, so a real
+        // device may still occasionally read a swipe as a tap. Fixing that
+        // properly needs a non-nested-native-button approach (e.g. the
+        // new Gesture API's Gesture.Tap composed via
+        // requireExternalGestureToFail against this Swipeable's own pan
+        // gesture, with children left as plain RN touchables) — not
+        // attempted yet.
         dragOffsetFromLeftEdge={16}
         dragOffsetFromRightEdge={16}
         overshootRight={!I18nManager.isRTL}

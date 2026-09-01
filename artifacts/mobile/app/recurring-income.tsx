@@ -4,17 +4,6 @@ import {
   StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
-// Only for the two full-card swipeable touchables below (aliased to avoid
-// colliding with RN's own TouchableOpacity, used everywhere else in this
-// file). A plain RN TouchableOpacity claims touch via its own legacy
-// responder system, independent of SwipeToDelete's pan-gesture activation
-// threshold — on a real device, that responder frequently wins before the
-// swipe gesture recognizes enough horizontal movement, reading the swipe as
-// a tap and opening Edit instead of revealing Delete. Gesture-handler's own
-// TouchableOpacity negotiates through the same arbitration system as the
-// swipe itself, which is the library's own documented fix for nesting a
-// touchable inside a GestureDetector-based component.
-import { TouchableOpacity as SwipeCardTouchable } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { backChevron, forwardArrow } from '@/utils/rtl';
@@ -310,7 +299,7 @@ export default function RecurringIncomeScreen() {
                         const destAccount = inc.collected ? cashAccounts.find(a => a.id === inc.cashAccountId) : undefined;
                         return (
                         <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
-                          <SwipeCardTouchable
+                          <TouchableOpacity
                             style={[s.pendingCard, {
                               backgroundColor: colors.card, borderColor: colors.border,
                               borderStartWidth: 3, borderStartColor: stateColor,
@@ -343,22 +332,24 @@ export default function RecurringIncomeScreen() {
                                     pending entry may simply never arrive (deal fell
                                     through, client backed out), and a user shouldn't
                                     have to discover swipe-to-delete to remove it.
-                                    Must be SwipeCardTouchable, not a plain RN
-                                    TouchableOpacity — nested one level inside the
-                                    card's own SwipeCardTouchable, a plain RN
-                                    touchable's taps never reach it at all (the
-                                    outer one is a real native button that captures
-                                    every touch in its bounds on both platforms;
-                                    this is documented gesture-handler behavior, not
-                                    a guess — see the button-nesting note on
-                                    "Mark Collected" below for the full mechanism). */}
-                                <SwipeCardTouchable
+                                    Plain RN TouchableOpacity, deliberately — this
+                                    card and its buttons were briefly switched to
+                                    react-native-gesture-handler's TouchableOpacity to
+                                    fix swipe-vs-tap losing on real devices, but
+                                    nesting native gesture-handler buttons two levels
+                                    deep inside SwipeToDelete's own Swipeable left the
+                                    touch registering (visible press) without the tap
+                                    ever completing — a real, reproduced regression,
+                                    not a guess. Reverted to guarantee this button
+                                    actually works; swipe-to-delete needs a different,
+                                    non-nested-button fix (see SwipeToDelete.tsx). */}
+                                <TouchableOpacity
                                   style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
                                   onPress={() => handleDelete(inc.id)}
                                   hitSlop={8}
                                 >
                                   <Feather name="trash-2" size={13} color={colors.red} />
-                                </SwipeCardTouchable>
+                                </TouchableOpacity>
                               </View>
                             </View>
 
@@ -383,24 +374,19 @@ export default function RecurringIncomeScreen() {
                                     </>
                                   ) : null}
                                 </View>
-                                {/* Real regression, confirmed and fixed: this used
-                                    to be a plain RN TouchableOpacity nested inside
-                                    the card's own SwipeCardTouchable. Once the card
-                                    wrapper became a real native gesture-handler
-                                    button (to fix swipe-vs-tap, see SwipeToDelete.tsx),
-                                    it started capturing every touch in its bounds on
-                                    both iOS (hitTest: override) and Android
-                                    (onInterceptTouchEvent) — a plain RN touchable
-                                    nested inside it never received its own touches
-                                    at all, silently. This is documented
-                                    gesture-handler behavior (its own iOS source
-                                    comment states nested JS-responder touchables
-                                    don't work inside its buttons), not a guess.
-                                    react-native-gesture-handler's own docs call
-                                    two-level nested buttons (this component inside
-                                    itself) the supported pattern instead. */}
+                                {/* Plain RN TouchableOpacity, deliberately — see the
+                                    delete button's comment above. Briefly became
+                                    react-native-gesture-handler's TouchableOpacity to
+                                    fix the outer card's swipe-vs-tap race; that
+                                    correctly stopped an outer-card tap from stealing
+                                    the touch, but nesting a SECOND layer of native
+                                    gesture-handler buttons here (inside the card's
+                                    own, inside Swipeable) left this button's own tap
+                                    registering visually (a press flash) without ever
+                                    completing — reproduced live, not theoretical.
+                                    Reverted so this button is guaranteed to work. */}
                                 {!inc.collected && (
-                                  <SwipeCardTouchable
+                                  <TouchableOpacity
                                     style={[s.collectBtn, { backgroundColor: colors.green }]}
                                     onPress={() => handleMarkCollected(inc.id)}
                                     hitSlop={8}
@@ -408,11 +394,11 @@ export default function RecurringIncomeScreen() {
                                   >
                                     <Feather name="check" size={12} color={colors.primaryForeground} />
                                     <Text style={[s.collectBtnText, { color: colors.primaryForeground }]}>{t.markCollected}</Text>
-                                  </SwipeCardTouchable>
+                                  </TouchableOpacity>
                                 )}
                               </View>
                             )}
-                          </SwipeCardTouchable>
+                          </TouchableOpacity>
                         </SwipeToDelete>
                         );
                       })}
@@ -426,7 +412,7 @@ export default function RecurringIncomeScreen() {
                       )}
                       {recurringEntries.map(inc => (
                         <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
-                          <SwipeCardTouchable
+                          <TouchableOpacity
                             style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
                             onPress={() => openEdit(inc)}
                             activeOpacity={0.85}
@@ -465,17 +451,17 @@ export default function RecurringIncomeScreen() {
                                   {inc.active ? t.active : t.paused}
                                 </Text>
                               </View>
-                              {/* SwipeCardTouchable, not plain RN — see the note
-                                  on the pending card's own delete button above. */}
-                              <SwipeCardTouchable
+                              {/* Plain RN TouchableOpacity, deliberately — see the
+                                  pending card's own delete button comment above. */}
+                              <TouchableOpacity
                                 style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
                                 onPress={() => handleDelete(inc.id)}
                                 hitSlop={8}
                               >
                                 <Feather name="trash-2" size={13} color={colors.red} />
-                              </SwipeCardTouchable>
+                              </TouchableOpacity>
                             </View>
-                          </SwipeCardTouchable>
+                          </TouchableOpacity>
                         </SwipeToDelete>
                       ))}
                     </>
