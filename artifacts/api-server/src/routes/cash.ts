@@ -131,11 +131,26 @@ router.put("/cash-accounts/:id", async (req, res) => {
 
 // GET /api/cash-accounts/:id/balance-updates — this account's manual balance
 // change history (not a transaction/expense ledger — just delta + resulting
-// balance + when), most recent first.
+// balance + when), most recent first. ?limit= lets a caller ask for more
+// than the lightweight default — the "Recent updates" preview on Cash
+// Accounts wants a handful, but the dedicated "View all" history screen
+// (useRecentCashUpdates' HISTORY_LIMIT) genuinely wants a couple hundred
+// per account, and previously had no way to ask for more than this route's
+// old hardcoded 20 — meaning any account with more than 20 balance changes
+// ever had its older history permanently unreachable, silently, regardless
+// of what the client requested.
+const DEFAULT_BALANCE_UPDATES_LIMIT = 20;
+const MAX_BALANCE_UPDATES_LIMIT = 500;
+
 router.get("/cash-accounts/:id/balance-updates", async (req, res) => {
   const { userId } = getAuth(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const { id } = req.params;
+
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0
+    ? Math.min(Math.floor(rawLimit), MAX_BALANCE_UPDATES_LIMIT)
+    : DEFAULT_BALANCE_UPDATES_LIMIT;
 
   try {
     const rows = await db
@@ -148,7 +163,7 @@ router.get("/cash-accounts/:id/balance-updates", async (req, res) => {
       .from(cashBalanceUpdatesTable)
       .where(and(eq(cashBalanceUpdatesTable.userId, userId), eq(cashBalanceUpdatesTable.cashAccountId, id)))
       .orderBy(desc(cashBalanceUpdatesTable.createdAt))
-      .limit(20);
+      .limit(limit);
 
     res.json(rows);
   } catch (err) {
