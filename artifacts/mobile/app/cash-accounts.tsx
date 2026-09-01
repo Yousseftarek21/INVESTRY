@@ -97,7 +97,7 @@ export default function CashAccountsScreen() {
   // every account's history into one feed rather than fetching one
   // account's history in isolation (which is all this hook call gives you).
   const { logUpdate: logBalanceUpdate } = useCashBalanceUpdates(null);
-  const { todayChanges, isLoading: todayChangesLoading, refresh: refreshTodayChanges } = useCashAccountsTodayChanges();
+  const { todayChanges, isLoading: todayChangesLoading, refresh: refreshTodayChanges, applyOptimisticDelta } = useCashAccountsTodayChanges();
   const { updates: recentUpdates, refresh: refreshRecentUpdates } = useRecentCashUpdates(cashAccounts, RECENT_UPDATES_PREVIEW_LIMIT);
   const { logActivity } = useActivityLog();
   const [currency, setCurrency] = useState('EGP');
@@ -357,6 +357,9 @@ export default function CashAccountsScreen() {
         updateCashAccount(account);
         if (balanceChanged) {
           const delta = parsedBalance - (editingOriginalBalance as number);
+          // Instant, not "eventually": the badge reflects this edit the
+          // moment it's saved, not after the round trip below completes.
+          applyOptimisticDelta(account.id, delta);
           logBalanceUpdate(account.id, delta, parsedBalance)
             .then(() => { refreshTodayChanges(); refreshRecentUpdates(); });
           logActivity(
@@ -463,6 +466,8 @@ export default function CashAccountsScreen() {
     // a balance drop had nothing explaining it.
     if (transferFrom && transferTo) {
       const amountTxt = amount.toLocaleString('en-EG', { maximumFractionDigits: 2 });
+      applyOptimisticDelta(transferFrom.id, -amount);
+      applyOptimisticDelta(transferTo.id, amount);
       Promise.all([
         logBalanceUpdate(transferFrom.id, -amount, transferFrom.balance - amount),
         logBalanceUpdate(transferTo.id, amount, transferTo.balance + amount),

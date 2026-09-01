@@ -1,9 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
+import { useQueryClient } from '@tanstack/react-query';
 import { IncomeTransaction, RecurringIncome } from '@/types';
 import { useCash } from '@/context/CashContext';
 import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
+import { applyOptimisticTodayChange } from '@/hooks/useCashAccountsTodayChanges';
 import { apiFetch } from '@/utils/api';
 
 function storageKey(userId: string) {
@@ -68,6 +70,13 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
   // silently bumped the account's balance field with no logged transaction,
   // so it never showed up under that account's "Recent updates" feed.
   const { logUpdate: logBalanceUpdate } = useCashBalanceUpdates(null);
+  // Same optimistic-badge fix as cash-accounts.tsx's own edits/transfers —
+  // without this, the "+/- today" chip on a cash account card only updated
+  // after Cash Accounts' own today-changes query refetched from the server,
+  // which nothing here ever triggered directly, so a mark-collected credit
+  // (or a monthly recurring credit) could sit invisible on the badge for as
+  // long as that screen's 30s cache stayed fresh.
+  const queryClient = useQueryClient();
 
   const [incomes, setIncomes] = useState<RecurringIncome[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -246,9 +255,10 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
 
     const resultingBalance = (Number(account.balance) || 0) + inc.amount;
     await updateCashAccount({ ...account, balance: resultingBalance });
+    applyOptimisticTodayChange(queryClient, account.id, inc.amount);
     logBalanceUpdate(account.id, inc.amount, resultingBalance);
     await updateRecurringIncome({ ...inc, cashAccountId, collected: true });
-  }, [incomes, cashAccounts, updateCashAccount, updateRecurringIncome, logBalanceUpdate]);
+  }, [incomes, cashAccounts, updateCashAccount, updateRecurringIncome, logBalanceUpdate, queryClient]);
 
   // ── Credit processor ───────────────────────────────────────────────────────
   // Credits ALL missed months since lastProcessedMonth, not just the current one.
@@ -328,12 +338,13 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
         if (account) {
           const resultingBalance = (Number(account.balance) || 0) + delta;
           updateCashAccount({ ...account, balance: resultingBalance });
+          applyOptimisticTodayChange(queryClient, accountId, delta);
           logBalanceUpdate(accountId, delta, resultingBalance);
         }
       });
       changedIncomes.forEach(inc => { updateRecurringIncome(inc).catch(() => null); });
     }
-  }, [incomes, cashAccounts, cashLoading, isLoading, userId, updateCashAccount, updateRecurringIncome, logBalanceUpdate]);
+  }, [incomes, cashAccounts, cashLoading, isLoading, userId, updateCashAccount, updateRecurringIncome, logBalanceUpdate, queryClient]);
 
   return (
     <RecurringIncomeContext.Provider value={{
