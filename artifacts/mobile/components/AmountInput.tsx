@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, TextInputProps } from 'react-native';
-import { cleanAmountInput, formatAmountInput } from '@/utils/parseAmount';
+import { cleanAmountInput, formatAmountInput, toWesternDigits } from '@/utils/parseAmount';
 
 interface AmountInputProps extends Omit<TextInputProps, 'value' | 'onChangeText'> {
   value: string; // clean numeric string, e.g. "5000" or "5000.5" — no commas
@@ -67,7 +67,18 @@ export function AmountInput({ value, onChangeText, keyboardType, ...rest }: Amou
     return () => cancelAnimationFrame(id);
   }, [selection]);
 
-  const handleChangeText = (raw: string) => {
+  const handleChangeText = (rawInput: string) => {
+    // Normalize to Western digits FIRST, before any diffing or counting.
+    // An Arabic keyboard's numeric keys can produce Arabic-Indic glyphs
+    // (٠-٩, U+0660-0669) in what onChangeText reports — digitCountBefore
+    // and cursorIndexForDigitCount below only ever recognize ASCII '0'-'9',
+    // so an un-normalized raw string containing those glyphs was never
+    // counted as having any digits at all at/after that point, sending the
+    // cursor to a wrong position on literally every keystroke (not a
+    // cosmetic offset — typing felt entirely broken). prevDisplay is
+    // always Western already (built from formatAmountInput, which itself
+    // normalizes), so diffing raw against it only works once raw is too.
+    const raw = toWesternDigits(rawInput);
     const prevDisplay = displayValue;
     let prefixLen = 0;
     const minLen = Math.min(prevDisplay.length, raw.length);
