@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Image, Platform, RefreshControl, ScrollView,
-  StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, Animated, Image, NativeScrollEvent, NativeSyntheticEvent,
+  Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 // Every "behavior"-driven keyboard-avoidance approach tried here tonight —
 // react-native's own KeyboardAvoidingView, this library's KeyboardAvoidingView
@@ -232,6 +232,24 @@ export default function FeedbackScreen() {
     if (!isLoading && !isError) markFeedbackSeen();
   }, [isLoading, isError, messages.length]);
   const scrollRef = useRef<ScrollView>(null);
+  // onContentSizeChange used to force-scroll to the bottom unconditionally,
+  // on every content-size change — not just a real new message, but also
+  // the 15s poll's own re-render (useFeedback's refetchInterval), a relative
+  // "2m ago" timestamp label reflowing, an avatar image settling its
+  // dimensions, etc. If the user had scrolled up to read older messages,
+  // that yanked them straight back to the bottom every time, which read as
+  // the screen scrolling itself while idle — exactly this report. Tracked
+  // here instead: only auto-scroll on a content-size change while the user
+  // is already at/near the bottom (normal "watching it live" chat
+  // behavior); once they've scrolled up, further poll ticks leave them
+  // where they are, same as any real chat app.
+  const isNearBottomRef = useRef(true);
+  const NEAR_BOTTOM_PX = 120;
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+    isNearBottomRef.current = distanceFromBottom < NEAR_BOTTOM_PX;
+  };
 
   const send = useCallback(async () => {
     const trimmed = input.trim();
@@ -314,7 +332,11 @@ export default function FeedbackScreen() {
             style={{ flex: 1 }}
             contentContainerStyle={s.content}
             keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+            onScroll={handleScroll}
+            scrollEventThrottle={100}
+            onContentSizeChange={() => {
+              if (isNearBottomRef.current) scrollRef.current?.scrollToEnd({ animated: false });
+            }}
             refreshControl={
               <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={FEEDBACK_ACCENT} colors={[FEEDBACK_ACCENT]} />
             }
