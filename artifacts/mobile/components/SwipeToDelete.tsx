@@ -65,6 +65,19 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
         friction={2}
         rightThreshold={REVEAL_W / 2}
         leftThreshold={REVEAL_W / 2}
+        // Widened from the library's own 10dp default (DEFAULT_DRAG_OFFSET
+        // in ReanimatedSwipeable.tsx) — these are the only activation-
+        // threshold props this component actually wires into its pan
+        // gesture (they map straight to activeOffsetX internally; a raw
+        // activeOffsetX or failOffsetY prop passed here would silently do
+        // nothing — verified by reading the component's own source, not
+        // assumed). Raising this makes the swipe gesture claim a real touch
+        // more decisively before it can lose the race to a child
+        // touchable's own tap recognizer — see the TouchableOpacity import
+        // note on each screen using this for the other, structural half of
+        // that same fix.
+        dragOffsetFromLeftEdge={16}
+        dragOffsetFromRightEdge={16}
         overshootRight={!I18nManager.isRTL}
         overshootLeft={I18nManager.isRTL}
         renderRightActions={I18nManager.isRTL ? undefined : renderActions}

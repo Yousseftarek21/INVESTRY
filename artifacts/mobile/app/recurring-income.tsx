@@ -4,6 +4,17 @@ import {
   StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
+// Only for the two full-card swipeable touchables below (aliased to avoid
+// colliding with RN's own TouchableOpacity, used everywhere else in this
+// file). A plain RN TouchableOpacity claims touch via its own legacy
+// responder system, independent of SwipeToDelete's pan-gesture activation
+// threshold — on a real device, that responder frequently wins before the
+// swipe gesture recognizes enough horizontal movement, reading the swipe as
+// a tap and opening Edit instead of revealing Delete. Gesture-handler's own
+// TouchableOpacity negotiates through the same arbitration system as the
+// swipe itself, which is the library's own documented fix for nesting a
+// touchable inside a GestureDetector-based component.
+import { TouchableOpacity as SwipeCardTouchable } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { backChevron, forwardArrow } from '@/utils/rtl';
@@ -108,6 +119,11 @@ export default function RecurringIncomeScreen() {
   };
 
   const openEdit = (inc: RecurringIncome) => {
+    // A collected pending entry is historical — the money already moved to
+    // a cash account, so there's nothing left to edit. Guarding here (not
+    // just at the JSX call site) means any future caller gets the same
+    // protection for free.
+    if (inc.collected) return;
     setEditingId(inc.id);
     setKind(inc.kind ?? 'recurring');
     setName(inc.name);
@@ -294,7 +310,7 @@ export default function RecurringIncomeScreen() {
                         const destAccount = inc.collected ? cashAccounts.find(a => a.id === inc.cashAccountId) : undefined;
                         return (
                         <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
-                          <TouchableOpacity
+                          <SwipeCardTouchable
                             style={[s.pendingCard, {
                               backgroundColor: colors.card, borderColor: colors.border,
                               borderStartWidth: 3, borderStartColor: stateColor,
@@ -371,7 +387,7 @@ export default function RecurringIncomeScreen() {
                                 )}
                               </View>
                             )}
-                          </TouchableOpacity>
+                          </SwipeCardTouchable>
                         </SwipeToDelete>
                         );
                       })}
@@ -385,7 +401,7 @@ export default function RecurringIncomeScreen() {
                       )}
                       {recurringEntries.map(inc => (
                         <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
-                          <TouchableOpacity
+                          <SwipeCardTouchable
                             style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
                             onPress={() => openEdit(inc)}
                             activeOpacity={0.85}
@@ -432,7 +448,7 @@ export default function RecurringIncomeScreen() {
                                 <Feather name="trash-2" size={13} color={colors.red} />
                               </TouchableOpacity>
                             </View>
-                          </TouchableOpacity>
+                          </SwipeCardTouchable>
                         </SwipeToDelete>
                       ))}
                     </>

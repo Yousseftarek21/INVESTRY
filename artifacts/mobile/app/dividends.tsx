@@ -4,6 +4,13 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
+// Only for the full-card swipeable touchable below (aliased to avoid
+// colliding with RN's own TouchableOpacity, used everywhere else in this
+// file) — see the identical note in app/recurring-income.tsx for why a
+// plain RN TouchableOpacity here loses the race against SwipeToDelete's
+// swipe gesture on a real device (opens Edit instead of revealing Delete),
+// a bug this file shares with that one via the same SwipeToDelete pattern.
+import { TouchableOpacity as SwipeCardTouchable } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { backChevron } from '@/utils/rtl';
@@ -239,7 +246,7 @@ export default function DividendsScreen() {
                   <View style={s.list}>
                     {sorted.map(d => (
                       <SwipeToDelete key={d.id} onDelete={() => handleDelete(d.id)}>
-                        <TouchableOpacity
+                        <SwipeCardTouchable
                           style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
                           onPress={() => openEdit(d)}
                           activeOpacity={0.85}
@@ -267,7 +274,7 @@ export default function DividendsScreen() {
                               <Feather name="trash-2" size={13} color={colors.red} />
                             </TouchableOpacity>
                           </View>
-                        </TouchableOpacity>
+                        </SwipeCardTouchable>
                       </SwipeToDelete>
                     ))}
                   </View>
