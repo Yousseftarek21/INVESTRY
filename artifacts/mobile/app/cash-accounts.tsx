@@ -60,7 +60,7 @@ export default function CashAccountsScreen() {
   const insets = useSafeAreaInsets();
   const { cashAccounts, addCashAccount, updateCashAccount, removeCashAccount, transferBetweenAccounts } = useCash();
   const { data: prices } = useMarketPrices();
-  const { recurringIncomes, addRecurringIncome, updateRecurringIncome, removeRecurringIncome, markIncomeCollected } = useRecurringIncome();
+  const { recurringIncomes, addRecurringIncome, updateRecurringIncome, removeRecurringIncome } = useRecurringIncome();
   const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
   const { impact, notify } = useHaptic();
 
@@ -116,10 +116,6 @@ export default function CashAccountsScreen() {
   const [incomeExpectedDate, setIncomeExpectedDate] = useState('');
   const [depositAccountId, setDepositAccountId] = useState('');
   const [showAccountPicker, setShowAccountPicker] = useState(false);
-  // Set while the account picker is open to collect a pending entry instead
-  // of to pick the form's deposit account — same modal, two purposes, same
-  // pattern as app/recurring-income.tsx.
-  const [collectingId, setCollectingId] = useState<string | null>(null);
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingDeleteIsIncome, setPendingDeleteIsIncome] = useState(false);
@@ -260,12 +256,6 @@ export default function CashAccountsScreen() {
     setIncomeExpectedDate(r.expectedDate ?? '');
     setDepositAccountId(r.cashAccountId ?? '');
     setShowForm(true);
-  };
-
-  const handleMarkCollected = (id: string) => {
-    impact();
-    setCollectingId(id);
-    setShowAccountPicker(true);
   };
 
   const handleSave = async () => {
@@ -1094,66 +1084,13 @@ export default function CashAccountsScreen() {
                   </SwipeToDelete>
                 ))}
 
-                {/* Pending income — money owed, not yet collected. Once
-                    collected it drops out of this list entirely: its amount
-                    is already reflected in the real cash account's balance
-                    and, since RecurringIncomeContext now logs a balance
-                    update on collect, in that account's own Recent updates
-                    feed too — leaving it here as well made a collected entry
-                    render as its own full account-style card, indistinguishable
-                    from a real cash account. The Income screen (its own
-                    dedicated history view) still shows it after collecting. */}
-                {recurringIncomes.filter(r => r.kind === 'pending' && !r.collected).map(r => {
-                  const stateColor = '#F59E0B';
-                  return (
-                  <SwipeToDelete key={r.id} onDelete={() => handleDelete(r.id, true)}>
-                    <View style={[styles.accountCard, {
-                      backgroundColor: colors.card, borderColor: colors.border,
-                      borderStartWidth: 3, borderStartColor: stateColor,
-                    }]}>
-                      <View style={[styles.accountIconWrap, { backgroundColor: stateColor + '18' }]}>
-                        <Feather name="clock" size={18} color={stateColor} />
-                      </View>
-                      <View style={styles.accountInfo}>
-                        <Text style={[styles.accountName, { color: colors.text }]} numberOfLines={1}>{r.name}</Text>
-                        <Text style={[styles.accountType, { color: stateColor }]}>
-                          {t.incomeKindPending}
-                          {r.expectedDate ? ` · ${t.expectedDate}: ${r.expectedDate}` : ''}
-                        </Text>
-                        <Text style={[styles.accountBalance, { color: colors.text }]} numberOfLines={1}>
-                          {r.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {r.currency}
-                        </Text>
-                      </View>
-                      <View style={styles.accountActions}>
-                        <TouchableOpacity
-                          onPress={() => handleMarkCollected(r.id)}
-                          style={[styles.actionBtn, { backgroundColor: colors.green }]}
-                          hitSlop={8}
-                          activeOpacity={0.85}
-                        >
-                          <Feather name="check" size={14} color={colors.primaryForeground} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => openEditIncome(r)}
-                          style={[styles.actionBtn, { backgroundColor: colors.primary + '14' }]}
-                          hitSlop={8}
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="edit-2" size={14} color={colors.primary} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => handleDelete(r.id, true)}
-                          style={[styles.actionBtn, { backgroundColor: colors.red + '12' }]}
-                          hitSlop={8}
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="trash-2" size={14} color={colors.red} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </SwipeToDelete>
-                  );
-                })}
+                {/* Pending income is deliberately NOT listed here — it has its
+                    own dedicated section on the Income screen, and showing it
+                    here too (collected or not) made this screen read like it
+                    had extra "accounts" that weren't real cash accounts. Once
+                    an entry is actually collected, its effect still shows up
+                    here exactly where it belongs: the destination account's
+                    balance, and a "Recent updates" transaction row. */}
 
                 {/* Recurring incomes */}
                 {recurringIncomes.filter(r => r.kind !== 'pending').map(r => (
@@ -1245,61 +1182,39 @@ export default function CashAccountsScreen() {
         )}
       </ScrollView>
 
-      {/* ── Account picker — doubles as "pick a deposit account for the
-          form" (collectingId null) and "pick which account a pending entry
-          landed in" (collectingId set), same pattern as
-          app/recurring-income.tsx ─────────────────────────────────────── */}
+      {/* ── Account picker — picks the deposit account for the income form.
+          Marking a pending entry collected now happens only on the Income
+          screen (app/recurring-income.tsx), which owns that flow exclusively
+          since pending entries are no longer listed on this screen. ───── */}
       <Modal
         visible={showAccountPicker}
         animationType="slide"
         transparent
-        onRequestClose={() => { setShowAccountPicker(false); setCollectingId(null); }}
+        onRequestClose={() => setShowAccountPicker(false)}
       >
         <TouchableOpacity
           style={confirmStyles.overlay}
           activeOpacity={1}
-          onPress={() => { setShowAccountPicker(false); setCollectingId(null); }}
+          onPress={() => setShowAccountPicker(false)}
         >
           <View style={[styles.pickerSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.pickerTitle, { color: colors.text }]}>
-              {collectingId ? t.markCollected : t.selectAccount}
+              {t.selectAccount}
             </Text>
             {cashAccounts.map(a => (
               <TouchableOpacity
                 key={a.id}
                 style={[styles.pickerOption, {
                   borderColor: colors.border,
-                  backgroundColor: !collectingId && depositAccountId === a.id ? colors.primary + '14' : 'transparent',
+                  backgroundColor: depositAccountId === a.id ? colors.primary + '14' : 'transparent',
                 }]}
                 onPress={() => {
-                  if (collectingId) {
-                    impact(Haptics.ImpactFeedbackStyle.Medium);
-                    const collected = recurringIncomes.find(r => r.id === collectingId);
-                    markIncomeCollected(collectingId, a.id)
-                      .then(() => {
-                        if (!collected) return;
-                        logActivity(
-                          'income_collected',
-                          t.activityIncomeCollectedTitle,
-                          t.activityIncomeCollectedSubtitle(
-                            collected.name,
-                            collected.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                            collected.currency,
-                            a.accountName,
-                          ),
-                          collectingId,
-                        );
-                      })
-                      .catch(() => Alert.alert(t.couldNotSave, t.couldNotOpenLinkDesc));
-                    setCollectingId(null);
-                  } else {
-                    setDepositAccountId(a.id);
-                    setCurrency(a.currency);
-                  }
+                  setDepositAccountId(a.id);
+                  setCurrency(a.currency);
                   setShowAccountPicker(false);
                 }}
               >
-                <Text style={[styles.pickerOptionText, { color: !collectingId && depositAccountId === a.id ? colors.primary : colors.text }]} numberOfLines={1}>
+                <Text style={[styles.pickerOptionText, { color: depositAccountId === a.id ? colors.primary : colors.text }]} numberOfLines={1}>
                   {a.accountName}
                 </Text>
                 <Text style={[styles.accountType, { color: colors.mutedForeground }]}>{a.currency}</Text>
