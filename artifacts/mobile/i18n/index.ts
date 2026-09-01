@@ -157,6 +157,21 @@ const en = {
   installmentEndDate: 'Installment End Date',
   paidSoFar: 'Paid So Far',
 
+  // Fixed Income — loan against a certificate
+  linkedLoanTitle: 'Loan Against This Certificate',
+  linkedLoanDesc: 'Track a loan taken using this certificate as collateral — informational only, not counted in net worth',
+  loanOutstandingBalance: 'Outstanding Balance (EGP)',
+  loanMonthlyInstallment: 'Monthly Installment (EGP)',
+  loanFundingAccount: 'Cash Account Covering the Rest',
+  loanFundingAccountDesc: "The certificate's own interest covers part of each installment — pick which account covers what's left.",
+  loanStartDate: 'Loan Start Date',
+  loanNotesPlaceholder: 'e.g. loan reference number',
+  markInstallmentPaid: 'Mark This Month Paid',
+  installmentPaidConfirmTitle: 'Confirm Payment',
+  installmentPaidConfirmBody: (amount: string) => `Record this month's installment (${amount} EGP) as paid and reduce the outstanding balance?`,
+  loanBalanceLabel: 'Loan balance',
+  loanFullyPaid: 'Loan fully paid off',
+
   // Real Estate — rental
   rentalInfo: 'Rental Information',
   rentalInfoDesc: 'Track rental income and occupancy',
@@ -1766,6 +1781,21 @@ const ar: typeof en = {
   monthlyInstallment: 'القسط الشهري (جنيه)',
   installmentEndDate: 'تاريخ نهاية التقسيط',
   paidSoFar: 'المدفوع حتى الآن',
+
+  // الشهادات — قرض مقابل شهادة
+  linkedLoanTitle: 'قرض مقابل هذه الشهادة',
+  linkedLoanDesc: 'تتبّع قرض تم أخذه برهن هذه الشهادة — معلوماتي فقط، لا يُحتسب ضمن صافي الثروة',
+  loanOutstandingBalance: 'الرصيد المتبقي من القرض (جنيه)',
+  loanMonthlyInstallment: 'القسط الشهري للقرض (جنيه)',
+  loanFundingAccount: 'الحساب النقدي الذي يغطي الباقي',
+  loanFundingAccountDesc: 'فائدة الشهادة نفسها تغطي جزءًا من كل قسط — اختر الحساب الذي يغطي الباقي.',
+  loanStartDate: 'تاريخ بداية القرض',
+  loanNotesPlaceholder: 'مثال: رقم مرجعي للقرض',
+  markInstallmentPaid: 'تأكيد دفع هذا الشهر',
+  installmentPaidConfirmTitle: 'تأكيد الدفع',
+  installmentPaidConfirmBody: (amount: string) => `هل تريد تسجيل قسط هذا الشهر (${amount} جنيه) كمدفوع وتقليل الرصيد المتبقي؟`,
+  loanBalanceLabel: 'رصيد القرض',
+  loanFullyPaid: 'تم سداد القرض بالكامل',
 
   // العقارات — الإيجار
   rentalInfo: 'معلومات الإيجار',

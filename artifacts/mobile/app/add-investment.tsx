@@ -14,7 +14,8 @@ import { useT } from '@/hooks/useTranslation';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { FixedIncomeSubtype, GoldKarat, Holding, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
+import { useCash } from '@/context/CashContext';
+import { FixedIncomeSubtype, GoldKarat, Holding, LinkedLoan, MetalForm, PaymentFrequency, PersonalAssetCategory, PersonalAssetCurrency, PropertyStatus, PropertyType, ValuationSource } from '@/types';
 import { EGX_COMPANIES } from '@/data/egx-companies';
 import { GLOBAL_COMPANIES } from '@/data/global-stocks';
 import { citiesForGovernorate, districtsForCity, GOVERNORATE_NAMES } from '@/data/egypt-locations';
@@ -546,6 +547,7 @@ export default function AddInvestmentScreen() {
   const { addHolding, updateHolding, holdings } = useHoldings();
   const { logActivity } = useActivityLog();
   const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
+  const { cashAccounts } = useCash();
   const { isSignedIn } = useAuth();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
 
@@ -637,6 +639,18 @@ export default function AddInvestmentScreen() {
   const [fiMaturityDate, setFiMaturityDate] = useState('');
   const [fiPaymentFrequency, setFiPaymentFrequency] = useState<PaymentFrequency>('at_maturity');
 
+  // Loan against this certificate — only meaningful when editing an
+  // existing fixed_income holding (see the UI section below, gated on
+  // !!editingHolding). payments[] is preserved separately, not editable
+  // here — see the save logic's own comment.
+  const [hasLoan, setHasLoan] = useState(false);
+  const [loanExpanded, setLoanExpanded] = useState(false);
+  const [loanOutstandingBalance, setLoanOutstandingBalance] = useState('');
+  const [loanMonthlyInstallment, setLoanMonthlyInstallment] = useState('');
+  const [loanFundingCashAccountId, setLoanFundingCashAccountId] = useState<string | undefined>(undefined);
+  const [loanStartDate, setLoanStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loanNotes, setLoanNotes] = useState('');
+
   // Pre-fill form when editing
   useEffect(() => {
     if (!editingHolding) return;
@@ -721,6 +735,14 @@ export default function AddInvestmentScreen() {
       setFiPurchaseDate(editingHolding.purchaseDate ?? new Date().toISOString().split('T')[0]);
       setFiMaturityDate(editingHolding.maturityDate ?? '');
       setFiPaymentFrequency(editingHolding.paymentFrequency ?? 'at_maturity');
+      const loan = editingHolding.linkedLoan;
+      setHasLoan(!!loan);
+      setLoanExpanded(!!loan);
+      setLoanOutstandingBalance(loan ? String(loan.outstandingBalance) : '');
+      setLoanMonthlyInstallment(loan ? String(loan.monthlyInstallment) : '');
+      setLoanFundingCashAccountId(loan?.fundingCashAccountId);
+      setLoanStartDate(loan?.startDate ?? new Date().toISOString().split('T')[0]);
+      setLoanNotes(loan?.notes ?? '');
     }
   }, [holdingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -969,6 +991,21 @@ export default function AddInvestmentScreen() {
         Alert.alert(t.missingFields, t.enterFixedIncomeDetails);
         return;
       }
+      // payments[] is a confirmed history, never edited from this form —
+      // carry it over unchanged from the holding being edited (empty for a
+      // brand-new loan). Only "Mark This Month Paid" (HoldingCard) appends
+      // to it.
+      const existingPayments = editingHolding?.type === 'fixed_income' ? editingHolding.linkedLoan?.payments ?? [] : [];
+      const linkedLoan: LinkedLoan | undefined = hasLoan && loanOutstandingBalance && loanMonthlyInstallment
+        ? {
+            outstandingBalance: parseAmount(loanOutstandingBalance),
+            monthlyInstallment: parseAmount(loanMonthlyInstallment),
+            fundingCashAccountId: loanFundingCashAccountId,
+            startDate: loanStartDate || today,
+            notes: loanNotes.trim() || undefined,
+            payments: existingPayments,
+          }
+        : undefined;
       holding = {
         id, type: 'fixed_income',
         subtype: fiSubtype,
@@ -980,6 +1017,7 @@ export default function AddInvestmentScreen() {
         maturityDate: fiMaturityDate,
         paymentFrequency: fiPaymentFrequency,
         notes,
+        linkedLoan,
       };
     }
 
@@ -1699,6 +1737,58 @@ export default function AddInvestmentScreen() {
                 ))}
               </View>
             </View>
+
+            {/* Loan against this certificate (collapsible) — only meaningful
+                once the certificate itself already exists, so this section
+                is hidden while adding a brand-new one. */}
+            {!!editingHolding && (
+              <View style={styles.section}>
+                <TouchableOpacity
+                  style={[styles.collapsibleHeader, { backgroundColor: colors.cardSecondary, borderColor: colors.border }]}
+                  onPress={() => {
+                    const next = !hasLoan;
+                    setHasLoan(next);
+                    setLoanExpanded(next);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.collapsibleTitle, { color: colors.text }]}>{t.linkedLoanTitle}</Text>
+                    <Text style={[styles.collapsibleDesc, { color: colors.mutedForeground }]}>{t.linkedLoanDesc}</Text>
+                  </View>
+                  <Feather name={hasLoan ? 'chevron-up' : 'chevron-down'} size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+                {hasLoan && loanExpanded && (
+                  <View style={styles.collapsibleBody}>
+                    <Text style={labelStyle}>{t.loanOutstandingBalance}</Text>
+                    <AmountInput style={inputStyle} placeholder="e.g. 80000" placeholderTextColor={colors.mutedForeground}
+                      value={loanOutstandingBalance} onChangeText={setLoanOutstandingBalance} />
+                    <Text style={[labelStyle, { marginTop: 12 }]}>{t.loanMonthlyInstallment}</Text>
+                    <AmountInput style={inputStyle} placeholder="e.g. 5000" placeholderTextColor={colors.mutedForeground}
+                      value={loanMonthlyInstallment} onChangeText={setLoanMonthlyInstallment} />
+                    <View style={{ marginTop: 12 }}>
+                      <DatePickerField label={t.loanStartDate} value={loanStartDate} onChange={setLoanStartDate} />
+                    </View>
+                    <Text style={[labelStyle, { marginTop: 12 }]}>{t.loanFundingAccount}</Text>
+                    <Text style={[styles.collapsibleDesc, { color: colors.mutedForeground, marginBottom: 8 }]}>{t.loanFundingAccountDesc}</Text>
+                    {cashAccounts.length === 0 ? (
+                      <Text style={{ color: colors.mutedForeground }}>{t.noCashAccounts}</Text>
+                    ) : (
+                      <View style={styles.chips}>
+                        {cashAccounts.map(a => (
+                          <Chip key={a.id} value={a.id} selected={loanFundingCashAccountId === a.id}
+                            onPress={() => setLoanFundingCashAccountId(a.id === loanFundingCashAccountId ? undefined : a.id)}
+                            label={a.accountName} />
+                        ))}
+                      </View>
+                    )}
+                    <Text style={[labelStyle, { marginTop: 12 }]}>{t.notes}</Text>
+                    <TextInput style={inputStyle} placeholder={t.loanNotesPlaceholder} placeholderTextColor={colors.mutedForeground}
+                      value={loanNotes} onChangeText={setLoanNotes} />
+                  </View>
+                )}
+              </View>
+            )}
           </View>)}
 
           {/* Notes */}

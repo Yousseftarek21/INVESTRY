@@ -18,7 +18,7 @@ import { HoldingCard } from '@/components/HoldingCard';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 
 import { SwipeToDelete } from '@/components/SwipeToDelete';
-import { Holding, MarketPrices } from '@/types';
+import { Holding, LinkedLoan, MarketPrices } from '@/types';
 import { groupLots, LotGroup } from '@/utils/lotGrouping';
 
 function FadeInCard({ index, children }: { index: number; children: React.ReactNode }) {
@@ -119,7 +119,7 @@ export default function HoldingsScreen() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { holdings, removeHolding, isLoading, syncError } = useHoldings();
+  const { holdings, removeHolding, updateHolding, isLoading, syncError } = useHoldings();
   const { recurringIncomes } = useRecurringIncome();
 
   // Auto-dismissing sync error toast
@@ -157,6 +157,10 @@ export default function HoldingsScreen() {
   );
   const { impact } = useHaptic();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  // Holding id awaiting confirmation of this month's loan installment —
+  // same confirm-modal pattern as pendingDeleteId (works uniformly on web,
+  // unlike Alert.alert's custom buttons there — see handleDelete's comment).
+  const [pendingLoanPaymentId, setPendingLoanPaymentId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [showSortPicker, setShowSortPicker] = useState(false);
@@ -251,6 +255,39 @@ export default function HoldingsScreen() {
   const handleSell = (id: string) => {
     impact();
     router.push(`/sell-holding?holdingId=${id}` as any);
+  };
+
+  // The holding this pending confirmation targets, and the exact amount
+  // it'll record — computed here (not inside confirmMarkLoanPaid) so the
+  // confirm modal's body text can show the real amount before the user
+  // commits.
+  const pendingLoanHolding = pendingLoanPaymentId ? holdings.find(h => h.id === pendingLoanPaymentId) : null;
+  const pendingLoan: LinkedLoan | undefined = pendingLoanHolding?.type === 'fixed_income' ? pendingLoanHolding.linkedLoan : undefined;
+  const pendingLoanAmount = pendingLoan ? Math.min(pendingLoan.monthlyInstallment, pendingLoan.outstandingBalance) : 0;
+
+  const handleMarkLoanPaid = (id: string) => {
+    impact();
+    setPendingLoanPaymentId(id);
+  };
+
+  const confirmMarkLoanPaid = async () => {
+    if (!pendingLoanHolding || pendingLoanHolding.type !== 'fixed_income' || !pendingLoanHolding.linkedLoan) {
+      setPendingLoanPaymentId(null);
+      return;
+    }
+    const loan = pendingLoanHolding.linkedLoan;
+    const amount = Math.min(loan.monthlyInstallment, loan.outstandingBalance);
+    const month = new Date().toISOString().slice(0, 7);
+    impact(Haptics.ImpactFeedbackStyle.Medium);
+    setPendingLoanPaymentId(null);
+    await updateHolding({
+      ...pendingLoanHolding,
+      linkedLoan: {
+        ...loan,
+        outstandingBalance: Math.max(0, loan.outstandingBalance - amount),
+        payments: [...loan.payments, { month, amount, confirmedAt: new Date().toISOString() }],
+      },
+    });
   };
 
   const openAdd = () => { impact(); router.push('/add-choose' as any); };
@@ -455,6 +492,7 @@ export default function HoldingsScreen() {
                         lotCount={group.lots.length > 1 ? group.lots.length : undefined}
                         onEdit={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleEdit(group.lots[0].id))}
                         onSell={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleSell(group.lots[0].id))}
+                        onMarkLoanPaid={group.lots.length === 1 ? () => handleMarkLoanPaid(group.lots[0].id) : undefined}
                       />
                     </SwipeToDelete>
                   </FadeInCard>
@@ -557,6 +595,33 @@ export default function HoldingsScreen() {
                 activeOpacity={0.75}
               >
                 <Text style={[confirmStyles.btnTxt, { color: colors.red, fontFamily: 'Inter_600SemiBold' }]}>{t.delete}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!pendingLoanPaymentId} animationType="fade" transparent onRequestClose={() => setPendingLoanPaymentId(null)}>
+        <View style={confirmStyles.overlay}>
+          <View style={[confirmStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[confirmStyles.title, { color: colors.text }]}>{t.installmentPaidConfirmTitle}</Text>
+            <Text style={[confirmStyles.msg, { color: colors.mutedForeground }]}>
+              {t.installmentPaidConfirmBody(pendingLoanAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 }))}
+            </Text>
+            <View style={confirmStyles.row}>
+              <TouchableOpacity
+                onPress={() => setPendingLoanPaymentId(null)}
+                style={[confirmStyles.btn, { backgroundColor: colors.muted }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[confirmStyles.btnTxt, { color: colors.mutedForeground }]}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmMarkLoanPaid}
+                style={[confirmStyles.btn, { backgroundColor: colors.green + '18', borderWidth: 1, borderColor: colors.green + '40' }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[confirmStyles.btnTxt, { color: colors.green, fontFamily: 'Inter_600SemiBold' }]}>{t.markInstallmentPaid}</Text>
               </TouchableOpacity>
             </View>
           </View>

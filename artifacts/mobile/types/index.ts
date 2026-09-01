@@ -136,6 +136,35 @@ export interface PersonalAssetHolding {
 export type FixedIncomeSubtype = 'tbill' | 'saving_cert' | 'deposit' | 'sukuk';
 export type PaymentFrequency = 'monthly' | 'quarterly' | 'at_maturity';
 
+// A loan taken out against a certificate, using it as collateral —
+// informational only, deliberately: does NOT feed into this holding's own
+// accrued value (fixedIncomeAccruedValue keeps computing purely off
+// principal/annualRate/time, unchanged) and is NOT subtracted from net
+// worth anywhere. Same restraint RealEstateHolding's own installment-plan
+// fields already use (hasInstallmentPlan/remainingBalance/monthlyInstallment
+// below) — this app has no liabilities concept anywhere yet, and folding
+// one in properly means touching net-worth math in at least two
+// independently-maintained places (app/(tabs)/index.tsx and the AI
+// assistant's own calc in api-server/src/routes/chat.ts); that's real,
+// separate scope, not attempted here. Unlike the real estate fields (purely
+// descriptive, no history), this keeps a payments[] log — each month's
+// installment is genuinely split-funded from two different sources (the
+// certificate's own interest payout, and a separate cash account), which
+// there's no automated way to reconcile correctly yet (nothing in this app
+// tracks a certificate's interest payouts as real transactions), so
+// payments are confirmed manually rather than auto-processed the way
+// RecurringIncome's monthly credits are.
+export interface LinkedLoan {
+  outstandingBalance: number;
+  monthlyInstallment: number;
+  /** Which cash account covers the part of the installment not paid by
+      the certificate's own interest. */
+  fundingCashAccountId?: string;
+  startDate: string;
+  notes?: string;
+  payments: { month: string; amount: number; confirmedAt: string }[];
+}
+
 export interface FixedIncomeHolding {
   id: string;
   type: 'fixed_income';
@@ -150,6 +179,8 @@ export interface FixedIncomeHolding {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** A loan taken against this certificate, if any — see LinkedLoan. */
+  linkedLoan?: LinkedLoan;
 }
 
 export type Holding = GoldHolding | SilverHolding | StockHolding | RealEstateHolding | PersonalAssetHolding | FixedIncomeHolding;

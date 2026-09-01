@@ -23,6 +23,8 @@ interface HoldingCardProps {
   hideSubtitle?: boolean;
   /** Set when `holding` is a combined display total for 2+ separately-tracked lots (see utils/lotGrouping.ts) — shows a small count so it's clear this card represents more than one purchase, each tracked with its own real price/date underneath. */
   lotCount?: number;
+  /** fixed_income with a linkedLoan only — records this month's installment as paid and decrements the balance. Omitted (or the loan already fully paid, or this month already confirmed) hides the action. */
+  onMarkLoanPaid?: () => void;
 }
 
 function personalAssetValueEGP(holding: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -129,7 +131,7 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   fixed_income: '#22C55E',
 };
 
-export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideSubtitle, lotCount }: HoldingCardProps) {
+export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideSubtitle, lotCount, onMarkLoanPaid }: HoldingCardProps) {
   const colors = useColors();
   const t = useT();
   const labels: HoldingLabels = {
@@ -146,79 +148,112 @@ export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideS
   const gainColor = isPositive ? colors.green : colors.red;
   const iconColor = ICON_COLORS[holding.type];
 
+  // Informational only — see LinkedLoan's own comment in types/index.ts.
+  // Not counted anywhere in currentValue/cost/gain above.
+  const linkedLoan = holding.type === 'fixed_income' ? holding.linkedLoan : undefined;
+  const loanFullyPaid = !!linkedLoan && linkedLoan.outstandingBalance <= 0;
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const loanPaidThisMonth = !!linkedLoan && linkedLoan.payments.some(p => p.month === currentMonth);
+
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={[styles.iconWrap, { backgroundColor: iconColor + '17', borderColor: iconColor + '4A' }]}>
-        {holding.type === 'personal_asset'
-          ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={18} color={iconColor} />
-          : <AssetIcon type={holding.type} size={18} color={iconColor} />
-        }
-      </View>
-
-      <View style={styles.info}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{getTitle(holding, labels)}</Text>
-          {!!lotCount && (
-            <View style={[styles.lotBadge, { backgroundColor: colors.mutedForeground + '18' }]}>
-              <Text style={[styles.lotBadgeText, { color: colors.mutedForeground }]}>×{lotCount}</Text>
-            </View>
-          )}
+    <View style={[styles.cardOuter, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.cardRow}>
+        <View style={[styles.iconWrap, { backgroundColor: iconColor + '17', borderColor: iconColor + '4A' }]}>
+          {holding.type === 'personal_asset'
+            ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={18} color={iconColor} />
+            : <AssetIcon type={holding.type} size={18} color={iconColor} />
+          }
         </View>
-        {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>}
-      </View>
 
-      <View style={styles.right}>
-        {prices ? (
-          <>
-            <Text
-              style={[styles.value, { color: colors.text }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.6}
-            >
-              {hideValues ? '••••••' : currentValue.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
-              {!hideValues && <Text style={[styles.valueUnit, { color: colors.mutedForeground }]}> EGP</Text>}
-            </Text>
-            {holding.type === 'personal_asset' ? (
-              <View style={[styles.manualPill, { backgroundColor: colors.mutedForeground + '18' }]}>
-                <Feather name="edit-3" size={9} color={colors.mutedForeground} />
-                <Text style={[styles.manualText, { color: colors.mutedForeground }]}>{t.manualValue}</Text>
-              </View>
-            ) : (
-              <View style={[styles.gainPill, { backgroundColor: gainColor + '18' }]}>
-                <Feather name={isPositive ? 'arrow-up' : 'arrow-down'} size={9} color={gainColor} />
-                <Text style={[styles.gainText, { color: gainColor }]}>
-                  {`${isPositive ? '+' : ''}${gainPercent.toFixed(1)}%`}
-                </Text>
+        <View style={styles.info}>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{getTitle(holding, labels)}</Text>
+            {!!lotCount && (
+              <View style={[styles.lotBadge, { backgroundColor: colors.mutedForeground + '18' }]}>
+                <Text style={[styles.lotBadgeText, { color: colors.mutedForeground }]}>×{lotCount}</Text>
               </View>
             )}
-          </>
-        ) : (
-          <View style={[styles.skeleton, { backgroundColor: colors.muted }]} />
+          </View>
+          {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>}
+        </View>
+
+        <View style={styles.right}>
+          {prices ? (
+            <>
+              <Text
+                style={[styles.value, { color: colors.text }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
+              >
+                {hideValues ? '••••••' : currentValue.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+                {!hideValues && <Text style={[styles.valueUnit, { color: colors.mutedForeground }]}> EGP</Text>}
+              </Text>
+              {holding.type === 'personal_asset' ? (
+                <View style={[styles.manualPill, { backgroundColor: colors.mutedForeground + '18' }]}>
+                  <Feather name="edit-3" size={9} color={colors.mutedForeground} />
+                  <Text style={[styles.manualText, { color: colors.mutedForeground }]}>{t.manualValue}</Text>
+                </View>
+              ) : (
+                <View style={[styles.gainPill, { backgroundColor: gainColor + '18' }]}>
+                  <Feather name={isPositive ? 'arrow-up' : 'arrow-down'} size={9} color={gainColor} />
+                  <Text style={[styles.gainText, { color: gainColor }]}>
+                    {`${isPositive ? '+' : ''}${gainPercent.toFixed(1)}%`}
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <View style={[styles.skeleton, { backgroundColor: colors.muted }]} />
+          )}
+        </View>
+
+        {(onEdit || onSell) && (
+          <View style={styles.actions}>
+            {onEdit && (
+              <TouchableOpacity
+                onPress={onEdit}
+                style={styles.actionBtn}
+                hitSlop={10}
+                activeOpacity={0.6}
+              >
+                <Feather name="edit-2" size={14} color={colors.primary} />
+              </TouchableOpacity>
+            )}
+            {onSell && (
+              <TouchableOpacity
+                onPress={onSell}
+                style={styles.actionBtn}
+                hitSlop={10}
+                activeOpacity={0.6}
+              >
+                <Feather name="check-circle" size={14} color={colors.green} />
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
 
-      {(onEdit || onSell) && (
-        <View style={styles.actions}>
-          {onEdit && (
+      {!!linkedLoan && (
+        <View style={[styles.loanRow, { borderTopColor: colors.border }]}>
+          <Feather name="credit-card" size={12} color={colors.mutedForeground} />
+          <Text style={[styles.loanText, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {loanFullyPaid
+              ? t.loanFullyPaid
+              : `${t.loanBalanceLabel}: ${linkedLoan.outstandingBalance.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP`}
+          </Text>
+          {!loanFullyPaid && !loanPaidThisMonth && onMarkLoanPaid && (
             <TouchableOpacity
-              onPress={onEdit}
-              style={styles.actionBtn}
-              hitSlop={10}
-              activeOpacity={0.6}
+              onPress={onMarkLoanPaid}
+              style={[styles.markPaidBtn, { backgroundColor: colors.green + '18' }]}
+              hitSlop={8}
+              activeOpacity={0.7}
             >
-              <Feather name="edit-2" size={14} color={colors.primary} />
+              <Text style={[styles.markPaidText, { color: colors.green }]}>{t.markInstallmentPaid}</Text>
             </TouchableOpacity>
           )}
-          {onSell && (
-            <TouchableOpacity
-              onPress={onSell}
-              style={styles.actionBtn}
-              hitSlop={10}
-              activeOpacity={0.6}
-            >
-              <Feather name="check-circle" size={14} color={colors.green} />
-            </TouchableOpacity>
+          {!loanFullyPaid && loanPaidThisMonth && (
+            <Feather name="check-circle" size={13} color={colors.green} />
           )}
         </View>
       )}
@@ -227,15 +262,21 @@ export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideS
 }
 
 const styles = StyleSheet.create({
-  card: {
+  // Split from the old single `card` style so a loan-status row can be
+  // appended below the main row without doubling the border/radius — the
+  // border/radius/background now live on the outer wrapper, the old `card`
+  // padding lives on the inner row.
+  cardOuter: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderWidth: 1,
     gap: 12,
-    overflow: 'hidden',
   },
   iconWrap: {
     width: 42,
@@ -325,5 +366,27 @@ const styles = StyleSheet.create({
     height: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  loanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+  },
+  loanText: {
+    flex: 1,
+    fontSize: 11.5,
+    fontFamily: 'Inter_500Medium',
+  },
+  markPaidBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 7,
+  },
+  markPaidText: {
+    fontSize: 10.5,
+    fontFamily: 'Inter_700Bold',
   },
 });
