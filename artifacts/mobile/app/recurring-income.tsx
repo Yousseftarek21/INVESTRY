@@ -342,14 +342,23 @@ export default function RecurringIncomeScreen() {
                                 {/* Explicit delete affordance, not just swipe — a
                                     pending entry may simply never arrive (deal fell
                                     through, client backed out), and a user shouldn't
-                                    have to discover swipe-to-delete to remove it. */}
-                                <TouchableOpacity
+                                    have to discover swipe-to-delete to remove it.
+                                    Must be SwipeCardTouchable, not a plain RN
+                                    TouchableOpacity — nested one level inside the
+                                    card's own SwipeCardTouchable, a plain RN
+                                    touchable's taps never reach it at all (the
+                                    outer one is a real native button that captures
+                                    every touch in its bounds on both platforms;
+                                    this is documented gesture-handler behavior, not
+                                    a guess — see the button-nesting note on
+                                    "Mark Collected" below for the full mechanism). */}
+                                <SwipeCardTouchable
                                   style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
                                   onPress={() => handleDelete(inc.id)}
                                   hitSlop={8}
                                 >
                                   <Feather name="trash-2" size={13} color={colors.red} />
-                                </TouchableOpacity>
+                                </SwipeCardTouchable>
                               </View>
                             </View>
 
@@ -374,8 +383,24 @@ export default function RecurringIncomeScreen() {
                                     </>
                                   ) : null}
                                 </View>
+                                {/* Real regression, confirmed and fixed: this used
+                                    to be a plain RN TouchableOpacity nested inside
+                                    the card's own SwipeCardTouchable. Once the card
+                                    wrapper became a real native gesture-handler
+                                    button (to fix swipe-vs-tap, see SwipeToDelete.tsx),
+                                    it started capturing every touch in its bounds on
+                                    both iOS (hitTest: override) and Android
+                                    (onInterceptTouchEvent) — a plain RN touchable
+                                    nested inside it never received its own touches
+                                    at all, silently. This is documented
+                                    gesture-handler behavior (its own iOS source
+                                    comment states nested JS-responder touchables
+                                    don't work inside its buttons), not a guess.
+                                    react-native-gesture-handler's own docs call
+                                    two-level nested buttons (this component inside
+                                    itself) the supported pattern instead. */}
                                 {!inc.collected && (
-                                  <TouchableOpacity
+                                  <SwipeCardTouchable
                                     style={[s.collectBtn, { backgroundColor: colors.green }]}
                                     onPress={() => handleMarkCollected(inc.id)}
                                     hitSlop={8}
@@ -383,7 +408,7 @@ export default function RecurringIncomeScreen() {
                                   >
                                     <Feather name="check" size={12} color={colors.primaryForeground} />
                                     <Text style={[s.collectBtnText, { color: colors.primaryForeground }]}>{t.markCollected}</Text>
-                                  </TouchableOpacity>
+                                  </SwipeCardTouchable>
                                 )}
                               </View>
                             )}
@@ -440,13 +465,15 @@ export default function RecurringIncomeScreen() {
                                   {inc.active ? t.active : t.paused}
                                 </Text>
                               </View>
-                              <TouchableOpacity
+                              {/* SwipeCardTouchable, not plain RN — see the note
+                                  on the pending card's own delete button above. */}
+                              <SwipeCardTouchable
                                 style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
                                 onPress={() => handleDelete(inc.id)}
                                 hitSlop={8}
                               >
                                 <Feather name="trash-2" size={13} color={colors.red} />
-                              </TouchableOpacity>
+                              </SwipeCardTouchable>
                             </View>
                           </SwipeCardTouchable>
                         </SwipeToDelete>

@@ -205,13 +205,28 @@ export default function FeedbackScreen() {
   const t = useT();
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
-  const { messages, isLoading, isError, isFetching, refetch, sendMessage, toggleLike } = useFeedback();
+  const { messages, isLoading, isError, refetch, sendMessage, toggleLike } = useFeedback();
 
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // RefreshControl's own refreshing state, deliberately NOT bound to
+  // useFeedback's isFetching — isFetching is true for the automatic 15s
+  // background poll too, not just a manual pull-to-refresh, and
+  // programmatically toggling RefreshControl.refreshing (as opposed to the
+  // user's own pull gesture) makes the native scroll view visibly adjust
+  // its offset to reveal/hide the spinner. Bound to isFetching, that fired
+  // on every poll tick regardless of scroll position — a second, separate
+  // cause of "the screen scrolls itself while idle" from the
+  // onContentSizeChange one already fixed; this only reflects an actual
+  // user-initiated pull now.
+  const [manualRefreshing, setManualRefreshing] = useState(false);
+  const handleManualRefresh = useCallback(async () => {
+    setManualRefreshing(true);
+    try { await refetch(); } finally { setManualRefreshing(false); }
+  }, [refetch]);
 
   // Which message ids have already been rendered once — anything not in
   // here the first time it's seen gets Bubble's entrance animation; after
@@ -338,7 +353,7 @@ export default function FeedbackScreen() {
               if (isNearBottomRef.current) scrollRef.current?.scrollToEnd({ animated: false });
             }}
             refreshControl={
-              <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor={FEEDBACK_ACCENT} colors={[FEEDBACK_ACCENT]} />
+              <RefreshControl refreshing={manualRefreshing} onRefresh={handleManualRefresh} tintColor={FEEDBACK_ACCENT} colors={[FEEDBACK_ACCENT]} />
             }
           >
             {isLoading ? (

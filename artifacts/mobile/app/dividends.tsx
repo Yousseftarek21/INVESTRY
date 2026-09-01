@@ -266,13 +266,21 @@ export default function DividendsScreen() {
                             <Text style={[s.cardAmount, { color: colors.green }]}>
                               +{d.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {d.currency}
                             </Text>
-                            <TouchableOpacity
+                            {/* SwipeCardTouchable, not plain RN — nested one level
+                                inside the card's own SwipeCardTouchable, a plain RN
+                                touchable's taps never reach it: that outer wrapper
+                                is a real native gesture-handler button that
+                                captures every touch in its bounds on both
+                                platforms (documented library behavior, confirmed
+                                after this exact regression broke recurring-income.tsx's
+                                "Mark Collected" button the same way). */}
+                            <SwipeCardTouchable
                               style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
                               onPress={() => handleDelete(d.id)}
                               hitSlop={8}
                             >
                               <Feather name="trash-2" size={13} color={colors.red} />
-                            </TouchableOpacity>
+                            </SwipeCardTouchable>
                           </View>
                         </SwipeCardTouchable>
                       </SwipeToDelete>
