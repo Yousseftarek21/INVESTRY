@@ -21,7 +21,10 @@ export function WhatsNewModal() {
   const items: WhatsNewItem[] = [
     { icon: 'check-circle', title: t.whatsNewSoldTitle, body: t.whatsNewSoldBody },
     { icon: 'pie-chart', title: t.whatsNewAnalyticsTitle, body: t.whatsNewAnalyticsBody },
-    { icon: 'message-circle', title: t.whatsNewAiTitle, body: t.whatsNewAiBody },
+    // cpu, not message-circle — matches the AI Assistant's own icon
+    // everywhere else it's named (its screen header, the Analytics promo
+    // card, onboarding) instead of a separate icon just for this notice.
+    { icon: 'cpu', title: t.whatsNewAiTitle, body: t.whatsNewAiBody },
     { icon: 'edit-3', title: t.whatsNewInputTitle, body: t.whatsNewInputBody },
   ];
 

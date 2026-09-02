@@ -1796,8 +1796,13 @@ function NetWorthBreakdownModal({
     // original anchor this was standardized on.
     { key: 'investments', label: t.investmentsLabel, color: colors.primary,
       icon: <Feather name="trending-up" size={16} color={colors.primary} />, amount: investmentsValue },
+    // BanknoteIcon, not Feather "briefcase" — briefcase is the app-wide
+    // Investments icon now (see the empty-state comment above); Cash at
+    // Home's own established icon everywhere else (cash-accounts.tsx's
+    // type picker/list) is this custom BanknoteIcon, so this matches that
+    // instead of quietly re-meaning "Investments" inside this same modal.
     ...(cashHomeValue > 0 ? [{ key: 'cashHome', label: t.cashAtHome, color: colors.green,
-      icon: <Feather name="briefcase" size={16} color={colors.green} />, amount: cashHomeValue }] : []),
+      icon: <BanknoteIcon size={16} color={colors.green} />, amount: cashHomeValue }] : []),
     // MaterialCommunityIcons "bank", not Feather "credit-card" — credit-card
     // was shared with the Loans row below (an actual icon collision: two
     // different rows in the same modal were visually identical). Loans

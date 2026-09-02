@@ -561,8 +561,11 @@ export default function SettingsScreen() {
               label={t.inviteFriendsNav} sublabel={t.inviteFriendsNavSub}
               onPress={() => goTo('/invite-friends')}
             />
+            {/* award, not trending-up — trending-up is the app-wide
+                Investments icon now; award (trophy) is already
+                CompetitionInviteBanner's own icon for this same feature. */}
             <NavRow
-              icon="trending-up" iconBg="#00D4AA"
+              icon="award" iconBg="#00D4AA"
               label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
               badge={{ text: t.leaderboardBetaChip, color: '#F59E0B' }}
               onPress={() => goTo('/leaderboard')}

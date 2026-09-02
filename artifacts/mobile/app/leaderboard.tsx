@@ -181,8 +181,11 @@ export default function LeaderboardScreen() {
 
             {!isOptedIn && (
               <View style={[s.joinCta, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {/* award, not trending-up — trending-up is the app-wide
+                    Investments icon now; matches the Leaderboard's own
+                    NavRow entry point in Settings. */}
                 <View style={[s.joinCtaIcon, { backgroundColor: colors.primary + '18' }]}>
-                  <Feather name="trending-up" size={18} color={colors.primary} />
+                  <Feather name="award" size={18} color={colors.primary} />
                 </View>
                 <View style={s.joinCtaText}>
                   <Text style={[s.joinCtaTitle, { color: colors.text }]}>{t.leaderboardJoinTitle}</Text>

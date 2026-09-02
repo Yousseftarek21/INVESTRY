@@ -44,7 +44,10 @@ export default function SettingsNotificationsScreen() {
             <NavRow icon="sliders" iconBg="#F59E0B" label={t.managePriceAlerts} sublabel={t.managePriceAlertsDesc}
               onPress={() => router.push('/price-alerts' as any)} />
             <ToggleRow icon="briefcase" iconBg="#8B5CF6" label={t.portfolioAlertsLabel} sublabel={t.portfolioAlertsDesc} value={notifications.portfolioAlerts} onChange={v => setNotification('portfolioAlerts', v)} />
-            <NavRow icon="pie-chart" iconBg="#8B5CF6" label={t.rebalancingAlertsLabel} sublabel={t.rebalancingAlertsDesc}
+            {/* target, not pie-chart — matches Rebalancing's own icon on the
+                Analytics tab (section header + empty state) instead of a
+                second, different icon here for the same feature. */}
+            <NavRow icon="target" iconBg="#8B5CF6" label={t.rebalancingAlertsLabel} sublabel={t.rebalancingAlertsDesc}
               onPress={() => router.push('/target-allocation' as any)} />
             <ToggleRow icon="sun" iconBg="#EF4444" label={t.dailySummaryLabel} sublabel={t.dailySummaryDesc} value={notifications.dailySummary} onChange={v => setNotification('dailySummary', v)} />
             <ToggleRow icon="calendar" iconBg="#10B981" label={t.weeklyReportLabel} sublabel={t.weeklyReportDesc} value={notifications.weeklySummary} onChange={v => setNotification('weeklySummary', v)} />
