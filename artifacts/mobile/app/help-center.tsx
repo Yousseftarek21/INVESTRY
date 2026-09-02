@@ -75,7 +75,9 @@ export default function HelpCenterScreen() {
       ],
     },
     {
-      icon: 'briefcase', color: '#C9A227', title: t.helpCatHoldings,
+      // trending-up is the one Investments icon app-wide now — see
+      // add-choose.tsx's "Investment" option, the original anchor.
+      icon: 'trending-up', color: '#C9A227', title: t.helpCatHoldings,
       items: [
         { q: t.helpHoldingTypesQ, a: t.helpHoldingTypesA },
         { q: t.helpEditDeleteQ, a: t.helpEditDeleteA },

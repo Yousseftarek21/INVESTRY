@@ -101,7 +101,9 @@ function ProfileHero({
               </View>
             )}
             <View style={[ph.tag, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '38' }]}>
-              <Feather name="briefcase" size={9} color={colors.primary} />
+              {/* trending-up is the one Investments icon app-wide now — see
+                  add-choose.tsx's "Investment" option, the original anchor. */}
+              <Feather name="trending-up" size={9} color={colors.primary} />
               <Text style={[ph.tagTxt, { color: colors.primary }]}>{holdingsCount} {t.investmentsLabel}</Text>
             </View>
           </View>

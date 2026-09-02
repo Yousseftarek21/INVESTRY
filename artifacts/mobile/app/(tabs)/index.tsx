@@ -1520,7 +1520,13 @@ export default function HomeScreen() {
             <View style={[styles.emptyRing2, { borderColor: colors.primary + '10' }]} />
             <View style={[styles.emptyRing1, { borderColor: colors.primary + '20' }]} />
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-              <Feather name="briefcase" size={26} color={colors.primary + 'AA'} />
+              {/* trending-up is the one Investments icon everywhere in the
+                  app now — was briefcase here, which also (still, correctly)
+                  means Cash at Home in the breakdown modal below and several
+                  settings rows; standardized to stop the two concepts
+                  sharing an icon. See add-choose.tsx's own "Investment"
+                  option, the original anchor for this icon. */}
+              <Feather name="trending-up" size={26} color={colors.primary + 'AA'} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noInvestmentsYet}</Text>
             <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>{t.addFromHoldingsTab}</Text>
@@ -1773,12 +1779,20 @@ function NetWorthBreakdownModal({
   const insets = useSafeAreaInsets();
 
   const rows: NetWorthRow[] = [
+    // trending-up is the one icon representing "Investments" everywhere in
+    // the app now (was pie-chart here, which also meant "Dividend" on
+    // add-choose.tsx) — see add-choose.tsx's own "Investment" option, the
+    // original anchor this was standardized on.
     { key: 'investments', label: t.investmentsLabel, color: colors.primary,
-      icon: <Feather name="pie-chart" size={16} color={colors.primary} />, amount: investmentsValue },
+      icon: <Feather name="trending-up" size={16} color={colors.primary} />, amount: investmentsValue },
     ...(cashHomeValue > 0 ? [{ key: 'cashHome', label: t.cashAtHome, color: colors.green,
       icon: <Feather name="briefcase" size={16} color={colors.green} />, amount: cashHomeValue }] : []),
+    // MaterialCommunityIcons "bank", not Feather "credit-card" — credit-card
+    // was shared with the Loans row below (an actual icon collision: two
+    // different rows in the same modal were visually identical). Loans
+    // keeps credit-card to match HoldingCard.tsx's own loan row.
     ...(bankValue > 0 ? [{ key: 'bank', label: t.bankAccount, color: colors.green,
-      icon: <Feather name="credit-card" size={16} color={colors.green} />, amount: bankValue }] : []),
+      icon: <MaterialCommunityIcons name="bank" size={16} color={colors.green} />, amount: bankValue }] : []),
     ...(pendingIncomeValue > 0 ? [{ key: 'pending', label: t.pendingIncomeLabel, color: '#F59E0B',
       icon: <Feather name="clock" size={16} color="#F59E0B" />, amount: pendingIncomeValue }] : []),
     ...(loansValue > 0 ? [{ key: 'loans', label: t.loansRowLabel, color: colors.red,

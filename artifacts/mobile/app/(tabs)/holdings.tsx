@@ -436,7 +436,10 @@ export default function HoldingsScreen() {
           /* ── True empty state ── */
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.muted }]}>
-              <Feather name="briefcase" size={32} color={colors.mutedForeground} />
+              {/* trending-up is the one Investments icon app-wide now — see
+                  add-choose.tsx's "Investment" option, the original anchor.
+                  This IS the Investments tab's own empty state. */}
+              <Feather name="trending-up" size={32} color={colors.mutedForeground} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noHoldings}</Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAdd}</Text>
