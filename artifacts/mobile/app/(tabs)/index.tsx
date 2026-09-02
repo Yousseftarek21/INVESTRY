@@ -627,10 +627,15 @@ export default function HomeScreen() {
     // move, understating gains and overstating the magnitude of losses.
     const startOfDayValueForPct = totalValue - todayGain;
     const todayPct = startOfDayValueForPct > 0 ? (todayGain / startOfDayValueForPct) * 100 : 0;
+    // Loan-adjusted fixed-income bucket, for the allocation bar only — fiV
+    // itself stays gross (used above for todayFI's accrual-since-open delta,
+    // which is about price/interest movement, not debt, and would be
+    // distorted by subtracting a loan that didn't change today).
+    const fiVNetOfLoans = Math.max(0, fiV - totalLoans);
 
     return {
       totalValue, totalCost, gain, gainPct, todayGain, todayPct, totalLoans,
-      goldV, silverV, stockV, reV, paV, fiV,
+      goldV, silverV, stockV, reV, paV, fiV, fiVNetOfLoans,
       goldGrams, silverGrams, stockCount, reCount, paCount,
       todayGold, todaySilver, todayStock, todayFI,
       todayGoldMetal, todaySilverMetal,
@@ -1258,7 +1263,10 @@ export default function HomeScreen() {
                   icon: { lib: 'mci' as const, name: 'tag-multiple' }, quantity: summary.paCount > 0 ? `${summary.paCount} asset${summary.paCount !== 1 ? 's' : ''}` : undefined,
                 },
                 {
-                  label: t.fixedIncome, value: summary.fiV, color: '#22C55E',
+                  // Net of any linked-loan balance — the allocation bar
+                  // should reflect real net position, same as the headline
+                  // Total Portfolio Value above it.
+                  label: t.fixedIncome, value: summary.fiVNetOfLoans, color: '#22C55E',
                   icon: { lib: 'mci' as const, name: 'bank-transfer' },
                 },
               ]}

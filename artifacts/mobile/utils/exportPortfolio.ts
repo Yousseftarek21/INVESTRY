@@ -4,6 +4,7 @@ import * as Print from 'expo-print';
 import { Holding, MarketPrices, CashAccount } from '@/types';
 import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { getRECurrentValue } from '@/utils/rePrice';
+import { computeTotalLoanBalanceEGP } from '@/utils/cash';
 
 // ─── Per-holding value/cost (EGP) ─────────────────────────────────────────────
 // Mirrors the logic in app/(tabs)/index.tsx — kept as a local copy rather than
@@ -150,6 +151,20 @@ export function buildPortfolioCsv(holdings: Holding[], cashAccounts: CashAccount
     }
   }
 
+  // Each certificate's own row above still shows its full face/accrued
+  // value (correct — matches its own card in the app), so a loan against it
+  // isn't visible anywhere in the rows themselves. Listed separately here
+  // for transparency, same reasoning as the in-app Net Worth breakdown
+  // modal's own Loans row.
+  const loanHoldings = holdings.filter((h): h is Extract<Holding, { type: 'fixed_income' }> => h.type === 'fixed_income' && !!h.linkedLoan);
+  if (loanHoldings.length > 0) {
+    lines.push('');
+    lines.push(['Linked Loan (against)', 'Outstanding Balance (EGP)', 'Monthly Installment (EGP)'].join(','));
+    for (const h of loanHoldings) {
+      lines.push([csvEscape(nameOf(h)), n2(h.linkedLoan!.outstandingBalance), n2(h.linkedLoan!.monthlyInstallment)].join(','));
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -162,8 +177,17 @@ export function buildPortfolioHtml(
   opts: { userName?: string; generatedAt?: Date } = {},
 ): string {
   const rows = buildRows(holdings, prices);
-  const totalCost = rows.reduce((s, r) => s + r.cost, 0);
-  const totalValue = rows.reduce((s, r) => s + r.value, 0);
+  // Per-row cost/value (above, in buildRows) stay gross — each holding's own
+  // line still shows its true face/accrued value, matching its card in the
+  // app. The grand totals below net out any linked-loan balance from both
+  // cost and value (not just value) — same treatment as the in-app headline
+  // Total Portfolio Value/Net Worth, and for the same reason: it's what
+  // keeps Total Gain/Loss honest instead of showing a fake loss for money
+  // that was borrowed, not lost. See computeTotalLoanBalanceEGP's own
+  // comment for the underlying double-counting bug.
+  const totalLoans = computeTotalLoanBalanceEGP(holdings);
+  const totalCost = Math.max(0, rows.reduce((s, r) => s + r.cost, 0) - totalLoans);
+  const totalValue = Math.max(0, rows.reduce((s, r) => s + r.value, 0) - totalLoans);
   const totalGain = totalValue - totalCost;
   const totalGainPct = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
   const cashTotal = cashAccounts.reduce((s, a) => {
@@ -228,6 +252,11 @@ export function buildPortfolioHtml(
           <div class="label">CASH</div>
           <div class="value">${cashTotal.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP</div>
         </div>
+        ${totalLoans > 0 ? `
+        <div class="card">
+          <div class="label">OUTSTANDING LOANS</div>
+          <div class="value" style="color:#E03030">-${totalLoans.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP</div>
+        </div>` : ''}
       </div>
 
       <table>
@@ -240,7 +269,7 @@ export function buildPortfolioHtml(
         <tbody>${rowsHtml}</tbody>
       </table>
 
-      <div class="footer">This report reflects market data at the time of export and is for personal record-keeping only.</div>
+      <div class="footer">This report reflects market data at the time of export and is for personal record-keeping only.${totalLoans > 0 ? ' Total Portfolio Value and Total Gain/Loss above are net of outstanding loans taken against fixed-income certificates — each certificate’s own row still shows its full value.' : ''}</div>
     </body>
   </html>
   `;

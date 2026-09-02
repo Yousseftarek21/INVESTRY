@@ -743,10 +743,13 @@ export default function AnalyticsScreen() {
     // fixes. Subtracting totalLoans from both totalValue and totalCost (not
     // just totalValue) keeps gain/gainPct honest: it cancels out of the
     // absolute gain entirely, and correctly turns gainPct into a return on
-    // the user's own committed capital. Per-class values/costs (fiV/fiCost
-    // etc., used by the allocation bar and per-class gain% below) are left
-    // untouched, matching the fixed_income holding's own card, which also
-    // never nets its loan against its own displayed value.
+    // the user's own committed capital. fiV/fiCost themselves (used for
+    // per-class gain% below, and for fiV's own today-delta math elsewhere)
+    // stay untouched, matching the fixed_income holding's own card, which
+    // also never nets its loan against its own displayed value or
+    // performance — only the allocation bar's fixed-income slice (below)
+    // is loan-adjusted, since that one specifically claims to show real net
+    // composition, the same claim the headline total makes.
     const totalLoans = computeTotalLoanBalanceEGP(holdings);
     // Floored at 0 — total debt exceeding total assets/cost basis should
     // never render as a negative headline figure or cost basis.
@@ -754,6 +757,7 @@ export default function AnalyticsScreen() {
     totalCost = Math.max(0, totalCost - totalLoans);
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
+    const fiVNetOfLoans = Math.max(0, fiV - totalLoans);
     const goldGainPct = goldCost > 0 ? ((goldV - goldCost) / goldCost) * 100 : 0;
     const silverGainPct = silverCost > 0 ? ((silverV - silverCost) / silverCost) * 100 : 0;
     const stockGainPct = stockCost > 0 ? ((stockV - stockCost) / stockCost) * 100 : 0;
@@ -766,7 +770,7 @@ export default function AnalyticsScreen() {
     const todayGain = todayGold + todaySilver + todayStock + todayFI;
     return {
       totalValue, totalCost, gain, gainPct, todayGain, totalLoans,
-      goldV, silverV, stockV, reV, paV, fiV,
+      goldV, silverV, stockV, reV, paV, fiV, fiVNetOfLoans,
       goldCost, silverCost, stockCost, reCost, paCost, fiCost,
       goldGainPct, silverGainPct, stockGainPct, reGainPct, paGainPct, fiGainPct,
       totalGoldGrams, totalSilverGrams, goldAvgBuy, silverAvgBuy,
@@ -897,7 +901,9 @@ export default function AnalyticsScreen() {
       icon: { lib: 'mci' as const, name: 'tag-multiple' }, quantity: sm.paCount > 0 ? `${sm.paCount} asset${sm.paCount !== 1 ? 's' : ''}` : undefined,
     },
     {
-      label: t.fixedIncome, value: sm.fiV, color: '#22C55E',
+      // Net of any linked-loan balance — matches the headline Total
+      // Portfolio Value's own net-of-loan treatment (Home screen).
+      label: t.fixedIncome, value: sm.fiVNetOfLoans, color: '#22C55E',
       icon: { lib: 'mci' as const, name: 'bank-transfer' },
     },
   ], [sm, colors, t]);
@@ -915,6 +921,16 @@ export default function AnalyticsScreen() {
     gold: sm.goldV, silver: sm.silverV, stock: sm.stockV,
     realEstate: sm.reV, personalAsset: sm.paV, fixedIncome: sm.fiV, cash: cashTotalEGP,
   }), [sm, cashTotalEGP]);
+  // Loan-adjusted variant, for driftRows only — target-allocation drift is
+  // a real-position question ("is my actual mix off from my target mix"),
+  // so it should use net fixed-income, same as the allocation bar. Kept
+  // separate from classValue rather than adjusting it in place: concentration
+  // risk below deliberately still reads gross — that card is about the
+  // certificate's own concentration/performance, not net worth composition,
+  // same restraint the certificate's own card uses.
+  const classValueNetOfLoans = useMemo((): Record<AllocationClass, number> => ({
+    ...classValue, fixedIncome: sm.fiVNetOfLoans,
+  }), [classValue, sm.fiVNetOfLoans]);
   const classMeta = useMemo((): Record<AllocationClass, { label: string; color: string; icon: React.ReactNode }> => ({
     gold: { label: t.gold, color: colors.primary, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.primary} /> },
     silver: { label: t.silver, color: colors.silverColor, icon: <MaterialCommunityIcons name="gold" size={16} color={colors.silverColor} /> },
@@ -942,11 +958,11 @@ export default function AnalyticsScreen() {
       .map(k => ({
         key: k,
         ...classMeta[k],
-        currentPct: (classValue[k] / driftDenominator) * 100,
+        currentPct: (classValueNetOfLoans[k] / driftDenominator) * 100,
         targetPct: targets[k] as number,
       }))
       .sort((a, b) => Math.abs(b.currentPct - b.targetPct) - Math.abs(a.currentPct - a.targetPct));
-  }, [targetsConfigured, targets, classValue, driftDenominator, classMeta]);
+  }, [targetsConfigured, targets, classValueNetOfLoans, driftDenominator, classMeta]);
 
   // ── Concentration risk (no target needed) ───────────────────────────────────
   // driftRows/fixPlan both require a saved target to compare against — a user
@@ -1799,7 +1815,10 @@ export default function AnalyticsScreen() {
         { label: t.egxStock, value: sm.stockV, color: '#4A9EFF' },
         { label: t.realEstate, value: sm.reV, color: '#A47FCA' },
         { label: t.personalAsset, value: sm.paV, color: '#E08E45' },
-        { label: t.fixedIncome, value: sm.fiV, color: '#22C55E' },
+        // Net of any linked-loan balance — matches currentValue above
+        // (sm.totalValue, already net-of-loan), so these segments actually
+        // sum to it.
+        { label: t.fixedIncome, value: sm.fiVNetOfLoans, color: '#22C55E' },
       ]}
     />
     </View>

@@ -584,8 +584,10 @@ export async function computeUserPortfolioAllocation(
   };
   let totalValue = 0;
 
+  const holdings: StoredHolding[] = [];
   for (const row of holdingRows) {
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
+    holdings.push(holding);
     const value = computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
     totalValue += value;
     switch (holding.type) {
@@ -596,6 +598,18 @@ export async function computeUserPortfolioAllocation(
       case "personal_asset": byClass.personalAsset += value; break;
       case "fixed_income": byClass.fixedIncome += value; break;
     }
+  }
+
+  // Net the same linked-loan balance out of both the fixedIncome bucket and
+  // the running total, by the same amount — keeps byClass still summing to
+  // totalValue, and matches the client's own driftRows treatment (Analytics
+  // screen), which target-allocation drift alerts need to agree with. See
+  // totalLoanBalanceEGP's own comment for the underlying double-counting fix.
+  const loanBalance = totalLoanBalanceEGP(holdings);
+  if (loanBalance > 0) {
+    const netFixedIncome = Math.max(0, byClass.fixedIncome - loanBalance);
+    totalValue -= byClass.fixedIncome - netFixedIncome;
+    byClass.fixedIncome = netFixedIncome;
   }
 
   // Same per-currency conversion as the mobile Overview Cash card's own
