@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -237,38 +238,44 @@ export default function DividendsScreen() {
                     </Text>
                   </View>
                   <View style={s.list}>
-                    {sorted.map(d => (
-                      <SwipeToDelete key={d.id} onDelete={() => handleDelete(d.id)}>
-                        <TouchableOpacity
-                          style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-                          onPress={() => openEdit(d)}
-                          activeOpacity={0.85}
-                        >
-                          <View style={[s.cardIcon, { backgroundColor: colors.green + '18' }]}>
-                            <Feather name="pie-chart" size={18} color={colors.green} />
-                          </View>
-                          <View style={s.cardBody}>
-                            <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
-                              {d.symbol}{d.companyName ? ` · ${d.companyName}` : ''}
-                            </Text>
-                            <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                              {formatDate(d.date)}{d.note ? ` · ${d.note}` : ''}
-                            </Text>
-                          </View>
+                    {sorted.map(d => {
+                      // Real fix for swipe losing to a tap on real devices —
+                      // see SwipeToDelete.tsx's own comment, and
+                      // recurring-income.tsx's matching cards, for the story.
+                      const cardTapGesture = Gesture.Tap().runOnJS(true).onEnd((_e, success) => {
+                        if (success) { impact(); openEdit(d); }
+                      });
+                      return (
+                      <SwipeToDelete key={d.id} onDelete={() => handleDelete(d.id)} tapGesture={cardTapGesture}>
+                        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                          {/* Tap-to-edit region — a sibling of cardSideCol's
+                              delete button below, never an ancestor of it.
+                              Replicates s.card's own gap (12) so the layout
+                              is pixel-identical to before. */}
+                          <GestureDetector gesture={cardTapGesture}>
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                              <View style={[s.cardIcon, { backgroundColor: colors.green + '18' }]}>
+                                <Feather name="pie-chart" size={18} color={colors.green} />
+                              </View>
+                              <View style={s.cardBody}>
+                                <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
+                                  {d.symbol}{d.companyName ? ` · ${d.companyName}` : ''}
+                                </Text>
+                                <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                  {formatDate(d.date)}{d.note ? ` · ${d.note}` : ''}
+                                </Text>
+                              </View>
+                            </View>
+                          </GestureDetector>
                           <View style={s.cardSideCol}>
                             <Text style={[s.cardAmount, { color: colors.green }]}>
                               +{d.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {d.currency}
                             </Text>
-                            {/* Plain RN TouchableOpacity, deliberately — this and
-                                the card wrapper were briefly react-native-gesture-handler's
-                                own TouchableOpacity (to fix swipe-vs-tap on the card),
-                                but nesting native gesture-handler buttons two levels
-                                deep inside Swipeable left this button's tap
-                                registering (a visible press) without ever
-                                completing — reproduced live in recurring-income.tsx,
-                                reverted here for the same reason before it shipped
-                                broken. See recurring-income.tsx's own delete button
-                                for the full explanation. */}
+                            {/* Plain RN TouchableOpacity, deliberately — and a
+                                sibling of the tap-to-edit GestureDetector above,
+                                not nested inside it — see SwipeToDelete.tsx's own
+                                comment for why that structural choice is what
+                                makes this safe this time. */}
                             <TouchableOpacity
                               style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
                               onPress={() => handleDelete(d.id)}
@@ -277,9 +284,10 @@ export default function DividendsScreen() {
                               <Feather name="trash-2" size={13} color={colors.red} />
                             </TouchableOpacity>
                           </View>
-                        </TouchableOpacity>
+                        </View>
                       </SwipeToDelete>
-                    ))}
+                      );
+                    })}
                   </View>
                 </>
               )

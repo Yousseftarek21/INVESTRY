@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { I18nManager, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import type { TapGesture } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, SharedValue } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -13,6 +14,15 @@ const REVEAL_W = 84;
 interface SwipeToDeleteProps {
   onDelete: () => void;
   children: React.ReactNode;
+  /** The card's own tap-to-edit gesture, if it has one (built with
+      Gesture.Tap() by the caller, wrapping a sibling region of its own
+      nested action buttons — see recurring-income.tsx/dividends.tsx for
+      the pattern). Wired into this Swipeable's own pan gesture via
+      blocksExternalGesture below, so the tap only activates once the pan
+      gesture has genuinely failed to recognize a swipe — real fix for
+      swipe losing to a tap on real devices, not just the drag-offset
+      widening below. Omit for cards with no whole-card tap target. */
+  tapGesture?: TapGesture;
 }
 
 // Rebuilt on react-native-gesture-handler's Swipeable instead of a hand-rolled
@@ -28,7 +38,7 @@ interface SwipeToDeleteProps {
 // the earlier stuck-row bug, and skipping straight to a delete without an
 // explicit tap is inherently riskier — Swipeable's model (swipe reveals a
 // button, tap the button to delete) is the more standard, safer pattern.
-export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
+export function SwipeToDelete({ onDelete, children, tapGesture }: SwipeToDeleteProps) {
   const colors = useColors();
   const t = useT();
   const { impact } = useHaptic();
@@ -75,22 +85,26 @@ export function SwipeToDelete({ onDelete, children }: SwipeToDeleteProps) {
         // more decisively before it can lose the race to a child
         // touchable's own tap recognizer.
         //
-        // A second, structural half of this fix was tried and reverted:
+        // A second, structural half of this fix was tried once and reverted:
         // swapping each card's own TouchableOpacity (and its nested
         // buttons) to react-native-gesture-handler's own TouchableOpacity
         // did stop the swipe-vs-tap race, but nesting native gesture-handler
-        // buttons two levels deep inside this Swipeable broke those nested
-        // buttons instead — their tap registered visually (a press flash)
-        // without ever completing. Reverted to plain RN TouchableOpacity
-        // everywhere (recurring-income.tsx, dividends.tsx) to guarantee
-        // Mark Collected/delete actually work; this threshold widening is
-        // what's left carrying the swipe-vs-tap fix on its own, so a real
-        // device may still occasionally read a swipe as a tap. Fixing that
-        // properly needs a non-nested-native-button approach (e.g. the
-        // new Gesture API's Gesture.Tap composed via
-        // requireExternalGestureToFail against this Swipeable's own pan
-        // gesture, with children left as plain RN touchables) — not
-        // attempted yet.
+        // *button views* two levels deep inside this Swipeable broke those
+        // nested buttons instead — their tap registered visually (a press
+        // flash) without ever completing.
+        //
+        // blocksExternalGesture below is the real fix, done differently:
+        // verified by reading ReanimatedSwipeable's own source, this prop
+        // genuinely calls panGesture.blocksExternalGesture(tapGesture) on
+        // Swipeable's own internal pan gesture — the caller's tap gesture
+        // then only activates once this pan gesture has genuinely failed to
+        // recognize a swipe. Unlike the reverted attempt, this never nests
+        // a native *button view* inside another one — tapGesture is a
+        // lightweight Gesture.Tap() recognizer the caller attaches to a
+        // SIBLING region of its own nested action buttons, not an ancestor
+        // of them (see recurring-income.tsx/dividends.tsx for the pattern).
+        // Nested buttons stay plain RN TouchableOpacity throughout.
+        blocksExternalGesture={tapGesture}
         dragOffsetFromLeftEdge={16}
         dragOffsetFromRightEdge={16}
         overshootRight={!I18nManager.isRTL}

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
 import { backChevron, forwardArrow } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -297,31 +298,50 @@ export default function RecurringIncomeScreen() {
                       {pendingEntries.map(inc => {
                         const stateColor = inc.collected ? colors.green : '#F59E0B';
                         const destAccount = inc.collected ? cashAccounts.find(a => a.id === inc.cashAccountId) : undefined;
+                        // Real fix for swipe losing to a tap on real devices
+                        // (see SwipeToDelete.tsx's own comment for the full
+                        // story and why this replaces the earlier reverted
+                        // attempt). This Gesture.Tap() is a plain factory
+                        // call, not a hook — fine to build fresh per row
+                        // inside a .map(). .runOnJS(true) lets the callback
+                        // call haptics/openEdit directly, no runOnJS() import
+                        // needed.
+                        const cardTapGesture = Gesture.Tap().runOnJS(true).onEnd((_e, success) => {
+                          if (success) { impact(); openEdit(inc); }
+                        });
                         return (
-                        <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
-                          <TouchableOpacity
+                        <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)} tapGesture={cardTapGesture}>
+                          <View
                             style={[s.pendingCard, {
                               backgroundColor: colors.card, borderColor: colors.border,
                               borderStartWidth: 3, borderStartColor: stateColor,
                             }]}
-                            onPress={() => openEdit(inc)}
-                            activeOpacity={0.85}
                           >
                             <View style={s.pendingHeaderRow}>
-                              <View style={[s.cardIcon, { backgroundColor: stateColor + '18' }]}>
-                                <Feather name={inc.collected ? 'check-circle' : 'clock'} size={18} color={stateColor} />
-                              </View>
-                              <View style={s.cardBody}>
-                                <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
-                                  {inc.name}
-                                </Text>
-                                <View style={s.pendingAmountRow}>
-                                  <Text style={[s.pendingAmount, { color: colors.text }]} numberOfLines={1}>
-                                    {inc.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
-                                  </Text>
-                                  <Text style={[s.pendingCurrency, { color: colors.mutedForeground }]}>{inc.currency}</Text>
+                              {/* Tap-to-edit region — a sibling of cardSideCol's
+                                  delete button below, never an ancestor of it,
+                                  which is what makes this safe (see
+                                  SwipeToDelete.tsx). Replicates cardIcon/cardBody's
+                                  own gap (12, same as pendingHeaderRow's) so the
+                                  layout is pixel-identical to before. */}
+                              <GestureDetector gesture={cardTapGesture}>
+                                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                  <View style={[s.cardIcon, { backgroundColor: stateColor + '18' }]}>
+                                    <Feather name={inc.collected ? 'check-circle' : 'clock'} size={18} color={stateColor} />
+                                  </View>
+                                  <View style={s.cardBody}>
+                                    <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
+                                      {inc.name}
+                                    </Text>
+                                    <View style={s.pendingAmountRow}>
+                                      <Text style={[s.pendingAmount, { color: colors.text }]} numberOfLines={1}>
+                                        {inc.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })}
+                                      </Text>
+                                      <Text style={[s.pendingCurrency, { color: colors.mutedForeground }]}>{inc.currency}</Text>
+                                    </View>
+                                  </View>
                                 </View>
-                              </View>
+                              </GestureDetector>
                               <View style={s.cardSideCol}>
                                 <View style={[s.pendingBadge, { backgroundColor: stateColor + '1F', borderColor: stateColor + '40' }]}>
                                   <Text style={[s.pendingBadgeText, { color: stateColor }]}>
@@ -332,17 +352,11 @@ export default function RecurringIncomeScreen() {
                                     pending entry may simply never arrive (deal fell
                                     through, client backed out), and a user shouldn't
                                     have to discover swipe-to-delete to remove it.
-                                    Plain RN TouchableOpacity, deliberately — this
-                                    card and its buttons were briefly switched to
-                                    react-native-gesture-handler's TouchableOpacity to
-                                    fix swipe-vs-tap losing on real devices, but
-                                    nesting native gesture-handler buttons two levels
-                                    deep inside SwipeToDelete's own Swipeable left the
-                                    touch registering (visible press) without the tap
-                                    ever completing — a real, reproduced regression,
-                                    not a guess. Reverted to guarantee this button
-                                    actually works; swipe-to-delete needs a different,
-                                    non-nested-button fix (see SwipeToDelete.tsx). */}
+                                    Plain RN TouchableOpacity, deliberately, and a
+                                    sibling of the tap-to-edit GestureDetector above
+                                    (not nested inside it) — see SwipeToDelete.tsx's
+                                    own comment for why that structural choice is
+                                    what makes this safe this time. */}
                                 <TouchableOpacity
                                   style={[s.deleteBtn, { backgroundColor: colors.red + '12' }]}
                                   onPress={() => handleDelete(inc.id)}
@@ -375,16 +389,8 @@ export default function RecurringIncomeScreen() {
                                   ) : null}
                                 </View>
                                 {/* Plain RN TouchableOpacity, deliberately — see the
-                                    delete button's comment above. Briefly became
-                                    react-native-gesture-handler's TouchableOpacity to
-                                    fix the outer card's swipe-vs-tap race; that
-                                    correctly stopped an outer-card tap from stealing
-                                    the touch, but nesting a SECOND layer of native
-                                    gesture-handler buttons here (inside the card's
-                                    own, inside Swipeable) left this button's own tap
-                                    registering visually (a press flash) without ever
-                                    completing — reproduced live, not theoretical.
-                                    Reverted so this button is guaranteed to work. */}
+                                    delete button's comment above; same sibling
+                                    reasoning applies here too. */}
                                 {!inc.collected && (
                                   <TouchableOpacity
                                     style={[s.collectBtn, { backgroundColor: colors.green }]}
@@ -398,7 +404,7 @@ export default function RecurringIncomeScreen() {
                                 )}
                               </View>
                             )}
-                          </TouchableOpacity>
+                          </View>
                         </SwipeToDelete>
                         );
                       })}
@@ -410,37 +416,47 @@ export default function RecurringIncomeScreen() {
                       {pendingEntries.length > 0 && (
                         <Text style={[s.sectionHeader, { color: colors.mutedForeground }]}>{t.incomeKindRecurring}</Text>
                       )}
-                      {recurringEntries.map(inc => (
-                        <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
-                          <TouchableOpacity
-                            style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-                            onPress={() => openEdit(inc)}
-                            activeOpacity={0.85}
-                          >
-                            <View style={[s.cardIcon, { backgroundColor: colors.primary + '18' }]}>
-                              <Feather name="repeat" size={18} color={colors.primary} />
-                            </View>
-                            <View style={s.cardBody}>
-                              <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
-                                {inc.name}
-                              </Text>
-                              <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                                {inc.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {inc.currency}
-                                {' · '}{t.monthlyOnDay} {inc.creditDay}
-                              </Text>
-                              <Text style={[s.cardAccount, { color: colors.mutedForeground }]} numberOfLines={1}>
-                                → {cashAccounts.find(a => a.id === inc.cashAccountId)?.accountName ?? '—'}
-                              </Text>
-                              {(inc.transactions?.length ?? 0) > 0 ? (
-                                <Text style={[s.cardLastCredited, { color: colors.mutedForeground }]} numberOfLines={1}>
-                                  {t.lastCredited}: {formatMonth(inc.transactions![inc.transactions!.length - 1].month)}
-                                </Text>
-                              ) : (
-                                <Text style={[s.cardLastCredited, { color: colors.mutedForeground, opacity: 0.6 }]} numberOfLines={1}>
-                                  {t.notYetCredited}
-                                </Text>
-                              )}
-                            </View>
+                      {recurringEntries.map(inc => {
+                        // Same real fix as the pending card above — see its
+                        // own comment, and SwipeToDelete.tsx, for the story.
+                        const cardTapGesture = Gesture.Tap().runOnJS(true).onEnd((_e, success) => {
+                          if (success) { impact(); openEdit(inc); }
+                        });
+                        return (
+                        <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)} tapGesture={cardTapGesture}>
+                          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                            {/* Tap-to-edit region — a sibling of cardSideCol's
+                                delete button below, never an ancestor of it.
+                                Replicates s.card's own gap (12) so the layout
+                                is pixel-identical to before. */}
+                            <GestureDetector gesture={cardTapGesture}>
+                              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={[s.cardIcon, { backgroundColor: colors.primary + '18' }]}>
+                                  <Feather name="repeat" size={18} color={colors.primary} />
+                                </View>
+                                <View style={s.cardBody}>
+                                  <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>
+                                    {inc.name}
+                                  </Text>
+                                  <Text style={[s.cardSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                    {inc.amount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} {inc.currency}
+                                    {' · '}{t.monthlyOnDay} {inc.creditDay}
+                                  </Text>
+                                  <Text style={[s.cardAccount, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                    → {cashAccounts.find(a => a.id === inc.cashAccountId)?.accountName ?? '—'}
+                                  </Text>
+                                  {(inc.transactions?.length ?? 0) > 0 ? (
+                                    <Text style={[s.cardLastCredited, { color: colors.mutedForeground }]} numberOfLines={1}>
+                                      {t.lastCredited}: {formatMonth(inc.transactions![inc.transactions!.length - 1].month)}
+                                    </Text>
+                                  ) : (
+                                    <Text style={[s.cardLastCredited, { color: colors.mutedForeground, opacity: 0.6 }]} numberOfLines={1}>
+                                      {t.notYetCredited}
+                                    </Text>
+                                  )}
+                                </View>
+                              </View>
+                            </GestureDetector>
                             <View style={s.cardSideCol}>
                               <View style={[s.badge, {
                                 backgroundColor: inc.active ? colors.primary + '18' : colors.muted,
@@ -461,9 +477,10 @@ export default function RecurringIncomeScreen() {
                                 <Feather name="trash-2" size={13} color={colors.red} />
                               </TouchableOpacity>
                             </View>
-                          </TouchableOpacity>
+                          </View>
                         </SwipeToDelete>
-                      ))}
+                        );
+                      })}
                     </>
                   )}
                 </View>
