@@ -1803,16 +1803,23 @@ function NetWorthBreakdownModal({
     // instead of quietly re-meaning "Investments" inside this same modal.
     ...(cashHomeValue > 0 ? [{ key: 'cashHome', label: t.cashAtHome, color: colors.green,
       icon: <BanknoteIcon size={16} color={colors.green} />, amount: cashHomeValue }] : []),
-    // MaterialCommunityIcons "bank", not Feather "credit-card" — credit-card
-    // was shared with the Loans row below (an actual icon collision: two
-    // different rows in the same modal were visually identical). Loans
-    // keeps credit-card to match HoldingCard.tsx's own loan row.
+    // Feather "credit-card" — this IS Bank Account's real ground-truth icon
+    // app-wide (cash-accounts.tsx's own type picker AND account list both
+    // use it). An earlier pass swapped this to MaterialCommunityIcons "bank"
+    // to dodge a collision with the Loans row below sharing credit-card —
+    // that traded one collision (Bank vs Loans, inside this modal) for a
+    // worse one (this modal's Bank vs the real Cash Accounts screen's own
+    // Bank). Fixed properly this time: Loans gets its own dedicated icon
+    // instead, so Bank can keep the one it actually owns everywhere else.
     ...(bankValue > 0 ? [{ key: 'bank', label: t.bankAccount, color: colors.green,
-      icon: <MaterialCommunityIcons name="bank" size={16} color={colors.green} />, amount: bankValue }] : []),
+      icon: <Feather name="credit-card" size={16} color={colors.green} />, amount: bankValue }] : []),
     ...(pendingIncomeValue > 0 ? [{ key: 'pending', label: t.pendingIncomeLabel, color: '#F59E0B',
       icon: <Feather name="clock" size={16} color="#F59E0B" />, amount: pendingIncomeValue }] : []),
+    // MaterialCommunityIcons "cash-minus" — a dedicated Loans icon, not
+    // borrowed from Bank Account (credit-card) or anything else. Matches
+    // HoldingCard.tsx's own loan-status row, updated alongside this.
     ...(loansValue > 0 ? [{ key: 'loans', label: t.loansRowLabel, color: colors.red,
-      icon: <Feather name="credit-card" size={16} color={colors.red} />, amount: -loansValue }] : []),
+      icon: <MaterialCommunityIcons name="cash-minus" size={16} color={colors.red} />, amount: -loansValue }] : []),
   ];
 
   return (

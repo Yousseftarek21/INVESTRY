@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { Holding, MarketPrices } from '@/types';
@@ -236,7 +236,10 @@ export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideS
 
       {!!linkedLoan && (
         <View style={[styles.loanRow, { borderTopColor: colors.border }]}>
-          <Feather name="credit-card" size={12} color={colors.mutedForeground} />
+          {/* cash-minus, not credit-card — credit-card is Bank Account's
+              real icon (cash-accounts.tsx). Matches the Net Worth breakdown
+              modal's own Loans row (index.tsx). */}
+          <MaterialCommunityIcons name="cash-minus" size={12} color={colors.mutedForeground} />
           <Text style={[styles.loanText, { color: colors.mutedForeground }]} numberOfLines={1}>
             {loanFullyPaid
               ? t.loanFullyPaid
