@@ -20,6 +20,8 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
 import { computeCashTotalEGP, computeTotalLoanBalanceEGP } from '@/utils/cash';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
+import { ConceptIcon, RowIcon } from '@/components/ConceptIcon';
+import { ICON_AI_ASSISTANT, ICON_LEADERBOARD, ICON_REBALANCING } from '@/constants/conceptIcons';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
@@ -525,18 +527,14 @@ const ts = StyleSheet.create({
 
 // ─── Section label ─────────────────────────────────────────────────────────────
 
-type SLabelIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
 function SLabel({ icon, title, sub }: {
-  icon: SLabelIcon; title: string; sub?: string;
+  icon: RowIcon; title: string; sub?: string;
 }) {
   const colors = useColors();
-  const ic = typeof icon === 'object' && icon.lib === 'mci'
-    ? <MaterialCommunityIcons name={icon.name as any} size={13} color={colors.mutedForeground} />
-    : <Feather name={icon as keyof typeof Feather.glyphMap} size={13} color={colors.mutedForeground} />;
   return (
     <View style={sl.row}>
       <View style={[sl.iconWrap, { backgroundColor: colors.muted }]}>
-        {ic}
+        <ConceptIcon icon={icon} size={13} color={colors.mutedForeground} />
       </View>
       <Text style={[sl.title, { color: colors.text }]}>{title}</Text>
       {sub && <Text style={[sl.sub, { color: colors.mutedForeground }]}>{sub}</Text>}
@@ -1194,7 +1192,7 @@ export default function AnalyticsScreen() {
             style={[s.aiAssistantCard, { borderColor: '#8B5CF63A' }]}
           >
             <View style={[s.aiAssistantIcon, { backgroundColor: '#8B5CF622' }]}>
-              <Feather name="cpu" size={22} color="#8B5CF6" />
+              <ConceptIcon icon={ICON_AI_ASSISTANT} size={22} color="#8B5CF6" />
               <View style={[s.aiSparkle, { backgroundColor: colors.card }]}>
                 <Feather name="zap" size={9} color="#8B5CF6" />
               </View>
@@ -1291,7 +1289,7 @@ export default function AnalyticsScreen() {
         {/* Personalized signals */}
         {marketInsights.length > 0 && (
           <View style={s.section}>
-            <SLabel icon="cpu" title={t.personalizedInsightsTitle} sub={t.basedOnPortfolio} />
+            <SLabel icon={ICON_AI_ASSISTANT} title={t.personalizedInsightsTitle} sub={t.basedOnPortfolio} />
             <View style={s.insightsList}>
               {marketInsights.map((ins, i) => (
                 <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
@@ -1506,7 +1504,7 @@ export default function AnalyticsScreen() {
             {activeSection === 'breakdown' && sm.totalValue > 0 && (
               <View style={s.section}>
                 <SLabel
-                  icon="target"
+                  icon={ICON_REBALANCING}
                   title={t.rebalancingLabel}
                   sub={targetsConfigured ? t.rebalancingSub(String(driftRows.length)) : undefined}
                 />
@@ -1538,7 +1536,7 @@ export default function AnalyticsScreen() {
                       onPress={() => { impact(); router.push('/target-allocation' as any); }}
                     >
                       <View style={[dr.iconBox, { backgroundColor: colors.primary + '1A' }]}>
-                        <Feather name="target" size={16} color={colors.primary} />
+                        <ConceptIcon icon={ICON_REBALANCING} size={16} color={colors.primary} />
                       </View>
                       <View style={{ flex: 1, gap: 2 }}>
                         <Text style={[dr.emptyTitle, { color: colors.text }]}>{t.rebalancingEmptyTitle}</Text>
@@ -1597,7 +1595,7 @@ export default function AnalyticsScreen() {
             {/* ── Performers ───────────────────────────────────────────── */}
             {activeSection === 'breakdown' && performers.length > 0 && (
               <View style={s.section}>
-                <SLabel icon="award" title={t.performersLabel} sub={`${performers.length} ${t.investmentPlural}`} />
+                <SLabel icon={ICON_LEADERBOARD} title={t.performersLabel} sub={`${performers.length} ${t.investmentPlural}`} />
                 <View style={s.performersList}>
                   {performers.slice(0, 5).map((p, i) => (
                     <PodiumRow

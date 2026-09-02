@@ -4,13 +4,15 @@ import {
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { ConceptIcon, RowIcon } from '@/components/ConceptIcon';
+import { ICON_INVESTMENTS } from '@/constants/conceptIcons';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 
 interface FAQItem { q: string; a: string }
-interface FAQCategory { icon: keyof typeof Feather.glyphMap; color: string; title: string; items: FAQItem[] }
+interface FAQCategory { icon: RowIcon; color: string; title: string; items: FAQItem[] }
 
 function FAQRow({ item, isLast }: { item: FAQItem; isLast: boolean }) {
   const colors = useColors();
@@ -43,7 +45,7 @@ function CategoryCard({ category }: { category: FAQCategory }) {
     <View style={[cc.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={cc.header}>
         <View style={[cc.iconWrap, { backgroundColor: category.color + '18' }]}>
-          <Feather name={category.icon} size={15} color={category.color} />
+          <ConceptIcon icon={category.icon} size={15} color={category.color} />
         </View>
         <Text style={[cc.title, { color: colors.text }]}>{category.title}</Text>
       </View>
@@ -75,9 +77,9 @@ export default function HelpCenterScreen() {
       ],
     },
     {
-      // trending-up is the one Investments icon app-wide now — see
-      // add-choose.tsx's "Investment" option, the original anchor.
-      icon: 'trending-up', color: '#C9A227', title: t.helpCatHoldings,
+      // ICON_INVESTMENTS is the one Investments icon app-wide now — see
+      // constants/conceptIcons.ts.
+      icon: ICON_INVESTMENTS, color: '#C9A227', title: t.helpCatHoldings,
       items: [
         { q: t.helpHoldingTypesQ, a: t.helpHoldingTypesA },
         { q: t.helpEditDeleteQ, a: t.helpEditDeleteA },

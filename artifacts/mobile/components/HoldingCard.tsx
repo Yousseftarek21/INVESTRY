@@ -7,6 +7,8 @@ import { Holding, MarketPrices } from '@/types';
 import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { AssetIcon } from '@/components/AssetIcon';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_LOANS } from '@/constants/conceptIcons';
 
 type HoldingLabels = {
   gold: string; silver: string; realEstate: string; personalAsset: string;
@@ -236,10 +238,9 @@ export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideS
 
       {!!linkedLoan && (
         <View style={[styles.loanRow, { borderTopColor: colors.border }]}>
-          {/* cash-minus, not credit-card — credit-card is Bank Account's
-              real icon (cash-accounts.tsx). Matches the Net Worth breakdown
-              modal's own Loans row (index.tsx). */}
-          <MaterialCommunityIcons name="cash-minus" size={12} color={colors.mutedForeground} />
+          {/* ICON_LOANS — matches the Net Worth breakdown modal's own
+              Loans row (index.tsx). See constants/conceptIcons.ts. */}
+          <ConceptIcon icon={ICON_LOANS} size={12} color={colors.mutedForeground} />
           <Text style={[styles.loanText, { color: colors.mutedForeground }]} numberOfLines={1}>
             {loanFullyPaid
               ? t.loanFullyPaid

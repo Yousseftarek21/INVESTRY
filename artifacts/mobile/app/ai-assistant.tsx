@@ -19,6 +19,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useAuth } from '@clerk/expo';
 import { Feather } from '@expo/vector-icons';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_AI_ASSISTANT } from '@/constants/conceptIcons';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -336,7 +338,7 @@ export default function AIAssistantScreen() {
             {messages.length === 0 ? (
               <View style={s.empty}>
                 <View style={[s.emptyIcon, { backgroundColor: AI_ACCENT + '18' }]}>
-                  <Feather name="cpu" size={28} color={AI_ACCENT} />
+                  <ConceptIcon icon={ICON_AI_ASSISTANT} size={28} color={AI_ACCENT} />
                 </View>
                 <Text style={[s.emptyTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
                 <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.aiAssistantEmptyHint}</Text>

@@ -28,6 +28,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_BANK_ACCOUNT, ICON_INVESTMENTS, ICON_LOANS, ICON_PENDING_INCOME } from '@/constants/conceptIcons';
 import { useColors } from '@/hooks/useColors';
 import { useCounterDisplay } from '@/hooks/useCounterDisplay';
 import { useT } from '@/hooks/useTranslation';
@@ -1531,13 +1533,9 @@ export default function HomeScreen() {
             <View style={[styles.emptyRing2, { borderColor: colors.primary + '10' }]} />
             <View style={[styles.emptyRing1, { borderColor: colors.primary + '20' }]} />
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-              {/* trending-up is the one Investments icon everywhere in the
-                  app now — was briefcase here, which also (still, correctly)
-                  means Cash at Home in the breakdown modal below and several
-                  settings rows; standardized to stop the two concepts
-                  sharing an icon. See add-choose.tsx's own "Investment"
-                  option, the original anchor for this icon. */}
-              <Feather name="trending-up" size={26} color={colors.primary + 'AA'} />
+              {/* ICON_INVESTMENTS is the one Investments icon everywhere in
+                  the app now — see constants/conceptIcons.ts. */}
+              <ConceptIcon icon={ICON_INVESTMENTS} size={26} color={colors.primary + 'AA'} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noInvestmentsYet}</Text>
             <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>{t.addFromHoldingsTab}</Text>
@@ -1790,36 +1788,20 @@ function NetWorthBreakdownModal({
   const insets = useSafeAreaInsets();
 
   const rows: NetWorthRow[] = [
-    // trending-up is the one icon representing "Investments" everywhere in
-    // the app now (was pie-chart here, which also meant "Dividend" on
-    // add-choose.tsx) — see add-choose.tsx's own "Investment" option, the
-    // original anchor this was standardized on.
     { key: 'investments', label: t.investmentsLabel, color: colors.primary,
-      icon: <Feather name="trending-up" size={16} color={colors.primary} />, amount: investmentsValue },
-    // BanknoteIcon, not Feather "briefcase" — briefcase is the app-wide
-    // Investments icon now (see the empty-state comment above); Cash at
-    // Home's own established icon everywhere else (cash-accounts.tsx's
-    // type picker/list) is this custom BanknoteIcon, so this matches that
-    // instead of quietly re-meaning "Investments" inside this same modal.
+      icon: <ConceptIcon icon={ICON_INVESTMENTS} size={16} color={colors.primary} />, amount: investmentsValue },
+    // BanknoteIcon — Cash at Home's own established icon everywhere else
+    // (cash-accounts.tsx's type picker/list), not a shared-registry
+    // Feather/MCI glyph, since it's already a real, dedicated component
+    // nothing else can accidentally reuse.
     ...(cashHomeValue > 0 ? [{ key: 'cashHome', label: t.cashAtHome, color: colors.green,
       icon: <BanknoteIcon size={16} color={colors.green} />, amount: cashHomeValue }] : []),
-    // Feather "credit-card" — this IS Bank Account's real ground-truth icon
-    // app-wide (cash-accounts.tsx's own type picker AND account list both
-    // use it). An earlier pass swapped this to MaterialCommunityIcons "bank"
-    // to dodge a collision with the Loans row below sharing credit-card —
-    // that traded one collision (Bank vs Loans, inside this modal) for a
-    // worse one (this modal's Bank vs the real Cash Accounts screen's own
-    // Bank). Fixed properly this time: Loans gets its own dedicated icon
-    // instead, so Bank can keep the one it actually owns everywhere else.
     ...(bankValue > 0 ? [{ key: 'bank', label: t.bankAccount, color: colors.green,
-      icon: <Feather name="credit-card" size={16} color={colors.green} />, amount: bankValue }] : []),
+      icon: <ConceptIcon icon={ICON_BANK_ACCOUNT} size={16} color={colors.green} />, amount: bankValue }] : []),
     ...(pendingIncomeValue > 0 ? [{ key: 'pending', label: t.pendingIncomeLabel, color: '#F59E0B',
-      icon: <Feather name="clock" size={16} color="#F59E0B" />, amount: pendingIncomeValue }] : []),
-    // MaterialCommunityIcons "cash-minus" — a dedicated Loans icon, not
-    // borrowed from Bank Account (credit-card) or anything else. Matches
-    // HoldingCard.tsx's own loan-status row, updated alongside this.
+      icon: <ConceptIcon icon={ICON_PENDING_INCOME} size={16} color="#F59E0B" />, amount: pendingIncomeValue }] : []),
     ...(loansValue > 0 ? [{ key: 'loans', label: t.loansRowLabel, color: colors.red,
-      icon: <MaterialCommunityIcons name="cash-minus" size={16} color={colors.red} />, amount: -loansValue }] : []),
+      icon: <ConceptIcon icon={ICON_LOANS} size={16} color={colors.red} />, amount: -loansValue }] : []),
   ];
 
   return (

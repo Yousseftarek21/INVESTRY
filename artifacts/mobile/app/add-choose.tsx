@@ -1,4 +1,6 @@
 import { Feather } from '@expo/vector-icons';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_DIVIDENDS, ICON_INVESTMENTS } from '@/constants/conceptIcons';
 import { forwardChevron } from '@/utils/rtl';
 import { router } from 'expo-router';
 import React from 'react';
@@ -60,7 +62,7 @@ export default function AddChooseScreen() {
           activeOpacity={0.72}
         >
           <View style={[s.iconWrap, { backgroundColor: colors.primary + '1A' }]}>
-            <Feather name="trending-up" size={26} color={colors.primary} />
+            <ConceptIcon icon={ICON_INVESTMENTS} size={26} color={colors.primary} />
           </View>
           <View style={s.cardText}>
             <Text style={[s.cardTitle, { color: colors.text }]}>{t.addInvestmentOption}</Text>
@@ -105,7 +107,7 @@ export default function AddChooseScreen() {
           activeOpacity={0.72}
         >
           <View style={[s.iconWrapSm, { backgroundColor: '#22C55E1A' }]}>
-            <Feather name="pie-chart" size={18} color="#22C55E" />
+            <ConceptIcon icon={ICON_DIVIDENDS} size={18} color="#22C55E" />
           </View>
           <View style={s.cardSmText}>
             <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addDividendOption}</Text>

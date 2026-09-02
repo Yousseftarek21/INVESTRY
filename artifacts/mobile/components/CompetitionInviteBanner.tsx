@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_LEADERBOARD } from '@/constants/conceptIcons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -96,7 +98,7 @@ export function CompetitionInviteBanner() {
 
         <View style={s.headerRow}>
           <View style={[s.trophyWrap, { backgroundColor: GOLD + '22' }]}>
-            <Feather name="award" size={20} color={GOLD} />
+            <ConceptIcon icon={ICON_LEADERBOARD} size={20} color={GOLD} />
           </View>
           <Text style={[s.eyebrow, { color: GOLD }]}>{t.competitionEyebrow}</Text>
           <BetaChip label={t.leaderboardBetaChip} />

@@ -7,6 +7,8 @@ import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_DIVIDENDS } from '@/constants/conceptIcons';
 import { backChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerField } from '@/components/DatePickerField';
@@ -220,7 +222,7 @@ export default function DividendsScreen() {
               dividends.length === 0 ? (
                 <View style={[s.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={[s.emptyIcon, { backgroundColor: colors.primary + '18' }]}>
-                    <Feather name="pie-chart" size={30} color={colors.primary} />
+                    <ConceptIcon icon={ICON_DIVIDENDS} size={30} color={colors.primary} />
                   </View>
                   <Text style={[s.emptyTitle, { color: colors.text }]}>{t.noDividends}</Text>
                   <Text style={[s.emptyHint, { color: colors.mutedForeground }]}>{t.noDividendsHint}</Text>
@@ -255,7 +257,7 @@ export default function DividendsScreen() {
                           <GestureDetector gesture={cardTapGesture}>
                             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                               <View style={[s.cardIcon, { backgroundColor: colors.green + '18' }]}>
-                                <Feather name="pie-chart" size={18} color={colors.green} />
+                                <ConceptIcon icon={ICON_DIVIDENDS} size={18} color={colors.green} />
                               </View>
                               <View style={s.cardBody}>
                                 <Text style={[s.cardName, { color: colors.text }]} numberOfLines={1}>

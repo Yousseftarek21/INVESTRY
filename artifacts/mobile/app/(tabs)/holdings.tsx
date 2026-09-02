@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_INVESTMENTS, ICON_PENDING_INCOME } from '@/constants/conceptIcons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -377,7 +379,7 @@ export default function HoldingsScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.pendingTileIcon, { backgroundColor: '#F59E0B18' }]}>
-              <Feather name="clock" size={18} color="#F59E0B" />
+              <ConceptIcon icon={ICON_PENDING_INCOME} size={18} color="#F59E0B" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.pendingTileLabel, { color: colors.mutedForeground }]}>{t.pendingIncomeLabel}</Text>
@@ -436,10 +438,10 @@ export default function HoldingsScreen() {
           /* ── True empty state ── */
           <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.muted }]}>
-              {/* trending-up is the one Investments icon app-wide now — see
-                  add-choose.tsx's "Investment" option, the original anchor.
-                  This IS the Investments tab's own empty state. */}
-              <Feather name="trending-up" size={32} color={colors.mutedForeground} />
+              {/* ICON_INVESTMENTS is the one Investments icon app-wide now —
+                  see constants/conceptIcons.ts. This IS the Investments
+                  tab's own empty state. */}
+              <ConceptIcon icon={ICON_INVESTMENTS} size={32} color={colors.mutedForeground} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>{t.noHoldings}</Text>
             <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>{t.tapToAdd}</Text>

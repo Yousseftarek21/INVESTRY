@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_COMMUNITY, ICON_INVESTMENTS, ICON_LEADERBOARD } from '@/constants/conceptIcons';
 import { forwardChevron } from '@/utils/rtl';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
@@ -103,9 +105,9 @@ function ProfileHero({
               </View>
             )}
             <View style={[ph.tag, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '38' }]}>
-              {/* trending-up is the one Investments icon app-wide now — see
-                  add-choose.tsx's "Investment" option, the original anchor. */}
-              <Feather name="trending-up" size={9} color={colors.primary} />
+              {/* ICON_INVESTMENTS is the one Investments icon app-wide now —
+                  see constants/conceptIcons.ts. */}
+              <ConceptIcon icon={ICON_INVESTMENTS} size={9} color={colors.primary} />
               <Text style={[ph.tagTxt, { color: colors.primary }]}>{holdingsCount} {t.investmentsLabel}</Text>
             </View>
           </View>
@@ -561,17 +563,16 @@ export default function SettingsScreen() {
               label={t.inviteFriendsNav} sublabel={t.inviteFriendsNavSub}
               onPress={() => goTo('/invite-friends')}
             />
-            {/* award, not trending-up — trending-up is the app-wide
-                Investments icon now; award (trophy) is already
+            {/* ICON_LEADERBOARD (award/trophy) — already
                 CompetitionInviteBanner's own icon for this same feature. */}
             <NavRow
-              icon="award" iconBg="#00D4AA"
+              icon={ICON_LEADERBOARD} iconBg="#00D4AA"
               label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
               badge={{ text: t.leaderboardBetaChip, color: '#F59E0B' }}
               onPress={() => goTo('/leaderboard')}
             />
             <NavRow
-              icon={{ lib: 'mci', name: 'facebook' }} iconBg="#1877F2"
+              icon={ICON_COMMUNITY} iconBg="#1877F2"
               label={t.communityNav} sublabel={t.communityNavSub}
               onPress={openCommunity}
               last

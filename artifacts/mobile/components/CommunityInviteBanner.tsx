@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Animated, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_COMMUNITY } from '@/constants/conceptIcons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -85,7 +87,7 @@ export function CommunityInviteBanner() {
 
         <View style={s.headerRow}>
           <View style={[s.iconWrap, { backgroundColor: FB_BLUE + '22' }]}>
-            <MaterialCommunityIcons name="facebook" size={20} color={FB_BLUE} />
+            <ConceptIcon icon={ICON_COMMUNITY} size={20} color={FB_BLUE} />
           </View>
           <Text style={[s.eyebrow, { color: FB_BLUE }]}>{t.communityEyebrow}</Text>
         </View>
@@ -98,7 +100,7 @@ export function CommunityInviteBanner() {
           style={[s.joinBtn, { backgroundColor: FB_BLUE }]}
           activeOpacity={0.85}
         >
-          <MaterialCommunityIcons name="facebook" size={15} color="#fff" />
+          <ConceptIcon icon={ICON_COMMUNITY} size={15} color="#fff" />
           <Text style={s.joinBtnTxt}>{t.communityInviteCta}</Text>
           <Feather name="arrow-right" size={14} color="#fff" />
         </TouchableOpacity>

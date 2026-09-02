@@ -1,8 +1,10 @@
 import React from 'react';
 import { Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
+import { ConceptIcon } from './ConceptIcon';
+import type { RowIcon } from './ConceptIcon';
 
 // Extracted from settings.tsx so every settings sub-screen (Account,
 // Appearance, Notifications, Portfolio, Privacy, Support) can share the same
@@ -10,18 +12,20 @@ import { useColors } from '@/hooks/useColors';
 
 // ─── Icon badge ────────────────────────────────────────────────────────────────
 
-// Every existing row passes a plain Feather glyph name — the { lib: 'mci' }
-// form is additive, for the rare row needing an icon Feather doesn't have at
-// all (e.g. the actual Facebook brand mark for "Join our Community" below;
-// Feather is deliberately brand-icon-free).
-export type RowIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
+// RowIcon now lives in components/ConceptIcon.tsx (re-exported here so
+// existing `import { RowIcon } from '@/components/SettingsPrimitives'`
+// call sites keep working). Every existing row passes a plain Feather
+// glyph name — the { lib: 'mci' }/{ lib: 'feather' } forms are additive,
+// for a row whose icon comes from constants/conceptIcons.ts, or one
+// needing a glyph Feather doesn't have at all (e.g. the actual Facebook
+// brand mark for "Join our Community" below; Feather is deliberately
+// brand-icon-free).
+export type { RowIcon };
 
 export function Bdg({ icon, bg }: { icon: RowIcon; bg: string }) {
   return (
     <View style={[bdg.wrap, { backgroundColor: bg }]}>
-      {typeof icon === 'object'
-        ? <MaterialCommunityIcons name={icon.name as any} size={16} color="#fff" />
-        : <Feather name={icon} size={15} color="#fff" />}
+      <ConceptIcon icon={icon} size={typeof icon === 'object' ? 16 : 15} color="#fff" />
     </View>
   );
 }

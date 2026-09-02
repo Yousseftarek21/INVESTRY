@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
+import { ConceptIcon } from '@/components/ConceptIcon';
+import { ICON_INVESTMENTS } from '@/constants/conceptIcons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { forwardArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
@@ -164,7 +166,7 @@ export default function WelcomeScreen() {
               style={StyleSheet.absoluteFillObject}
             />
             <View style={[styles.logoInner, { backgroundColor: colors.primary + '1E' }]}>
-              <Feather name="trending-up" size={34} color={colors.primary} />
+              <ConceptIcon icon={ICON_INVESTMENTS} size={34} color={colors.primary} />
             </View>
           </View>
 
