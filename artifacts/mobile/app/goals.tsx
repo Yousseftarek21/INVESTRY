@@ -84,7 +84,7 @@ export default function GoalsScreen() {
   const { goals, addGoal, updateGoal, removeGoal } = useGoals();
   const { cashAccounts } = useCash();
   const egpCashAccounts = cashAccounts.filter(a => a.currency === 'EGP');
-  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -144,7 +144,7 @@ export default function GoalsScreen() {
     if (!trimmed) { Alert.alert(t.goalName, t.goalNameError); return; }
     if (target <= 0) { Alert.alert(t.targetAmount, t.goalTargetError); return; }
     if (!editingId && !subLoading && !featuresUnlocked && goals.length >= FREE_LIMIT) {
-      showPaywall();
+      showPaywallFromModal();
       return;
     }
     impact(Haptics.ImpactFeedbackStyle.Light);

@@ -546,7 +546,7 @@ export default function AddInvestmentScreen() {
   const { impact, notify } = useHaptic();
   const { addHolding, updateHolding, holdings } = useHoldings();
   const { logActivity } = useActivityLog();
-  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
   const { cashAccounts } = useCash();
   const { isSignedIn } = useAuth();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
@@ -910,7 +910,7 @@ export default function AddInvestmentScreen() {
     // Free tier: max 1 investment. Skip the gate while subscription is still
     // loading (subLoading=true), or when Pro is active.
     if (!isEditing && !subLoading && !featuresUnlocked && holdings.length >= FREE_LIMIT) {
-      showPaywall();
+      showPaywallFromModal();
       return;
     }
 

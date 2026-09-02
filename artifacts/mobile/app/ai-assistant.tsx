@@ -322,7 +322,7 @@ export default function AIAssistantScreen() {
 
         {!featuresUnlocked ? (
           <View style={{ flex: 1, padding: 24 }}>
-            <LockedFeatureCard feature={t.aiAssistantTitle} description={t.subAiAssistantFull} fullScreen />
+            <LockedFeatureCard feature={t.aiAssistantTitle} description={t.subAiAssistantFull} fullScreen fromModalScreen />
           </View>
         ) : (
         <Reanimated.View style={[{ flex: 1 }, keyboardPaddingStyle]}>

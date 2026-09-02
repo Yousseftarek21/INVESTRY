@@ -64,7 +64,7 @@ export default function PriceAlertsScreen() {
   const { data: egxStocks } = useEGXMarket();
   const { data: globalStocks } = useGlobalStocks();
   const { alerts, addAlert, removeAlert, refresh } = usePriceAlertsContext();
-  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
 
   const [showForm, setShowForm] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -151,7 +151,7 @@ export default function PriceAlertsScreen() {
     const target = parseAmount(targetRaw);
     if (target <= 0) { Alert.alert(t.targetPriceLabel, t.targetPriceError); return; }
     if (!subLoading && !featuresUnlocked && alerts.length >= FREE_LIMIT) {
-      showPaywall();
+      showPaywallFromModal();
       return;
     }
     impact(Haptics.ImpactFeedbackStyle.Light);

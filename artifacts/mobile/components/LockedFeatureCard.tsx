@@ -12,18 +12,30 @@ interface LockedFeatureCardProps {
   /** Fills the screen instead of sitting as an inline card — for a screen
    * that's entirely gated (e.g. AI Assistant) rather than one section of one. */
   fullScreen?: boolean;
+  /** Set when this card renders on a screen presented via expo-router's
+   * `presentation: "modal"` (e.g. app/ai-assistant.tsx) — confirmed live
+   * that opening the Paywall's own Modal directly from on top of one of
+   * those silently fails to appear (state updates, nothing renders; see
+   * showPaywallFromModal's own comment in SubscriptionContext.tsx for how
+   * that was traced). Dismisses the current screen first, same fix used at
+   * every other gate reached from a modal screen. Screens that aren't
+   * modal-presented (Settings > Notifications, the Analytics tab) leave
+   * this unset — showPaywall works fine there, and dismissing would be a
+   * wrong, unwanted navigation. */
+  fromModalScreen?: boolean;
 }
 
 // The one locked-state treatment every gate in the app uses — replaces both
 // the old inline "Upgrade to PRO" card style and any one-off per-screen
-// lock UI. Always opens the same Paywall modal via showPaywall().
-export function LockedFeatureCard({ feature, description, fullScreen }: LockedFeatureCardProps) {
+// lock UI. Always opens the same Paywall modal, via showPaywall() or
+// showPaywallFromModal() depending on fromModalScreen.
+export function LockedFeatureCard({ feature, description, fullScreen, fromModalScreen }: LockedFeatureCardProps) {
   const colors = useColors();
   const t = useT();
   const { impact } = useHaptic();
-  const { showPaywall } = useSubscription();
+  const { showPaywall, showPaywallFromModal } = useSubscription();
 
-  const onPress = () => { impact(); showPaywall(); };
+  const onPress = () => { impact(); (fromModalScreen ? showPaywallFromModal : showPaywall)(); };
 
   return (
     <View style={[

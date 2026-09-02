@@ -23,6 +23,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
+import { router } from 'expo-router';
 import { apiFetch } from '../utils/api';
 
 export type Plan = 'free' | 'pro';
@@ -48,6 +49,22 @@ export interface SubscriptionContextValue {
   markProLocally: (billingPeriod: BillingPeriod) => void;
   /** Opens the Paywall modal (rendered once in app/_layout.tsx). */
   showPaywall: () => void;
+  /**
+   * Same as `showPaywall`, for a gate reached from a screen presented via
+   * expo-router's `presentation: "modal"` (add-investment, cash-accounts,
+   * recurring-income, goals, price-alerts, ai-assistant). Confirmed live
+   * (state traced with console logging, not assumed): calling `showPaywall`
+   * directly from one of those screens does flip `paywallVisible` to true —
+   * the Paywall component re-renders with it — but nothing appears on
+   * screen. iOS won't reliably stack a second independent native modal
+   * presentation (Paywall's own `<Modal>`, mounted as a root-level sibling
+   * in app/_layout.tsx) on top of a screen that's itself already a native
+   * modal presentation; the failure is silent, no warning either side. This
+   * dismisses the current modal screen first and opens the paywall once
+   * that clears, over whatever's underneath — the one reliable place a
+   * second `<Modal>` is confirmed to present correctly.
+   */
+  showPaywallFromModal: () => void;
   /** Paywall modal's own visibility state — consumed by app/_layout.tsx only. */
   paywallVisible: boolean;
   closePaywall: () => void;
@@ -205,6 +222,20 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [betaUnlockAll]);
 
   const showPaywall = useCallback(() => setPaywallVisible(true), []);
+  // 400ms: comfortably past iOS's own "modal" screen dismiss animation
+  // (~350ms) so the previous native presentation has actually finished
+  // clearing before Paywall's `<Modal>` tries to present — presenting while
+  // a dismiss is still in flight is exactly the kind of overlap that fails
+  // silently on iOS. If there's nothing to go back to (reached some other
+  // way), just show it directly.
+  const showPaywallFromModal = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      setTimeout(() => setPaywallVisible(true), 400);
+    } else {
+      setPaywallVisible(true);
+    }
+  }, []);
   const closePaywall = useCallback(() => setPaywallVisible(false), []);
 
   const isPro = plan === 'pro';
@@ -219,6 +250,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       refresh,
       markProLocally,
       showPaywall,
+      showPaywallFromModal,
       paywallVisible,
       closePaywall,
     }}>

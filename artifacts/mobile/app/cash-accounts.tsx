@@ -61,7 +61,7 @@ export default function CashAccountsScreen() {
   const { cashAccounts, addCashAccount, updateCashAccount, removeCashAccount, transferBetweenAccounts } = useCash();
   const { data: prices } = useMarketPrices();
   const { recurringIncomes, addRecurringIncome, updateRecurringIncome, removeRecurringIncome } = useRecurringIncome();
-  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
   const { impact, notify } = useHaptic();
 
   const { openAdd: openAddParam, type: typeParam } = useLocalSearchParams<{ openAdd?: string; type?: string }>();
@@ -267,7 +267,7 @@ export default function CashAccountsScreen() {
         return;
       }
       if (!isEditingIncome && !subLoading && !featuresUnlocked && recurringIncomes.length >= FREE_LIMIT_INCOME) {
-        showPaywall();
+        showPaywallFromModal();
         return;
       }
       const day = Math.min(Math.max(parseInt(creditDay) || 25, 1), 31);
@@ -329,7 +329,7 @@ export default function CashAccountsScreen() {
         : rawInput;
       const isNewAccount = !(editingId && !isEditingIncome);
       if (isNewAccount && !subLoading && !featuresUnlocked && cashAccounts.length >= FREE_LIMIT_CASH) {
-        showPaywall();
+        showPaywallFromModal();
         return;
       }
       // Only a genuine manual change gets a fresh lastBalanceUpdateAt/history

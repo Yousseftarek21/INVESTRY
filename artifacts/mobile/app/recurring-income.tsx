@@ -60,7 +60,7 @@ export default function RecurringIncomeScreen() {
     removeRecurringIncome,
     markIncomeCollected,
   } = useRecurringIncome();
-  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
   const { logActivity } = useActivityLog();
 
   const [showForm, setShowForm] = useState(false);
@@ -148,7 +148,7 @@ export default function RecurringIncomeScreen() {
       return;
     }
     if (!editingId && !subLoading && !featuresUnlocked && recurringIncomes.length >= FREE_LIMIT) {
-      showPaywall();
+      showPaywallFromModal();
       return;
     }
 
