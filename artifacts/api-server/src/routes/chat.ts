@@ -19,7 +19,7 @@ import {
   getCachedPrices, getCachedStocks, getCachedGlobalStocks, getCachedStockNews,
   type EGXStockResponse, type StockNewsItem, type MarketPricesResponse,
 } from "./markets";
-import { computeHoldingValue, type StoredHolding } from "../lib/portfolioValue";
+import { computeHoldingValue, totalLoanBalanceEGP, type StoredHolding } from "../lib/portfolioValue";
 import { fetchInflation } from "./inflation";
 import { RE_PRICES } from "@workspace/shared-data";
 
@@ -332,10 +332,19 @@ async function buildPortfolioContext(
   // pending income into a single number, so the assistant had no correct
   // total to reference at all, only three separate lines it would have had
   // to add up itself.
-  const holdingsValueEGP = holdings.reduce(
+  const holdingsValueGrossEGP = holdings.reduce(
     (sum, h) => sum + computeHoldingValue(h, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices),
     0,
   );
+  // A certificate's own value stays counted in full here; loanBalanceEGP is
+  // what a linked loan against it borrowed and spent elsewhere in the
+  // portfolio (e.g. gold bought with the loan) — without netting it back
+  // out, that borrowed money reads as counted twice. Mirrors the same fix
+  // in computeUserPortfolioValue (portfolioValue.ts), which the Home screen
+  // uses — this keeps the assistant's stated net worth agreeing with what
+  // the app actually displays instead of drifting from it again.
+  const loanBalanceEGP = totalLoanBalanceEGP(holdings);
+  const holdingsValueEGP = Math.max(0, holdingsValueGrossEGP - loanBalanceEGP);
   const cashValueEGP = cash.reduce(
     (sum, a) => sum + toEGP(Number((a as { balance?: number }).balance) || 0, (a as { currency?: string }).currency, prices),
     0,
@@ -343,7 +352,9 @@ async function buildPortfolioContext(
   const pendingIncomeEGP = income
     .filter((e) => e.kind === "pending" && !e.collected)
     .reduce((sum, e) => sum + toEGP(Number(e.amount) || 0, e.currency as string | undefined, prices), 0);
-  const netWorthEGP = holdingsValueEGP + cashValueEGP + pendingIncomeEGP;
+  // Floored at 0 — total debt exceeding total assets should never render
+  // as a negative headline figure.
+  const netWorthEGP = Math.max(0, holdingsValueEGP + cashValueEGP + pendingIncomeEGP);
 
   const latestSnapshot = snapshotRows[snapshotRows.length - 1];
   const latestValue = latestSnapshot?.totalValue ?? 0;
@@ -353,9 +364,11 @@ async function buildPortfolioContext(
   ].filter((t): t is string => t !== null);
 
   const context = [
-    `Net worth right now (investment holdings + cash + uncollected pending income): ${netWorthEGP.toFixed(0)} EGP. ` +
-      `Breakdown — investment holdings: ${holdingsValueEGP.toFixed(0)} EGP, cash accounts: ${cashValueEGP.toFixed(0)} EGP, uncollected pending income: ${pendingIncomeEGP.toFixed(0)} EGP. ` +
-      `This is the correct total for "net worth" or "how much am I worth" — always include all three parts, not just holdings.`,
+    `Net worth right now (investment holdings, net of any linked loans, + cash + uncollected pending income): ${netWorthEGP.toFixed(0)} EGP. ` +
+      `Breakdown — investment holdings: ${holdingsValueEGP.toFixed(0)} EGP` +
+      (loanBalanceEGP > 0 ? ` (already net of ${loanBalanceEGP.toFixed(0)} EGP in outstanding loans taken against fixed-income certificates)` : "") +
+      `, cash accounts: ${cashValueEGP.toFixed(0)} EGP, uncollected pending income: ${pendingIncomeEGP.toFixed(0)} EGP. ` +
+      `This is the correct total for "net worth" or "how much am I worth" — always include all three parts, not just holdings. If asked about a loan against a certificate specifically, explain it's informational (doesn't reduce the certificate's own displayed value) but is already subtracted once at the net-worth level so the borrowed money isn't counted twice.`,
     latestSnapshot
       ? `Investment holdings value trend (holdings only, NOT net worth — as of ${latestSnapshot.date}): ${latestSnapshot.totalValue} EGP.${trends.length ? ` ${trends.join("; ")}.` : ""}`
       : "No holdings-value history yet.",

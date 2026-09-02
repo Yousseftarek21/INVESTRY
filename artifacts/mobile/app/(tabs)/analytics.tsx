@@ -18,7 +18,7 @@ import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useCash } from '@/context/CashContext';
-import { computeCashTotalEGP } from '@/utils/cash';
+import { computeCashTotalEGP, computeTotalLoanBalanceEGP } from '@/utils/cash';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { pricesAreFresh } from '@/utils/pricesCache';
@@ -738,7 +738,20 @@ export default function AnalyticsScreen() {
       }
       else { reV += v; reCost += c; reCount++; }
     }
-    const totalValue = goldV + silverV + stockV + reV + paV + fiV;
+    // Same treatment as index.tsx's identical summary useMemo — see
+    // computeTotalLoanBalanceEGP's comment for the double-counting bug this
+    // fixes. Subtracting totalLoans from both totalValue and totalCost (not
+    // just totalValue) keeps gain/gainPct honest: it cancels out of the
+    // absolute gain entirely, and correctly turns gainPct into a return on
+    // the user's own committed capital. Per-class values/costs (fiV/fiCost
+    // etc., used by the allocation bar and per-class gain% below) are left
+    // untouched, matching the fixed_income holding's own card, which also
+    // never nets its loan against its own displayed value.
+    const totalLoans = computeTotalLoanBalanceEGP(holdings);
+    // Floored at 0 — total debt exceeding total assets/cost basis should
+    // never render as a negative headline figure or cost basis.
+    const totalValue = Math.max(0, goldV + silverV + stockV + reV + paV + fiV - totalLoans);
+    totalCost = Math.max(0, totalCost - totalLoans);
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
     const goldGainPct = goldCost > 0 ? ((goldV - goldCost) / goldCost) * 100 : 0;
@@ -752,7 +765,7 @@ export default function AnalyticsScreen() {
     const metalPct = totalValue > 0 ? (goldV + silverV) / totalValue : 0;
     const todayGain = todayGold + todaySilver + todayStock + todayFI;
     return {
-      totalValue, totalCost, gain, gainPct, todayGain,
+      totalValue, totalCost, gain, gainPct, todayGain, totalLoans,
       goldV, silverV, stockV, reV, paV, fiV,
       goldCost, silverCost, stockCost, reCost, paCost, fiCost,
       goldGainPct, silverGainPct, stockGainPct, reGainPct, paGainPct, fiGainPct,

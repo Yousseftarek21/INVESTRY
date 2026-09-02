@@ -834,6 +834,8 @@ const en = {
   todayBreakdownTitle: 'What Moved Today',
   todayBreakdownEmpty: 'Nothing to break down yet — add a holding to see what moves your total.',
   todayBreakdownExcludedNote: "Real estate & personal assets aren't included — they don't have live daily pricing, so they're left out rather than guessed at.",
+  netWorthBreakdownTitle: 'Net Worth Breakdown',
+  loansRowLabel: 'Outstanding Loans',
   interestAccruedToday: 'Interest accrued today',
   currencyFxLabel: 'Currency (EGP/USD)',
   // A real user (Ahmed, Feedback & Ideas chat) reported this row as
@@ -2430,6 +2432,8 @@ const ar: typeof en = {
   todayBreakdownTitle: 'ما الذي تحرك اليوم',
   todayBreakdownEmpty: 'لا يوجد شيء لتحليله بعد — أضف استثمارًا لترى ما يحرك إجماليك.',
   todayBreakdownExcludedNote: 'العقارات والأصول الشخصية غير مدرجة — لا تتوفر لها تسعيرة يومية حية، لذا تُستبعد بدلاً من تخمينها.',
+  netWorthBreakdownTitle: 'تفاصيل صافي الثروة',
+  loansRowLabel: 'قروض مستحقة',
   interestAccruedToday: 'فائدة متراكمة اليوم',
   currencyFxLabel: 'العملة (جنيه/دولار)',
   currencyFxExplainer: 'أنت لا تملك عملة، بل ذهباً/فضة. يُسعَّر الذهب والفضة بالدولار ثم يُحوَّل إلى الجنيه المصري. يفصل هذا السطر أثر سعر الصرف على هذا التحويل عن حركة سعر المعدن نفسه، حتى لا يبدو يوم استقر فيه الذهب مع تحرك سعر الصرف وكأنه خسارة في الذهب.',

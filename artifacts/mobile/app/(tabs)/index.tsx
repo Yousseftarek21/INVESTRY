@@ -47,7 +47,7 @@ import { AllocationBar } from '@/components/AllocationBar';
 import { DetailModal } from '@/components/DetailModal';
 import { HoldingCard } from '@/components/HoldingCard';
 import { Holding, MarketPrices } from '@/types';
-import { computeCashTotalEGP, computePendingIncomeEGP } from '@/utils/cash';
+import { computeCashTotalEGP, computePendingIncomeEGP, computeTotalLoanBalanceEGP } from '@/utils/cash';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -390,6 +390,16 @@ export default function HomeScreen() {
   }, [holdingsSyncError]);
 
   const cashTotalEGP = useMemo(() => computeCashTotalEGP(cashAccounts, prices), [cashAccounts, prices]);
+  // Split for the Net Worth breakdown modal only — cashTotalEGP above stays
+  // the single lump sum everything else already keys off.
+  const cashHomeEGP = useMemo(
+    () => computeCashTotalEGP(cashAccounts.filter(a => a.type === 'cash_home'), prices),
+    [cashAccounts, prices],
+  );
+  const bankEGP = useMemo(
+    () => computeCashTotalEGP(cashAccounts.filter(a => a.type === 'bank' || a.type === 'foreign_currency'), prices),
+    [cashAccounts, prices],
+  );
   // Uncollected 'pending' income (money owed to the user, not yet in any
   // account — see Income screen / IncomeKind) counts toward net worth
   // directly, the same way cash does, so it stops being invisible in the
@@ -494,6 +504,7 @@ export default function HomeScreen() {
   const [chartScrubbing, setChartScrubbing] = useState(false);
   const [sparkWidth, setSparkWidth] = useState(0);
   const [showTodayBreakdown, setShowTodayBreakdown] = useState(false);
+  const [showNetWorthBreakdown, setShowNetWorthBreakdown] = useState(false);
   const [modal, setModal] = useState<{ title: string; content: string } | null>(null);
   const showModal = (title: string, content: string) => { impact(); setModal({ title, content }); };
 
@@ -590,7 +601,23 @@ export default function HomeScreen() {
       }
     }
 
-    const totalValue = goldV + silverV + stockV + reV + paV + fiV;
+    // A loan taken against a fixed_income certificate (LinkedLoan) is money
+    // already borrowed and spent — usually on another holding sitting right
+    // here in the same portfolio (see computeTotalLoanBalanceEGP's own
+    // comment for the double-counting bug this fixes: a 100k certificate +
+    // a 90k loan spent on 90k of gold used to read as 190k, not the real
+    // ~100k). Subtracting the same totalLoans from both totalValue AND
+    // totalCost below — rather than just totalValue — is what keeps
+    // gain/gainPct honest instead of introducing a fake loss: the loan
+    // cancels out of the absolute gain entirely (borrowing money to buy a
+    // holding you already own doesn't itself create or destroy gain), and
+    // correctly turns gainPct into a return on the user's own committed
+    // capital instead of pretending borrowed money was their own.
+    const totalLoans = computeTotalLoanBalanceEGP(holdings);
+    // Floored at 0 — total debt exceeding total assets/cost basis should
+    // never render as a negative headline figure or cost basis.
+    const totalValue = Math.max(0, goldV + silverV + stockV + reV + paV + fiV - totalLoans);
+    totalCost = Math.max(0, totalCost - totalLoans);
     const gain = totalValue - totalCost;
     const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
     const todayGain = todayGold + todaySilver + todayStock + todayFI;
@@ -601,7 +628,7 @@ export default function HomeScreen() {
     const todayPct = startOfDayValueForPct > 0 ? (todayGain / startOfDayValueForPct) * 100 : 0;
 
     return {
-      totalValue, totalCost, gain, gainPct, todayGain, todayPct,
+      totalValue, totalCost, gain, gainPct, todayGain, todayPct, totalLoans,
       goldV, silverV, stockV, reV, paV, fiV,
       goldGrams, silverGrams, stockCount, reCount, paCount,
       todayGold, todaySilver, todayStock, todayFI,
@@ -669,10 +696,11 @@ export default function HomeScreen() {
   React.useEffect(() => {
     if (!isPeriodAvailable(timeFilter, coverage)) setTimeFilter('1D');
   }, [coverage, timeFilter]);
-  // Tier runs on net worth (investments + cash) — the same figure rendered as
-  // "Net Worth incl. cash" under the hero, so the badge and that number can
-  // never disagree. Always EGP, never the display currency: switching to USD
-  // must not look like a demotion.
+  // Tier runs on net worth (investments, net of any linked-loan balances —
+  // see summary.totalLoans — + cash) — the same figure rendered as "Net
+  // Worth incl. cash" under the hero, so the badge and that number can never
+  // disagree. Always EGP, never the display currency: switching to USD must
+  // not look like a demotion.
   const netWorthEgp = summary.totalValue + cashTotalEGP + pendingIncomeEGP;
   const { tier, since: tierSince, change: tierChange, clearChange: clearTierChange } = usePortfolioTier(netWorthEgp);
   const [showTierCard, setShowTierCard] = useState(false);
@@ -959,16 +987,24 @@ export default function HomeScreen() {
           )}
 
           {/* Net worth (investments + cash + pending income) — additive row,
-              only when the user has cash accounts and/or pending income. */}
+              only when the user has cash accounts and/or pending income.
+              Tappable (real user, Feedback & Ideas chat, asked for exactly
+              this — a Thndr-style info tap explaining where the gap between
+              this figure and Total Portfolio Value comes from) opens a
+              breakdown of cash-at-home vs bank vs pending vs any loans. */}
           {(cashTotalEGP > 0 || pendingIncomeEGP > 0) && (
-            <View style={styles.netWorthRow}>
-              <Feather name="plus-circle" size={10} color={colors.mutedForeground + '88'} />
+            <Pressable
+              style={styles.netWorthRow}
+              onPress={() => { impact(); setShowNetWorthBreakdown(true); }}
+              hitSlop={8}
+            >
+              <Feather name="info" size={10} color={colors.mutedForeground + '88'} />
               <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]}>
                 {hideValues
                   ? `${t.netWorthLabel}: ••••••`
                   : `${t.netWorthLabel}: ${fmtCompact(toDisp(netWorthEgp))} ${displayCurrency}`}
               </Text>
-            </View>
+            </Pressable>
           )}
 
           {/* Pending income called out on its own — it's counted in the net
@@ -1529,6 +1565,20 @@ export default function HomeScreen() {
       displayCurrency={displayCurrency}
     />
 
+    <NetWorthBreakdownModal
+      visible={showNetWorthBreakdown}
+      onClose={() => setShowNetWorthBreakdown(false)}
+      investmentsValue={summary.totalValue}
+      cashHomeValue={cashHomeEGP}
+      bankValue={bankEGP}
+      pendingIncomeValue={pendingIncomeEGP}
+      loansValue={summary.totalLoans}
+      totalAmount={netWorthEgp}
+      hideValues={hideValues}
+      toDisp={toDisp}
+      displayCurrency={displayCurrency}
+    />
+
     {modal && (
       <DetailModal
         visible
@@ -1700,6 +1750,76 @@ function TodayBreakdownModal({
     </Modal>
   );
 }
+// ─── Net worth breakdown modal ─────────────────────────────────────────────────
+// Answers Ahmed's (real user, Feedback & Ideas chat) "where does the extra
+// money in Net Worth incl. cash actually come from" — same sheet shell as
+// TodayBreakdownModal above (reuses the `tb` styles for visual consistency
+// between the two), but simpler row semantics: no gain/loss coloring, no %,
+// no flat-state handling — this is a static composition breakdown, not a
+// today's-change one, so those concerns don't apply.
+
+interface NetWorthRow { key: string; label: string; color: string; icon: React.ReactNode; amount: number }
+
+function NetWorthBreakdownModal({
+  visible, onClose, investmentsValue, cashHomeValue, bankValue, pendingIncomeValue, loansValue,
+  totalAmount, hideValues, toDisp, displayCurrency,
+}: {
+  visible: boolean; onClose: () => void;
+  investmentsValue: number; cashHomeValue: number; bankValue: number; pendingIncomeValue: number; loansValue: number;
+  totalAmount: number; hideValues: boolean; toDisp: (egp: number) => number; displayCurrency: DisplayCurrency;
+}) {
+  const colors = useColors();
+  const t = useT();
+  const insets = useSafeAreaInsets();
+
+  const rows: NetWorthRow[] = [
+    { key: 'investments', label: t.investmentsLabel, color: colors.primary,
+      icon: <Feather name="pie-chart" size={16} color={colors.primary} />, amount: investmentsValue },
+    ...(cashHomeValue > 0 ? [{ key: 'cashHome', label: t.cashAtHome, color: colors.green,
+      icon: <Feather name="briefcase" size={16} color={colors.green} />, amount: cashHomeValue }] : []),
+    ...(bankValue > 0 ? [{ key: 'bank', label: t.bankAccount, color: colors.green,
+      icon: <Feather name="credit-card" size={16} color={colors.green} />, amount: bankValue }] : []),
+    ...(pendingIncomeValue > 0 ? [{ key: 'pending', label: t.pendingIncomeLabel, color: '#F59E0B',
+      icon: <Feather name="clock" size={16} color="#F59E0B" />, amount: pendingIncomeValue }] : []),
+    ...(loansValue > 0 ? [{ key: 'loans', label: t.loansRowLabel, color: colors.red,
+      icon: <Feather name="credit-card" size={16} color={colors.red} />, amount: -loansValue }] : []),
+  ];
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={tb.backdrop} onPress={onClose} />
+      <View style={[tb.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]}>
+        <View style={[tb.handle, { backgroundColor: colors.border }]} />
+        <View style={tb.header}>
+          <View>
+            <Text style={[tb.title, { color: colors.text }]}>{t.netWorthBreakdownTitle}</Text>
+            <Text style={[tb.subtitle, { color: colors.text }]}>
+              {hideValues ? '••••' : `${fmtCompact(toDisp(totalAmount))} ${displayCurrency}`}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={[tb.close, { backgroundColor: colors.muted }]}>
+            <Feather name="x" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={tb.list}>
+          {rows.map(r => (
+            <View key={r.key} style={tb.row}>
+              <View style={[tb.iconBox, { backgroundColor: r.color + '1A' }]}>{r.icon}</View>
+              <View style={tb.rowBody}>
+                <Text style={[tb.rowLabel, { color: colors.text }]}>{r.label}</Text>
+              </View>
+              <Text style={[tb.rowAmount, { color: r.amount < 0 ? colors.red : colors.text }]}>
+                {hideValues ? '••••' : `${r.amount < 0 ? '−' : ''}${fmtCompact(Math.abs(toDisp(r.amount)))} ${displayCurrency}`}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const tb = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10 },

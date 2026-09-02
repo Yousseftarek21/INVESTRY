@@ -145,15 +145,33 @@ export function costBasisEGP(h: StoredHolding, usdToEgp: number): number {
   }
 }
 
+// Sums outstanding loan balances across every fixed_income holding's
+// linkedLoan (see LinkedLoan in artifacts/mobile/types/index.ts) — mirrors
+// utils/cash.ts's computeTotalLoanBalanceEGP on the client. Fixes a real
+// double-counting bug: a certificate keeps its own full value, and money
+// borrowed against it (spent on other holdings) was never netted back out
+// anywhere, so a 100k certificate + a 90k loan spent on gold read as 190k
+// instead of the real ~100k net position. No currency conversion —
+// LinkedLoan has no currency field, outstandingBalance is always plain EGP.
+export function totalLoanBalanceEGP(holdings: StoredHolding[]): number {
+  return holdings.reduce((sum, h) => {
+    if (h.type !== "fixed_income") return sum;
+    const loan = h.linkedLoan as { outstandingBalance?: number } | undefined;
+    return sum + (Number(loan?.outstandingBalance) || 0);
+  }, 0);
+}
+
 /**
  * Total current value (EGP) of one user's investment holdings only —
  * matches "Total Portfolio Value" on the Home screen exactly (gold,
- * silver, stocks, real estate, personal assets, fixed income). Cash is
- * deliberately excluded: the app shows it separately, under "Net Worth
- * incl. cash", not as part of the portfolio itself. This value is what
- * both the multi-day snapshot history (1W/1M/etc charts) and the ±1%
- * portfolio alert are computed from, so it needs to mean the same thing
- * the app displays, not a broader net-worth figure.
+ * silver, stocks, real estate, personal assets, fixed income), net of any
+ * outstanding linked-loan balances (see totalLoanBalanceEGP above) the same
+ * way the Home screen nets them out. Cash is deliberately excluded: the app
+ * shows it separately, under "Net Worth incl. cash", not as part of the
+ * portfolio itself. This value is what both the multi-day snapshot history
+ * (1W/1M/etc charts) and the ±1% portfolio alert are computed from, so it
+ * needs to mean the same thing the app displays, not a broader net-worth
+ * figure.
  */
 export async function computeUserPortfolioValue(userId: string): Promise<number> {
   const [holdingRows, prices, egxStocks] = await Promise.all([
@@ -165,10 +183,15 @@ export async function computeUserPortfolioValue(userId: string): Promise<number>
   const egxPrices: Record<string, number> = {};
   for (const s of egxStocks) egxPrices[s.symbol] = s.price;
 
-  return holdingRows.reduce((sum, row) => {
-    const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
+  const holdings = holdingRows.map(row => ({ id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding));
+
+  const grossValue = holdings.reduce((sum, holding) => {
     return sum + computeHoldingValue(holding, prices.goldUsd, prices.silverUsd, prices.usdToEgp, egxPrices);
   }, 0);
+
+  // Floored at 0 — total debt exceeding total assets should never render
+  // as a negative headline figure.
+  return Math.max(0, grossValue - totalLoanBalanceEGP(holdings));
 }
 
 /** Real historical gold/silver EGP-24k-equivalent prices on or before

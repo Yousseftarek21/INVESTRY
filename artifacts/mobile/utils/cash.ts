@@ -1,4 +1,4 @@
-import type { CashAccount, MarketPrices, RecurringIncome } from '@/types';
+import type { CashAccount, Holding, MarketPrices, RecurringIncome } from '@/types';
 
 // Converts one amount to EGP using live FX rates — USD via the dedicated
 // usdToEgp field, everything else via fxRates (EGP-per-unit). Unknown
@@ -27,5 +27,21 @@ export function computePendingIncomeEGP(incomes: RecurringIncome[], prices: Pick
   return incomes.reduce((sum, inc) => {
     if (inc.kind !== 'pending' || inc.collected) return sum;
     return sum + convertToEgp(Number(inc.amount) || 0, inc.currency, prices);
+  }, 0);
+}
+
+// Sums outstanding loan balances across every fixed_income holding's
+// linkedLoan (see types/index.ts) — the fix for a real double-counting bug:
+// a certificate keeps showing its own full value, and money borrowed
+// against it (spent on other holdings) was never netted back out anywhere,
+// so a 100k certificate + a 90k loan spent on gold read as 190k instead of
+// the real ~100k net position. No currency conversion, unlike the two
+// functions above — LinkedLoan has no `currency` field, and every existing
+// loan UI (HoldingCard.tsx's loan row) already treats outstandingBalance as
+// plain EGP; don't "fix" this into calling convertToEgp.
+export function computeTotalLoanBalanceEGP(holdings: Holding[]): number {
+  return holdings.reduce((sum, h) => {
+    if (h.type !== 'fixed_income' || !h.linkedLoan) return sum;
+    return sum + (Number(h.linkedLoan.outstandingBalance) || 0);
   }, 0);
 }
