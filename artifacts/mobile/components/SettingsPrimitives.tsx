@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 
@@ -10,10 +10,18 @@ import { useColors } from '@/hooks/useColors';
 
 // ─── Icon badge ────────────────────────────────────────────────────────────────
 
-export function Bdg({ icon, bg }: { icon: keyof typeof Feather.glyphMap; bg: string }) {
+// Every existing row passes a plain Feather glyph name — the { lib: 'mci' }
+// form is additive, for the rare row needing an icon Feather doesn't have at
+// all (e.g. the actual Facebook brand mark for "Join our Community" below;
+// Feather is deliberately brand-icon-free).
+export type RowIcon = keyof typeof Feather.glyphMap | { lib: 'mci'; name: string };
+
+export function Bdg({ icon, bg }: { icon: RowIcon; bg: string }) {
   return (
     <View style={[bdg.wrap, { backgroundColor: bg }]}>
-      <Feather name={icon} size={15} color="#fff" />
+      {typeof icon === 'object'
+        ? <MaterialCommunityIcons name={icon.name as any} size={16} color="#fff" />
+        : <Feather name={icon} size={15} color="#fff" />}
     </View>
   );
 }
@@ -55,7 +63,7 @@ const sct = StyleSheet.create({
 export function NavRow({
   icon, iconBg, label, sublabel, value, badge, onPress, last, destructive,
 }: {
-  icon: keyof typeof Feather.glyphMap; iconBg: string; label: string;
+  icon: RowIcon; iconBg: string; label: string;
   sublabel?: string; value?: string; badge?: { text: string; color: string };
   onPress?: () => void; last?: boolean; destructive?: boolean;
 }) {

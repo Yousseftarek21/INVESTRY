@@ -7,6 +7,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Linking,
   Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -31,6 +32,7 @@ import { isIOSIAPAvailable } from '@/utils/revenuecat';
 import { ManageSubscriptionSheet } from '@/components/ManageSubscriptionSheet';
 import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
+import { COMMUNITY_URL } from '@/constants/community';
 import { useFeedbackUnread } from '@/hooks/useFeedback';
 
 // Read live from the running binary/update instead of a hand-maintained
@@ -486,6 +488,10 @@ export default function SettingsScreen() {
   };
 
   const goTo = (path: string) => { haptic(); router.push(path as any); };
+  const openCommunity = () => {
+    haptic();
+    Linking.openURL(COMMUNITY_URL).catch(() => showModal(t.couldNotOpenLink, t.couldNotOpenLinkDesc));
+  };
 
   // Matches Analytics/Markets exactly: contentInset (not contentOffset)
   // plus an imperative scrollTo on mount and onLayout, since the
@@ -560,6 +566,11 @@ export default function SettingsScreen() {
               label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
               badge={{ text: t.leaderboardBetaChip, color: '#F59E0B' }}
               onPress={() => goTo('/leaderboard')}
+            />
+            <NavRow
+              icon={{ lib: 'mci', name: 'facebook' }} iconBg="#1877F2"
+              label={t.communityNav} sublabel={t.communityNavSub}
+              onPress={openCommunity}
               last
             />
           </Sect>
