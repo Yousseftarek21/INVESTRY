@@ -287,12 +287,14 @@ export function Paywall() {
                 </View>
               )}
 
+              {/* Just the issuer mark now — a second "PRO" badge used to sit
+                  here too, pinned to this row's right edge, which overlapped
+                  the savings ribbon (also top-right, absolutely positioned)
+                  whenever both were showing. This card already reads as the
+                  Pro plan (the sheet's own title says "Upgrade to Pro"), so
+                  the ribbon keeps that corner instead of contesting it. */}
               <View style={styles.planRow}>
                 <Text style={styles.issuer}>INVESTRY</Text>
-                <View style={styles.planBadge}>
-                  <Feather name="award" size={11} color="#2b2308" />
-                  <Text style={styles.planBadgeText}>{t.subComparePro}</Text>
-                </View>
               </View>
 
               <View style={styles.priceRow}>
@@ -439,8 +441,6 @@ const styles = StyleSheet.create({
   ribbonText: { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#241C08' },
   planRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   issuer: { fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 2.2, color: 'rgba(255,255,255,0.92)' },
-  planBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  planBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.6, color: '#2b2308' },
   priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, minHeight: 44 },
   priceCurrency: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 6, color: '#fff' },
   priceWhole: { fontSize: 36, fontFamily: 'Inter_800ExtraBold', letterSpacing: -1, color: '#fff' },
