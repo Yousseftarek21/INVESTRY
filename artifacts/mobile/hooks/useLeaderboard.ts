@@ -145,21 +145,17 @@ export function useLastLeaderboardResult(period: LeaderboardPeriod = 'week') {
       if (!res.ok) return emptyResultFor(period);
       return res.json();
     },
-    // DISABLED — real users reported last week's frozen top 3 as visibly
-    // wrong (this week's live leaderboard is unaffected and confirmed
-    // correct; only leaderboardPeriodResultsCron.ts's frozen computation
-    // is suspect). Query short-circuits to empty rather than fetching, so
-    // the persistent recap card and celebration modal in app/leaderboard.tsx
-    // both correctly render nothing (both already gate on `top.length > 0`)
-    // without touching either of those call sites. Root cause not yet
-    // diagnosed — likely the accepted "frozen ranking uses current holdings
-    // against historical prices" limitation documented on
-    // computeFrozenPeriodPerformance, or a stock/metal price history table
-    // too young at the time this first ran to cover a full week back. Do
-    // not re-enable (flip back to `!!isSignedIn && !!userId`) without
-    // confirming the fix — this table isn't blanked, so simply re-enabling
-    // this query will resurface the same bad row immediately.
-    enabled: false,
+    // Re-enabled — root cause found and fixed: computeFrozenPeriodPerformance
+    // (api-server/src/lib/portfolioValue.ts) fell back to a stock's
+    // ALL-TIME cost basis whenever no historical price snapshot existed
+    // that far back, which — on a young egx_close_snapshots table — meant
+    // a stock's entire lifetime gain got counted as one week's return.
+    // Fixed to exclude an unpriceable stock instead of approximating with
+    // a number that could be wildly wrong. The bad rows this wrote are
+    // cleared by a one-time server-boot cleanup (api-server's
+    // oneTimeCleanup.ts) — next week/month the cron computes will use the
+    // fixed logic.
+    enabled: !!isSignedIn && !!userId,
     // Only changes when a period rolls over (at most twice a week across
     // week+month), not worth polling on the leaderboard's 5-minute cadence —
     // a plain 30-minute staleTime avoids a redundant fetch every time this

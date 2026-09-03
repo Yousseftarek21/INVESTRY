@@ -1094,8 +1094,13 @@ export default function AnalyticsScreen() {
   }, [holdings, performers, typeCount, sm, prices, colors]);
 
   // ── Live gold/silver price per gram ──────────────────────────────────────────
-  const liveGoldG = prices ? (prices.goldUsd * prices.usdToEgp) / 31.1035 : undefined;
-  const liveSilverG = prices ? (prices.silverUsd * prices.usdToEgp) / 31.1035 : undefined;
+  // Was hand-rolled with a bare 31.1035 divisor instead of the already-
+  // imported goldPricePerGram/silverPricePerGram helpers used everywhere
+  // else in this same file (lines 75-76, 1033-1034, 1243+) — same formula,
+  // just a second, driftable copy of it. 24k specifically: no purity
+  // multiplier, matching what this hand-rolled version always computed.
+  const liveGoldG = prices ? goldPricePerGram(prices, '24k') : undefined;
+  const liveSilverG = prices ? silverPricePerGram(prices) : undefined;
 
   const hasHoldings = holdings.length > 0;
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;

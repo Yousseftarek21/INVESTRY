@@ -1111,7 +1111,12 @@ export default function HomeScreen() {
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.returnLabel}</Text>
                 <View style={styles.iCellValueRow}>
                   <Text style={[styles.iCellValue, { color: gainColor }]}>
-                    {`${isGain ? '+' : ''}${summary.gainPct.toFixed(1)}%`}
+                    {/* .toFixed(2), matching the Total P/L chip below —
+                        both render the identical summary.gainPct; at
+                        different precision a value like 12.35% could read
+                        as "12.3%" here and "12.35%" there, looking like
+                        two different numbers instead of the same one. */}
+                    {`${isGain ? '+' : ''}${summary.gainPct.toFixed(2)}%`}
                   </Text>
                   <Text style={[styles.iCellCur, { color: gainColor + 'AA' }]}>
                     {isGain ? '▲' : '▼'}
@@ -1301,7 +1306,11 @@ export default function HomeScreen() {
                   icon: { lib: 'mci' as const, name: 'gold' }, quantity: summary.silverGrams > 0 ? `${summary.silverGrams.toFixed(1)}g` : undefined,
                 },
                 {
-                  label: t.egxStock, value: summary.stockV,  color: '#4A9EFF',
+                  // Matches analytics.tsx's own Allocation Bar label exactly
+                  // (both purpose-built "AllocLabel" i18n keys) — this and
+                  // that one used to say "EGX Stock"/"Stocks" for the
+                  // identical segment, depending which screen you were on.
+                  label: t.egxStocksAllocLabel, value: summary.stockV,  color: '#4A9EFF',
                   icon: 'bar-chart-2', quantity: summary.stockCount > 0 ? `${summary.stockCount} stock${summary.stockCount !== 1 ? 's' : ''}` : undefined,
                 },
                 {
@@ -1309,7 +1318,7 @@ export default function HomeScreen() {
                   icon: { lib: 'mci' as const, name: 'home-city' }, quantity: summary.reCount > 0 ? `${summary.reCount} propert${summary.reCount !== 1 ? 'ies' : 'y'}` : undefined,
                 },
                 {
-                  label: t.personalAsset, value: summary.paV, color: '#E08E45',
+                  label: t.personalAssetsAllocLabel, value: summary.paV, color: '#E08E45',
                   icon: { lib: 'mci' as const, name: 'tag-multiple' }, quantity: summary.paCount > 0 ? `${summary.paCount} asset${summary.paCount !== 1 ? 's' : ''}` : undefined,
                 },
                 {

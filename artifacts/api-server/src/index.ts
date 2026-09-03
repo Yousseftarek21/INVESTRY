@@ -12,6 +12,9 @@ import { startPendingIncomeReminderCron } from "./lib/pendingIncomeReminderCron"
 import { ensureUserColumns } from "./lib/ensureUserColumns";
 import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable, ensureEgxCloseSnapshotsTable, ensureFeedbackTables, ensurePerformanceLeaderboardResultsTable } from "./lib/ensureDividendsTable";
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
+// TEMPORARY — see oneTimeCleanup.ts's own header. Remove this import and
+// its call site below once this has deployed and booted successfully once.
+import { oneTimeClearBadFrozenLeaderboardResults } from "./lib/oneTimeCleanup";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
 const rawPort = process.env["PORT"];
@@ -46,6 +49,7 @@ app.listen(port, async (err) => {
   await ensureEgxCloseSnapshotsTable();
   await ensureFeedbackTables();
   await ensurePerformanceLeaderboardResultsTable();
+  await oneTimeClearBadFrozenLeaderboardResults(); // TEMPORARY — see its own header
   await sendCompetitionAnnouncement();
   startPortfolioAlertCron();
   startUserPriceAlertCron();

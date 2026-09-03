@@ -614,15 +614,23 @@ export async function computeFrozenPeriodPerformance(
       const shares = Number(holding.shares) || 0;
 
       if (tradingDayKey(row.createdAt) < periodStartKey || !hasStamp) {
-        // Predates the period (or predates the stamping feature) — same
-        // real-price-ratio-first, cost-basis-fallback treatment as the
-        // live function's identical branch.
+        // Predates the period (or predates the stamping feature). Real,
+        // gaming-proof historical price only — NOT the live function's
+        // cost-basis fallback. This was a genuine bug, not just a
+        // documented limitation: egx_close_snapshots is a young table, so
+        // right after this feature shipped it had no row anywhere near a
+        // week back for most symbols. Falling back to costBasisEGP there
+        // means "this stock's entire ALL-TIME gain since purchase" gets
+        // counted as "gained in the last week" — a stock bought months ago
+        // and up 50% since would show +50% for one week alone. That's a
+        // frozen, permanent record, unlike the live leaderboard's identical
+        // fallback (which self-corrects every 5 minutes as the table fills
+        // in) — bad enough here that excluding the stock is the honest
+        // choice, not an approximation worth keeping.
         const startPrice = await stockPriceOnOrBefore(symbol, periodStartKey);
+        if (startPrice == null) continue;
         stockCurrent += shares * endPrice;
-        // usdToEgp param is a no-op for the "stock" branch of costBasisEGP
-        // (only personal_asset reads it) — 0 here is deliberate, not a
-        // stand-in for a real live rate this function doesn't fetch.
-        stockBaselineCost += startPrice != null ? shares * startPrice : costBasisEGP(holding, 0);
+        stockBaselineCost += shares * startPrice;
       } else {
         // Bought (or last edited) during this period, with a real stamp —
         // the stamped price is the baseline, same as the live function.

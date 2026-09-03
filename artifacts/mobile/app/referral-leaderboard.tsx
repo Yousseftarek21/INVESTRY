@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Image, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -10,29 +10,7 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useReferralLeaderboard, ReferralLeaderboardEntry, ReferralLeaderboardPeriod } from '@/hooks/useReferralLeaderboard';
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase();
-}
-
-function Avatar({ name, imageUrl, size }: { name: string; imageUrl: string | null; size: number }) {
-  const colors = useColors();
-  return imageUrl ? (
-    <Image source={{ uri: imageUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} />
-  ) : (
-    <View style={[
-      { width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' },
-      { backgroundColor: colors.primary + '1A' },
-    ]}>
-      <Text style={{ fontSize: size * 0.4, fontFamily: 'Inter_700Bold', color: colors.primary }}>{initialsOf(name)}</Text>
-    </View>
-  );
-}
-
-const MEDAL_BG: Record<number, string> = { 1: '#F5C34C1F', 2: '#C7CDD61F', 3: '#D3956B1F' };
-const MEDAL_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+import { Avatar, MEDAL_BG, MEDAL_EMOJI } from '@/components/LeaderboardDisplay';
 
 function Row({ entry, isLast }: { entry: ReferralLeaderboardEntry; isLast: boolean }) {
   const colors = useColors();
