@@ -60,9 +60,11 @@ export interface SubscriptionContextValue {
    * presentation (Paywall's own `<Modal>`, mounted as a root-level sibling
    * in app/_layout.tsx) on top of a screen that's itself already a native
    * modal presentation; the failure is silent, no warning either side. This
-   * dismisses the current modal screen first and opens the paywall once
-   * that clears, over whatever's underneath — the one reliable place a
-   * second `<Modal>` is confirmed to present correctly.
+   * dismisses every nested modal screen first (some of these, e.g.
+   * add-investment, are reached through another modal screen — a single
+   * dismiss isn't enough) and opens the paywall once that clears, over
+   * whatever's underneath — the one reliable place a second `<Modal>` is
+   * confirmed to present correctly.
    */
   showPaywallFromModal: () => void;
   /** Paywall modal's own visibility state — consumed by app/_layout.tsx only. */
@@ -226,11 +228,28 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   // (~350ms) so the previous native presentation has actually finished
   // clearing before Paywall's `<Modal>` tries to present — presenting while
   // a dismiss is still in flight is exactly the kind of overlap that fails
-  // silently on iOS. If there's nothing to go back to (reached some other
+  // silently on iOS. If there's nothing to dismiss (reached some other
   // way), just show it directly.
+  //
+  // dismissAll(), NOT back()/canGoBack() — a real bug, not just the
+  // originally-documented one: add-investment.tsx and cash-accounts.tsx are
+  // both reached through add-choose.tsx, itself a `transparentModal`
+  // screen, so a single back() from either only pops one level, landing on
+  // add-choose — which is STILL a modal presentation. The Paywall's own
+  // <Modal> then tries to stack on top of THAT and fails silently, the
+  // exact same failure mode this function exists to avoid, just one level
+  // deeper than back()/canGoBack() accounts for. Confirmed live (tap-
+  // independent diagnostic): the gate fired, back() ran, but the screen
+  // landed on add-choose's sheet instead of the paywall appearing.
+  // dismissAll() (expo-router: "returns to the first screen in the closest
+  // stack", like React Navigation's popToTop) clears every nested modal
+  // in one call regardless of depth, so this is correct for both this
+  // two-level case and the original one-level screens (recurring-income,
+  // goals, price-alerts, dividends, target-allocation) alike — one fix,
+  // not a per-screen special case.
   const showPaywallFromModal = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
+    if (router.canDismiss()) {
+      router.dismissAll();
       setTimeout(() => setPaywallVisible(true), 400);
     } else {
       setPaywallVisible(true);
