@@ -105,3 +105,56 @@ export function useLeaderboard(period: LeaderboardPeriod = 'week') {
     leave,
   };
 }
+
+export interface LeaderboardResultEntry {
+  userId: string;
+  name: string;
+  imageUrl: string | null;
+  pctReturn: number;
+  rank: number;
+}
+
+interface LastResultResponse {
+  periodType: LeaderboardPeriod;
+  periodStart: string | null;
+  top: LeaderboardResultEntry[];
+}
+
+const emptyResultFor = (period: LeaderboardPeriod): LastResultResponse => (
+  { periodType: period, periodStart: null, top: [] }
+);
+
+// The FROZEN result of the most recently CLOSED week/month — distinct from
+// useLeaderboard above, which is always the current, still-in-progress
+// period. Backed by leaderboardPeriodResultsCron.ts's own table, so this is
+// only ever "the last week/month that actually finished," never a live
+// number. Server-side gates this to opted-in users only (empty otherwise) —
+// see routes/competition.ts's own comment — matching "shown in the
+// leaderboard, not outside it, and only to people who joined."
+export function useLastLeaderboardResult(period: LeaderboardPeriod = 'week') {
+  const { userId, isSignedIn } = useAuth();
+  const getToken = useStableGetToken();
+  const queryKey = ['competition-last-result', userId, period] as const;
+
+  const query = useQuery<LastResultResponse>({
+    queryKey,
+    queryFn: async () => {
+      const token = await getToken();
+      if (!token) return emptyResultFor(period);
+      const res = await apiFetch(`/api/competition/last-result?period=${period}`, token);
+      if (!res.ok) return emptyResultFor(period);
+      return res.json();
+    },
+    enabled: !!isSignedIn && !!userId,
+    // Only changes when a period rolls over (at most twice a week across
+    // week+month), not worth polling on the leaderboard's 5-minute cadence —
+    // a plain 30-minute staleTime avoids a redundant fetch every time this
+    // screen reopens within that window.
+    staleTime: 30 * 60_000,
+  });
+
+  return {
+    ...(query.data ?? emptyResultFor(period)),
+    isLoading: query.isLoading,
+  };
+}

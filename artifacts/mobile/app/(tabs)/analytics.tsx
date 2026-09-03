@@ -1038,6 +1038,13 @@ export default function AnalyticsScreen() {
   }, [driftRows, driftDenominator, holdings, prices, t]);
 
   // ── Insights ──────────────────────────────────────────────────────────────────
+  // One combined list — this used to be two near-identical blocks ("Smart
+  // Insights" here, and a second "Personalized signals" block duplicated
+  // under Market Intelligence below) computing overlapping signals (gold
+  // moved X%, metals concentration, portfolio up/down X%) and rendering
+  // them in two different places on the same screen. Merged into one: each
+  // signal is contributed once, still capped at 4 so it doesn't crowd out
+  // the rest of the Overview tab.
   const insights = useMemo(() => {
     type I = { icon: keyof typeof Feather.glyphMap; color: string; text: string };
     const items: I[] = [];
@@ -1060,28 +1067,12 @@ export default function AnalyticsScreen() {
     }
     if (sm.metalPct < 0.1 && sm.totalValue > 0) {
       items.push({ icon: 'shield', color: '#A47FCA', text: t.insightLowMetals });
-    }
-    if ((prices?.goldChangePercentEgp ?? 0) > 1) {
-      items.push({ icon: 'trending-up', color: colors.primary, text: t.insightGoldUp((prices?.goldChangePercentEgp ?? 0).toFixed(2)) });
-    }
-    return items.slice(0, 4);
-  }, [holdings, performers, typeCount, sm, prices, colors]);
-
-  // ── Live gold/silver price per gram ──────────────────────────────────────────
-  const liveGoldG = prices ? (prices.goldUsd * prices.usdToEgp) / 31.1035 : undefined;
-  const liveSilverG = prices ? (prices.silverUsd * prices.usdToEgp) / 31.1035 : undefined;
-
-  // ── Market Intelligence data ──────────────────────────────────────────────────
-  const marketInsights = useMemo(() => {
-    type MI = { icon: keyof typeof Feather.glyphMap; color: string; text: string };
-    const items: MI[] = [];
-    if (!holdings.length) return items;
-    const metalVal = sm.goldV + sm.silverV;
-    const metalPct = sm.totalValue > 0 ? (metalVal / sm.totalValue) * 100 : 0;
-    if (metalPct > 0) items.push({ icon: 'shield', color: colors.primary, text: t.insightMetalsPct(metalPct.toFixed(0)) });
-    if (sm.goldV > 0 && sm.gain > 0) {
-      const goldContrib = sm.totalValue > 0 ? (sm.goldV / sm.totalValue) * 100 : 0;
-      items.push({ icon: 'layers', color: colors.primary, text: t.insightGoldLargest(goldContrib.toFixed(0)) });
+    } else if (sm.metalPct >= 0.1) {
+      // Only surfaced once metals actually make up a real share — the
+      // low-metals warning above already covers the near-zero case, so
+      // these two are mutually exclusive rather than both firing.
+      const metalPctOfTotal = sm.metalPct * 100;
+      items.push({ icon: 'shield', color: colors.primary, text: t.insightMetalsPct(metalPctOfTotal.toFixed(0)) });
     }
     if (sm.stockV > 0) {
       const stockPct = sm.totalValue > 0 ? (sm.stockV / sm.totalValue) * 100 : 0;
@@ -1092,13 +1083,19 @@ export default function AnalyticsScreen() {
     } else if (sm.gainPct < -5) {
       items.push({ icon: 'trending-down', color: colors.red, text: t.insightPortfolioDown(Math.abs(sm.gainPct).toFixed(1)) });
     }
-    if (prices?.goldChangePercentEgp && Math.abs(prices.goldChangePercentEgp) > 0.5) {
+    if ((prices?.goldChangePercentEgp ?? 0) > 1) {
+      items.push({ icon: 'trending-up', color: colors.primary, text: t.insightGoldUp((prices?.goldChangePercentEgp ?? 0).toFixed(2)) });
+    } else if (prices?.goldChangePercentEgp && Math.abs(prices.goldChangePercentEgp) > 0.5) {
       items.push({ icon: 'zap', color: '#F59E0B', text: prices.goldChangePercentEgp > 0
         ? t.insightGoldMovedUp(Math.abs(prices.goldChangePercentEgp).toFixed(2))
         : t.insightGoldMovedDown(Math.abs(prices.goldChangePercentEgp).toFixed(2)) });
     }
     return items.slice(0, 4);
-  }, [holdings, sm, prices, colors]);
+  }, [holdings, performers, typeCount, sm, prices, colors]);
+
+  // ── Live gold/silver price per gram ──────────────────────────────────────────
+  const liveGoldG = prices ? (prices.goldUsd * prices.usdToEgp) / 31.1035 : undefined;
+  const liveSilverG = prices ? (prices.silverUsd * prices.usdToEgp) / 31.1035 : undefined;
 
   const hasHoldings = holdings.length > 0;
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
@@ -1283,21 +1280,6 @@ export default function AnalyticsScreen() {
                 </View>
               ))}
             </View>
-          </View>
-        )}
-
-        {/* Personalized signals */}
-        {marketInsights.length > 0 && (
-          <View style={s.section}>
-            <SLabel icon={ICON_AI_ASSISTANT} title={t.personalizedInsightsTitle} sub={t.basedOnPortfolio} />
-            <View style={s.insightsList}>
-              {marketInsights.map((ins, i) => (
-                <InsightCard key={i} icon={ins.icon} color={ins.color} text={ins.text} />
-              ))}
-            </View>
-            <Text style={[s.disclaimer, { color: colors.mutedForeground }]}>
-              {t.insightsDisclaimer}
-            </Text>
           </View>
         )}
       </PremiumGate>
@@ -1774,13 +1756,19 @@ export default function AnalyticsScreen() {
       </PremiumGate>
 
       {/* ── Weekly Recap entry point ──────────────────────────────────
-           Free for everyone (not behind the Portfolio Analytics
-           PremiumGate above) — it's a shareable, viral moment, gating it
-           would work against the whole point of it. Last thing on the
-           screen: a closing "here's your week" note after everything
-           else, not competing with the Planning/Tools/Analytics sections
-           for first attention. */}
-      {hasHoldings && sm.totalValue > 0 && (
+           Free for everyone (still not behind the Portfolio Analytics
+           PremiumGate above, kept as a sibling rather than moved inside
+           it) — it's a shareable, viral moment, gating it would work
+           against the whole point of it. Scoped to the History tab only:
+           it used to render unconditionally regardless of which of the
+           3 sub-tabs was active, which read as the same card randomly
+           showing up under Overview/Breakdown/History alike. "Here's your
+           week" is a look-back, exactly what History already groups
+           (Realized gains, Daily change history) — since those are the
+           only other things that render under History, this still reads
+           as one coherent History-tab flow even though it lives outside
+           the gated tree structurally. */}
+      {activeSection === 'history' && hasHoldings && sm.totalValue > 0 && (
         <Pressable
           style={[s.recapCard, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => { impact(); setRecapVisible(true); }}

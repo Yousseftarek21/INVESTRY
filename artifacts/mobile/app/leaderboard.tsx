@@ -1,51 +1,31 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, FlatList, Image, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, Alert, FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
+import { useAuth } from '@clerk/expo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Feather } from '@expo/vector-icons';
 import { ConceptIcon } from '@/components/ConceptIcon';
 import { ICON_LEADERBOARD } from '@/constants/conceptIcons';
-import { backChevron } from '@/utils/rtl';
+import { backChevron, forwardChevron } from '@/utils/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
-import { useLeaderboard, LeaderboardEntry, LeaderboardPeriod } from '@/hooks/useLeaderboard';
+import { useLeaderboard, useLastLeaderboardResult, LeaderboardEntry, LeaderboardPeriod } from '@/hooks/useLeaderboard';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { BetaChip } from '@/components/BetaChip';
+import { Avatar, MEDAL_BG, MEDAL_EMOJI, pctColor } from '@/components/LeaderboardDisplay';
+import { LeaderboardResultsCelebration } from '@/components/LeaderboardResultsCelebration';
 
-function pctColor(colors: ReturnType<typeof useColors>, pct: number): string {
-  if (pct > 0) return colors.green;
-  if (pct < 0) return colors.red;
-  return colors.mutedForeground;
+// Per-user, per-period "have I already seen the results celebration"
+// gate — same dismiss-key-in-AsyncStorage pattern as CommunityInviteBanner.
+// Purely a "don't replay the animation" nicety, not a correctness concern,
+// so a local flag is the right tool rather than a server-side one.
+function resultSeenKey(userId: string, periodType: LeaderboardPeriod, periodStart: string) {
+  return `@investry_leaderboard_result_seen_${userId}_${periodType}_${periodStart}`;
 }
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase();
-}
-
-function Avatar({ name, imageUrl, size }: { name: string; imageUrl: string | null; size: number }) {
-  const colors = useColors();
-  return imageUrl ? (
-    <Image source={{ uri: imageUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} />
-  ) : (
-    <View style={[
-      { width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' },
-      { backgroundColor: colors.primary + '1A' },
-    ]}>
-      <Text style={{ fontSize: size * 0.4, fontFamily: 'Inter_700Bold', color: colors.primary }}>{initialsOf(name)}</Text>
-    </View>
-  );
-}
-
-// Podium treatment for the top 3 — bigger, medal-tinted, visually distinct
-// from the plain numbered rows below them, since "who's #1 this week" is the
-// single most scannable thing a competitive leaderboard should communicate.
-const MEDAL_BG: Record<number, string> = { 1: '#F5C34C1F', 2: '#C7CDD61F', 3: '#D3956B1F' };
-const MEDAL_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
 function Row({ entry, isLast }: { entry: LeaderboardEntry; isLast: boolean }) {
   const colors = useColors();
@@ -118,17 +98,42 @@ export default function LeaderboardScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
+  const { userId } = useAuth();
   const [period, setPeriod] = useState<LeaderboardPeriod>('week');
   const { top, me, isLoading, isFetching, isOptedIn, refresh, join, leave } = useLeaderboard(period);
+  const { periodStart: lastPeriodStart, top: lastTop } = useLastLeaderboardResult(period);
 
   const [joining, setJoining] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [celebrationVisible, setCelebrationVisible] = useState(false);
+
+  // Auto-show once per user per period the first time results for it
+  // exist and haven't been seen yet — see resultSeenKey's own comment.
+  // Re-checked whenever the active period tab or the fetched result
+  // changes, so switching Weekly<->Monthly can surface a second, distinct
+  // celebration if that period also has unseen results.
+  useEffect(() => {
+    if (!userId || !isOptedIn || !lastPeriodStart || lastTop.length === 0) return;
+    let cancelled = false;
+    AsyncStorage.getItem(resultSeenKey(userId, period, lastPeriodStart))
+      .then(seen => { if (!cancelled && !seen) setCelebrationVisible(true); })
+      .catch(() => null);
+    return () => { cancelled = true; };
+  }, [userId, isOptedIn, period, lastPeriodStart, lastTop.length]);
+
+  const dismissCelebration = () => {
+    setCelebrationVisible(false);
+    if (userId && lastPeriodStart) {
+      AsyncStorage.setItem(resultSeenKey(userId, period, lastPeriodStart), '1').catch(() => null);
+    }
+  };
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
   const yourRankLabel = period === 'week' ? t.leaderboardYourRankWeek : t.leaderboardYourRankMonth;
   const topLabel = period === 'week' ? t.leaderboardTopLabelWeek : t.leaderboardTopLabelMonth;
+  const lastResultsCardTitle = period === 'month' ? t.leaderboardResultsCardTitleMonth : t.leaderboardResultsCardTitleWeek;
 
   const handleJoin = async () => {
     impact();
@@ -235,9 +240,40 @@ export default function LeaderboardScreen() {
                 <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />
               }
               ListHeaderComponent={
-                top.length > 0 ? (
-                  <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{topLabel}</Text>
-                ) : null
+                <>
+                  {/* Persistent "last period's top 3" — not just the
+                      one-time celebration modal, so the result isn't lost
+                      once that's dismissed. Gated on isOptedIn same as the
+                      rest of this screen: never shown to anyone who hasn't
+                      joined the competition. */}
+                  {isOptedIn && lastTop.length > 0 && (
+                    <TouchableOpacity
+                      style={[s.lastResultsCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      onPress={() => { impact(); setCelebrationVisible(true); }}
+                      activeOpacity={0.85}
+                    >
+                      <View style={s.lastResultsHeader}>
+                        <Text style={[s.lastResultsTitle, { color: colors.text }]}>{lastResultsCardTitle}</Text>
+                        <Feather name={forwardChevron()} size={14} color={colors.mutedForeground} />
+                      </View>
+                      {lastTop.map(entry => (
+                        <View key={entry.userId} style={s.lastResultsRow}>
+                          <Text style={s.lastResultsMedal}>{MEDAL_EMOJI[entry.rank]}</Text>
+                          <Avatar name={entry.name} imageUrl={entry.imageUrl} size={22} />
+                          <Text style={[s.lastResultsName, { color: colors.text }]} numberOfLines={1}>
+                            {entry.name}{entry.userId === userId ? ` (${t.leaderboardYou})` : ''}
+                          </Text>
+                          <Text style={[s.lastResultsPct, { color: pctColor(colors, entry.pctReturn) }]}>
+                            {entry.pctReturn > 0 ? '+' : ''}{entry.pctReturn.toFixed(2)}%
+                          </Text>
+                        </View>
+                      ))}
+                    </TouchableOpacity>
+                  )}
+                  {top.length > 0 && (
+                    <Text style={[s.sectionLabel, { color: colors.mutedForeground }]}>{topLabel}</Text>
+                  )}
+                </>
               }
               ListEmptyComponent={
                 <View style={s.empty}>
@@ -267,6 +303,15 @@ export default function LeaderboardScreen() {
         onConfirm={confirmLeaveNow}
         onCancel={() => setConfirmLeave(false)}
       />
+
+      {celebrationVisible && (
+        <LeaderboardResultsCelebration
+          period={period}
+          top={lastTop}
+          myUserId={userId}
+          onDismiss={dismissCelebration}
+        />
+      )}
     </>
   );
 }
@@ -297,6 +342,14 @@ const s = StyleSheet.create({
   mePct: { fontSize: 18, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
   sectionLabel: { fontSize: 10.5, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 6 },
+
+  lastResultsCard: { marginHorizontal: 16, marginTop: 14, borderRadius: 16, borderWidth: 1, padding: 14, gap: 8 },
+  lastResultsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  lastResultsTitle: { fontSize: 13, fontFamily: 'Inter_700Bold' },
+  lastResultsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  lastResultsMedal: { fontSize: 15, width: 20, textAlign: 'center' },
+  lastResultsName: { flex: 1, fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
+  lastResultsPct: { fontSize: 12.5, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 60 },
   emptyTxt: { fontSize: 13, fontFamily: 'Inter_500Medium' },

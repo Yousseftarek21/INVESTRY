@@ -16,6 +16,7 @@ export * from "./activityLog";
 export * from "./realEstatePrices";
 export * from "./realEstateCompoundPrices";
 export * from "./referralMonthlyWinners";
+export * from "./performanceLeaderboardResults";
 export * from "./egxCloseSnapshots";
 export * from "./feedbackMessages";
 export * from "./feedbackLikes";

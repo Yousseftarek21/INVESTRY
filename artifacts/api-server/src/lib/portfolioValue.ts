@@ -551,6 +551,134 @@ export async function computePeriodPerformance(userId: string, cutoffDateKey: st
   return { pctReturn: ((current - baseline) / baseline) * 100 };
 }
 
+/**
+ * The FROZEN twin of computePeriodPerformance, for a period that has
+ * already ended — used by leaderboardPeriodResultsCron.ts to crown a
+ * week/month's final top 3 once it's over, never for the live leaderboard.
+ *
+ * computePeriodPerformance itself is deliberately untouched by this: it's
+ * the anti-gaming-hardened core behind the LIVE leaderboard (three real
+ * production incidents in its history — see its own comment), and always
+ * ratios a period's baseline against TODAY'S live price. That's exactly
+ * wrong for "what were last week's final standings" once we're now in a
+ * new week — it would compare the old baseline against this week's price
+ * instead of the price the old period actually ended on. Genuinely
+ * different question, so a genuinely separate function, not a branch
+ * bolted onto the live one.
+ *
+ * Both ends resolved from real historical snapshots — metalPriceOnOrBefore
+ * / stockPriceOnOrBefore (both already generic over any past date, not
+ * "today"-specific) — never from getCachedPrices()/getCachedStocks() live
+ * data. periodEndKey is always a date already in the past by construction
+ * (the cron only calls this after a period has closed), so neither
+ * function's special "today uses OPEN" case can ever fire here — no
+ * date-is-today branch needed the way computePeriodPerformance has one.
+ *
+ * Same eligibility rule as the live function: gold/silver/EGX-stock only,
+ * same sold-holdings period-membership logic, same "nothing real to
+ * measure" -> null rather than a fabricated number. Where the live
+ * function falls back to a live price when no historical row exists yet,
+ * this has no live price to fall back to — a holding with no resolvable
+ * price at EITHER end is simply excluded from the ratio, rather than
+ * guessed at.
+ */
+export async function computeFrozenPeriodPerformance(
+  userId: string,
+  periodStartKey: string,
+  periodEndKey: string,
+): Promise<PeriodPerformance> {
+  const [holdingRows, soldRows, baselineMetal, endMetal] = await Promise.all([
+    db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
+    db.select().from(soldHoldingsTable).where(eq(soldHoldingsTable.userId, userId)),
+    metalPriceOnOrBefore(periodStartKey),
+    metalPriceOnOrBefore(periodEndKey),
+  ]);
+
+  let pureGoldGrams = 0; // 24k-equivalent, purity-weighted across mixed karats
+  let silverGrams = 0;
+  let stockCurrent = 0;
+  let stockBaselineCost = 0;
+  for (const row of holdingRows) {
+    const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
+    if (holding.type === "gold") {
+      pureGoldGrams += (Number(holding.grams) || 0) * goldPurity((holding.karat as GoldKarat) ?? "24k");
+    } else if (holding.type === "silver") {
+      silverGrams += Number(holding.grams) || 0;
+    } else if (holding.type === "stock") {
+      const symbol = String(holding.symbol);
+      const endPrice = await stockPriceOnOrBefore(symbol, periodEndKey);
+      if (endPrice == null) continue; // no snapshot that recent — can't value this stock at period-end, exclude rather than guess
+
+      const stampedPrice = (holding.priceAtLastEditEgp ?? holding.priceAtCreationEgp) as number | undefined;
+      const hasStamp = typeof stampedPrice === "number" && Number.isFinite(stampedPrice);
+      const shares = Number(holding.shares) || 0;
+
+      if (tradingDayKey(row.createdAt) < periodStartKey || !hasStamp) {
+        // Predates the period (or predates the stamping feature) — same
+        // real-price-ratio-first, cost-basis-fallback treatment as the
+        // live function's identical branch.
+        const startPrice = await stockPriceOnOrBefore(symbol, periodStartKey);
+        stockCurrent += shares * endPrice;
+        // usdToEgp param is a no-op for the "stock" branch of costBasisEGP
+        // (only personal_asset reads it) — 0 here is deliberate, not a
+        // stand-in for a real live rate this function doesn't fetch.
+        stockBaselineCost += startPrice != null ? shares * startPrice : costBasisEGP(holding, 0);
+      } else {
+        // Bought (or last edited) during this period, with a real stamp —
+        // the stamped price is the baseline, same as the live function.
+        stockCurrent += shares * endPrice;
+        stockBaselineCost += shares * stampedPrice!;
+      }
+    }
+  }
+
+  let metalSaleProceeds = 0;
+  let metalSaleAmountInvested = 0;
+  let stockSaleProceeds = 0;
+  let stockSaleAmountInvested = 0;
+  for (const row of soldRows) {
+    const data = decryptFromStorage(row.data) as {
+      type?: string; saleDate?: string; saleProceeds?: number; holdingCreatedDay?: string;
+      amountInvested?: number; costBasis?: number;
+    };
+    if (!data.saleDate || typeof data.saleProceeds !== "number") continue;
+    // Must fall within THIS period specifically — a sale after periodEndKey
+    // happened in a later period and isn't part of what this one closed on.
+    if (data.saleDate < periodStartKey || data.saleDate > periodEndKey) continue;
+    if (!data.holdingCreatedDay || data.holdingCreatedDay >= periodStartKey) continue; // bought and sold within the period: excluded entirely
+    const amountInvested = typeof data.amountInvested === "number" ? data.amountInvested
+      : typeof data.costBasis === "number" ? data.costBasis
+      : data.saleProceeds;
+    if (data.type === "gold" || data.type === "silver") {
+      metalSaleProceeds += data.saleProceeds;
+      metalSaleAmountInvested += amountInvested;
+    } else if (data.type === "stock") {
+      stockSaleProceeds += data.saleProceeds;
+      stockSaleAmountInvested += amountInvested;
+    }
+  }
+
+  const hasMetal = pureGoldGrams > 0 || silverGrams > 0;
+  const hasMetalSale = metalSaleProceeds > 0;
+  const hasStock = stockCurrent > 0 || stockSaleProceeds > 0;
+  if (!hasMetal && !hasMetalSale && !hasStock) return { pctReturn: null };
+
+  let baseline = stockBaselineCost + stockSaleAmountInvested + metalSaleAmountInvested;
+  let current = stockCurrent + stockSaleProceeds + metalSaleProceeds;
+  if (hasMetal) {
+    // No live fallback here (unlike the live function's `?? todayMetal`) —
+    // if either end has no historical row yet, metal simply isn't
+    // included in the ratio rather than assuming zero movement.
+    if (baselineMetal != null && endMetal != null) {
+      baseline += pureGoldGrams * baselineMetal.goldEgp24k + silverGrams * baselineMetal.silverEgp;
+      current += pureGoldGrams * endMetal.goldEgp24k + silverGrams * endMetal.silverEgp;
+    }
+  }
+
+  if (baseline <= 0) return { pctReturn: null };
+  return { pctReturn: ((current - baseline) / baseline) * 100 };
+}
+
 export type AllocationClass = "gold" | "silver" | "stock" | "realEstate" | "personalAsset" | "fixedIncome" | "cash";
 
 /**

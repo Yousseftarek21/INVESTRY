@@ -119,6 +119,28 @@ export async function ensureReferralMonthlyWinnersTable(): Promise<void> {
   }
 }
 
+// Same self-bootstrapping pattern for performance_leaderboard_results — see
+// lib/db/src/schema/performanceLeaderboardResults.ts and
+// leaderboardPeriodResultsCron.ts.
+export async function ensurePerformanceLeaderboardResultsTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "performance_leaderboard_results" (
+        "id" text PRIMARY KEY,
+        "period_type" text NOT NULL,
+        "period_start" text NOT NULL,
+        "rank" integer NOT NULL,
+        "user_id" text NOT NULL,
+        "pct_return" real NOT NULL,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT "performance_leaderboard_results_period_rank_unique" UNIQUE ("period_type", "period_start", "rank")
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensurePerformanceLeaderboardResultsTable: failed to create table — weekly/monthly leaderboard results will not be recorded until this is resolved");
+  }
+}
+
 // Same self-bootstrapping pattern for the feedback_messages/feedback_likes
 // tables (see lib/db/src/schema/feedbackMessages.ts and feedbackLikes.ts) —
 // the shared in-app feedback chat, routes/feedback.ts.

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { clerkMiddleware, getAuth } from "@clerk/express";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, performanceLeaderboardResultsTable } from "@workspace/db";
+import { eq, and, desc } from "drizzle-orm";
 import { fetchIdentities, FALLBACK_NAME } from "../lib/clerkIdentity";
 import { computeRankedReturns } from "../lib/leaderboardRanking";
 import { cairoWeekStart } from "../lib/cairoDate";
@@ -122,6 +122,70 @@ router.get("/competition/leaderboard", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "GET /competition/leaderboard failed");
     res.status(500).json({ error: "Failed to load the leaderboard" });
+  }
+});
+
+interface ResultEntry { userId: string; name: string; imageUrl: string | null; pctReturn: number; rank: number }
+
+// GET /api/competition/last-result?period=week|month — the frozen top 3
+// from the most recently CLOSED period, written by
+// leaderboardPeriodResultsCron.ts. Distinct from GET /competition/leaderboard
+// above, which is always the current, still-in-progress period — this is
+// "how did last week/month actually end," which the live route can never
+// answer once a new period has started (see performanceLeaderboardResults's
+// own schema comment for why). Gated on the caller being opted in, same as
+// the live leaderboard — this is a leaderboard-only view, not shown to
+// anyone who hasn't joined the competition.
+router.get("/competition/last-result", async (req, res) => {
+  const { userId } = getAuth(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const periodType = req.query.period === "month" ? "month" : "week";
+
+    const [self] = await db
+      .select({ competitionOptedIn: usersTable.competitionOptedIn })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    const optedIn = self?.competitionOptedIn ?? false;
+    if (!optedIn) { res.json({ periodType, periodStart: null, top: [] }); return; }
+
+    // Two queries, deliberately: LIMIT 3 ordered by periodStart desc alone
+    // would silently mix in a row from an OLDER period whenever the latest
+    // period had fewer than 3 eligible finishers — resolve the latest
+    // periodStart first, then fetch exactly that period's rows.
+    const [latest] = await db
+      .select({ periodStart: performanceLeaderboardResultsTable.periodStart })
+      .from(performanceLeaderboardResultsTable)
+      .where(eq(performanceLeaderboardResultsTable.periodType, periodType))
+      .orderBy(desc(performanceLeaderboardResultsTable.periodStart))
+      .limit(1);
+
+    if (!latest) { res.json({ periodType, periodStart: null, top: [] }); return; }
+
+    const rows = await db
+      .select({
+        rank: performanceLeaderboardResultsTable.rank,
+        userId: performanceLeaderboardResultsTable.userId,
+        pctReturn: performanceLeaderboardResultsTable.pctReturn,
+      })
+      .from(performanceLeaderboardResultsTable)
+      .where(and(
+        eq(performanceLeaderboardResultsTable.periodType, periodType),
+        eq(performanceLeaderboardResultsTable.periodStart, latest.periodStart),
+      ))
+      .orderBy(performanceLeaderboardResultsTable.rank);
+
+    const identities = await fetchIdentities(rows.map(r => r.userId));
+    const top: ResultEntry[] = rows.map(r => {
+      const identity = identities.get(r.userId) ?? { name: FALLBACK_NAME, imageUrl: null };
+      return { userId: r.userId, name: identity.name, imageUrl: identity.imageUrl, pctReturn: r.pctReturn, rank: r.rank };
+    });
+
+    res.json({ periodType, periodStart: latest.periodStart, top });
+  } catch (err) {
+    req.log.error({ err }, "GET /competition/last-result failed");
+    res.status(500).json({ error: "Failed to load last period's results" });
   }
 });
 

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { cairoWeekStart } from "./cairoDate";
 import { utcMonthStartKey } from "./calendarDate";
-import { computePeriodPerformance } from "./portfolioValue";
+import { computePeriodPerformance, computeFrozenPeriodPerformance } from "./portfolioValue";
 
 export interface RankedReturn { id: string; pctReturn: number; rank: number }
 
@@ -32,6 +32,32 @@ export async function computeRankedReturns(period: "week" | "month"): Promise<Ra
   for (const u of opted) {
     const { pctReturn } = await computePeriodPerformance(u.id, periodStart);
     if (pctReturn == null) continue; // nothing eligible (no gold/silver, no pre-existing stock) — not a real 0/-100%, just unrankable yet
+    withReturns.push({ id: u.id, pctReturn });
+  }
+
+  withReturns.sort((a, b) => b.pctReturn - a.pctReturn);
+  return withReturns.map((u, i) => ({ id: u.id, pctReturn: Math.round(u.pctReturn * 100) / 100, rank: i + 1 }));
+}
+
+// The FROZEN twin of computeRankedReturns, for a period that has already
+// closed — used only by leaderboardPeriodResultsCron.ts to crown a
+// week/month's final top 3 once it's over. Never used by the live route;
+// see computeFrozenPeriodPerformance's own comment in portfolioValue.ts for
+// why this needs a genuinely separate computation, not a flag on the live
+// one.
+export async function computeFrozenRankedReturns(
+  periodStartKey: string,
+  periodEndKey: string,
+): Promise<RankedReturn[]> {
+  const opted = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.competitionOptedIn, true));
+
+  const withReturns: { id: string; pctReturn: number }[] = [];
+  for (const u of opted) {
+    const { pctReturn } = await computeFrozenPeriodPerformance(u.id, periodStartKey, periodEndKey);
+    if (pctReturn == null) continue;
     withReturns.push({ id: u.id, pctReturn });
   }
 

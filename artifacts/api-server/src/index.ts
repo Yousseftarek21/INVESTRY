@@ -7,9 +7,10 @@ import { startRealEstatePriceCron } from "./lib/realEstatePriceCron";
 import { startDailySummaryCron } from "./lib/dailySummaryCron";
 import { startLeaderboardRankCron } from "./lib/leaderboardRankCron";
 import { startReferralMonthlyWinnerCron } from "./lib/referralMonthlyWinnerCron";
+import { startLeaderboardPeriodResultsCron } from "./lib/leaderboardPeriodResultsCron";
 import { startPendingIncomeReminderCron } from "./lib/pendingIncomeReminderCron";
 import { ensureUserColumns } from "./lib/ensureUserColumns";
-import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable, ensureEgxCloseSnapshotsTable, ensureFeedbackTables } from "./lib/ensureDividendsTable";
+import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable, ensureEgxCloseSnapshotsTable, ensureFeedbackTables, ensurePerformanceLeaderboardResultsTable } from "./lib/ensureDividendsTable";
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
@@ -44,6 +45,7 @@ app.listen(port, async (err) => {
   await ensureReferralMonthlyWinnersTable();
   await ensureEgxCloseSnapshotsTable();
   await ensureFeedbackTables();
+  await ensurePerformanceLeaderboardResultsTable();
   await sendCompetitionAnnouncement();
   startPortfolioAlertCron();
   startUserPriceAlertCron();
@@ -52,5 +54,6 @@ app.listen(port, async (err) => {
   startDailySummaryCron();
   startLeaderboardRankCron();
   startReferralMonthlyWinnerCron();
+  startLeaderboardPeriodResultsCron();
   startPendingIncomeReminderCron();
 });
