@@ -32,16 +32,24 @@ const BAR_MAX_H = 32;
 const BAR_MIN_H = 9;
 
 function EqualizerBar({ index, color }: { index: number; color: string }) {
-  const height = useSharedValue(BAR_MIN_H);
+  // 0 -> BAR_MIN_H/BAR_MAX_H (shrunk), 1 -> full height. Was previously a
+  // pixel height (BAR_MIN_H..BAR_MAX_H) applied straight to the `height`
+  // style, which forces a native layout pass every frame, for all 5 bars,
+  // at exactly the moment the UI thread is also busy mounting the rest of
+  // the app at cold start — competing for the same thread is what caused
+  // the visible lag. A scale factor applied via `transform` is GPU-
+  // composited and never touches layout, so it stays smooth regardless of
+  // what else the UI thread is doing.
+  const scale = useSharedValue(BAR_MIN_H / BAR_MAX_H);
 
   useEffect(() => {
     // Slightly different duration per bar (not just a phase offset) so the
     // wave reads as an organic pulse rather than a uniform metronome.
     const duration = 420 + (index % 3) * 60;
-    height.value = withDelay(
+    scale.value = withDelay(
       index * 90,
       withRepeat(
-        withTiming(BAR_MAX_H, { duration, easing: REasing.inOut(REasing.quad) }),
+        withTiming(1, { duration, easing: REasing.inOut(REasing.quad) }),
         -1,
         true,
       ),
@@ -49,7 +57,16 @@ function EqualizerBar({ index, color }: { index: number; color: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const animatedStyle = useAnimatedStyle(() => ({ height: height.value }));
+  const animatedStyle = useAnimatedStyle(() => ({
+    // The bar's own height is now fixed at BAR_MAX_H (see styles.bar) and
+    // scaled down visually — transform scales from the center by default,
+    // so translateY re-anchors the visible bar to the track's bottom edge
+    // (same "grows up from the floor" look the height-based version had).
+    transform: [
+      { translateY: (BAR_MAX_H * (1 - scale.value)) / 2 },
+      { scaleY: scale.value },
+    ],
+  }));
 
   return (
     <View style={styles.barTrack}>
@@ -154,7 +171,10 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   bar: {
+    // Fixed at full height now — the pulse is done via transform: scaleY
+    // in EqualizerBar's animatedStyle, not by resizing this box.
     width: BAR_W,
+    height: BAR_MAX_H,
     borderRadius: BAR_W / 2,
   },
   status: {
