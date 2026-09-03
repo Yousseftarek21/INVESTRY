@@ -494,21 +494,26 @@ export default function HoldingsScreen() {
                 </View>
               </View>
               <View style={styles.groupItems}>
-                {grouped[type].map((group, idx) => (
+                {grouped[type].map((group, idx) => {
+                  const openGroup = () => { impact(); (group.lots.length > 1 ? setLotPickerGroup(group) : handleEdit(group.lots[0].id)); };
+                  return (
                   <FadeInCard key={group.key} index={idx}>
-                    <SwipeToDelete onDelete={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleDelete(group.lots[0].id))}>
+                    <SwipeToDelete
+                      onDelete={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleDelete(group.lots[0].id))}
+                    >
                       <HoldingCard
                         holding={group.displayHolding}
                         prices={prices}
                         hideSubtitle
                         lotCount={group.lots.length > 1 ? group.lots.length : undefined}
-                        onEdit={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleEdit(group.lots[0].id))}
+                        onCardPress={openGroup}
                         onSell={() => (group.lots.length > 1 ? setLotPickerGroup(group) : handleSell(group.lots[0].id))}
                         onMarkLoanPaid={group.lots.length === 1 ? () => handleMarkLoanPaid(group.lots[0].id) : undefined}
                       />
                     </SwipeToDelete>
                   </FadeInCard>
-                ))}
+                  );
+                })}
               </View>
             </View>
           ))

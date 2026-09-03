@@ -19,7 +19,9 @@ type HoldingLabels = {
 interface HoldingCardProps {
   holding: Holding;
   prices?: MarketPrices;
-  onEdit?: () => void;
+  /** Sell action — still its own explicit icon button (no equivalent
+   * whole-card gesture for it). Edit no longer has a dedicated button here
+   * — see onCardPress below, which now covers that. */
   onSell?: () => void;
   hideValues?: boolean;
   hideSubtitle?: boolean;
@@ -27,6 +29,17 @@ interface HoldingCardProps {
   lotCount?: number;
   /** fixed_income with a linkedLoan only — records this month's installment as paid and decrements the balance. Omitted (or the loan already fully paid, or this month already confirmed) hides the action. */
   onMarkLoanPaid?: () => void;
+  /** Makes the icon+title/subtitle region tap-to-edit — plain TouchableOpacity,
+   * same primitive already used by the Pending Income card and this card's
+   * own edit/sell buttons. A react-native-gesture-handler Gesture.Tap()
+   * (with and without SwipeToDelete's blocksExternalGesture) was tried
+   * first and never fired at all when nested inside SwipeToDelete's
+   * Swipeable, confirmed live — this plain TouchableOpacity is what
+   * actually works. Wraps only the icon+text region, never the value/
+   * actions columns, and is always a sibling of the edit/sell buttons
+   * below, never their ancestor. Omit for a card with no whole-card tap
+   * target. */
+  onCardPress?: () => void;
 }
 
 function personalAssetValueEGP(holding: Extract<Holding, { type: 'personal_asset' }>, prices?: MarketPrices): number {
@@ -133,7 +146,7 @@ const ICON_COLORS: Record<Holding['type'], string> = {
   fixed_income: '#22C55E',
 };
 
-export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideSubtitle, lotCount, onMarkLoanPaid }: HoldingCardProps) {
+export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle, lotCount, onMarkLoanPaid, onCardPress }: HoldingCardProps) {
   const colors = useColors();
   const t = useT();
   const labels: HoldingLabels = {
@@ -157,27 +170,44 @@ export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideS
   const currentMonth = new Date().toISOString().slice(0, 7);
   const loanPaidThisMonth = !!linkedLoan && linkedLoan.payments.some(p => p.month === currentMonth);
 
+  // Icon + title/subtitle only — same trade-off already made and documented
+  // in recurring-income.tsx/dividends.tsx: shrinking the tap target away
+  // from the value/actions columns is what keeps this a sibling of (never
+  // an ancestor of) the edit/sell buttons, which is the actual thing that
+  // makes it safe to nest inside SwipeToDelete.
+  const tappableInfo = (
+    <>
+      <View style={[styles.iconWrap, { backgroundColor: iconColor + '17', borderColor: iconColor + '4A' }]}>
+        {holding.type === 'personal_asset'
+          ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={18} color={iconColor} />
+          : <AssetIcon type={holding.type} size={18} color={iconColor} />
+        }
+      </View>
+
+      <View style={styles.info}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{getTitle(holding, labels)}</Text>
+          {!!lotCount && (
+            <View style={[styles.lotBadge, { backgroundColor: colors.mutedForeground + '18' }]}>
+              <Text style={[styles.lotBadgeText, { color: colors.mutedForeground }]}>×{lotCount}</Text>
+            </View>
+          )}
+        </View>
+        {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>}
+      </View>
+    </>
+  );
+
   return (
     <View style={[styles.cardOuter, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.cardRow}>
-        <View style={[styles.iconWrap, { backgroundColor: iconColor + '17', borderColor: iconColor + '4A' }]}>
-          {holding.type === 'personal_asset'
-            ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={18} color={iconColor} />
-            : <AssetIcon type={holding.type} size={18} color={iconColor} />
-          }
-        </View>
-
-        <View style={styles.info}>
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{getTitle(holding, labels)}</Text>
-            {!!lotCount && (
-              <View style={[styles.lotBadge, { backgroundColor: colors.mutedForeground + '18' }]}>
-                <Text style={[styles.lotBadgeText, { color: colors.mutedForeground }]}>×{lotCount}</Text>
-              </View>
-            )}
-          </View>
-          {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>}
-        </View>
+        {onCardPress ? (
+          <TouchableOpacity onPress={onCardPress} activeOpacity={0.7} style={styles.tapRegion}>
+            {tappableInfo}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.tapRegion}>{tappableInfo}</View>
+        )}
 
         <View style={styles.right}>
           {prices ? (
@@ -210,28 +240,16 @@ export function HoldingCard({ holding, prices, onEdit, onSell, hideValues, hideS
           )}
         </View>
 
-        {(onEdit || onSell) && (
+        {!!onSell && (
           <View style={styles.actions}>
-            {onEdit && (
-              <TouchableOpacity
-                onPress={onEdit}
-                style={styles.actionBtn}
-                hitSlop={10}
-                activeOpacity={0.6}
-              >
-                <Feather name="edit-2" size={14} color={colors.primary} />
-              </TouchableOpacity>
-            )}
-            {onSell && (
-              <TouchableOpacity
-                onPress={onSell}
-                style={styles.actionBtn}
-                hitSlop={10}
-                activeOpacity={0.6}
-              >
-                <Feather name="check-circle" size={14} color={colors.green} />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              onPress={onSell}
+              style={styles.actionBtn}
+              hitSlop={10}
+              activeOpacity={0.6}
+            >
+              <Feather name="check-circle" size={14} color={colors.green} />
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -280,6 +298,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 14,
+    gap: 12,
+  },
+  // Wraps iconWrap+info so the pair can be a single GestureDetector child —
+  // flex:1 + the same row/center/gap cardRow used to apply directly to
+  // these two children replicates the exact previous layout now that
+  // they're nested one level deeper.
+  tapRegion: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   iconWrap: {
