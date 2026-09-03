@@ -127,9 +127,12 @@ const styles = StyleSheet.create({
     zIndex: 999,
     elevation: Platform.OS === "android" ? 999 : undefined,
   },
+  // Icon-only now (no wordmark baked into the image) — square box instead
+  // of the old wide 260x40 wordmark banner. resizeMode="contain" on the
+  // <Image> keeps it centered regardless of the source PNG's exact aspect.
   logo: {
-    width: 260,
-    height: 40,
+    width: 96,
+    height: 96,
   },
   tagline: {
     marginTop: 10,
