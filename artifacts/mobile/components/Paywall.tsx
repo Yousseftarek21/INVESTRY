@@ -40,7 +40,7 @@ export function Paywall() {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState(false);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
 
   const iosIAP = isIOSIAPAvailable();
   const [monthlyPkg, setMonthlyPkg] = useState<PurchasesPackage | null>(null);
@@ -208,7 +208,7 @@ export function Paywall() {
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
           {/* Billing toggle */}
           <View style={[styles.billingToggle, { backgroundColor: colors.muted }]}>
-            {(['annual', 'monthly'] as const).map(period => {
+            {(['monthly', 'annual'] as const).map(period => {
               const active = billingPeriod === period;
               return (
                 <TouchableOpacity
