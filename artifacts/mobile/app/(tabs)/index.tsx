@@ -28,6 +28,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, router } from 'expo-router';
 import { useUser } from '@clerk/expo';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
+import { AssetIcon, AssetType } from '@/components/AssetIcon';
 import { ConceptIcon } from '@/components/ConceptIcon';
 import { ICON_BANK_ACCOUNT, ICON_INVESTMENTS, ICON_LOANS, ICON_PENDING_INCOME } from '@/constants/conceptIcons';
 import { useColors } from '@/hooks/useColors';
@@ -507,6 +508,7 @@ export default function HomeScreen() {
   const [chartScrubbing, setChartScrubbing] = useState(false);
   const [sparkWidth, setSparkWidth] = useState(0);
   const [showTodayBreakdown, setShowTodayBreakdown] = useState(false);
+  const [showTotalPLBreakdown, setShowTotalPLBreakdown] = useState(false);
   const [showNetWorthBreakdown, setShowNetWorthBreakdown] = useState(false);
   const [modal, setModal] = useState<{ title: string; content: string } | null>(null);
   const showModal = (title: string, content: string) => { impact(); setModal({ title, content }); };
@@ -521,6 +523,11 @@ export default function HomeScreen() {
 
   const summary = useMemo(() => {
     let goldV = 0, silverV = 0, stockV = 0, reV = 0, paV = 0, fiV = 0, totalCost = 0;
+    // Per-class cost basis — added for the Total P/L breakdown (see
+    // totalPLBreakdown below), which needs each class's own gain, not just
+    // its own value. Mirrors analytics.tsx's `sm` useMemo, which already
+    // tracks these same six buckets for its own asset breakdown strip.
+    let goldCost = 0, silverCost = 0, stockCost = 0, reCost = 0, paCost = 0, fiCost = 0;
     let todayGold = 0, todaySilver = 0, todayStock = 0, todayFI = 0;
     // Metal-only slice of todayGold/todaySilver — isolates the price of the
     // metal itself from the FX move that's compounded into it below, so the
@@ -546,7 +553,7 @@ export default function HomeScreen() {
       // stamp exists yet (older data from before this rolled out).
       const countsToday = !touchedToday(h.updatedAt);
       if (h.type === 'gold') {
-        goldV += v; goldGrams += h.grams;
+        goldV += v; goldCost += c; goldGrams += h.grams;
         // goldChangePercent is the metal's raw USD move (matches the Markets
         // tab's own display) — goldChangePercentEgp compounds that with
         // today's FX move, which is what a holding valued in EGP (`v`)
@@ -568,7 +575,7 @@ export default function HomeScreen() {
           }
         }
       } else if (h.type === 'silver') {
-        silverV += v; silverGrams += h.grams;
+        silverV += v; silverCost += c; silverGrams += h.grams;
         if (countsToday) {
           todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
           todaySilverMetal += pctDelta(v, prices?.silverChangePercent ?? 0);
@@ -580,7 +587,7 @@ export default function HomeScreen() {
           }
         }
       } else if (h.type === 'stock') {
-        stockV += v; stockCount++;
+        stockV += v; stockCost += c; stockCount++;
         if (countsToday) {
           const changePercent = egxChangeByTicker[h.symbol] ?? 0;
           todayStock += pctDelta(v, changePercent);
@@ -589,9 +596,9 @@ export default function HomeScreen() {
           if (stampContribution != null) todayStock += stampContribution;
         }
       } else if (h.type === 'personal_asset') {
-        paV += v; paCount++;
+        paV += v; paCost += c; paCount++;
       } else if (h.type === 'fixed_income') {
-        fiV += v;
+        fiV += v; fiCost += c;
         // Accrual since the trading day began, not since 24h ago. A rolling
         // window never resets: right after the boundary it still showed a
         // whole day's interest while every other bucket had just gone to
@@ -600,7 +607,7 @@ export default function HomeScreen() {
           todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
         }
       } else {
-        reV += v; reCount++;
+        reV += v; reCost += c; reCount++;
       }
     }
 
@@ -634,10 +641,18 @@ export default function HomeScreen() {
     // which is about price/interest movement, not debt, and would be
     // distorted by subtracting a loan that didn't change today).
     const fiVNetOfLoans = Math.max(0, fiV - totalLoans);
+    // Same netting applied to fiCost — subtracting the identical totalLoans
+    // amount from both fiV and fiCost (not just fiV) is what keeps THIS
+    // row's own gain honest instead of manufacturing a fake loss on it,
+    // exactly the same reasoning as totalValue/totalCost above, just scoped
+    // to the one row the loan actually belongs to. Used only by
+    // totalPLBreakdown below.
+    const fiCostNetOfLoans = Math.max(0, fiCost - totalLoans);
 
     return {
       totalValue, totalCost, gain, gainPct, todayGain, todayPct, totalLoans,
       goldV, silverV, stockV, reV, paV, fiV, fiVNetOfLoans,
+      goldCost, silverCost, stockCost, reCost, paCost, fiCost, fiCostNetOfLoans,
       goldGrams, silverGrams, stockCount, reCount, paCount,
       todayGold, todaySilver, todayStock, todayFI,
       todayGoldMetal, todaySilverMetal,
@@ -694,6 +709,39 @@ export default function HomeScreen() {
     }
     return rows.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
   }, [summary, prices, colors, t]);
+
+  // ── Total P/L breakdown ──────────────────────────────────────────────────────
+  // Real user feedback (Ahmed, Feedback & Ideas chat): Today's P/L is
+  // tappable and shows exactly this per-class breakdown, but Total P/L —
+  // the chip right next to it, styled identically — only opened a plain
+  // text explainer of the methodology, no actual numbers. Same shell/rows
+  // pattern as todayBreakdown above, just gain-since-purchase (value minus
+  // cost) per class instead of today's move, and covering real estate and
+  // personal assets too (todayBreakdown deliberately excludes them — they
+  // have no daily price feed — but they very much have an all-time gain).
+  //
+  // Fixed income's row uses fiVNetOfLoans/fiCostNetOfLoans, not fiV/fiCost —
+  // the same both-sides loan netting summary.totalValue/totalCost already
+  // apply in aggregate (see that comment), scoped to just this row since
+  // the loan is specifically a fixed_income concept. Every other row is a
+  // plain value-minus-cost, no netting needed. Rows are built to actually
+  // sum to summary.gain, matching the header total exactly, same invariant
+  // todayBreakdown's rows already hold for summary.todayGain.
+  const totalPLBreakdown = useMemo(() => {
+    const rows: { key: string; label: string; color: string; icon: React.ReactNode; amount: number; pct: number | null }[] = [];
+    const push = (key: string, label: string, color: string, type: AssetType, value: number, cost: number) => {
+      if (value <= 0) return; // matches todayBreakdown's own gate (summary.goldV > 0, etc.) — only classes actually held
+      const amount = value - cost;
+      rows.push({ key, label, color, icon: <AssetIcon type={type} size={16} color={color} />, amount, pct: cost > 0 ? (amount / cost) * 100 : null });
+    };
+    push('gold', t.gold, colors.primary, 'gold', summary.goldV, summary.goldCost);
+    push('silver', t.silver, colors.silverColor, 'silver', summary.silverV, summary.silverCost);
+    push('stock', t.egxStocksAllocLabel, '#4A9EFF', 'stock', summary.stockV, summary.stockCost);
+    push('realEstate', t.realEstate, '#A47FCA', 'real_estate', summary.reV, summary.reCost);
+    push('personalAsset', t.personalAsset, '#E08E45', 'personal_asset', summary.paV, summary.paCost);
+    push('fixedIncome', t.fixedIncome, '#22C55E', 'fixed_income', summary.fiVNetOfLoans, summary.fiCostNetOfLoans);
+    return rows.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  }, [summary, colors, t]);
 
   const { snapshots } = usePortfolioSnapshots();
   // A period is only offered once real recorded history reaches back that
@@ -1122,7 +1170,7 @@ export default function HomeScreen() {
               )}
 
               <Pressable
-                onPress={() => showModal(t.totalPLCalcTitle, t.totalPLCalcBody)}
+                onPress={() => { impact(); setShowTotalPLBreakdown(true); }}
                 style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}
               >
                 <View style={styles.plTop}>
@@ -1580,6 +1628,18 @@ export default function HomeScreen() {
       displayCurrency={displayCurrency}
     />
 
+    <TotalPLBreakdownModal
+      visible={showTotalPLBreakdown}
+      onClose={() => setShowTotalPLBreakdown(false)}
+      onShowMethodology={() => showModal(t.totalPLCalcTitle, t.totalPLCalcBody)}
+      rows={totalPLBreakdown}
+      totalAmount={summary.gain}
+      totalPct={summary.gainPct}
+      hideValues={hideValues}
+      toDisp={toDisp}
+      displayCurrency={displayCurrency}
+    />
+
     <NetWorthBreakdownModal
       visible={showNetWorthBreakdown}
       onClose={() => setShowNetWorthBreakdown(false)}
@@ -1765,6 +1825,91 @@ function TodayBreakdownModal({
     </Modal>
   );
 }
+
+// ─── Total P/L breakdown modal ──────────────────────────────────────────────────
+// Answers the same kind of gap NetWorthBreakdownModal closed for "Net Worth
+// incl. cash" — Ahmed (real user, Feedback & Ideas chat) pointed out that
+// Today's P/L is tappable and shows a real per-class breakdown, but Total
+// P/L, styled identically right next to it, only opened a plain-text
+// methodology explainer with no actual numbers. Same `tb` shell/rows as
+// TodayBreakdownModal above (reuses TodayBreakdownRow's shape directly —
+// same key/label/color/icon/amount/pct fields, no reason for a second
+// type), just all-time gain-since-purchase per class instead of today's
+// move. No "no change yet" empty framing (todayBreakdown's own) — an
+// all-time return sitting at exactly 0% is rare enough not to deserve its
+// own designed state, the plain empty-rows case covers it fine. The info
+// button next to the title reopens the existing methodology explainer
+// (totalPLCalcTitle/Body) — real, still-useful context this breakdown
+// doesn't replace, just complements.
+function TotalPLBreakdownModal({
+  visible, onClose, onShowMethodology, rows, totalAmount, totalPct, hideValues, toDisp, displayCurrency,
+}: {
+  visible: boolean; onClose: () => void; onShowMethodology: () => void; rows: TodayBreakdownRow[];
+  totalAmount: number; totalPct: number;
+  hideValues: boolean; toDisp: (egp: number) => number; displayCurrency: DisplayCurrency;
+}) {
+  const colors = useColors();
+  const t = useT();
+  const insets = useSafeAreaInsets();
+  const isFlatTotal = Math.abs(toDisp(totalAmount)) < 0.005;
+  const isGain = totalAmount >= 0;
+  const totalColor = isFlatTotal ? colors.mutedForeground : (isGain ? colors.green : colors.red);
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable style={tb.backdrop} onPress={onClose} />
+      <View style={[tb.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]}>
+        <View style={[tb.handle, { backgroundColor: colors.border }]} />
+        <View style={tb.header}>
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[tb.title, { color: colors.text }]}>{t.totalPLBreakdownTitle}</Text>
+              <TouchableOpacity onPress={onShowMethodology} hitSlop={8}>
+                <Feather name="info" size={13} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[tb.subtitle, { color: totalColor }]}>
+              {hideValues ? '••••' : isFlatTotal ? `0 ${displayCurrency}` : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(totalAmount)))} ${displayCurrency}`}
+              {'  ·  '}{`${!isFlatTotal && isGain ? '+' : ''}${totalPct.toFixed(2)}%`}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={[tb.close, { backgroundColor: colors.muted }]}>
+            <Feather name="x" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        {rows.length === 0 ? (
+          <Text style={[tb.emptyText, { color: colors.mutedForeground }]}>{t.totalPLBreakdownEmpty}</Text>
+        ) : (
+          <View style={tb.list}>
+            {rows.map(r => {
+              const isFlat = Math.abs(toDisp(r.amount)) < 0.005;
+              const rowGain = r.amount >= 0;
+              const rowColor = isFlat ? colors.mutedForeground : (rowGain ? colors.green : colors.red);
+              return (
+                <View key={r.key} style={tb.row}>
+                  <View style={[tb.iconBox, { backgroundColor: r.color + '1A' }]}>{r.icon}</View>
+                  <View style={tb.rowBody}>
+                    <Text style={[tb.rowLabel, { color: colors.text }]}>{r.label}</Text>
+                    {r.pct !== null && (
+                      <Text style={[tb.rowSub, { color: colors.mutedForeground }]}>
+                        {`${!isFlat && r.pct >= 0 ? '+' : ''}${r.pct.toFixed(2)}%`}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={[tb.rowAmount, { color: rowColor }]}>
+                    {hideValues ? '••••' : isFlat ? `0 ${displayCurrency}` : `${rowGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(r.amount)))} ${displayCurrency}`}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Net worth breakdown modal ─────────────────────────────────────────────────
 // Answers Ahmed's (real user, Feedback & Ideas chat) "where does the extra
 // money in Net Worth incl. cash actually come from" — same sheet shell as
