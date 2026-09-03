@@ -13,8 +13,7 @@ import { useStableGetToken } from '@/hooks/useStableGetToken';
 import { apiFetch } from '@/utils/api';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { isIOSIAPAvailable, REVENUECAT_ENTITLEMENT_ID } from '@/utils/revenuecat';
-import type { FeatureRow } from '@/constants/subscriptionFeatures';
-import { PlanCompareRow } from '@/components/PlanCompareRow';
+import { getPaywallHighlights } from '@/constants/subscriptionFeatures';
 
 // Fallback display numbers for the Android/web Stripe path only — kept in
 // sync by hand with subFromMonthly/subFromAnnual's display text
@@ -82,23 +81,7 @@ export function Paywall() {
     return () => { active = false; };
   }, [iosIAP, paywallVisible]);
 
-  // A short "why upgrade" teaser for the price card itself — NOT the full
-  // getPaywallHighlights list (that stays reserved for
-  // ManageSubscriptionSheet.tsx, where showing everything a subscriber
-  // already pays for is the whole point). Repeating all 18 highlights here
-  // AND then the full comparison table right below it made the price card
-  // and the table say almost the same thing twice, forcing a wall of
-  // scrolling before the CTA — real user feedback. Five picks that cover
-  // the actual breadth (the #1 limit free users hit, the flagship AI
-  // feature, then the analytics-tier reasons) instead of every line item;
-  // the comparison table underneath is where the exhaustive list lives.
-  const highlights: FeatureRow[] = [
-    { icon: 'briefcase', text: t.subUnlimitedInvestments },
-    { icon: 'cpu', text: t.subAiAssistantFull },
-    { icon: 'heart', text: t.subHealthScore },
-    { icon: 'zap', text: t.subPersonalizedSignals },
-    { icon: 'tool', text: t.subFixMyPortfolio },
-  ];
+  const highlights = getPaywallHighlights(t);
 
   const subscribeViaStripe = async () => {
     const token = await getToken();
@@ -332,36 +315,8 @@ export function Paywall() {
             </ExpoLinearGradient>
           </View>
 
-          {/* Full Free-vs-Pro comparison — every real gate in the app, not
-              just the Pro highlights above. Row order matches the audit's
-              real feature matrix; locked rows show a lock/check icon
-              instead of repeating "Locked"/"Full access" text nine times. */}
-          <Text style={[styles.compareSectionTitle, { color: colors.mutedForeground }]}>{t.subCompareTitle}</Text>
-          <View style={[styles.compareCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.compareHeaderRow, { borderBottomColor: colors.border }]}>
-              <View style={{ flex: 1.6 }} />
-              <Text style={[styles.compareHeaderLabel, { color: colors.mutedForeground }]}>{t.subPlanFree}</Text>
-              <View style={[styles.compareHeaderProWrap, { backgroundColor: colors.primary + '18' }]}>
-                <Text style={[styles.compareHeaderLabel, styles.compareHeaderProLabel, { color: colors.primary }]}>{t.subComparePro}</Text>
-              </View>
-            </View>
-            <PlanCompareRow label={t.holdings} freeValue={t.subCompareHoldingsFree} proValue={t.subCompareHoldingsPro} />
-            <PlanCompareRow label={t.cashAccounts} freeValue={t.subCompareCashFree} proValue={t.subCompareCashPro} />
-            <PlanCompareRow label={t.subRecurringIncomeFull} freeValue={t.subCompareRecurringFree} proValue={t.subCompareRecurringPro} />
-            <PlanCompareRow label={t.goals} freeValue={t.subCompareGoalsFree} proValue={t.subCompareGoalsPro} />
-            <PlanCompareRow label={t.priceAlertsLabel} freeValue={t.subComparePriceAlertsFree} proValue={t.subComparePriceAlertsPro} />
-            <PlanCompareRow label={t.settingsCatNotifications} freeValue={t.subCompareNotificationsFree} proValue={t.subCompareNotificationsPro} locked />
-            <PlanCompareRow label={t.aiAssistantTitle} freeValue={t.subCompareAiFree} proValue={t.subCompareAiPro} locked />
-            <PlanCompareRow label={t.subMarketIntelligence} freeValue={t.subCompareMarketIntelFree} proValue={t.subCompareMarketIntelPro} locked />
-            <PlanCompareRow label={t.subPortfolioAnalytics} freeValue={t.subComparePortfolioAnalyticsFree} proValue={t.subComparePortfolioAnalyticsPro} locked />
-            <PlanCompareRow label={t.fixPlanTitle} freeValue={t.subCompareFixPlanFree} proValue={t.subCompareFixPlanPro} locked />
-            <PlanCompareRow label={t.dividendsTitle} freeValue={t.subCompareDividendsFree} proValue={t.subCompareDividendsPro} />
-            <PlanCompareRow label={t.exportMyData} freeValue={t.subCompareExportFree} proValue={t.subCompareExportPro} locked />
-            <PlanCompareRow label={t.targetAllocationTitle} freeValue={t.subCompareTargetAllocationFree} proValue={t.subCompareTargetAllocationPro} locked />
-          </View>
-
           {/* Most of the app isn't a paywall at all — make that explicit
-              rather than letting the comparison above read as "everything
+              rather than letting the checklist above read as "everything
               is locked." */}
           <View style={styles.alsoFreeSection}>
             <Text style={[styles.compareSectionTitle, { color: colors.mutedForeground }]}>{t.subAlsoFreeTitle}</Text>
@@ -452,16 +407,6 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   featureIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   featureText: { flex: 1, fontSize: 13.5, fontFamily: 'Inter_500Medium', lineHeight: 19, color: 'rgba(255,255,255,0.94)' },
-
-  compareCard: { borderRadius: 20, borderWidth: 1, padding: 14, marginBottom: 16 },
-  compareHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 10, marginBottom: 4, borderBottomWidth: StyleSheet.hairlineWidth },
-  compareHeaderLabel: { flex: 1, fontSize: 10.5, fontFamily: 'Inter_700Bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.6 },
-  // The Pro column gets a soft pill behind its header label — same trick
-  // as PlanCompareRow's bold proValue text, just at the header level, so
-  // the eye lands on "this is the column that matters" before reading a
-  // single row.
-  compareHeaderProWrap: { flex: 1, borderRadius: 8, paddingVertical: 3 },
-  compareHeaderProLabel: { flex: 0 },
 
   alsoFreeSection: { marginBottom: 16 },
   compareSectionTitle: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 },
