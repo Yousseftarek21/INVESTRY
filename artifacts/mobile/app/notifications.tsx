@@ -35,7 +35,15 @@ const EVENT_DESTINATION: Record<string, string> = {
 // established cash iconography (BanknoteIcon, green), holding events reuse
 // the investment identity (gold), matching how Cash/Investments already
 // look everywhere else rather than inventing a new palette just here.
-function eventVisual(type: string, colors: ReturnType<typeof useColors>) {
+//
+// `subtitle` is passed in for portfolio_alert specifically: its direction
+// (up/down) is decided server-side (portfolioAlertCron.ts) and only shows
+// up in the row's own text ("Your portfolio is down 3.2% today") — there's
+// no separate direction field. Was previously hardcoded to trending-up +
+// green regardless of direction, so a "portfolio is down" alert rendered
+// with an up-trending, green (gain-colored) icon — a real, user-reported
+// mismatch, not cosmetic.
+function eventVisual(type: string, subtitle: string, colors: ReturnType<typeof useColors>) {
   switch (type) {
     case 'price_alert':
       return { icon: <Feather name="bell" size={18} color={colors.primary} />, color: colors.primary };
@@ -53,8 +61,11 @@ function eventVisual(type: string, colors: ReturnType<typeof useColors>) {
     case 'income_collected':
       return { icon: <Feather name="check-circle" size={18} color={colors.green} />, color: colors.green };
     case 'portfolio_alert':
-    default:
-      return { icon: <Feather name="trending-up" size={18} color={colors.green} />, color: colors.green };
+    default: {
+      const isDown = /\bdown\b/i.test(subtitle);
+      const color = isDown ? colors.red : colors.green;
+      return { icon: <Feather name={isDown ? 'trending-down' : 'trending-up'} size={18} color={color} />, color };
+    }
   }
 }
 
@@ -105,7 +116,7 @@ export default function NotificationsScreen() {
           ) : (
             <View style={s.list}>
               {recentEvents.map(item => {
-                const visual = eventVisual(item.type, colors);
+                const visual = eventVisual(item.type, item.subtitle, colors);
                 const destination = EVENT_DESTINATION[item.type];
                 return (
                   <TouchableOpacity
