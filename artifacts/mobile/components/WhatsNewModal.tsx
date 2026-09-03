@@ -18,14 +18,12 @@ export function WhatsNewModal() {
   const { impact } = useHaptic();
   const { visible, dismiss } = useWhatsNew();
 
+  // A single, standalone announcement rather than a bulleted list of small
+  // fixes (what this modal usually carries) — the paywall going live is
+  // significant enough to deserve its own focused moment, not item #5 next
+  // to old news most returning users already saw and dismissed.
   const items: WhatsNewItem[] = [
-    { icon: 'check-circle', title: t.whatsNewSoldTitle, body: t.whatsNewSoldBody },
-    { icon: 'pie-chart', title: t.whatsNewAnalyticsTitle, body: t.whatsNewAnalyticsBody },
-    // cpu, not message-circle — matches the AI Assistant's own icon
-    // everywhere else it's named (its screen header, the Analytics promo
-    // card, onboarding) instead of a separate icon just for this notice.
-    { icon: 'cpu', title: t.whatsNewAiTitle, body: t.whatsNewAiBody },
-    { icon: 'edit-3', title: t.whatsNewInputTitle, body: t.whatsNewInputBody },
+    { icon: 'award', title: t.whatsNewProTitle, body: t.whatsNewProBody },
   ];
 
   if (!visible) return null;

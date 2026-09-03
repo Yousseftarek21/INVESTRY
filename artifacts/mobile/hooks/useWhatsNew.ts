@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // targeting mechanism, bumped back and forth on every single push) or to
 // individual OTA update IDs (most pushes are small fixes, not release-note
 // material). This is the one place that controls when the modal reappears.
-export const WHATS_NEW_VERSION = '2026-08-25-sold-holdings';
+export const WHATS_NEW_VERSION = '2026-09-04-pro-plans';
 
 const SEEN_KEY = '@investry_whats_new_seen';
 
