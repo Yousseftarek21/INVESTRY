@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, ActivityIndicator, Alert, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import Purchases, { PURCHASES_ERROR_CODE, type PurchasesPackage } from 'react-native-purchases';
 import { useColors } from '@/hooks/useColors';
@@ -12,7 +13,7 @@ import { useStableGetToken } from '@/hooks/useStableGetToken';
 import { apiFetch } from '@/utils/api';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { isIOSIAPAvailable, REVENUECAT_ENTITLEMENT_ID } from '@/utils/revenuecat';
-import { getPaywallHighlights } from '@/constants/subscriptionFeatures';
+import type { FeatureRow } from '@/constants/subscriptionFeatures';
 import { PlanCompareRow } from '@/components/PlanCompareRow';
 
 // Fallback display numbers for the Android/web Stripe path only — kept in
@@ -48,6 +49,21 @@ export function Paywall() {
   const [offeringsLoading, setOfferingsLoading] = useState(iosIAP);
   const [offeringsError, setOfferingsError] = useState(false);
 
+  // Same "physical membership card" signature as TierCard.tsx's own sweep
+  // (Pro is the thing that ultimately unlocks a tier card, so the two
+  // moments deliberately share a visual language) — a one-time shine sweep
+  // across the price card the first time the paywall opens, not looped.
+  const shine = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!paywallVisible) return;
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    shine.setValue(0);
+    Animated.timing(shine, {
+      toValue: 1, duration: 1300, delay: 200,
+      easing: Easing.out(Easing.quad), useNativeDriver: true,
+    }).start();
+  }, [paywallVisible, shine]);
+
   useEffect(() => {
     if (!iosIAP || !paywallVisible) return;
     let active = true;
@@ -66,7 +82,23 @@ export function Paywall() {
     return () => { active = false; };
   }, [iosIAP, paywallVisible]);
 
-  const highlights = getPaywallHighlights(t);
+  // A short "why upgrade" teaser for the price card itself — NOT the full
+  // getPaywallHighlights list (that stays reserved for
+  // ManageSubscriptionSheet.tsx, where showing everything a subscriber
+  // already pays for is the whole point). Repeating all 18 highlights here
+  // AND then the full comparison table right below it made the price card
+  // and the table say almost the same thing twice, forcing a wall of
+  // scrolling before the CTA — real user feedback. Five picks that cover
+  // the actual breadth (the #1 limit free users hit, the flagship AI
+  // feature, then the analytics-tier reasons) instead of every line item;
+  // the comparison table underneath is where the exhaustive list lives.
+  const highlights: FeatureRow[] = [
+    { icon: 'briefcase', text: t.subUnlimitedInvestments },
+    { icon: 'cpu', text: t.subAiAssistantFull },
+    { icon: 'heart', text: t.subHealthScore },
+    { icon: 'zap', text: t.subPersonalizedSignals },
+    { icon: 'tool', text: t.subFixMyPortfolio },
+  ];
 
   const subscribeViaStripe = async () => {
     const token = await getToken();
@@ -217,70 +249,99 @@ export function Paywall() {
             })}
           </View>
 
-          {/* Price card */}
-          <View style={[styles.priceCard, { borderColor: colors.primary }]}>
+          {/* Price card — the same "physical membership card" language as
+              TierCard.tsx (rich gradient, scrim for legibility, a one-time
+              shine sweep), not that card's tier palette specifically (Pro
+              is its own concept, orthogonal to net-worth Tiers) but the
+              app's own gold identity (colors.primary) carried through as a
+              foil gradient instead of the flat bordered box this used to
+              be. */}
+          <View style={styles.priceCardWrap}>
             <ExpoLinearGradient
-              colors={[colors.primary + '26', colors.primary + '08']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            {isAnnual && !!savingsPct && savingsPct > 0 && (
-              <View style={[styles.ribbon, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.ribbonText, { color: colors.primaryForeground }]}>-{savingsPct}%</Text>
-              </View>
-            )}
+              colors={[colors.primary, '#C79A2E', '#241C08']}
+              start={{ x: 0.05, y: 0 }}
+              end={{ x: 0.95, y: 1 }}
+              style={styles.priceCard}
+            >
+              <ExpoLinearGradient
+                colors={['rgba(0,0,0,0.04)', 'rgba(0,0,0,0.38)']}
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.sweep,
+                  {
+                    transform: [
+                      { rotate: '18deg' },
+                      { translateX: shine.interpolate({ inputRange: [0, 1], outputRange: [-260, 340] }) },
+                    ],
+                  },
+                ]}
+              />
 
-            <View style={styles.planRow}>
-              <View style={[styles.planIcon, { backgroundColor: colors.primary + '22' }]}>
-                <Feather name="award" size={13} color={colors.primary} />
-              </View>
-              <Text style={[styles.planName, { color: colors.primary }]}>{t.subComparePro}</Text>
-            </View>
-
-            <View style={styles.priceRow}>
-              {showLoadingPrice ? (
-                <ActivityIndicator size="small" color={colors.text} />
-              ) : showUnavailable ? (
-                <Text style={[styles.pricePeriod, { color: colors.mutedForeground }]}>{t.subPricingUnavailable}</Text>
-              ) : (
-                <>
-                  {!iosIAP && <Text style={[styles.priceCurrency, { color: colors.text }]}>EGP</Text>}
-                  <Text style={[styles.priceWhole, { color: colors.text }]}>
-                    {iosIAP ? iosPriceWhole : stripePriceWhole}
-                  </Text>
-                  <Text style={[styles.pricePeriod, { color: colors.mutedForeground }]}>/{t.subBillingMonthly.toLowerCase()}</Text>
-                </>
-              )}
-            </View>
-            {isAnnual && !showLoadingPrice && !showUnavailable && (
-              <Text style={[styles.billedAnnually, { color: colors.mutedForeground }]}>
-                {iosIAP && activePkg ? activePkg.product.priceString : t.subFromAnnual} · {t.subSaveVsMonthly}
-              </Text>
-            )}
-            <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>{t.subHeroSub}</Text>
-
-            <View style={[styles.divider, { borderColor: colors.primary + '30' }]} />
-
-            {highlights.map(f => (
-              <View key={f.text} style={styles.featureRow}>
-                <View style={[styles.featureIcon, { backgroundColor: colors.muted }]}>
-                  <Feather name="check" size={11} color={colors.primary} />
+              {isAnnual && !!savingsPct && savingsPct > 0 && (
+                <View style={styles.ribbon}>
+                  <Text style={styles.ribbonText}>-{savingsPct}%</Text>
                 </View>
-                <Text style={[styles.featureText, { color: colors.text }]}>{f.text}</Text>
+              )}
+
+              <View style={styles.planRow}>
+                <Text style={styles.issuer}>INVESTRY</Text>
+                <View style={styles.planBadge}>
+                  <Feather name="award" size={11} color="#2b2308" />
+                  <Text style={styles.planBadgeText}>{t.subComparePro}</Text>
+                </View>
               </View>
-            ))}
+
+              <View style={styles.priceRow}>
+                {showLoadingPrice ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : showUnavailable ? (
+                  <Text style={styles.pricePeriod}>{t.subPricingUnavailable}</Text>
+                ) : (
+                  <>
+                    {!iosIAP && <Text style={styles.priceCurrency}>EGP</Text>}
+                    <Text style={styles.priceWhole}>
+                      {iosIAP ? iosPriceWhole : stripePriceWhole}
+                    </Text>
+                    <Text style={styles.pricePeriod}>/{t.subBillingMonthly.toLowerCase()}</Text>
+                  </>
+                )}
+              </View>
+              {isAnnual && !showLoadingPrice && !showUnavailable && (
+                <Text style={styles.billedAnnually}>
+                  {iosIAP && activePkg ? activePkg.product.priceString : t.subFromAnnual} · {t.subSaveVsMonthly}
+                </Text>
+              )}
+              <Text style={styles.heroSub}>{t.subHeroSub}</Text>
+
+              <View style={styles.divider} />
+
+              {highlights.map(f => (
+                <View key={f.text} style={styles.featureRow}>
+                  <View style={styles.featureIcon}>
+                    <Feather name="check" size={11} color="#2b2308" />
+                  </View>
+                  <Text style={styles.featureText}>{f.text}</Text>
+                </View>
+              ))}
+            </ExpoLinearGradient>
           </View>
 
           {/* Full Free-vs-Pro comparison — every real gate in the app, not
               just the Pro highlights above. Row order matches the audit's
               real feature matrix; locked rows show a lock/check icon
               instead of repeating "Locked"/"Full access" text nine times. */}
+          <Text style={[styles.compareSectionTitle, { color: colors.mutedForeground }]}>{t.subCompareTitle}</Text>
           <View style={[styles.compareCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.compareHeaderRow}>
+            <View style={[styles.compareHeaderRow, { borderBottomColor: colors.border }]}>
               <View style={{ flex: 1.6 }} />
               <Text style={[styles.compareHeaderLabel, { color: colors.mutedForeground }]}>{t.subPlanFree}</Text>
-              <Text style={[styles.compareHeaderLabel, { color: colors.primary }]}>{t.subComparePro}</Text>
+              <View style={[styles.compareHeaderProWrap, { backgroundColor: colors.primary + '18' }]}>
+                <Text style={[styles.compareHeaderLabel, styles.compareHeaderProLabel, { color: colors.primary }]}>{t.subComparePro}</Text>
+              </View>
             </View>
             <PlanCompareRow label={t.holdings} freeValue={t.subCompareHoldingsFree} proValue={t.subCompareHoldingsPro} />
             <PlanCompareRow label={t.cashAccounts} freeValue={t.subCompareCashFree} proValue={t.subCompareCashPro} />
@@ -292,6 +353,9 @@ export function Paywall() {
             <PlanCompareRow label={t.subMarketIntelligence} freeValue={t.subCompareMarketIntelFree} proValue={t.subCompareMarketIntelPro} locked />
             <PlanCompareRow label={t.subPortfolioAnalytics} freeValue={t.subComparePortfolioAnalyticsFree} proValue={t.subComparePortfolioAnalyticsPro} locked />
             <PlanCompareRow label={t.fixPlanTitle} freeValue={t.subCompareFixPlanFree} proValue={t.subCompareFixPlanPro} locked />
+            <PlanCompareRow label={t.dividendsTitle} freeValue={t.subCompareDividendsFree} proValue={t.subCompareDividendsPro} />
+            <PlanCompareRow label={t.exportMyData} freeValue={t.subCompareExportFree} proValue={t.subCompareExportPro} locked />
+            <PlanCompareRow label={t.targetAllocationTitle} freeValue={t.subCompareTargetAllocationFree} proValue={t.subCompareTargetAllocationPro} locked />
           </View>
 
           {/* Most of the app isn't a paywall at all — make that explicit
@@ -361,27 +425,43 @@ const styles = StyleSheet.create({
   savingsBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   savingsBadgeText: { fontSize: 10, fontFamily: 'Inter_700Bold' },
 
-  priceCard: { borderRadius: 22, borderWidth: 1.5, padding: 20, paddingTop: 22, marginBottom: 16, overflow: 'hidden' },
-  ribbon: { position: 'absolute', top: 14, end: 14, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
-  ribbonText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
-  planRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 },
-  planIcon: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  planName: { fontSize: 13, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.8 },
+  // Wrapped separately from the gradient itself so the shadow (which needs
+  // overflow: visible) and the gradient's own overflow: hidden (needed to
+  // clip the sweep + rounded corners) don't fight on the same view.
+  priceCardWrap: {
+    borderRadius: 24, marginBottom: 16,
+    shadowColor: '#C79A2E', shadowOpacity: 0.35, shadowRadius: 16, shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  priceCard: { borderRadius: 24, padding: 20, paddingTop: 22, overflow: 'hidden' },
+  sweep: { position: 'absolute', top: -100, bottom: -100, width: 100, backgroundColor: 'rgba(255,255,255,0.16)' },
+  ribbon: { position: 'absolute', top: 14, end: 14, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: '#fff' },
+  ribbonText: { fontSize: 11, fontFamily: 'Inter_700Bold', color: '#241C08' },
+  planRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  issuer: { fontSize: 13, fontFamily: 'Inter_700Bold', letterSpacing: 2.2, color: 'rgba(255,255,255,0.92)' },
+  planBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  planBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold', textTransform: 'uppercase', letterSpacing: 0.6, color: '#2b2308' },
   priceRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, minHeight: 44 },
-  priceCurrency: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 6 },
-  priceWhole: { fontSize: 32, fontFamily: 'Inter_700Bold', letterSpacing: -1 },
-  pricePeriod: { fontSize: 15, fontFamily: 'Inter_400Regular', marginBottom: 7 },
-  billedAnnually: { fontSize: 12.5, fontFamily: 'Inter_500Medium', marginTop: 3 },
-  heroSub: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19, marginTop: 12 },
-  divider: { borderTopWidth: 1, borderStyle: 'dashed', marginVertical: 16 },
+  priceCurrency: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 6, color: '#fff' },
+  priceWhole: { fontSize: 36, fontFamily: 'Inter_800ExtraBold', letterSpacing: -1, color: '#fff' },
+  pricePeriod: { fontSize: 15, fontFamily: 'Inter_400Regular', marginBottom: 7, color: 'rgba(255,255,255,0.75)' },
+  billedAnnually: { fontSize: 12.5, fontFamily: 'Inter_500Medium', marginTop: 3, color: 'rgba(255,255,255,0.75)' },
+  heroSub: { fontSize: 13, fontFamily: 'Inter_400Regular', lineHeight: 19, marginTop: 12, color: 'rgba(255,255,255,0.75)' },
+  divider: { borderTopWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.28)', marginVertical: 16 },
 
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  featureIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  featureText: { flex: 1, fontSize: 13.5, fontFamily: 'Inter_500Medium', lineHeight: 19 },
+  featureIcon: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  featureText: { flex: 1, fontSize: 13.5, fontFamily: 'Inter_500Medium', lineHeight: 19, color: 'rgba(255,255,255,0.94)' },
 
-  compareCard: { borderRadius: 18, borderWidth: 1, padding: 14, marginBottom: 16 },
-  compareHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 },
+  compareCard: { borderRadius: 20, borderWidth: 1, padding: 14, marginBottom: 16 },
+  compareHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 10, marginBottom: 4, borderBottomWidth: StyleSheet.hairlineWidth },
   compareHeaderLabel: { flex: 1, fontSize: 10.5, fontFamily: 'Inter_700Bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.6 },
+  // The Pro column gets a soft pill behind its header label — same trick
+  // as PlanCompareRow's bold proValue text, just at the header level, so
+  // the eye lands on "this is the column that matters" before reading a
+  // single row.
+  compareHeaderProWrap: { flex: 1, borderRadius: 8, paddingVertical: 3 },
+  compareHeaderProLabel: { flex: 0 },
 
   alsoFreeSection: { marginBottom: 16 },
   compareSectionTitle: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 10 },

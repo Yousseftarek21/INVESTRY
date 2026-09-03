@@ -13,6 +13,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { usePortfolioTargets, AllocationClass, TargetAllocation } from '@/hooks/usePortfolioTargets';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { toWesternDigits } from '@/utils/parseAmount';
+import { useSubscription } from '@/context/SubscriptionContext';
 
 interface ClassMeta {
   key: AllocationClass;
@@ -26,6 +27,11 @@ export default function TargetAllocationScreen() {
   const { impact } = useHaptic();
   const insets = useSafeAreaInsets();
   const { configured, targets, driftAlertsEnabled: savedDriftEnabled, isLoading, save } = usePortfolioTargets();
+  // target-allocation.tsx is presentation:"modal" (see app/_layout.tsx) —
+  // must use showPaywallFromModal(), same reasoning as every other
+  // modal-presented gate in the app (see SubscriptionContext.tsx's own
+  // comment on that function).
+  const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
 
   const CLASSES: ClassMeta[] = useMemo(() => [
     { key: 'gold', color: colors.primary, icon: { lib: 'mci', name: 'gold' } },
@@ -90,6 +96,15 @@ export default function TargetAllocationScreen() {
     }
     if (overLimit) {
       Alert.alert(t.targetAllocationTitle, t.targetSumWarning);
+      return;
+    }
+    // Pro feature — setting targets for the first time (`!configured`) is
+    // gated; a user who already had targets configured before the paywall
+    // went live keeps editing them freely, same grandfather principle as
+    // every other gate in the app (never restrict what already exists,
+    // only new adds/setup going forward).
+    if (!configured && !subLoading && !featuresUnlocked) {
+      showPaywallFromModal();
       return;
     }
     impact();

@@ -98,11 +98,18 @@ function getHoldingValue(h: Holding, p: PricesArg): number {
   return 0;
 }
 
-function getHoldingCost(h: Holding): number {
+function getHoldingCost(h: Holding, p: PricesArg): number {
   if (h.type === 'gold' || h.type === 'silver') return h.grams * h.purchasePricePerGram;
   if (h.type === 'stock') return h.shares * h.purchasePricePerShare;
   if (h.type === 'real_estate') return h.purchasePrice;
-  if (h.type === 'personal_asset') return h.purchasePrice;
+  // Bug fix: this used to return h.purchasePrice raw, un-converted, while
+  // getHoldingValue's own personal_asset branch DOES convert USD to EGP —
+  // for a USD-denominated asset that mismatch made "gain" (value − cost)
+  // compare an EGP number against a ~51x-smaller USD one, showing a
+  // nonsense return (e.g. a flat $1,000 asset reading as a ~5000% gain) and
+  // corrupting Sort by Return. Matches getHoldingValue's own conversion
+  // exactly, and matches HoldingCard.tsx's canonical personalAssetCostEGP.
+  if (h.type === 'personal_asset') return h.purchasePrice * (h.currency === 'USD' && p ? p.usdToEgp : 1);
   if (h.type === 'fixed_income') return h.principal;
   return 0;
 }
@@ -207,8 +214,8 @@ export default function HoldingsScreen() {
     } else if (sortMode === 'gain') {
       for (const type of Object.keys(groups)) {
         groups[type].sort((a, b) => {
-          const gA = getHoldingValue(a.displayHolding, prices) - getHoldingCost(a.displayHolding);
-          const gB = getHoldingValue(b.displayHolding, prices) - getHoldingCost(b.displayHolding);
+          const gA = getHoldingValue(a.displayHolding, prices) - getHoldingCost(a.displayHolding, prices);
+          const gB = getHoldingValue(b.displayHolding, prices) - getHoldingCost(b.displayHolding, prices);
           return gB - gA;
         });
       }

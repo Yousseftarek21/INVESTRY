@@ -21,7 +21,14 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { useDividends } from '@/context/DividendsContext';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { Dividend, StockHolding } from '@/types';
+
+// Pro feature — dividends tracking was unlimited and free before the
+// paywall; gated now to match Recurring Income's own shape (also 0 free,
+// see recurring-income.tsx), which this screen was previously the one
+// inconsistent exception to.
+const FREE_LIMIT = 0;
 
 const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED'];
 
@@ -46,6 +53,12 @@ export default function DividendsScreen() {
   const { cashAccounts, updateCashAccount } = useCash();
   const { holdings } = useHoldings();
   const { dividends, addDividend, updateDividend, removeDividend } = useDividends();
+  // dividends.tsx is presentation:"modal" (see app/_layout.tsx) — must use
+  // showPaywallFromModal(), not showPaywall(), or the paywall opens with
+  // paywallVisible=true but nothing actually appears on screen (iOS won't
+  // reliably stack a second native modal on a screen that's itself already
+  // a modal presentation — see SubscriptionContext.tsx's own comment).
+  const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
 
   const stockHoldings = useMemo(
     () => holdings.filter((h): h is StockHolding => h.type === 'stock'),
@@ -116,6 +129,10 @@ export default function DividendsScreen() {
     }
     if (amount <= 0) {
       Alert.alert(t.amount, t.incomeAmountError);
+      return;
+    }
+    if (!editingId && !subLoading && !featuresUnlocked && dividends.length >= FREE_LIMIT) {
+      showPaywallFromModal();
       return;
     }
 

@@ -16,6 +16,7 @@ import { useCash } from '@/context/CashContext';
 import { useMarketPrices } from '@/hooks/usePrices';
 import { apiFetch } from '@/utils/api';
 import { exportPortfolioAsCsv, exportPortfolioAsPdf } from '@/utils/exportPortfolio';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { DetailModal } from '@/components/DetailModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { Sect, NavRow, ToggleRow, settingsScreenStyles as s } from '@/components/SettingsPrimitives';
@@ -34,6 +35,10 @@ export default function SettingsPrivacyScreen() {
   const { holdings, removeHolding } = useHoldings();
   const { cashAccounts } = useCash();
   const { data: prices } = useMarketPrices();
+  // Not modal-presented (settings-privacy is a plain stack push, see
+  // app/_layout.tsx), so showPaywall() (not showPaywallFromModal()) is
+  // correct here — same reasoning as settings-notifications.tsx's own gate.
+  const { featuresUnlocked, showPaywall } = useSubscription();
 
   const [modal, setModal] = useState<{ title: string; content: string } | null>(null);
   const [confirm, setConfirm] = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
@@ -85,6 +90,12 @@ export default function SettingsPrivacyScreen() {
 
   const handleExport = () => {
     haptic();
+    // Pro feature — CSV/PDF export was unrestricted before the paywall;
+    // gated now as a real, low-cost "power user" perk. Deleting your own
+    // data (handleDeleteMenu below) stays free regardless of plan — that's
+    // a privacy/data-rights control, not a premium feature, and must never
+    // be paywalled.
+    if (!featuresUnlocked) { showPaywall(); return; }
     Alert.alert(t.exportMyData, undefined, [
       { text: t.exportAsCsv, onPress: handleExportCsv },
       { text: t.exportAsPdf, onPress: handleExportPdf },

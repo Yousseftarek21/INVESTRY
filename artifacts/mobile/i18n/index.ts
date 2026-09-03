@@ -642,6 +642,9 @@ const en = {
   // comparison row of its own anywhere before this.
   subFixMyPortfolio: 'Fix My Portfolio — a concrete rebalancing plan, not just a diagnosis',
   subBenchmarkCompare: 'Compare your portfolio to the community benchmark',
+  subDividendsFull: 'Unlimited dividend tracking',
+  subExportData: 'Export your portfolio as CSV or PDF',
+  subTargetAllocation: 'Set target allocations for rebalancing',
   subSaveVsMonthly: 'vs. paying monthly',
   subManageSubscription: 'Manage Subscription',
   subUpgradeToProDesc: 'Unlimited investments, AI Assistant & more',
@@ -687,6 +690,7 @@ const en = {
   // t.cashAccounts, etc.) rather than new copy, so the comparison can't
   // silently drift from what the app calls that feature everywhere else.
   subPlanFree: 'Free',
+  subCompareTitle: 'Free vs. Pro, feature by feature',
   subAlsoFreeTitle: 'Already free — no upgrade needed',
   subCompareHoldingsFree: '1 holding',
   subCompareHoldingsPro: 'Unlimited',
@@ -708,6 +712,12 @@ const en = {
   subComparePortfolioAnalyticsPro: 'Full access',
   subCompareFixPlanFree: 'Locked',
   subCompareFixPlanPro: 'Full access',
+  subCompareDividendsFree: 'Not included',
+  subCompareDividendsPro: 'Unlimited',
+  subCompareExportFree: 'Locked',
+  subCompareExportPro: 'Full access',
+  subCompareTargetAllocationFree: 'Locked',
+  subCompareTargetAllocationPro: 'Full access',
 
   // Footer
   footerTagline: 'Egypt · Live Market Data · 2024',
@@ -2258,6 +2268,9 @@ const ar: typeof en = {
   subNotificationsControl: 'تحكم كامل في كل إعدادات الإشعارات',
   subFixMyPortfolio: 'إصلاح محفظتي — خطة إعادة توازن ملموسة، لا مجرد تشخيص',
   subBenchmarkCompare: 'قارن محفظتك بمتوسط أداء المجتمع',
+  subDividendsFull: 'تتبّع أرباح موزعة غير محدود',
+  subExportData: 'تصدير محفظتك كملف CSV أو PDF',
+  subTargetAllocation: 'حدد نسب توزيع مستهدفة لإعادة التوازن',
   subSaveVsMonthly: 'مقارنة بالدفع الشهري',
   subManageSubscription: 'إدارة الاشتراك',
   subUpgradeToProDesc: 'استثمارات غير محدودة، المساعد الذكي والمزيد',
@@ -2299,6 +2312,7 @@ const ar: typeof en = {
   subSignInButton: 'تسجيل الدخول',
 
   subPlanFree: 'مجاني',
+  subCompareTitle: 'مجاني مقابل Pro، ميزة بميزة',
   subAlsoFreeTitle: 'مجاني بالفعل — لا حاجة للترقية',
   subCompareHoldingsFree: 'استثمار واحد',
   subCompareHoldingsPro: 'غير محدود',
@@ -2320,6 +2334,12 @@ const ar: typeof en = {
   subComparePortfolioAnalyticsPro: 'وصول كامل',
   subCompareFixPlanFree: 'مقفل',
   subCompareFixPlanPro: 'وصول كامل',
+  subCompareDividendsFree: 'غير متاح',
+  subCompareDividendsPro: 'غير محدود',
+  subCompareExportFree: 'مقفل',
+  subCompareExportPro: 'وصول كامل',
+  subCompareTargetAllocationFree: 'مقفل',
+  subCompareTargetAllocationPro: 'وصول كامل',
 
   // Footer
   footerTagline: 'مصر · بيانات حية · ٢٠٢٤',
