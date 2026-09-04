@@ -1446,10 +1446,22 @@ export default function HomeScreen() {
            linked cash account's own balance. */}
       {goalsSummary && (
         <TouchableOpacity
-          style={styles.goalsRow}
+          style={[styles.goalsRow, { backgroundColor: colors.card, borderColor: colors.primary + '2E' }]}
           onPress={() => router.push('/goals' as any)}
-          activeOpacity={0.7}
+          activeOpacity={0.85}
         >
+          {/* Deliberately its own look, not a re-skinned Cash/holding card —
+              a diagonal gold wash instead of a flat fill, plus a soft glow
+              behind the ring, so this reads as a distinct, warmer "reach for
+              this" moment rather than one more line-item card in the list. */}
+          <ExpoLinearGradient
+            colors={[colors.primary + '22', colors.card, colors.card]}
+            locations={[0, 0.65, 1]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View style={[styles.goalsGlow, { backgroundColor: colors.primary + '26' }]} pointerEvents="none" />
           {goalsSummary.single ? (
             <>
               <GoalRing
@@ -2075,7 +2087,8 @@ const styles = StyleSheet.create({
   cashTotalLabel: { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashTotalValue: { fontSize: 12, fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] },
 
-  goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18 },
+  goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18, borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+  goalsGlow: { position: 'absolute', width: 100, height: 100, borderRadius: 50, top: -30, left: -20 },
   goalRingCluster: { flexDirection: 'row' },
   goalsInfo: { flex: 1, gap: 2, minWidth: 0 },
   goalsTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
