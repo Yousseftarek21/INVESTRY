@@ -117,10 +117,14 @@ export default function GoalsScreen() {
   // A goal linked to a cash account tracks that account's live balance
   // instead of the manually-entered savedAmount — falls back to the last
   // stored snapshot if the account was since deleted.
+  // ?? 0 guards: savedAmount is typed as a plain number but has come
+  // through null at runtime (same gap the Overview hero card's
+  // effectiveGoalSaved hit and was fixed for) — an unguarded null here
+  // crashes every .toLocaleString() call below that reads from it.
   const effectiveSaved = useCallback((g: Goal) => {
-    if (!g.linkedCashAccountId) return g.savedAmount;
+    if (!g.linkedCashAccountId) return g.savedAmount ?? 0;
     const account = cashAccounts.find(a => a.id === g.linkedCashAccountId);
-    return account ? account.balance : g.savedAmount;
+    return (account ? account.balance : g.savedAmount) ?? 0;
   }, [cashAccounts]);
 
   const resetForm = useCallback(() => {
@@ -138,8 +142,10 @@ export default function GoalsScreen() {
   const openEdit = (g: Goal) => {
     setEditingId(g.id);
     setName(g.name);
-    setTargetRaw(String(g.targetAmount));
-    setSavedRaw(String(g.savedAmount));
+    // ?? 0 — a null here isn't a crash (String(null) is "null"), but it
+    // put the literal word "null" into the edit field instead of 0.
+    setTargetRaw(String(g.targetAmount ?? 0));
+    setSavedRaw(String(g.savedAmount ?? 0));
     setDeadline(g.deadline ?? '');
     setNote(g.note ?? '');
     setLinkedAccountId(g.linkedCashAccountId ?? null);
@@ -335,7 +341,7 @@ export default function GoalsScreen() {
                                 <Text style={[s.numUnit, { color: colors.mutedForeground }]}>  {linkedAccount?.currency ?? 'EGP'} saved</Text>
                               </Text>
                               <Text style={[s.targetNum, { color: colors.mutedForeground, flexShrink: 1 }]} numberOfLines={1}>
-                                of {g.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                                of {(g.targetAmount ?? 0).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
                               </Text>
                             </View>
 
@@ -550,7 +556,7 @@ export default function GoalsScreen() {
                   if (!g) return null;
                   return (
                     <Text style={[s.progressSub, { color: colors.mutedForeground, marginBottom: 4 }]}>
-                      {t.currentlySavedLabel}: {g.savedAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+                      {t.currentlySavedLabel}: {(g.savedAmount ?? 0).toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
                     </Text>
                   );
                 })()}

@@ -456,7 +456,7 @@ export default function HomeScreen() {
     return {
       isFlat,
       up,
-      text: isFlat ? '±0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`,
+      text: isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`,
     };
   }, [cashTodayEGP, toDisp, fmtCompact]);
   // Tweens through the intermediate values (rather than jumping straight to
