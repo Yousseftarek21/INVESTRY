@@ -1036,24 +1036,148 @@ export default function HomeScreen() {
             </Pressable>
           )}
 
-          {/* Pending income called out on its own — it's counted in the net
-              worth line above, but showing it as its own line means it's
-              never mistaken for cash already in hand (the exact confusion
-              a real user's "money owed to me" feedback flagged). */}
-          {pendingIncomeEGP > 0 && (
-            <Pressable
-              style={styles.netWorthRow}
-              onPress={() => { impact(); router.push('/recurring-income'); }}
-              hitSlop={8}
-            >
-              <Feather name="clock" size={10} color="#F59E0B" />
-              <Text style={[styles.netWorthTxt, { color: '#F59E0B' }]}>
-                {hideValues
-                  ? `${t.pendingIncomeLabel}: ••••••`
-                  : `${t.pendingIncomeLabel}: ${fmtCompact(toDisp(pendingIncomeEGP))} ${displayCurrency}`}
-              </Text>
-              <Feather name={forwardArrow()} size={9} color="#F59E0B" style={{ opacity: 0.7 }} />
-            </Pressable>
+          {/* ── EXPERIMENTAL (unified hero card, simulator-only) ─────
+              Cash + Pending Income, folded in from what used to be their
+              own separate cards below — no more scrolling to see them.
+              Cash shows only the converted total here (same toDisp/
+              fmtCompact math the old Cash card used for its own total
+              row); the full per-currency breakdown is still one tap away
+              on /cash-accounts, unchanged. Two columns when both exist,
+              a single wider row when only one does — same "don't leave a
+              bordered slot empty" principle already applied to Goals
+              below. Neither renders at all when there's nothing real to
+              show, matching how Net Worth/Pending already gate above.
+              Both blocks below are wrapped in one View so they're a
+              single child of heroBody's own `gap: 16` flex layout — that
+              gap was compounding with each block's own margin/padding,
+              turning what should've been one tight hairline between them
+              into a wide dead zone with a line lost in the middle of it.
+              Wrapping them means heroBody's gap only applies outside this
+              whole group; the space between Cash/Pending and Goals is
+              fully controlled right here instead. */}
+          {(cashAccounts.length > 0 || pendingIncomeEGP > 0 || goalsSummary) && (
+          <View style={styles.heroExtras}>
+          {(cashAccounts.length > 0 || pendingIncomeEGP > 0) && (
+            <View style={[styles.heroWealthStrip, { borderTopColor: colors.border }]}>
+              {cashAccounts.length > 0 && (
+                <TouchableOpacity
+                  style={styles.heroWealthCell}
+                  onPress={() => { impact(); router.push('/cash-accounts' as any); }}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
+                    <BanknoteIcon size={13} color={colors.green} />
+                  </View>
+                  <View style={styles.heroWealthText}>
+                    <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
+                    <Text style={[styles.heroWealthValue, { color: colors.text }]} numberOfLines={1}>
+                      {hideValues ? '••••••' : cashTotalDispText}
+                    </Text>
+                  </View>
+                  {!hideValues && !cashTodayLoading && (() => {
+                    const delta = toDisp(cashTodayEGP);
+                    const isFlat = Math.abs(delta) < 0.005;
+                    const up = delta > 0;
+                    const c = isFlat ? colors.mutedForeground : up ? colors.green : colors.red;
+                    return (
+                      <Text style={[styles.heroWealthBadge, { color: c }]} numberOfLines={1}>
+                        {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
+                      </Text>
+                    );
+                  })()}
+                </TouchableOpacity>
+              )}
+              {/* Separate stretched View, not a borderRight on the Cash
+                  cell — the border approach let the divider's height
+                  follow the cell's own box instead of the row's, and it
+                  kept overshooting past the row's real bottom edge.
+                  alignSelf:'stretch' ties it to the row directly, same
+                  pattern iDivider already uses between Invested/Current/
+                  Return. */}
+              {cashAccounts.length > 0 && pendingIncomeEGP > 0 && (
+                <View style={[styles.heroWealthDivider, { backgroundColor: colors.border }]} />
+              )}
+              {pendingIncomeEGP > 0 && (
+                <TouchableOpacity
+                  style={styles.heroWealthCell}
+                  onPress={() => { impact(); router.push('/recurring-income'); }}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.heroWealthChip, { backgroundColor: '#F59E0B18' }]}>
+                    <Feather name="clock" size={13} color="#F59E0B" />
+                  </View>
+                  <View style={styles.heroWealthText}>
+                    <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]}>{t.pendingIncomeLabel}</Text>
+                    <Text style={[styles.heroWealthValue, { color: '#F59E0B' }]} numberOfLines={1}>
+                      {hideValues ? '••••••' : fmtCompact(toDisp(pendingIncomeEGP))}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* ── EXPERIMENTAL (unified hero card, simulator-only) ─────
+              Goals, folded in from its own row below — same GoalRing
+              component, same single-vs-cluster logic, just smaller and
+              living here instead of its own card. */}
+          {goalsSummary && (
+            <View style={[styles.heroGoalWrap, { borderTopColor: colors.border }]}>
+              <TouchableOpacity
+                style={[styles.heroGoalBand, { backgroundColor: colors.card, borderColor: colors.primary + '2E' }]}
+                onPress={() => { impact(); router.push('/goals' as any); }}
+                activeOpacity={0.85}
+              >
+                <ExpoLinearGradient
+                  colors={[colors.primary + '1A', colors.card, colors.card]}
+                  locations={[0, 0.65, 1]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                  pointerEvents="none"
+                />
+                {goalsSummary.single ? (
+                  <GoalRing
+                    size={19} strokeWidth={2}
+                    pct={goalsSummary.single.pct}
+                    color={colors.green}
+                    fillColor={colors.primary}
+                    trackColor={colors.border}
+                    done={goalsSummary.single.done}
+                  />
+                ) : (
+                  <View style={styles.goalRingCluster}>
+                    {goalsSummary.sorted.slice(0, 3).map((g, i) => (
+                      <View key={g.goal.id} style={i > 0 ? { marginLeft: -5 } : undefined}>
+                        <GoalRing
+                          size={19} strokeWidth={2}
+                          pct={g.pct}
+                          color={g.done ? colors.green : GOAL_RING_COLORS[i % GOAL_RING_COLORS.length]}
+                          trackColor={colors.border}
+                          done={g.done}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                )}
+                <View style={styles.heroGoalText}>
+                  <Text style={[styles.heroGoalLabel, { color: colors.primary }]}>{t.goals}</Text>
+                  <Text style={[styles.heroGoalAmount, { color: colors.text }]} numberOfLines={1}>
+                    {hideValues ? '••••••' : (goalsSummary.single
+                      ? t.overviewGoalAmount(
+                          goalsSummary.single.saved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                          goalsSummary.single.goal.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                        )
+                      : t.overviewGoalAmount(
+                          goalsSummary.totalSaved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                          goalsSummary.totalTarget.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                        ))}
+                  </Text>
+                </View>
+                <Feather name={forwardChevron()} size={13} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          )}
+          </View>
           )}
 
           {/* Invested · Current · Return strip */}
@@ -1305,238 +1429,6 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
-
-      {/* ── Cash Card ─────────────────────────────────────────────
-           Always visible. When no accounts exist, shows a quiet empty
-           state that taps into the Cash Accounts screen to add one. */}
-      <TouchableOpacity
-        style={[styles.cashCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-        onPress={() => router.push('/cash-accounts' as any)}
-        activeOpacity={0.85}
-      >
-        <View style={[styles.cashIconWrap, { backgroundColor: colors.green + '1A' }]}>
-          <BanknoteIcon size={20} color={colors.green} />
-        </View>
-        {/* One row per currency held — the same treatment whether there is
-            one or several, so the card doesn't change shape as a second
-            currency appears. Every row carries identical weight: same size,
-            same colour, its own currency label, amount aligned to a shared
-            right edge. Below the native rows, a single muted line converts
-            the whole total into the portfolio card's selected display
-            currency — same toDisp() conversion used everywhere else on this
-            screen — so switching that selector visibly reaches cash too,
-            without hiding what each account is actually held in. */}
-        <View style={styles.cashInfo}>
-          <Text style={[styles.cashLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
-          {cashAccounts.length === 0 ? (
-            <Text style={[styles.cashValue, { color: colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_400Regular' }]}>
-              {t.noCashAccountsYet}
-            </Text>
-          ) : cashByCurrency.length === 1 ? (
-            // Only one currency held — there's nothing to total, so it's
-            // just shown converted directly instead of alongside a
-            // redundant "Total" line repeating the same single number.
-            //
-            <View style={styles.cashRows}>
-              <View style={styles.cashRow}>
-                <Text style={[styles.cashRowValue, styles.cashRowValueSolo, { color: colors.text }]} numberOfLines={1}>
-                  {hideValues ? '••••••' : cashTotalDispText}
-                </Text>
-                <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{displayCurrency}</Text>
-                {!hideValues && (cashTodayLoading ? (
-                  // Same reserved-footprint treatment as the Cash Accounts
-                  // screen's own badge and the portfolio hero's Today chip —
-                  // never pops in after the fact, never disappears on a flat
-                  // day, so this row's width is stable from first paint.
-                  <View style={[styles.cashTodayBadge, { opacity: 0 }]} pointerEvents="none">
-                    <Feather name="minus" size={9} color="transparent" />
-                    <Text style={styles.cashTodayBadgeText}>+12.3K</Text>
-                  </View>
-                ) : (() => {
-                  const delta = toDisp(cashTodayEGP);
-                  const isFlat = Math.abs(delta) < 0.005;
-                  const up = delta > 0;
-                  const c = isFlat ? colors.mutedForeground : up ? colors.green : colors.red;
-                  return (
-                    <View style={[styles.cashTodayBadge, { backgroundColor: c + '18' }]}>
-                      <Feather name={isFlat ? 'minus' : up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
-                      <Text style={[styles.cashTodayBadgeText, { color: c }]} numberOfLines={1}>
-                        {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
-                      </Text>
-                    </View>
-                  );
-                })())}
-              </View>
-            </View>
-          ) : (
-            <View style={styles.cashRows}>
-              {cashByCurrency.slice(0, CASH_CURRENCY_CELLS).map(([cur, amt], i) => (
-                <React.Fragment key={cur}>
-                  {i > 0 && <View style={[styles.cashRowSep, { backgroundColor: colors.border }]} />}
-                <View style={styles.cashRow}>
-                  <Text
-                    style={[
-                      styles.cashRowValue,
-                      { color: colors.text, minWidth: cashAmountWidth },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {hideValues ? '••••••' : fmtCompact(amt)}
-                  </Text>
-                  <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{cur}</Text>
-                  {/* Same row as the amount — badge shape matches
-                      HoldingCard's gainPill (icon, 7/3 padding, 11px text),
-                      but this one stays inline next to the currency code
-                      rather than on its own line below. Minus the currency
-                      code — the text right before it already names it.
-                      Hidden along with the balances when values are masked:
-                      a visible delta would leak the very movement the mask
-                      exists to hide. */}
-                  {!hideValues && (cashTodayLoading ? (
-                    <View style={[styles.cashTodayBadge, { opacity: 0 }]} pointerEvents="none">
-                      <Feather name="minus" size={9} color="transparent" />
-                      <Text style={styles.cashTodayBadgeText}>+12.3K</Text>
-                    </View>
-                  ) : (() => {
-                    const delta = cashTodayByCurrency.get(cur) ?? 0;
-                    const isFlat = Math.abs(delta) < 0.005;
-                    const up = delta > 0;
-                    const c = isFlat ? colors.mutedForeground : up ? colors.green : colors.red;
-                    return (
-                      <View style={[styles.cashTodayBadge, { backgroundColor: c + '18' }]}>
-                        <Feather name={isFlat ? 'minus' : up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
-                        <Text style={[styles.cashTodayBadgeText, { color: c }]} numberOfLines={1}>
-                          {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
-                        </Text>
-                      </View>
-                    );
-                  })())}
-                </View>
-                </React.Fragment>
-              ))}
-              {cashByCurrency.length > CASH_CURRENCY_CELLS && (
-                <Text style={[styles.cashRowCur, { color: colors.mutedForeground, fontSize: 11 }]} numberOfLines={1}>
-                  {t.cashMoreCurrencies(cashByCurrency.length - CASH_CURRENCY_CELLS)}
-                </Text>
-              )}
-              {!hideValues && (
-                <>
-                  <View style={[styles.cashRowSep, { backgroundColor: colors.border }]} />
-                  <View style={styles.cashTotalRow}>
-                    <Text style={[styles.cashTotalLabel, { color: colors.mutedForeground }]}>
-                      {t.cashConvertedTotalLabel}
-                    </Text>
-                    <Text style={[styles.cashTotalValue, { color: colors.textSecondary }]} numberOfLines={1}>
-                      {`${cashTotalDispText} ${displayCurrency}`}
-                    </Text>
-                  </View>
-                </>
-              )}
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
-
-      {/* ── Goals row ──────────────────────────────────────────────
-           A slim single line, not a card — the ring(s) carry the visual
-           weight. Only shown when goals exist; a single goal gets one ring,
-           more than one gets an overlapping cluster (up to 3, nearest
-           deadline first) plus an average across all of them. Placed right
-           after Cash because a goal's "saved" figure is often literally a
-           linked cash account's own balance. */}
-      {goalsSummary && (
-        <TouchableOpacity
-          style={[styles.goalsRow, { backgroundColor: colors.card, borderColor: colors.primary + '2E' }]}
-          onPress={() => router.push('/goals' as any)}
-          activeOpacity={0.85}
-        >
-          {/* Deliberately its own look, not a re-skinned Cash/holding card —
-              a diagonal gold wash instead of a flat fill, plus a soft glow
-              behind the ring, so this reads as a distinct, warmer "reach for
-              this" moment rather than one more line-item card in the list. */}
-          <ExpoLinearGradient
-            colors={[colors.primary + '22', colors.card, colors.card]}
-            locations={[0, 0.65, 1]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          <View style={[styles.goalsGlow, { backgroundColor: colors.primary + '26' }]} pointerEvents="none" />
-          {goalsSummary.single ? (
-            <>
-              <GoalRing
-                size={22} strokeWidth={2.5}
-                pct={goalsSummary.single.pct}
-                color={colors.green}
-                fillColor={colors.primary}
-                trackColor={colors.border}
-                done={goalsSummary.single.done}
-              />
-              <View style={styles.goalsInfo}>
-                <Text style={[styles.goalsTitle, { color: colors.text }]} numberOfLines={1}>
-                  {goalsSummary.single.goal.name}
-                </Text>
-                <Text style={styles.goalsSub} numberOfLines={1}>
-                  {hideValues ? (
-                    <Text style={{ color: colors.mutedForeground }}>••••••</Text>
-                  ) : (
-                    <>
-                      <Text style={{ color: colors.mutedForeground }}>
-                        {t.overviewGoalPctSaved(String(Math.round(goalsSummary.single.pct)))}
-                      </Text>
-                      <Text style={{ color: goalsSummary.single.done ? colors.green : colors.primary, fontFamily: 'Inter_600SemiBold' }}>
-                        {t.overviewGoalAmount(
-                          goalsSummary.single.saved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                          goalsSummary.single.goal.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                        )}
-                      </Text>
-                    </>
-                  )}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.goalRingCluster}>
-                {goalsSummary.sorted.slice(0, 3).map((g, i) => (
-                  <View key={g.goal.id} style={i > 0 ? { marginLeft: -6 } : undefined}>
-                    <GoalRing
-                      size={22} strokeWidth={2.5}
-                      pct={g.pct}
-                      color={g.done ? colors.green : GOAL_RING_COLORS[i % GOAL_RING_COLORS.length]}
-                      trackColor={colors.border}
-                      done={g.done}
-                    />
-                  </View>
-                ))}
-              </View>
-              <View style={styles.goalsInfo}>
-                <Text style={[styles.goalsTitle, { color: colors.text }]} numberOfLines={1}>
-                  {t.overviewGoalClusterTitle(String(goalsSummary.count))}
-                </Text>
-                <Text style={styles.goalsSub} numberOfLines={1}>
-                  {hideValues ? (
-                    <Text style={{ color: colors.mutedForeground }}>••••••</Text>
-                  ) : (
-                    <>
-                      <Text style={{ color: colors.mutedForeground }}>
-                        {t.overviewGoalPctSavedAvg(String(Math.round(goalsSummary.avgPct)))}
-                      </Text>
-                      <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>
-                        {t.overviewGoalAmount(
-                          goalsSummary.totalSaved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                          goalsSummary.totalTarget.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                        )}
-                      </Text>
-                    </>
-                  )}
-                </Text>
-              </View>
-            </>
-          )}
-          <Feather name={forwardChevron()} size={14} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      )}
 
       {/* ── Top Investments ─────────────────────────────────────── */}
       <View style={styles.holdingsSection}>
@@ -2028,7 +1920,7 @@ const styles = StyleSheet.create({
   screenTitle:   { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
-  heroCard:   { borderRadius: 26, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  heroCard:   { borderRadius: 26, borderWidth: 1, overflow: 'hidden' },
   heroAccent: { height: 1.25 },
   // Tall enough to colour the card's upper region, short enough that it has
   // faded to nothing behind the value itself.
@@ -2037,66 +1929,52 @@ const styles = StyleSheet.create({
   heroSweep: { position: 'absolute', top: -40, bottom: -40, width: 90 },
   heroBody:   { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 16, alignItems: 'stretch' },
 
-  cashCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    borderRadius: 20, borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 18, paddingVertical: 16,
-  },
-  cashIconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  cashInfo: { flex: 1, gap: 2 },
-  cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
-  cashRows:      { gap: 7, marginTop: 3 },
-  // A View with a backgroundColor, matching how the portfolio card's own
-  // iDivider is drawn — a borderTopWidth hairline renders sub-pixel here and
-  // effectively disappears against the card, which is why the first attempt
-  // at this separator was invisible.
-  cashRowSep:    { height: StyleSheet.hairlineWidth },
-  cashRow:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  // No chip: it was added to stand in for a separator, and once the real
-  // separator was drawn properly the box only boxed the code in at 10px
-  // against a barely-contrasting fill. Plain text at a readable size on
-  // textSecondary (#B8B8BC) rather than mutedForeground (#8E8E93) is
-  // legible on its own.
-  cashRowCur:    { fontSize: 13, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.4 },
-  // List size: several balances are peers, and holding them here keeps a
-  // multi-currency card compact. Equal weight matters *within* that list —
-  // it never required a lone balance to shrink to match a list it isn't
-  // part of, which is what cashRowValueSolo restores.
-  cashRowValue:  { flexShrink: 1, fontSize: 17, fontFamily: 'Inter_700Bold', letterSpacing: -0.35, fontVariant: ['tabular-nums'] },
-  // Matches HoldingCard's gainPill/gainText exactly (icon, 7/3 padding,
-  // radius 7, 11px text) — see the comment at the call site for why.
-  cashTodayBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, flexShrink: 1,
-    // marginStart auto eats the leftover space between the currency code and
-    // the badge, pushing only the badge to the row's right edge. The amount
-    // and currency stay exactly where they've always been — nothing else
-    // about the row changes.
-    marginStart: 'auto',
-  },
-  cashTodayBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
-  // A single balance is the card's headline, not a list item, so it keeps
-  // the display size this card always used.
-  cashRowValueSolo: { fontSize: 19, letterSpacing: -0.4 },
-  // Labeled summary row beneath the native-currency rows and their
-  // separator — reads as a real "Total" line (like the card's own rows do)
-  // rather than a bare parenthetical, while staying visually lighter than
-  // them: smaller label, secondary-not-primary text colour.
-  cashTotalRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 },
-  cashTotalLabel: { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
-  cashTotalValue: { fontSize: 12, fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] },
+  // ── EXPERIMENTAL (unified hero card, simulator-only) ────────────────
+  // Cash + Pending Income, now living inside the hero card instead of
+  // their own separate cards below it. Mirrors the plan-file mockup this
+  // was built from — a compact 2-column strip when both exist, a wider
+  // single row when only one does (border/margin swapped per-branch at
+  // the call site rather than two near-duplicate style objects here).
+  // marginBottom trims heroBody's own `gap: 16` (applied automatically
+  // after this block, before the Invested/Current/Return strip) down to
+  // match the tight border-to-content spacing used above Goals — gap
+  // can't be reduced for just one sibling pair in RN flexbox, so this
+  // negative margin does it locally without touching heroBody's gap
+  // (which every other section on this card still relies on).
+  heroExtras: { gap: 4, marginBottom: -8 },
+  heroWealthStrip: { flexDirection: 'row', borderTopWidth: 1, marginHorizontal: -24, paddingHorizontal: 24 },
+  // justifyContent centers the icon+text(+badge) group as a unit within
+  // this cell's half of the row, instead of packing it to the left.
+  heroWealthCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  // alignSelf:'stretch' ties this to the row's own height directly (same
+  // pattern as iDivider between Invested/Current/Return) instead of a
+  // borderRight on the Cash cell, which let the divider's height follow
+  // that cell's own box and kept overshooting past the row's real edges.
+  heroWealthDivider: { width: 1, alignSelf: 'stretch' },
+  heroWealthChip: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  // flexShrink (not flex:1 growth) — a growing text block ate all the
+  // cell's spare width, which is what made justifyContent:'center' above
+  // a no-op the first time (nothing left to center once one child fills
+  // the row).
+  heroWealthText: { flexShrink: 1, minWidth: 0 },
+  heroWealthLabel: { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3, textTransform: 'uppercase' },
+  heroWealthValue: { fontSize: 13, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1 },
+  // Small fixed margin (was marginStart:'auto', which pinned this to the
+  // cell's far edge and fought the centering above) — now it sits next to
+  // the value as part of the same centered group.
+  heroWealthBadge: { fontSize: 10, fontFamily: 'Inter_700Bold', marginStart: 4, flexShrink: 0 },
 
-  // Deliberately smaller than cashCard (18/16 padding, 20 radius) — Cash is
-  // the primary, always-relevant figure on this screen; Goals is a
-  // secondary "reach for this" prompt and should read at a lower visual
-  // weight, not compete at the same size.
-  goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingTop: 8, paddingBottom: 8, paddingHorizontal: 12, borderRadius: 13, borderWidth: 1, overflow: 'hidden' },
-  goalsGlow: { position: 'absolute', width: 60, height: 60, borderRadius: 30, top: -18, left: -12 },
+  // Goals — same GoalRing component and single-vs-cluster logic the old
+  // standalone row used, just smaller and living here. Kept its own gold
+  // wash identity (not flattened to match Cash/Pending's plain rows) —
+  // aspirational, not a wealth-accounting number, same reasoning as the
+  // Overview goals-card redesign this was built alongside.
+  heroGoalWrap: { borderTopWidth: 1, paddingTop: 8, marginHorizontal: -24, paddingHorizontal: 24 },
+  heroGoalBand: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, overflow: 'hidden', paddingVertical: 7, paddingHorizontal: 10 },
   goalRingCluster: { flexDirection: 'row' },
-  goalsInfo: { flex: 1, gap: 1, minWidth: 0 },
-  goalsTitle: { fontSize: 11.5, fontFamily: 'Inter_600SemiBold' },
-  goalsSub: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  heroGoalText: { flex: 1, minWidth: 0 },
+  heroGoalLabel: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textTransform: 'uppercase' },
+  heroGoalAmount: { fontSize: 12, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1 },
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
@@ -2114,28 +1992,31 @@ const styles = StyleSheet.create({
   // Wraps because the switcher is user-configurable now and can hold up to 11
   // currencies; a plain row clipped everything past the fourth.
   currencyTabStrip:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 4, marginBottom: 2, paddingHorizontal: 4 },
-  currencyTab:        { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, paddingVertical: 7 },
+  currencyTab:        { borderRadius: 10, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 7 },
   currencyTabText:    { fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
   netWorthTxt:    { fontSize: 11.5, fontFamily: 'Inter_500Medium', fontVariant: ['tabular-nums'] },
 
-  iStrip:         { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: -24, paddingHorizontal: 24 },
+  iStrip:         { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, marginHorizontal: -24, paddingHorizontal: 24 },
   iCell:          { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 4 },
   iCellLabel:     { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 0.2 },
   iCellValueRow:  { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
   iCellValue:     { fontSize: 14, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   iCellCur:       { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  iDivider:       { width: StyleSheet.hairlineWidth, marginVertical: 14 },
+  iDivider:       { width: 1, marginVertical: 14 },
 
-  plRow:          { flexDirection: 'row', gap: 8 },
-  plChip:         { flex: 1, gap: 5, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 10 },
+  // marginTop/marginBottom trim heroBody's `gap: 16` on both sides down to
+  // the same 8pt the Goals row sits in (16 - 8 = 8), instead of the plain
+  // 16 every other untouched pair in the card still uses.
+  plRow:          { flexDirection: 'row', gap: 8, marginTop: -8, marginBottom: -8 },
+  plChip:         { flex: 1, gap: 5, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
   plTop:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
   plLabel:        { flex: 1, fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   plValue:        { fontSize: 13.5, fontFamily: 'Inter_700Bold', flexShrink: 1, letterSpacing: -0.2, fontVariant: ['tabular-nums'] },
   plBadge:        { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
   plBadgeText:    { fontSize: 9.5, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
-  chartWrap:  { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
+  chartWrap:  { borderTopWidth: 1, paddingTop: 12, marginHorizontal: -24, paddingHorizontal: 24 },
   timeRow:    { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 10 },
   timePill:   { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   timePillText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
@@ -2143,7 +2024,14 @@ const styles = StyleSheet.create({
   // data's age, not a control.
   trackingSince: { fontSize: 10, fontFamily: 'Inter_400Regular', textAlign: 'center', marginTop: 7 },
 
-  allocationStrip: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 24, paddingTop: 18, paddingBottom: 20, gap: 0 },
+  // paddingTop matches chartWrap's own rhythm (12, same hairline-vs-gap
+  // combo) instead of the wider 18 it had before — that extra 6px, stacked
+  // on heroBody's gap:16 between this and the time-period pills above,
+  // read as a much bigger dead zone than every other border in the card.
+  // Width 1 (not StyleSheet.hairlineWidth) for the same reason the
+  // Cash/Pending divider needed it: hairlineWidth was rendering thin
+  // enough on this device to look like a missing border.
+  allocationStrip: { borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 20, gap: 0, marginHorizontal: -24, marginTop: -8 },
 
   holdingsSection:  { gap: 12 },
   sectionRow:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
