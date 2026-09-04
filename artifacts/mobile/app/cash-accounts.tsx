@@ -940,7 +940,6 @@ export default function CashAccountsScreen() {
                             // portfolio hero's own Today chip, which always
                             // occupies its space rather than popping in.
                             <View style={[styles.todayBadge, { opacity: 0 }]} pointerEvents="none">
-                              <Feather name="minus" size={9} color="transparent" />
                               <Text style={styles.todayBadgeText}>+12.3K</Text>
                             </View>
                           ) : (() => {
@@ -956,16 +955,13 @@ export default function CashAccountsScreen() {
                                   row's width — "+317.3K EGP today" truncated
                                   to "+317.3K EGP tod…", losing the one word
                                   that says what the number means.
-                                  Icon + 7/3 padding + 11px text matches
-                                  HoldingCard's gainPill (the investment
-                                  list's own %-change pill) — same badge
-                                  language across the app, not a one-off.
+                                  Text-only, no icon — matches the portfolio
+                                  hero's own Cash cell today-chip exactly.
                                   Always rendered, even at exactly zero — same
                                   as the portfolio hero's own Today chip
                                   (isTodayFlat), so the row never reflows once
                                   loaded, matching how that chip never
                                   disappears either. */}
-                              <Feather name={isFlat ? 'minus' : up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
                               <Text style={[styles.todayBadgeText, { color: c }]} numberOfLines={1}>
                                 {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
                               </Text>
@@ -1399,12 +1395,15 @@ const styles = StyleSheet.create({
   accountType: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   accountBalance: { fontSize: 15, fontFamily: 'Inter_700Bold', letterSpacing: -0.2, marginTop: 1 },
   balanceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  // Matches HoldingCard's gainPill/gainText — see the comment at the call site.
+  // Matches the Overview hero card's own Cash cell today-chip
+  // (heroWealthBadge/heroWealthBadgeText in app/(tabs)/index.tsx) — same
+  // "today change" data, same size, so it reads as the same chip on both
+  // screens.
   todayBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, flexShrink: 1,
+    paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, flexShrink: 1,
   },
-  todayBadgeText: { fontSize: 11, fontFamily: 'Inter_700Bold' },
+  todayBadgeText: { fontSize: 9.5, fontFamily: 'Inter_700Bold' },
   accountActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   actionBtn: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   pickerSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, gap: 8 },

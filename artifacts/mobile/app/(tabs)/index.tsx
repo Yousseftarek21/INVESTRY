@@ -444,6 +444,21 @@ export default function HomeScreen() {
     const deltaAccounts = cashAccounts.map(a => ({ ...a, balance: cashTodayByAccount[a.id] ?? 0 }));
     return computeCashTotalEGP(deltaAccounts, prices);
   }, [cashAccounts, cashTodayByAccount, prices]);
+  // Computed once, not inline at the render site — the hero card's Cash
+  // cell needs this split across two separate rows (a "Today" label lined
+  // up with "CASH", the colored delta lined up with the value below it),
+  // so both spots read from the same values instead of duplicating the
+  // isFlat/up/color logic.
+  const cashTodayInfo = useMemo(() => {
+    const delta = toDisp(cashTodayEGP);
+    const isFlat = Math.abs(delta) < 0.005;
+    const up = delta > 0;
+    return {
+      isFlat,
+      up,
+      text: isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`,
+    };
+  }, [cashTodayEGP, toDisp, fmtCompact]);
   // Tweens through the intermediate values (rather than jumping straight to
   // the new number) whenever it changes — including when it changes purely
   // because the display currency was switched, not just when a balance
@@ -1058,33 +1073,54 @@ export default function HomeScreen() {
           {(cashAccounts.length > 0 || pendingIncomeEGP > 0 || goalsSummary) && (
           <View style={styles.heroExtras}>
           {(cashAccounts.length > 0 || pendingIncomeEGP > 0) && (
-            <View style={[styles.heroWealthStrip, { borderTopColor: colors.border }]}>
+            <View style={[styles.heroWealthStrip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
               {cashAccounts.length > 0 && (
                 <TouchableOpacity
-                  style={styles.heroWealthCell}
+                  style={[
+                    styles.heroWealthCell,
+                    { paddingStart: 12, paddingEnd: pendingIncomeEGP > 0 ? 10 : 12 },
+                    // Solo state (no Pending Income): space-between has
+                    // nothing to balance against and stretches the badge
+                    // to the far edge of the whole card. Centered reads as
+                    // one cohesive row instead. The two-column case (both
+                    // Cash and Pending present) is untouched — separate
+                    // insets, space-between, exactly as already designed.
+                    !(pendingIncomeEGP > 0) && { justifyContent: 'center' },
+                  ]}
                   onPress={() => { impact(); router.push('/cash-accounts' as any); }}
                   activeOpacity={0.75}
                 >
-                  <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
-                    <BanknoteIcon size={13} color={colors.green} />
-                  </View>
-                  <View style={styles.heroWealthText}>
-                    <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]}>{t.cash}</Text>
-                    <Text style={[styles.heroWealthValue, { color: colors.text }]} numberOfLines={1}>
-                      {hideValues ? '••••••' : cashTotalDispText}
-                    </Text>
-                  </View>
-                  {!hideValues && !cashTodayLoading && (() => {
-                    const delta = toDisp(cashTodayEGP);
-                    const isFlat = Math.abs(delta) < 0.005;
-                    const up = delta > 0;
-                    const c = isFlat ? colors.mutedForeground : up ? colors.green : colors.red;
-                    return (
-                      <Text style={[styles.heroWealthBadge, { color: c }]} numberOfLines={1}>
-                        {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
+                  <View style={styles.heroWealthLeftGroup}>
+                    <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
+                      <BanknoteIcon size={13} color={colors.green} />
+                    </View>
+                    {/* Solo state (no Pending Income): label+value go
+                        inline (row, baseline) instead of stacked — with
+                        the whole row's width available and nothing to
+                        keep compact for, "CASH  3.58M" reads as one line
+                        alongside the badge instead of a two-line block. */}
+                    <View style={[styles.heroWealthText, !(pendingIncomeEGP > 0) && { flexDirection: 'row', alignItems: 'baseline', gap: 6 }]}>
+                      {/* flexShrink split so an extreme value truncates
+                          itself in the inline solo row instead of the two
+                          Texts overlapping — "CASH" is short and fixed
+                          (never shrinks), the value is the one that gives
+                          way if it's ever unusually long. */}
+                      <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }, !(pendingIncomeEGP > 0) && { flexShrink: 0 }]} numberOfLines={1}>{t.cash}</Text>
+                      <Text style={[styles.heroWealthValue, { color: colors.text }, !(pendingIncomeEGP > 0) && { flexShrink: 1 }]} numberOfLines={1}>
+                        {hideValues ? '••••••' : cashTotalDispText}
                       </Text>
-                    );
-                  })()}
+                    </View>
+                  </View>
+                  {!hideValues && !cashTodayLoading && (
+                    <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
+                      <Text style={[styles.heroWealthBadgeLabel, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
+                        {t.todayLabel}
+                      </Text>
+                      <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
+                        {cashTodayInfo.text}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               )}
               {/* Separate stretched View, not a borderRight on the Cash
@@ -1099,18 +1135,24 @@ export default function HomeScreen() {
               )}
               {pendingIncomeEGP > 0 && (
                 <TouchableOpacity
-                  style={styles.heroWealthCell}
+                  style={[styles.heroWealthCell, { paddingStart: 10, paddingEnd: 12, justifyContent: 'center' }]}
                   onPress={() => { impact(); router.push('/recurring-income'); }}
                   activeOpacity={0.75}
                 >
-                  <View style={[styles.heroWealthChip, { backgroundColor: '#F59E0B18' }]}>
-                    <Feather name="clock" size={13} color="#F59E0B" />
-                  </View>
-                  <View style={styles.heroWealthText}>
-                    <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]}>{t.pendingIncomeLabel}</Text>
-                    <Text style={[styles.heroWealthValue, { color: '#F59E0B' }]} numberOfLines={1}>
-                      {hideValues ? '••••••' : fmtCompact(toDisp(pendingIncomeEGP))}
-                    </Text>
+                  <View style={styles.heroWealthLeftGroup}>
+                    <View style={[styles.heroWealthChip, { backgroundColor: '#F59E0B18' }]}>
+                      <Feather name="clock" size={13} color="#F59E0B" />
+                    </View>
+                    {/* alignItems:'center' here only — "PENDING INCOME" is
+                        much wider than its value, so a plain left-aligned
+                        stack left the short amount looking off-center
+                        under the label. */}
+                    <View style={[styles.heroWealthText, { alignItems: 'center' }]}>
+                      <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.pendingIncomeLabel}</Text>
+                      <Text style={[styles.heroWealthValue, { color: '#F59E0B' }]} numberOfLines={1}>
+                        {hideValues ? '••••••' : fmtCompact(toDisp(pendingIncomeEGP))}
+                      </Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               )}
@@ -1122,7 +1164,16 @@ export default function HomeScreen() {
               component, same single-vs-cluster logic, just smaller and
               living here instead of its own card. */}
           {goalsSummary && (
-            <View style={[styles.heroGoalWrap, { borderTopColor: colors.border }]}>
+            <View style={[
+              styles.heroGoalWrap,
+              { borderTopColor: colors.border },
+              // When Cash/Pending exists right above, heroWealthStrip's
+              // own bottom border already sits there — this wrap's own
+              // top border would be a second line ~4pt below it. Only
+              // draw this one when Goals is the first thing in the
+              // strip (nothing else already provided that divider).
+              (cashAccounts.length > 0 || pendingIncomeEGP > 0) && { borderTopWidth: 0 },
+            ]}>
               <TouchableOpacity
                 style={[styles.heroGoalBand, { backgroundColor: colors.card, borderColor: colors.primary + '2E' }]}
                 onPress={() => { impact(); router.push('/goals' as any); }}
@@ -1942,37 +1993,73 @@ const styles = StyleSheet.create({
   // negative margin does it locally without touching heroBody's gap
   // (which every other section on this card still relies on).
   heroExtras: { gap: 4, marginBottom: -8 },
-  heroWealthStrip: { flexDirection: 'row', borderTopWidth: 1, marginHorizontal: -24, paddingHorizontal: 24 },
-  // justifyContent centers the icon+text(+badge) group as a unit within
-  // this cell's half of the row, instead of packing it to the left.
-  heroWealthCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  // alignSelf:'stretch' ties this to the row's own height directly (same
-  // pattern as iDivider between Invested/Current/Return) instead of a
-  // borderRight on the Cash cell, which let the divider's height follow
-  // that cell's own box and kept overshooting past the row's real edges.
+  // Both top AND bottom border (matching iStrip's own self-contained
+  // pattern) — the vertical divider stretches between these two, within
+  // this row's own box. It was only ever going to reach a border that's
+  // actually part of THIS row; the next section's border, one row over
+  // and separated by its own deliberate ~8pt gap, was never something the
+  // divider could reach by stretching harder.
+  // No paddingHorizontal here on purpose — Cash and Pending each set their
+  // own paddingStart/paddingEnd independently at their call sites, so
+  // adjusting one's gap to the card edge can never move the other's. A
+  // shared value on this strip was exactly what caused edits meant for
+  // one side to visibly shift the other.
+  heroWealthStrip: { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, marginHorizontal: -24 },
+  // justifyContent:'space-between' pushes the two children — the
+  // heroWealthLeftGroup (icon+text) and the badge — to opposite ends.
+  // marginStart:'auto' on the badge alone was tried first and measured
+  // as NOT reaching the cell's edge (confirmed via screenshot, not just
+  // reasoning) — space-between between two real sibling groups is the
+  // more reliable primitive.
+  heroWealthCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8 },
+  // alignSelf:'stretch' ties this to the row's own height, same pattern
+  // iDivider already uses between Invested/Current/Return.
   heroWealthDivider: { width: 1, alignSelf: 'stretch' },
-  heroWealthChip: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  // flexShrink (not flex:1 growth) — a growing text block ate all the
-  // cell's spare width, which is what made justifyContent:'center' above
-  // a no-op the first time (nothing left to center once one child fills
-  // the row).
-  heroWealthText: { flexShrink: 1, minWidth: 0 },
+  heroWealthLeftGroup: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 },
+  heroWealthChip: { width: 26, height: 26, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  // minWidth guarantees the value/label always keep enough room to read.
+  heroWealthText: { flexShrink: 1, minWidth: 45 },
   heroWealthLabel: { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3, textTransform: 'uppercase' },
   heroWealthValue: { fontSize: 13, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1 },
-  // Small fixed margin (was marginStart:'auto', which pinned this to the
-  // cell's far edge and fought the centering above) — now it sits next to
-  // the value as part of the same centered group.
-  heroWealthBadge: { fontSize: 10, fontFamily: 'Inter_700Bold', marginStart: 4, flexShrink: 0 },
+  // Matches cash-accounts.tsx's todayBadge sizing — a realistic "today"
+  // delta (a few characters) always fits comfortably here. maxWidth is a
+  // last-resort safety net for a genuinely extreme value, not the normal
+  // case — it should never be visibly hit in real use.
+  // alignItems:'center' + no flexDirection override (defaults to column)
+  // stacks the "Today" label above the value inside this one pill,
+  // staying in the same spot the single-line badge used to sit in.
+  heroWealthBadge: { alignItems: 'center', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 3, marginStart: 6, flexShrink: 1, maxWidth: 100 },
+  // No textTransform — matches plLabel's own chip-internal micro-label
+  // convention ("Today" / "Total P/L" in the P/L chips, natural case),
+  // not heroWealthLabel's section-label convention ("CASH", all caps).
+  // Same role (a small label inside a colored chip), so same styling.
+  heroWealthBadgeLabel: { fontSize: 7, fontFamily: 'Inter_700Bold', letterSpacing: 0.2, opacity: 0.85 },
+  // Smaller and one weight down from heroWealthValue (13/Bold) — this is
+  // a secondary, supporting number next to the cell's real value, not a
+  // second headline competing with it.
+  heroWealthBadgeText: { fontSize: 9, fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] },
 
   // Goals — same GoalRing component and single-vs-cluster logic the old
   // standalone row used, just smaller and living here. Kept its own gold
   // wash identity (not flattened to match Cash/Pending's plain rows) —
   // aspirational, not a wealth-accounting number, same reasoning as the
   // Overview goals-card redesign this was built alongside.
-  heroGoalWrap: { borderTopWidth: 1, paddingTop: 8, marginHorizontal: -24, paddingHorizontal: 24 },
-  heroGoalBand: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, overflow: 'hidden', paddingVertical: 7, paddingHorizontal: 10 },
+  // paddingTop:4 (was 8) — measured precisely: the gap above Goals (this
+  // padding + heroExtras' own gap:4 between its two children) was ~13.7pt
+  // vs. ~9.7pt below Goals. Trimming this to 4 brings both sides in line.
+  heroGoalWrap: { borderTopWidth: 1, paddingTop: 4, marginHorizontal: -24, paddingHorizontal: 24 },
+  // heroGoalWrap (the parent) stretches its child to the full row width by
+  // default — heroGoalText's own flex:1 then filled that whole width, but
+  // its actual content (a short amount string) never needed that much,
+  // leaving a big dead gap between the text and the chevron.
+  // alignSelf:'flex-start' makes the band size to its own content instead.
+  heroGoalBand: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, borderWidth: 1, overflow: 'hidden', paddingVertical: 7, paddingHorizontal: 10 },
   goalRingCluster: { flexDirection: 'row' },
-  heroGoalText: { flex: 1, minWidth: 0 },
+  // flexShrink (not flex:1 growth) — a flex:1 child inside a shrink-to-fit
+  // (alignSelf:'flex-start') parent still forced that parent to expand,
+  // which is exactly what kept the band wide after the alignSelf change
+  // alone.
+  heroGoalText: { flexShrink: 1, minWidth: 0 },
   heroGoalLabel: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textTransform: 'uppercase' },
   heroGoalAmount: { fontSize: 12, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1 },
 
@@ -1992,28 +2079,31 @@ const styles = StyleSheet.create({
   // Wraps because the switcher is user-configurable now and can hold up to 11
   // currencies; a plain row clipped everything past the fourth.
   currencyTabStrip:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 4, marginBottom: 2, paddingHorizontal: 4 },
-  currencyTab:        { borderRadius: 10, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 7 },
+  currencyTab:        { borderRadius: 14, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 7 },
   currencyTabText:    { fontSize: 12, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
   netWorthTxt:    { fontSize: 11.5, fontFamily: 'Inter_500Medium', fontVariant: ['tabular-nums'] },
 
-  iStrip:         { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, marginHorizontal: -24, paddingHorizontal: 24 },
+  iStrip:         { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, marginHorizontal: -24, paddingHorizontal: 12 },
   iCell:          { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 4 },
   iCellLabel:     { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 0.2 },
   iCellValueRow:  { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
   iCellValue:     { fontSize: 14, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   iCellCur:       { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  iDivider:       { width: 1, marginVertical: 14 },
+  // alignSelf:'stretch' (not marginVertical, which deliberately floated
+  // it short of the row's own top/bottom border) — same pattern already
+  // verified correct for the Cash/Pending divider.
+  iDivider:       { width: 1, alignSelf: 'stretch' },
 
   // marginTop/marginBottom trim heroBody's `gap: 16` on both sides down to
   // the same 8pt the Goals row sits in (16 - 8 = 8), instead of the plain
   // 16 every other untouched pair in the card still uses.
-  plRow:          { flexDirection: 'row', gap: 8, marginTop: -8, marginBottom: -8 },
-  plChip:         { flex: 1, gap: 5, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  plRow:          { flexDirection: 'row', gap: 8, marginTop: -8, marginBottom: -8, marginHorizontal: -12 },
+  plChip:         { flex: 1, gap: 5, borderRadius: 18, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
   plTop:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
   plLabel:        { flex: 1, fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   plValue:        { fontSize: 13.5, fontFamily: 'Inter_700Bold', flexShrink: 1, letterSpacing: -0.2, fontVariant: ['tabular-nums'] },
-  plBadge:        { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  plBadge:        { borderRadius: 10, paddingHorizontal: 5, paddingVertical: 2 },
   plBadgeText:    { fontSize: 9.5, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
   chartWrap:  { borderTopWidth: 1, paddingTop: 12, marginHorizontal: -24, paddingHorizontal: 24 },
@@ -2031,7 +2121,15 @@ const styles = StyleSheet.create({
   // Width 1 (not StyleSheet.hairlineWidth) for the same reason the
   // Cash/Pending divider needed it: hairlineWidth was rendering thin
   // enough on this device to look like a missing border.
-  allocationStrip: { borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 20, gap: 0, marginHorizontal: -24, marginTop: -8 },
+  // paddingBottom:0 — this is the card's last element, so heroBody's own
+  // paddingBottom:24 is already the full bottom margin below it; this
+  // strip's own paddingBottom used to stack on top of that (20+24=44pt),
+  // which is exactly the "big unused spacing" under the allocation legend.
+  // paddingBottom:8 — a small explicit safety margin. paddingBottom:0
+  // (relying only on heroBody's own paddingBottom:24) measured out to a
+  // much tighter real gap than expected (~7-8pt, not ~24pt) — rather than
+  // chase why, this restores a modest, directly-controlled minimum here.
+  allocationStrip: { borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8, gap: 0, marginHorizontal: -24, marginTop: -8 },
 
   holdingsSection:  { gap: 12 },
   sectionRow:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
