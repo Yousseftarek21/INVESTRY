@@ -55,6 +55,10 @@ export const usersTable = pgTable("users", {
   // user is sent the "leaderboard launched" push so a redeploy/restart of
   // the boot-time sender (see competitionAnnouncement.ts) can't resend it.
   competitionAnnouncementSentAt: timestamp("competition_announcement_sent_at", { withTimezone: true }),
+  // Same one-time-broadcast pattern, for the "your free Pro access ended"
+  // notice sent once to every user who existed before the paywall went
+  // live — see proGateNotice.ts. Null means not sent yet.
+  proGateNoticeSentAt: timestamp("pro_gate_notice_sent_at", { withTimezone: true }),
   createdAt:              timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:              timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
