@@ -1465,7 +1465,7 @@ export default function HomeScreen() {
           {goalsSummary.single ? (
             <>
               <GoalRing
-                size={34} strokeWidth={3.5}
+                size={22} strokeWidth={2.5}
                 pct={goalsSummary.single.pct}
                 color={colors.green}
                 fillColor={colors.primary}
@@ -1499,9 +1499,9 @@ export default function HomeScreen() {
             <>
               <View style={styles.goalRingCluster}>
                 {goalsSummary.sorted.slice(0, 3).map((g, i) => (
-                  <View key={g.goal.id} style={i > 0 ? { marginLeft: -10 } : undefined}>
+                  <View key={g.goal.id} style={i > 0 ? { marginLeft: -6 } : undefined}>
                     <GoalRing
-                      size={34} strokeWidth={3.5}
+                      size={22} strokeWidth={2.5}
                       pct={g.pct}
                       color={g.done ? colors.green : GOAL_RING_COLORS[i % GOAL_RING_COLORS.length]}
                       trackColor={colors.border}
@@ -1534,7 +1534,7 @@ export default function HomeScreen() {
               </View>
             </>
           )}
-          <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
+          <Feather name={forwardChevron()} size={14} color={colors.mutedForeground} />
         </TouchableOpacity>
       )}
 
@@ -2087,12 +2087,16 @@ const styles = StyleSheet.create({
   cashTotalLabel: { fontSize: 11, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashTotalValue: { fontSize: 12, fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] },
 
-  goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16, paddingBottom: 16, paddingHorizontal: 18, borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
-  goalsGlow: { position: 'absolute', width: 100, height: 100, borderRadius: 50, top: -30, left: -20 },
+  // Deliberately smaller than cashCard (18/16 padding, 20 radius) — Cash is
+  // the primary, always-relevant figure on this screen; Goals is a
+  // secondary "reach for this" prompt and should read at a lower visual
+  // weight, not compete at the same size.
+  goalsRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingTop: 8, paddingBottom: 8, paddingHorizontal: 12, borderRadius: 13, borderWidth: 1, overflow: 'hidden' },
+  goalsGlow: { position: 'absolute', width: 60, height: 60, borderRadius: 30, top: -18, left: -12 },
   goalRingCluster: { flexDirection: 'row' },
-  goalsInfo: { flex: 1, gap: 2, minWidth: 0 },
-  goalsTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  goalsSub: { fontSize: 12, fontFamily: 'Inter_400Regular' },
+  goalsInfo: { flex: 1, gap: 1, minWidth: 0 },
+  goalsTitle: { fontSize: 11.5, fontFamily: 'Inter_600SemiBold' },
+  goalsSub: { fontSize: 10, fontFamily: 'Inter_400Regular' },
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
