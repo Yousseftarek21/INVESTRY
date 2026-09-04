@@ -12,6 +12,17 @@ function holdingsKey(userId: string) {
   return `@istithmarak_holdings_${userId}`;
 }
 
+// Deterministic JSON stringify (sorted keys) — used only by updateHolding's
+// no-op check below, never persisted. Matches the same technique on the
+// server (routes/holdings.ts), which independently needed the same fix.
+function stableStringify(v: unknown): string {
+  return JSON.stringify(v, (_key, value) =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.keys(value).sort().reduce((acc, k) => { acc[k] = (value as Record<string, unknown>)[k]; return acc; }, {} as Record<string, unknown>)
+      : value
+  );
+}
+
 interface HoldingsContextValue {
   holdings: Holding[];
   addHolding: (holding: Holding) => Promise<void>;
@@ -250,11 +261,34 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     let previous: Holding | undefined;
     // Same reasoning as addHolding's stamp — local-only, PUT body stays the
     // plain holding. createdAt is carried over from what was already
-    // loaded (an edit is not a new holding), only updatedAt moves to now.
+    // loaded (an edit is not a new holding), only updatedAt moves to now —
+    // but ONLY when something actually changed. Opening Edit and tapping
+    // Save with nothing touched used to still bump updatedAt unconditionally
+    // here, which is what "touched today" (utils/cairoDate.ts) keys off of
+    // for whether a holding's Today %-change can safely use live prices —
+    // a real user report, confirmed live: a plain re-save silently dropped
+    // that holding out of Today's total for the rest of the day, since
+    // there was no genuine edit to stamp a fresh reference price from
+    // either. The API server has the identical no-op check for the same
+    // reason (routes/holdings.ts) — fixed in both places since the client
+    // never re-reads updatedAt from the server's response here.
     let stamped: Holding = holding;
     setHoldings(prev => {
       previous = prev.find(h => h.id === holding.id);
-      stamped = { ...holding, updatedAt: new Date().toISOString(), createdAt: previous?.createdAt ?? holding.createdAt } as Holding;
+      // holding (the raw form payload from the edit screen) never carries
+      // createdAt or updatedAt at all — they're only merged in below, after
+      // this check — so both have to be stripped from `previous` too, or
+      // every save would compare unequal on createdAt alone regardless of
+      // whether anything real changed (caught live: the first version of
+      // this check compared them still present on one side only).
+      const { updatedAt: _prevUpdatedAt, createdAt: _prevCreatedAt, ...prevRest } = (previous ?? {}) as Record<string, unknown>;
+      const { updatedAt: _newUpdatedAt, createdAt: _newCreatedAt, ...newRest } = holding as unknown as Record<string, unknown>;
+      const isNoOpSave = !!previous && stableStringify(prevRest) === stableStringify(newRest);
+      stamped = {
+        ...holding,
+        updatedAt: isNoOpSave ? previous!.updatedAt : new Date().toISOString(),
+        createdAt: previous?.createdAt ?? holding.createdAt,
+      } as Holding;
       const next = prev.map(h => h.id === holding.id ? stamped : h);
       persist(next, userId);
       return next;

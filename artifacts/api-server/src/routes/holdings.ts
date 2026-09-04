@@ -26,6 +26,17 @@ function holdingLabel(h: StoredHolding): string {
   }
 }
 
+// Deterministic JSON stringify (sorted keys) so two objects with the same
+// fields in a different order still compare equal — used only for the
+// no-op-save check below, not for anything persisted.
+function stableStringify(v: unknown): string {
+  return JSON.stringify(v, (_key, value) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.keys(value).sort().reduce((acc, k) => { acc[k] = (value as Record<string, unknown>)[k]; return acc; }, {} as Record<string, unknown>)
+      : value
+  );
+}
+
 function holdingQuantity(h: StoredHolding): number | null {
   if (h.type === "gold" || h.type === "silver") return Number(h.grams) || 0;
   if (h.type === "stock") return Number(h.shares) || 0;
@@ -379,6 +390,25 @@ router.put("/holdings/:id", async (req, res) => {
       return;
     }
     const existingHolding = { id: existingRow.id, type: existingRow.type, ...(decryptFromStorage(existingRow.data) as object) } as StoredHolding;
+
+    // A byte-identical re-save (open Edit, change nothing, tap Save) used to
+    // still bump updatedAt unconditionally below — harmless-looking, but
+    // Today's-change math on the client treats any holding "touched today"
+    // as needing a fresh price stamp before it can safely use live %-change
+    // (anti-gaming: never let editing a lot fake that day's move). A no-op
+    // save has nothing to stamp from, so that holding silently drops out of
+    // Today's total for the rest of the day — confirmed live, a real user
+    // report, not hypothetical. Skipping the write entirely when nothing
+    // actually changed (compared field-by-field, ignoring id/type/the two
+    // server-derived stamp fields, which are never client-editable anyway)
+    // is the correct fix: no real edit happened, so nothing should look
+    // "touched" to that later gate.
+    const { id: _exId, type: _exType, priceAtCreationEgp: _exCreation, priceAtLastEditEgp: _exEdit, ...existingRest } =
+      existingHolding as unknown as Record<string, unknown>;
+    if (type === existingHolding.type && stableStringify(existingRest) === stableStringify(rest)) {
+      res.json(existingHolding);
+      return;
+    }
 
     const newHolding = { id, type: type as string, ...rest } as StoredHolding;
     const quantityChanged = holdingQuantity(existingHolding) !== holdingQuantity(newHolding);
