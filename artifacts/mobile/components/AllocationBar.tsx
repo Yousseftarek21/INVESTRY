@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 
 function fmtCpt(n: number): string {
@@ -31,6 +31,9 @@ export interface AllocationSegment {
 interface Props {
   segments: AllocationSegment[];
   hideValues?: boolean;
+  // Optional, opt-in — analytics.tsx (this component's other caller) keeps
+  // its exact current layout unless it explicitly passes this too.
+  chipWrapStyle?: StyleProp<ViewStyle>;
 }
 
 // ─── Animated overview bar ───────────────────────────────────────────────────
@@ -186,7 +189,7 @@ const chip = StyleSheet.create({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function AllocationBar({ segments, hideValues }: Props) {
+export function AllocationBar({ segments, hideValues, chipWrapStyle }: Props) {
   const total = segments.reduce((s, seg) => s + seg.value, 0);
   const [expandedLabel, setExpandedLabel] = useState<string | null>(null);
 
@@ -201,7 +204,7 @@ export function AllocationBar({ segments, hideValues }: Props) {
       {/* Pass ALL segments so the fixed-size anims ref stays stable */}
       <OverviewBar segments={segments} total={total} />
 
-      <View style={styles.chipWrap}>
+      <View style={[styles.chipWrap, chipWrapStyle]}>
         {active.map((seg, i) => (
           <AllocationChip
             key={seg.label}

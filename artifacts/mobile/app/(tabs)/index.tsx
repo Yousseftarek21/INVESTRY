@@ -456,7 +456,7 @@ export default function HomeScreen() {
     return {
       isFlat,
       up,
-      text: isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`,
+      text: isFlat ? '±0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`,
     };
   }, [cashTodayEGP, toDisp, fmtCompact]);
   // Tweens through the intermediate values (rather than jumping straight to
@@ -482,9 +482,13 @@ export default function HomeScreen() {
   // instead of its own stored savedAmount — mirrors goals.tsx's own
   // effectiveSaved exactly, so this row's numbers always match that screen.
   const effectiveGoalSaved = useCallback((g: (typeof goals)[number]) => {
-    if (!g.linkedCashAccountId) return g.savedAmount;
+    // ?? 0 guards: a goal's stored savedAmount (or a linked account's
+    // balance) coming back null crashed goalsSummary.single.saved further
+    // down at .toLocaleString() — a genuinely unsaved goal is 0 saved, not
+    // an absent value this screen can't render.
+    if (!g.linkedCashAccountId) return g.savedAmount ?? 0;
     const account = cashAccounts.find(a => a.id === g.linkedCashAccountId);
-    return account ? account.balance : g.savedAmount;
+    return (account ? account.balance : g.savedAmount) ?? 0;
   }, [cashAccounts]);
 
   const GOAL_RING_COLORS = [colors.primary, '#4A9EFF', '#8B5CF6'];
@@ -1216,7 +1220,12 @@ export default function HomeScreen() {
                     {hideValues ? '••••••' : (goalsSummary.single
                       ? t.overviewGoalAmount(
                           goalsSummary.single.saved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                          goalsSummary.single.goal.targetAmount.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                          // targetAmount is typed as a plain number but, like
+                          // savedAmount, has come through null at runtime —
+                          // ?? 0 here is what actually stops the crash this
+                          // specific call site hit (goal.targetAmount.toLocaleString
+                          // on null); effectiveGoalSaved's own ?? 0 covers .saved.
+                          (goalsSummary.single.goal.targetAmount ?? 0).toLocaleString('en-EG', { maximumFractionDigits: 0 }),
                         )
                       : t.overviewGoalAmount(
                           goalsSummary.totalSaved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
@@ -1442,6 +1451,7 @@ export default function HomeScreen() {
         {hasHoldings && summary.totalValue > 0 && (
           <View style={[styles.allocationStrip, { borderTopColor: colors.border }]}>
             <AllocationBar
+              chipWrapStyle={{ paddingLeft: 4 }}
               segments={[
                 {
                   label: t.gold,     value: summary.goldV,   color: colors.primary,
