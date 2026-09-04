@@ -80,20 +80,6 @@ export function tradingDaysAgo(d: Date, now: Date = new Date()): number {
   return Math.max(0, Math.round((today - then) / 86_400_000));
 }
 
-// Whether a holding's own `updatedAt` falls on today's trading day —
-// "touched today," whether just added or just edited (updatedAt is set to
-// createdAt on insert too, so an untouched holding's updatedAt is always
-// today only if it's genuinely new). Used by the Home tab's Today's Change
-// badge (index.tsx/analytics.tsx) to exclude a holding's contribution the
-// instant it's added or edited, so bumping a quantity right as the market
-// moves can't apply today's real price % to a just-inflated amount and make
-// the badge look fake. Missing updatedAt (old cached data, pre-rollout)
-// defaults to false — no signal either way shouldn't wrongly exclude.
-export function touchedToday(updatedAt: string | undefined): boolean {
-  if (!updatedAt) return false;
-  return tradingDayKey(new Date(updatedAt)) === tradingDayKey();
-}
-
 // A trading-day dateKey (from tradingDayKey above) is still just a
 // "YYYY-MM-DD" label, so its weekday is ordinary date math — no timezone
 // nuance needed here. Saturday specifically is the one day every market

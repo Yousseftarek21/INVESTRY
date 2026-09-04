@@ -7,8 +7,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron, forwardArrow } from '@/utils/rtl';
-import { pctDelta, todayContributionFromStamp } from '@/utils/pctDelta';
-import { tradingDayStart, touchedToday, cairoWeekStart } from '@/utils/cairoDate';
+import { pctDelta } from '@/utils/pctDelta';
+import { tradingDayStart, cairoWeekStart } from '@/utils/cairoDate';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Svg, {
   Defs, LinearGradient, Stop, Path,
@@ -689,50 +689,33 @@ export default function AnalyticsScreen() {
       const v = computeValue(h, prices);
       const c = computeCost(h, prices);
       totalCost += c;
-      // Same reasoning as index.tsx's countsToday — a holding added/edited
-      // today still counts at full value everywhere above. For gold/silver/
-      // stock its contribution isn't just skipped though: the server's
-      // priceAtCreationEgp/priceAtLastEditEgp stamp (never client-supplied)
-      // gives a real, unfakeable baseline for "movement since this lot
-      // existed," so that's used instead of the day's full %. Falls back to
-      // 0 only when no stamp exists yet (older data).
-      const countsToday = !touchedToday(h.updatedAt);
+      // Today's %-change here is a personal, non-competitive display —
+      // always live market prices, unaffected by any save/edit/add to this
+      // holding. See index.tsx's matching `summary` useMemo for the full
+      // reasoning: the anti-gaming gate that used to live here only ever
+      // mattered for the competitive Leaderboard, which has its own
+      // separate, untouched copy of this logic server-side.
       if (h.type === 'gold') {
         goldV += v; goldCost += c; totalGoldGrams += h.grams;
         // goldChangePercent is the metal's raw USD move; goldChangePercentEgp
         // compounds it with today's FX move, which is what a holding valued
         // in EGP (`v`) actually needs — see markets.ts for why.
-        if (countsToday) {
-          todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
-        } else {
-          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.grams, v);
-          if (stampContribution != null) todayGold += stampContribution;
-        }
+        todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
       } else if (h.type === 'silver') {
         silverV += v; silverCost += c; totalSilverGrams += h.grams;
-        if (countsToday) {
-          todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
-        } else {
-          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.grams, v);
-          if (stampContribution != null) todaySilver += stampContribution;
-        }
+        todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
       }
       else if (h.type === 'stock') {
         stockV += v; stockCost += c; stockCount++;
-        if (countsToday) {
-          const changePercent = egxChangeByTicker[h.symbol] ?? 0;
-          todayStock += pctDelta(v, changePercent);
-        } else {
-          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.shares, v);
-          if (stampContribution != null) todayStock += stampContribution;
-        }
+        const changePercent = egxChangeByTicker[h.symbol] ?? 0;
+        todayStock += pctDelta(v, changePercent);
       }
       else if (h.type === 'personal_asset') { paV += v; paCost += c; paCount++; }
       else if (h.type === 'fixed_income') {
         fiV += v; fiCost += c; fiCount++;
         // Since the trading day began, matching index.tsx — see the comment
         // there for why a rolling 24h window was wrong.
-        if (countsToday) todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
+        todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
       }
       else { reV += v; reCost += c; reCount++; }
     }

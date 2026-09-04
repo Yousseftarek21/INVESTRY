@@ -6,8 +6,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { forwardChevron, forwardArrow } from '@/utils/rtl';
-import { pctDelta, todayContributionFromStamp } from '@/utils/pctDelta';
-import { tradingDayStart, touchedToday } from '@/utils/cairoDate';
+import { pctDelta } from '@/utils/pctDelta';
+import { tradingDayStart } from '@/utils/cairoDate';
 import { fmtCompact } from '@/utils/formatNumber';
 import { UpdateAvailableBanner } from '@/components/UpdateAvailableBanner';
 import { WhatsNewModal } from '@/components/WhatsNewModal';
@@ -540,61 +540,34 @@ export default function HomeScreen() {
       const v = computeValue(h, prices);
       const c = computeCost(h, prices);
       totalCost += c;
-      // A holding added or edited today still counts at its full current
-      // value everywhere above. Its contribution to TODAY's change can't
-      // just be the day's full price % applied to a possibly-just-changed
-      // quantity (that's how bumping grams right as the market moves used
-      // to fake a gain) — but for gold/silver/stock it also isn't zero: the
-      // server stamps this exact lot's real EGP price the instant it was
-      // created/edited (priceAtCreationEgp/priceAtLastEditEgp, never
-      // client-supplied — see POST/PUT /holdings), so the honest, unfakeable
-      // contribution is "current value minus what it was worth at that
-      // stamp." Falls back to excluding the lot (contributes 0) only when no
-      // stamp exists yet (older data from before this rolled out).
-      const countsToday = !touchedToday(h.updatedAt);
+      // Today's %-change on this screen is a personal, non-competitive
+      // display — nobody else sees it or is ranked against it — so it
+      // always reflects live market prices, unaffected by any save/edit/add
+      // to this holding. There used to be an anti-gaming gate here
+      // (excluding, or falling back to a stamped reference price for, any
+      // holding "touched" today) to stop bumping grams right as the market
+      // moves from faking a gain — but that protection only matters for the
+      // competitive Leaderboard, which has its own separate, untouched copy
+      // of this logic (computeTodayEligiblePerformance, api-server). Gating
+      // it here too caused a real chain of bugs (excluded-at-0%, stale-
+      // stamp inflation, freeze-at-0% after any edit) for zero actual
+      // benefit, since there's nothing to protect on a personal display.
       if (h.type === 'gold') {
         goldV += v; goldCost += c; goldGrams += h.grams;
         // goldChangePercent is the metal's raw USD move (matches the Markets
         // tab's own display) — goldChangePercentEgp compounds that with
         // today's FX move, which is what a holding valued in EGP (`v`)
         // actually needs, or it can show a gain on a day the EGP value fell.
-        if (countsToday) {
-          todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
-          todayGoldMetal += pctDelta(v, prices?.goldChangePercent ?? 0);
-        } else {
-          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.grams, v);
-          if (stampContribution != null) {
-            todayGold += stampContribution;
-            // The stamp gives one combined EGP move (metal + FX together) —
-            // there's no live "gold-only, as of the stamp instant" price to
-            // subtract FX back out with, so it's credited to the metal
-            // bucket whole rather than silently dropped from the breakdown
-            // (which would make Gold + Currency stop summing to Today's
-            // total for a day a lot was just added).
-            todayGoldMetal += stampContribution;
-          }
-        }
+        todayGold += pctDelta(v, prices?.goldChangePercentEgp ?? 0);
+        todayGoldMetal += pctDelta(v, prices?.goldChangePercent ?? 0);
       } else if (h.type === 'silver') {
         silverV += v; silverCost += c; silverGrams += h.grams;
-        if (countsToday) {
-          todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
-          todaySilverMetal += pctDelta(v, prices?.silverChangePercent ?? 0);
-        } else {
-          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.grams, v);
-          if (stampContribution != null) {
-            todaySilver += stampContribution;
-            todaySilverMetal += stampContribution;
-          }
-        }
+        todaySilver += pctDelta(v, prices?.silverChangePercentEgp ?? 0);
+        todaySilverMetal += pctDelta(v, prices?.silverChangePercent ?? 0);
       } else if (h.type === 'stock') {
         stockV += v; stockCost += c; stockCount++;
-        if (countsToday) {
-          const changePercent = egxChangeByTicker[h.symbol] ?? 0;
-          todayStock += pctDelta(v, changePercent);
-        } else {
-          const stampContribution = todayContributionFromStamp(h.priceAtLastEditEgp ?? h.priceAtCreationEgp, h.shares, v);
-          if (stampContribution != null) todayStock += stampContribution;
-        }
+        const changePercent = egxChangeByTicker[h.symbol] ?? 0;
+        todayStock += pctDelta(v, changePercent);
       } else if (h.type === 'personal_asset') {
         paV += v; paCost += c; paCount++;
       } else if (h.type === 'fixed_income') {
@@ -603,9 +576,7 @@ export default function HomeScreen() {
         // window never resets: right after the boundary it still showed a
         // whole day's interest while every other bucket had just gone to
         // zero, so "Today" could never read flat on a portfolio holding any.
-        if (countsToday) {
-          todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
-        }
+        todayFI += v - fixedIncomeAccruedValue(h, tradingDayStart());
       } else {
         reV += v; reCost += c; reCount++;
       }

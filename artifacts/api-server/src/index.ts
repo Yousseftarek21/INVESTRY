@@ -14,7 +14,7 @@ import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, en
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
 // TEMPORARY — see oneTimeCleanup.ts's own header. Remove this import and
 // its call site below once this has deployed and booted successfully once.
-import { oneTimeClearBadFrozenLeaderboardResults, oneTimeResetTodayTouchedHoldings } from "./lib/oneTimeCleanup";
+import { oneTimeClearBadFrozenLeaderboardResults } from "./lib/oneTimeCleanup";
 import { assertEncryptionKeyConfigured } from "./lib/encryption";
 
 const rawPort = process.env["PORT"];
@@ -50,7 +50,6 @@ app.listen(port, async (err) => {
   await ensureFeedbackTables();
   await ensurePerformanceLeaderboardResultsTable();
   await oneTimeClearBadFrozenLeaderboardResults(); // TEMPORARY — see its own header
-  await oneTimeResetTodayTouchedHoldings(); // TEMPORARY — see its own header
   await sendCompetitionAnnouncement();
   startPortfolioAlertCron();
   startUserPriceAlertCron();

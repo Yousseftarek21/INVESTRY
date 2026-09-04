@@ -159,9 +159,11 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     if (!userId) return;
     // Stamped locally, not sent to the server (POST body stays the plain
     // holding) — the server's own createdAt/updatedAt (set at insert time)
-    // is the source of truth on the next GET, this just makes the "touched
-    // today" signal correct the instant the add happens, for
-    // touchedToday()'s exclusion of today's-change (see index.tsx).
+    // is the source of truth on the next GET, this just makes "touched
+    // today" correct the instant the add happens, for the competitive
+    // Leaderboard's own gating (computeTodayEligiblePerformance,
+    // api-server) — the personal Today's Change display no longer reads
+    // updatedAt at all.
     const now = new Date().toISOString();
     const stamped: Holding = { ...holding, createdAt: now, updatedAt: now } as Holding;
     setHoldings(prev => {

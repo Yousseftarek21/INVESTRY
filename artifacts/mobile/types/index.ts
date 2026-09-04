@@ -11,19 +11,24 @@ export type PersonalAssetCategory =
 export type PersonalAssetCurrency = 'EGP' | 'USD';
 
 // createdAt/updatedAt (ISO strings, set by the server — see
-// GET /api/holdings) tell "touched today" from "untouched": the Home tab's
-// Today's Change badge (touchedToday in index.tsx/analytics.tsx) uses a
-// holding's real stamped price instead of the day's full price % when it
-// was added or edited today, so bumping a quantity right as the market
-// moves can't inflate the badge. Optional because older cached/local data
-// may not have them yet.
+// GET /api/holdings) tell "touched today" from "untouched." The Home tab
+// and Analytics tab's Today's Change no longer read these at all — that
+// display is personal and non-competitive, so it always uses live market
+// prices regardless of when a holding was last saved. `updatedAt` (bumped
+// only on a real quantity change, never a no-op save — see
+// HoldingsContext.tsx/routes/holdings.ts) is still read by the competitive
+// Performance Leaderboard's own anti-gaming gate
+// (computeTodayEligiblePerformance, api-server), which is why it's still
+// stamped and still gated on quantity specifically. Optional because older
+// cached/local data may not have them yet.
 //
 // priceAtCreationEgp/priceAtLastEditEgp (EGP per gram/share, gold/silver/
 // stock only) are stamped server-side the instant a lot is created/edited —
-// never client-supplied, see POST/PUT /holdings in the API. This is the
-// unfakeable baseline "today's real movement since this lot existed" is
-// measured from, instead of either the whole day's % (unfair to a lot that
-// didn't exist for all of it) or zero (uninformative).
+// never client-supplied, see POST/PUT /holdings in the API. These are
+// leaderboard-period baselines only now — the unfakeable reference price
+// computeTodayEligiblePerformance/computePeriodPerformance measure a lot's
+// movement from, for a period that started today. No longer used for the
+// personal Today's Change display.
 export interface GoldHolding {
   id: string;
   type: 'gold';

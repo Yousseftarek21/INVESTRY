@@ -13,20 +13,3 @@ export function pctDelta(todaysValue: number, pctChange: number): number {
   if (f <= -1) return -todaysValue; // guard: a >=100% loss has no valid start value to divide by
   return (todaysValue * f) / (1 + f);
 }
-
-// The Today's Change contribution (EGP) for a gold/silver/stock lot that
-// was added or edited TODAY — real movement since the server-stamped price
-// captured at that moment (priceAtLastEditEgp if it was edited, else
-// priceAtCreationEgp), not the whole day's %, which would credit/blame the
-// lot for market movement from before it existed at its current quantity.
-// Returns null when no stamp is available (older data from before this
-// stamping existed) so the caller can fall back to excluding the lot
-// entirely, exactly like before this existed — never fabricates a baseline.
-export function todayContributionFromStamp(
-  stampedPricePerUnit: number | null | undefined,
-  quantity: number,
-  currentValueEGP: number,
-): number | null {
-  if (stampedPricePerUnit == null || !Number.isFinite(stampedPricePerUnit)) return null;
-  return currentValueEGP - quantity * stampedPricePerUnit;
-}
