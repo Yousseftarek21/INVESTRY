@@ -1366,26 +1366,18 @@ export default function HomeScreen() {
             // just shown converted directly instead of alongside a
             // redundant "Total" line repeating the same single number.
             //
-            // Badge sits on its own line below the value now (was inline,
-            // pushed to the row's right edge via marginStart:'auto') — right-
-            // aligned via cashValueCol, same alignItems:'flex-end'/gap:5
-            // HoldingCard's own `right` column uses for value+gainPill, so
-            // this badge lands at the same vertical position as the
-            // holdings cards' gain% chip directly below it in the list.
             <View style={styles.cashRows}>
-              <View style={styles.cashValueCol}>
-                <View style={styles.cashAmountRow}>
-                  <Text style={[styles.cashRowValue, styles.cashRowValueSolo, { color: colors.text }]} numberOfLines={1}>
-                    {hideValues ? '••••••' : cashTotalDispText}
-                  </Text>
-                  <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{displayCurrency}</Text>
-                </View>
+              <View style={styles.cashRow}>
+                <Text style={[styles.cashRowValue, styles.cashRowValueSolo, { color: colors.text }]} numberOfLines={1}>
+                  {hideValues ? '••••••' : cashTotalDispText}
+                </Text>
+                <Text style={[styles.cashRowCur, { color: colors.textSecondary }]}>{displayCurrency}</Text>
                 {!hideValues && (cashTodayLoading ? (
                   // Same reserved-footprint treatment as the Cash Accounts
                   // screen's own badge and the portfolio hero's Today chip —
                   // never pops in after the fact, never disappears on a flat
                   // day, so this row's width is stable from first paint.
-                  <View style={[styles.cashTodayBadge, { opacity: 0, marginStart: 0 }]} pointerEvents="none">
+                  <View style={[styles.cashTodayBadge, { opacity: 0 }]} pointerEvents="none">
                     <Feather name="minus" size={9} color="transparent" />
                     <Text style={styles.cashTodayBadgeText}>+12.3K</Text>
                   </View>
@@ -1395,7 +1387,7 @@ export default function HomeScreen() {
                   const up = delta > 0;
                   const c = isFlat ? colors.mutedForeground : up ? colors.green : colors.red;
                   return (
-                    <View style={[styles.cashTodayBadge, { backgroundColor: c + '18', marginStart: 0 }]}>
+                    <View style={[styles.cashTodayBadge, { backgroundColor: c + '18' }]}>
                       <Feather name={isFlat ? 'minus' : up ? 'arrow-up' : 'arrow-down'} size={9} color={c} />
                       <Text style={[styles.cashTodayBadgeText, { color: c }]} numberOfLines={1}>
                         {t.todayChangeBadge(isFlat ? '0' : `${up ? '+' : '−'}${fmtCompact(Math.abs(delta))}`)}
@@ -2072,12 +2064,6 @@ const styles = StyleSheet.create({
   cashLabel: { fontSize: 12, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   cashValue: { fontSize: 19, fontFamily: 'Inter_700Bold', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
   cashRows:      { gap: 7, marginTop: 3 },
-  // Right-aligned value+badge stack, single-currency case — matches
-  // HoldingCard's own `right` column (alignItems:'flex-end', gap:5) so the
-  // today-change badge lands at the same vertical position as the holdings
-  // cards' gain% pill beneath it in the list.
-  cashValueCol:  { alignSelf: 'flex-end', alignItems: 'flex-end', gap: 5 },
-  cashAmountRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // A View with a backgroundColor, matching how the portfolio card's own
   // iDivider is drawn — a borderTopWidth hairline renders sub-pixel here and
   // effectively disappears against the card, which is why the first attempt
