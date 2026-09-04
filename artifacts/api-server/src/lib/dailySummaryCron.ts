@@ -4,6 +4,7 @@ import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
 import { cairoDateString } from "./cairoDate";
 import { snapshotOnOrBefore } from "./portfolioSnapshotHelpers";
+import { isUserPro } from "./isUserPro";
 
 // Replaces a client-scheduled local notification that fired every morning
 // with hardcoded, content-free text ("Good morning! Check your portfolio
@@ -133,9 +134,10 @@ async function checkAllUsers(): Promise<void> {
         lastDaily: usersTable.lastDailySummaryDate,
         lastWeekly: usersTable.lastWeeklySummaryDate,
         plan: usersTable.plan,
+        proCreditExpiresAt: usersTable.proCreditExpiresAt,
       })
       .from(usersTable);
-    const users: User[] = rows.map(r => ({ ...r, isPro: r.plan === "pro" || betaUnlockAll }));
+    const users: User[] = rows.map(r => ({ ...r, isPro: isUserPro(r) || betaUnlockAll }));
 
     for (const u of users) {
       try {

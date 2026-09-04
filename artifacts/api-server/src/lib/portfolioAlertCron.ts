@@ -4,6 +4,7 @@ import { computeUserPortfolioValue, computePeriodPerformance } from "./portfolio
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
 import { tradingDayKey, tradingDayStart, isSaturday } from "./cairoDate";
+import { isUserPro } from "./isUserPro";
 
 // Checked every 5 minutes throughout the day — each check compares
 // today's live value against yesterday's close and may push again if the
@@ -215,12 +216,12 @@ async function checkAllUsers(): Promise<void> {
     // same escape hatch /api/subscription uses.
     const betaUnlockAll = process.env.BETA_UNLOCK_ALL === "true";
     const users = await db
-      .select({ id: usersTable.id, pushToken: usersTable.pushToken, alertsEnabled: usersTable.portfolioAlertsEnabled, plan: usersTable.plan })
+      .select({ id: usersTable.id, pushToken: usersTable.pushToken, alertsEnabled: usersTable.portfolioAlertsEnabled, plan: usersTable.plan, proCreditExpiresAt: usersTable.proCreditExpiresAt })
       .from(usersTable);
 
     for (const u of users) {
       try {
-        const isPro = u.plan === "pro" || betaUnlockAll;
+        const isPro = isUserPro(u) || betaUnlockAll;
         await checkUser(u.id, today, isPro && u.alertsEnabled ? u.pushToken : null);
       } catch (err) {
         logger.warn({ err, userId: u.id }, "Portfolio alert check failed for user");

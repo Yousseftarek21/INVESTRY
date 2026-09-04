@@ -20,6 +20,7 @@ import {
   type EGXStockResponse, type StockNewsItem, type MarketPricesResponse,
 } from "./markets";
 import { computeHoldingValue, totalLoanBalanceEGP, type StoredHolding } from "../lib/portfolioValue";
+import { isUserPro } from "../lib/isUserPro";
 import { fetchInflation } from "./inflation";
 import { RE_PRICES } from "@workspace/shared-data";
 
@@ -690,8 +691,8 @@ router.post("/chat", chatGenerationLimit, async (req, res) => {
 
   if (!process.env.GEMINI_API_KEY) { res.status(503).json({ error: "AI Assistant is not available right now" }); return; }
 
-  const [user] = await db.select({ plan: usersTable.plan }).from(usersTable).where(eq(usersTable.id, userId));
-  const isPro = user?.plan === "pro" || process.env.BETA_UNLOCK_ALL === "true";
+  const [user] = await db.select({ plan: usersTable.plan, proCreditExpiresAt: usersTable.proCreditExpiresAt }).from(usersTable).where(eq(usersTable.id, userId));
+  const isPro = isUserPro(user) || process.env.BETA_UNLOCK_ALL === "true";
   if (!isPro) { res.status(403).json({ error: "AI Assistant is a Pro feature" }); return; }
 
   const body = req.body as { messages?: ChatTurn[]; language?: string };

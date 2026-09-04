@@ -53,22 +53,32 @@ router.get("/subscription", async (req, res) => {
   const { userId } = getAuth(req);
 
   let [user] = await db
-    .select({ plan: usersTable.plan, billingPeriod: usersTable.billingPeriod })
+    .select({ plan: usersTable.plan, billingPeriod: usersTable.billingPeriod, proCreditExpiresAt: usersTable.proCreditExpiresAt })
     .from(usersTable)
     .where(eq(usersTable.id, userId!));
 
   if (user?.plan !== "pro") {
     await grantDevProIfListed(userId!);
     [user] = await db
-      .select({ plan: usersTable.plan, billingPeriod: usersTable.billingPeriod })
+      .select({ plan: usersTable.plan, billingPeriod: usersTable.billingPeriod, proCreditExpiresAt: usersTable.proCreditExpiresAt })
       .from(usersTable)
       .where(eq(usersTable.id, userId!));
   }
 
+  // `plan` stays honest — real subscription only, never reports "pro" for
+  // referral credit — so a credit-only user correctly still sees the Free
+  // plan card (routes to the paywall) rather than a fake "manage your
+  // subscription" screen with nothing real to manage. `tempProUntil` is
+  // the separate signal the client adds on top of `isPro` to unlock
+  // features while credit is active, same shape isUserPro() uses
+  // server-side — see that file's own comment for why this existed but
+  // did nothing until now.
+  const proCreditActive = user?.proCreditExpiresAt && user.proCreditExpiresAt.getTime() > Date.now();
   res.json({
     plan: user?.plan === "pro" ? "pro" : "free",
     billingPeriod: user?.billingPeriod ?? "monthly",
     betaUnlockAll: process.env.BETA_UNLOCK_ALL === "true",
+    tempProUntil: proCreditActive ? user!.proCreditExpiresAt!.toISOString() : null,
   });
 });
 

@@ -5,6 +5,7 @@ import { goldPricePerGram, silverPricePerGram } from "./portfolioValue";
 import { encryptForStorage, decryptFromStorage } from "./encryption";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
+import { isUserPro } from "./isUserPro";
 
 // Checks every user's own custom price alerts (set via the mobile
 // price-alerts screen) against live prices and pushes when crossed — this
@@ -68,11 +69,11 @@ async function checkAllAlerts(): Promise<void> {
     const [priceDict, alertRows, users] = await Promise.all([
       buildPricesDict(),
       db.select().from(priceAlertsTable),
-      db.select({ id: usersTable.id, pushToken: usersTable.pushToken, enabled: usersTable.priceAlertsEnabled, plan: usersTable.plan }).from(usersTable).where(isNotNull(usersTable.pushToken)),
+      db.select({ id: usersTable.id, pushToken: usersTable.pushToken, enabled: usersTable.priceAlertsEnabled, plan: usersTable.plan, proCreditExpiresAt: usersTable.proCreditExpiresAt }).from(usersTable).where(isNotNull(usersTable.pushToken)),
     ]);
 
     const tokenByUser = new Map(
-      users.filter(u => u.enabled && (u.plan === "pro" || betaUnlockAll)).map(u => [u.id, u.pushToken as string])
+      users.filter(u => u.enabled && (isUserPro(u) || betaUnlockAll)).map(u => [u.id, u.pushToken as string])
     );
 
     for (const row of alertRows) {

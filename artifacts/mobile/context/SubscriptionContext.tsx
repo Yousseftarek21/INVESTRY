@@ -30,7 +30,7 @@ export type Plan = 'free' | 'pro';
 export type BillingPeriod = 'monthly' | 'annual';
 
 export interface SubscriptionContextValue {
-  /** Real entitlement: `plan === 'pro'` or the server's beta-unlock flag. */
+  /** Real entitlement: `plan === 'pro'`, the server's beta-unlock flag, or active referral credit. */
   featuresUnlocked: boolean;
   /** The user's current plan, straight from the backend. */
   plan: Plan;
@@ -72,7 +72,19 @@ export interface SubscriptionContextValue {
   closePaywall: () => void;
 }
 
-interface SubscriptionData { plan: Plan; billingPeriod: BillingPeriod; betaUnlockAll: boolean }
+interface SubscriptionData {
+  plan: Plan; billingPeriod: BillingPeriod; betaUnlockAll: boolean;
+  /**
+   * Referral-credit expiry (ISO string) if still active, else null. Kept
+   * separate from `plan` deliberately — `plan` stays real-subscription-only
+   * (so ManageSubscriptionSheet never shows fake "manage your subscription"
+   * UI for someone with nothing real to manage), while this is the signal
+   * `featuresUnlocked` also honors, same shape as `betaUnlockAll` already
+   * sitting alongside `isPro`. Was being sent by the server all along but
+   * never actually unlocked anything — see api-server's isUserPro.ts.
+   */
+  tempProUntil: string | null;
+}
 
 /** Per-user AsyncStorage key — a display cache only, never a trust source. */
 function subscriptionKey(userId: string) {
@@ -86,6 +98,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [plan, setPlan] = useState<Plan>('free');
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [betaUnlockAll, setBetaUnlockAll] = useState(false);
+  const [tempProUntil, setTempProUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [paywallVisible, setPaywallVisible] = useState(false);
   const loadedUserRef = useRef<string | null>(null);
@@ -100,7 +113,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const res = await apiFetch('/api/subscription', token);
     if (!res.ok) throw new Error(`GET /api/subscription failed: ${res.status}`);
     const data = (await res.json()) as SubscriptionData;
-    return { plan: data.plan, billingPeriod: data.billingPeriod, betaUnlockAll: data.betaUnlockAll ?? false };
+    return { plan: data.plan, billingPeriod: data.billingPeriod, betaUnlockAll: data.betaUnlockAll ?? false, tempProUntil: data.tempProUntil ?? null };
   }, [getToken]);
 
   // `getToken` (and therefore `fetchSubscription`/`cachePlan`, which close
@@ -120,10 +133,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           plan: data?.plan ?? 'free',
           billingPeriod: data?.billingPeriod ?? 'monthly',
           betaUnlockAll: data?.betaUnlockAll ?? false,
+          tempProUntil: data?.tempProUntil ?? null,
         };
         setPlan(resolved.plan);
         setBillingPeriod(resolved.billingPeriod);
         setBetaUnlockAll(resolved.betaUnlockAll);
+        setTempProUntil(resolved.tempProUntil);
         cachePlanRef.current(uid, resolved).catch(() => null);
       })
       .catch(() => {
@@ -138,6 +153,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setPlan('free');
       setBillingPeriod('monthly');
       setBetaUnlockAll(false);
+      setTempProUntil(null);
       setIsLoading(false);
       loadedUserRef.current = null;
       if (prevUserId) AsyncStorage.removeItem(subscriptionKey(prevUserId)).catch(() => null);
@@ -149,6 +165,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setPlan('free');
       setBillingPeriod('monthly');
       setBetaUnlockAll(false);
+      setTempProUntil(null);
       AsyncStorage.removeItem(subscriptionKey(prevUserId)).catch(() => null);
     }
 
@@ -168,6 +185,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           setPlan(cached.plan ?? 'free');
           setBillingPeriod(cached.billingPeriod ?? 'monthly');
           setBetaUnlockAll(cached.betaUnlockAll ?? false);
+          setTempProUntil(cached.tempProUntil ?? null);
         } catch { /* ignore */ }
       })
       .catch(() => null);
@@ -179,10 +197,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           plan: data?.plan ?? 'free',
           billingPeriod: data?.billingPeriod ?? 'monthly',
           betaUnlockAll: data?.betaUnlockAll ?? false,
+          tempProUntil: data?.tempProUntil ?? null,
         };
         setPlan(resolved.plan);
         setBillingPeriod(resolved.billingPeriod);
         setBetaUnlockAll(resolved.betaUnlockAll);
+        setTempProUntil(resolved.tempProUntil);
         cachePlanRef.current(capturedUserId, resolved).catch(() => null);
       })
       .catch(() => {
@@ -218,10 +238,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     setPlan('pro');
     setBillingPeriod(newBillingPeriod);
     if (loadedUserRef.current) {
-      cachePlanRef.current(loadedUserRef.current, { plan: 'pro', billingPeriod: newBillingPeriod, betaUnlockAll })
+      cachePlanRef.current(loadedUserRef.current, { plan: 'pro', billingPeriod: newBillingPeriod, betaUnlockAll, tempProUntil })
         .catch(() => null);
     }
-  }, [betaUnlockAll]);
+  }, [betaUnlockAll, tempProUntil]);
 
   const showPaywall = useCallback(() => setPaywallVisible(true), []);
   // 400ms: comfortably past iOS's own "modal" screen dismiss animation
@@ -258,7 +278,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const closePaywall = useCallback(() => setPaywallVisible(false), []);
 
   const isPro = plan === 'pro';
-  const featuresUnlocked = isPro || betaUnlockAll;
+  // Referral credit unlocks features the same way betaUnlockAll does —
+  // sits alongside isPro, doesn't replace it, and deliberately doesn't
+  // touch `plan`/`isPro` themselves (see SubscriptionData's own comment
+  // on tempProUntil for why: ManageSubscriptionSheet and anything else
+  // that means "real subscription" should keep reading isPro, unaffected).
+  const tempProActive = tempProUntil != null && Date.now() < Date.parse(tempProUntil);
+  const featuresUnlocked = isPro || betaUnlockAll || tempProActive;
 
   return (
     <SubscriptionContext.Provider value={{

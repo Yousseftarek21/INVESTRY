@@ -41,20 +41,6 @@ function proGateActivityId(userId: string): string {
 
 export async function sendProGateNotice(): Promise<void> {
   try {
-    // TEMPORARY diagnostic — nothing logged at all on the last deploy even
-    // though existing free users are known to exist, so this breaks down
-    // exactly which condition is filtering everyone out instead of
-    // guessing. Remove this block once the real cause is found.
-    const diagAll = await db.select({ id: usersTable.id, plan: usersTable.plan, createdAt: usersTable.createdAt, proGateNoticeSentAt: usersTable.proGateNoticeSentAt }).from(usersTable);
-    logger.info({
-      totalUsers: diagAll.length,
-      notPro: diagAll.filter(u => u.plan !== "pro").length,
-      noticeNotYetSent: diagAll.filter(u => u.proGateNoticeSentAt == null).length,
-      beforeCutoff: diagAll.filter(u => u.createdAt <= PRE_PAYWALL_CUTOFF).length,
-      cutoffUsed: PRE_PAYWALL_CUTOFF.toISOString(),
-      sample: diagAll.slice(0, 3).map(u => ({ plan: u.plan, createdAt: u.createdAt, proGateNoticeSentAt: u.proGateNoticeSentAt })),
-    }, "proGateNotice DIAGNOSTIC");
-
     const rows = await db
       .select({ id: usersTable.id, pushToken: usersTable.pushToken })
       .from(usersTable)
@@ -63,8 +49,6 @@ export async function sendProGateNotice(): Promise<void> {
         isNull(usersTable.proGateNoticeSentAt),
         lte(usersTable.createdAt, PRE_PAYWALL_CUTOFF),
       ));
-
-    logger.info({ matched: rows.length }, "proGateNotice DIAGNOSTIC — final query result");
 
     if (rows.length === 0) return;
 
