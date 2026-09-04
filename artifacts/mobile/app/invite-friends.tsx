@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View,
 } from 'react-native';
@@ -46,6 +46,24 @@ export default function InviteFriendsScreen() {
   }, [getToken]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Real Pro time still active from referral credit — was previously shown
+  // as a second copy of referredCount (a copy-paste bug: both stat cards
+  // read the same field), which happened to look plausible in the simple
+  // case but was wrong the moment someone also redeemed a friend's code
+  // themselves (their own +1 month bonus, uncounted in referredCount) or
+  // some of their credit had already expired. No lifetime "total ever
+  // earned" counter exists server-side (proCreditExpiresAt only tracks the
+  // current stacked expiry), so this shows what's genuinely still active,
+  // not a historical total — the more honest and more useful number anyway.
+  const monthsRemaining = useMemo(() => {
+    if (!info?.proCreditExpiresAt) return 0;
+    const expiry = new Date(info.proCreditExpiresAt).getTime();
+    const now = Date.now();
+    if (!Number.isFinite(expiry) || expiry <= now) return 0;
+    const MS_MONTH = 30.44 * 86_400_000;
+    return Math.ceil((expiry - now) / MS_MONTH);
+  }, [info?.proCreditExpiresAt]);
 
   const handleShare = async () => {
     if (!info) return;
@@ -145,7 +163,7 @@ export default function InviteFriendsScreen() {
                 <Text style={[s.statLabel, { color: colors.mutedForeground }]}>{t.referralFriendsJoined}</Text>
               </View>
               <View style={[s.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Text style={[s.statValue, { color: colors.text }]}>{info.referredCount}</Text>
+                <Text style={[s.statValue, { color: colors.text }]}>{monthsRemaining}</Text>
                 <Text style={[s.statLabel, { color: colors.mutedForeground }]}>{t.referralMonthsEarned}</Text>
               </View>
             </View>
