@@ -1450,6 +1450,7 @@ export default function HomeScreen() {
         {/* Allocation strip */}
         {hasHoldings && summary.totalValue > 0 && (
           <View style={[styles.allocationStrip, { borderTopColor: colors.border }]}>
+          <View style={{ width: 352, alignSelf: 'center' }}>
             <AllocationBar
               chipWrapStyle={{ paddingLeft: 4 }}
               segments={[
@@ -1487,6 +1488,7 @@ export default function HomeScreen() {
               ]}
               hideValues={hideValues}
             />
+          </View>
           </View>
         )}
       </View>
