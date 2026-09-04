@@ -12,26 +12,15 @@ function holdingsKey(userId: string) {
   return `@istithmarak_holdings_${userId}`;
 }
 
-// Deterministic JSON stringify (sorted keys), with undefined/null/'' keys
-// dropped so all three compare as the same "no value" — used only by
-// updateHolding's no-op check below, never persisted. The drop is the fix
-// for a real bug caught live: editing screens normalize an unset optional
-// field (e.g. notes) from undefined to '' on pre-fill (setNotes(holding.notes
-// ?? '')), then always include it as an explicit key on save. An older
-// holding that never had notes set at all (key absent, not '') would then
-// compare unequal on that key alone — a false "real change" on every
-// no-op save, for any holding with an unset optional field. 0/false are
-// real, meaningful values and are deliberately NOT dropped here.
-function stableStringify(v: unknown): string {
-  return JSON.stringify(v, (_key, value) => {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return Object.keys(value)
-        .filter(k => (value as Record<string, unknown>)[k] !== undefined && (value as Record<string, unknown>)[k] !== null && (value as Record<string, unknown>)[k] !== '')
-        .sort()
-        .reduce((acc, k) => { acc[k] = (value as Record<string, unknown>)[k]; return acc; }, {} as Record<string, unknown>);
-    }
-    return value;
-  });
+// Matches the identical helper on the server (routes/holdings.ts) exactly —
+// the one thing that's allowed to mark a holding "touched today" for the
+// anti-gaming stamp fallback. Editing anything else (price, notes, karat,
+// dates) is not a gaming risk against an unchanged quantity, so it must
+// never bump updatedAt either — see updateHolding's own comment below.
+function holdingQuantity(h: Holding): number | null {
+  if (h.type === 'gold' || h.type === 'silver') return Number(h.grams) || 0;
+  if (h.type === 'stock') return Number(h.shares) || 0;
+  return null;
 }
 
 interface HoldingsContextValue {
@@ -272,32 +261,26 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     let previous: Holding | undefined;
     // Same reasoning as addHolding's stamp — local-only, PUT body stays the
     // plain holding. createdAt is carried over from what was already
-    // loaded (an edit is not a new holding), only updatedAt moves to now —
-    // but ONLY when something actually changed. Opening Edit and tapping
-    // Save with nothing touched used to still bump updatedAt unconditionally
-    // here, which is what "touched today" (utils/cairoDate.ts) keys off of
-    // for whether a holding's Today %-change can safely use live prices —
-    // a real user report, confirmed live: a plain re-save silently dropped
-    // that holding out of Today's total for the rest of the day, since
-    // there was no genuine edit to stamp a fresh reference price from
-    // either. The API server has the identical no-op check for the same
-    // reason (routes/holdings.ts) — fixed in both places since the client
-    // never re-reads updatedAt from the server's response here.
+    // loaded (an edit is not a new holding). updatedAt only moves to now on
+    // a real QUANTITY change (grams/shares) — matches the identical rule on
+    // the server (routes/holdings.ts), which is the actual anti-gaming
+    // boundary: only a quantity change can fake that day's gain (bump
+    // grams right as the market moves, credit the whole day's % to grams
+    // that didn't exist that morning). Two earlier, narrower fixes both
+    // missed this and are subsumed by it: bumping updatedAt on ANY real
+    // edit (not just quantity) froze "Today" at ~0% for the rest of the day
+    // on a plain price/notes/date edit — a live user report, the same
+    // holding fixed twice before this — while a true no-op save (nothing
+    // changed at all) is just the quantityChanged===false case with an
+    // otherwise-identical `holding`, so it's covered here too without a
+    // separate check.
     let stamped: Holding = holding;
     setHoldings(prev => {
       previous = prev.find(h => h.id === holding.id);
-      // holding (the raw form payload from the edit screen) never carries
-      // createdAt or updatedAt at all — they're only merged in below, after
-      // this check — so both have to be stripped from `previous` too, or
-      // every save would compare unequal on createdAt alone regardless of
-      // whether anything real changed (caught live: the first version of
-      // this check compared them still present on one side only).
-      const { updatedAt: _prevUpdatedAt, createdAt: _prevCreatedAt, ...prevRest } = (previous ?? {}) as Record<string, unknown>;
-      const { updatedAt: _newUpdatedAt, createdAt: _newCreatedAt, ...newRest } = holding as unknown as Record<string, unknown>;
-      const isNoOpSave = !!previous && stableStringify(prevRest) === stableStringify(newRest);
+      const quantityChanged = !previous || holdingQuantity(previous) !== holdingQuantity(holding);
       stamped = {
         ...holding,
-        updatedAt: isNoOpSave ? previous!.updatedAt : new Date().toISOString(),
+        updatedAt: quantityChanged ? new Date().toISOString() : previous!.updatedAt,
         createdAt: previous?.createdAt ?? holding.createdAt,
       } as Holding;
       const next = prev.map(h => h.id === holding.id ? stamped : h);

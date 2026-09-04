@@ -421,35 +421,49 @@ router.put("/holdings/:id", async (req, res) => {
     }
 
     const newHolding = { id, type: type as string, ...rest } as StoredHolding;
+    const quantityChanged = holdingQuantity(existingHolding) !== holdingQuantity(newHolding);
 
-    // Any save reaching this point is a real edit (the no-op check above
-    // already returned early otherwise) — always re-stamp priceAtLastEditEgp
-    // at the current live price, regardless of *which* field changed. This
-    // used to only re-stamp when holdingQuantity() (grams/shares) changed,
-    // leaving a real edit to anything else — purchase price, karat, form,
-    // notes, purchase date — holding onto whatever stamp already existed,
-    // however old. A genuine real-world case: edit just the purchase price
-    // months after adding a lot, with the original stamp still from
-    // creation day. Today's %-change math (client) then falls back to that
-    // stale stamp for a holding "touched today" and reports "today's move"
-    // as the ENTIRE gain since that old stamp — a live user report, a
-    // portfolio showing +3.55%/+12.56k EGP "today" when the real live
-    // market move was +0.14%. Always stamping fresh here — same "treat the
-    // whole lot as freshly stamped, not a fabricated split" reasoning the
-    // quantity-change case already used — means the stamp-based fallback
-    // always measures from the moment you actually touched the lot, never
-    // from some older edit, whatever prompted this save.
-    const { prices, egxPrices } = await fetchPriceContext();
-    const stampedPrice = livePricePerUnit(newHolding, prices, egxPrices);
-    const dataToStore: Record<string, unknown> = {
-      ...rest,
-      priceAtCreationEgp: existingHolding.priceAtCreationEgp,
-      ...(stampedPrice != null ? { priceAtLastEditEgp: stampedPrice } : {}),
-    };
+    // The actual, correct anti-gaming boundary is quantity, not "was
+    // anything edited." Two earlier attempts at this both missed it: first,
+    // updatedAt bumped on ANY real edit, which made "Today" fall back to a
+    // stamp for a holding whose price/notes/date changed but whose grams/
+    // shares didn't — no gaming risk exists there at all, live %-change is
+    // completely honest against an unchanged quantity. Second, always
+    // re-stamping on any real edit "fixed" a stale-stamp symptom but kept
+    // freezing Today at ~0% for the rest of the day on every non-quantity
+    // edit, which is exactly the live user complaint this replaces. Only a
+    // real quantity change can fake a gain (increase grams right as the
+    // market moves, credit the whole day's % to grams that didn't exist
+    // that morning) — that's the one case that needs a frozen reference
+    // price at all. Anything else leaves updatedAt AND the stamp completely
+    // untouched, so the client's touchedToday() check keeps reading
+    // whatever it already was — unaffected by a price/notes/date edit — and
+    // Today keeps tracking live markets through it, same as if nothing had
+    // been touched.
+    let dataToStore: Record<string, unknown> = rest;
+    if (quantityChanged) {
+      const { prices, egxPrices } = await fetchPriceContext();
+      const stampedPrice = livePricePerUnit(newHolding, prices, egxPrices);
+      dataToStore = {
+        ...rest,
+        priceAtCreationEgp: existingHolding.priceAtCreationEgp,
+        ...(stampedPrice != null ? { priceAtLastEditEgp: stampedPrice } : {}),
+      };
+    } else {
+      dataToStore = {
+        ...rest,
+        priceAtCreationEgp: existingHolding.priceAtCreationEgp,
+        priceAtLastEditEgp: existingHolding.priceAtLastEditEgp,
+      };
+    }
 
     await db
       .update(holdingsTable)
-      .set({ data: encryptForStorage(dataToStore), type: type as string, updatedAt: new Date() })
+      .set({
+        data: encryptForStorage(dataToStore),
+        type: type as string,
+        ...(quantityChanged ? { updatedAt: new Date() } : {}),
+      })
       .where(and(eq(holdingsTable.id, id), eq(holdingsTable.userId, userId)));
 
     res.json({ id, type, ...dataToStore });
