@@ -12,15 +12,26 @@ function holdingsKey(userId: string) {
   return `@istithmarak_holdings_${userId}`;
 }
 
-// Deterministic JSON stringify (sorted keys) — used only by updateHolding's
-// no-op check below, never persisted. Matches the same technique on the
-// server (routes/holdings.ts), which independently needed the same fix.
+// Deterministic JSON stringify (sorted keys), with undefined/null/'' keys
+// dropped so all three compare as the same "no value" — used only by
+// updateHolding's no-op check below, never persisted. The drop is the fix
+// for a real bug caught live: editing screens normalize an unset optional
+// field (e.g. notes) from undefined to '' on pre-fill (setNotes(holding.notes
+// ?? '')), then always include it as an explicit key on save. An older
+// holding that never had notes set at all (key absent, not '') would then
+// compare unequal on that key alone — a false "real change" on every
+// no-op save, for any holding with an unset optional field. 0/false are
+// real, meaningful values and are deliberately NOT dropped here.
 function stableStringify(v: unknown): string {
-  return JSON.stringify(v, (_key, value) =>
-    value && typeof value === 'object' && !Array.isArray(value)
-      ? Object.keys(value).sort().reduce((acc, k) => { acc[k] = (value as Record<string, unknown>)[k]; return acc; }, {} as Record<string, unknown>)
-      : value
-  );
+  return JSON.stringify(v, (_key, value) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.keys(value)
+        .filter(k => (value as Record<string, unknown>)[k] !== undefined && (value as Record<string, unknown>)[k] !== null && (value as Record<string, unknown>)[k] !== '')
+        .sort()
+        .reduce((acc, k) => { acc[k] = (value as Record<string, unknown>)[k]; return acc; }, {} as Record<string, unknown>);
+    }
+    return value;
+  });
 }
 
 interface HoldingsContextValue {

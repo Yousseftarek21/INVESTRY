@@ -26,15 +26,25 @@ function holdingLabel(h: StoredHolding): string {
   }
 }
 
-// Deterministic JSON stringify (sorted keys) so two objects with the same
-// fields in a different order still compare equal — used only for the
-// no-op-save check below, not for anything persisted.
+// Deterministic JSON stringify (sorted keys), with undefined/null/""
+// keys dropped so all three compare as the same "no value" — used only
+// for the no-op-save check below, not for anything persisted. The drop
+// matches the identical fix on the mobile client (context/
+// HoldingsContext.tsx) for the same real bug: a holding whose optional
+// field (e.g. notes) was never set at all (key absent) compares unequal
+// against a re-save that always includes it as an explicit "" — a false
+// "real change" on every no-op save for such a holding. 0/false are real,
+// meaningful values and are deliberately NOT dropped here.
 function stableStringify(v: unknown): string {
-  return JSON.stringify(v, (_key, value) =>
-    value && typeof value === "object" && !Array.isArray(value)
-      ? Object.keys(value).sort().reduce((acc, k) => { acc[k] = (value as Record<string, unknown>)[k]; return acc; }, {} as Record<string, unknown>)
-      : value
-  );
+  return JSON.stringify(v, (_key, value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return Object.keys(value)
+        .filter(k => (value as Record<string, unknown>)[k] !== undefined && (value as Record<string, unknown>)[k] !== null && (value as Record<string, unknown>)[k] !== "")
+        .sort()
+        .reduce((acc, k) => { acc[k] = (value as Record<string, unknown>)[k]; return acc; }, {} as Record<string, unknown>);
+    }
+    return value;
+  });
 }
 
 function holdingQuantity(h: StoredHolding): number | null {
