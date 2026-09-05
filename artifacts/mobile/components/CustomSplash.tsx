@@ -4,14 +4,16 @@ import Reanimated, {
   useSharedValue, useAnimatedStyle, withDelay, withRepeat, withTiming,
   Easing as REasing,
 } from "react-native-reanimated";
-import { useAppSettings } from "@/context/AppSettingsContext";
-import { useColors } from "@/hooks/useColors";
+import colors from "@/constants/colors";
 
 interface Props {
   statusMessage?: string;
 }
 
-const LOGO_DARK = require("@/assets/images/logo-mark.png");
+// Always the light-mode mark, regardless of the device's own Dark/Light
+// Mode setting — matches the native launch screen (SplashScreen.storyboard),
+// which was made light-only, so the two don't disagree the instant this
+// JS-rendered screen takes over from it.
 const LOGO_LIGHT = require("@/assets/images/logo-mark-light.png");
 
 // ─── Equalizer bars ─────────────────────────────────────────────────────────
@@ -76,8 +78,7 @@ function EqualizerBar({ index, color }: { index: number; color: string }) {
 }
 
 export function CustomSplash({ statusMessage }: Props) {
-  const { resolvedTheme } = useAppSettings();
-  const colors = useColors();
+  const palette = colors.light;
   const logoIn = useRef(new Animated.Value(0)).current;
   const taglineIn = useRef(new Animated.Value(0)).current;
   const barsIn = useRef(new Animated.Value(0)).current;
@@ -101,12 +102,11 @@ export function CustomSplash({ statusMessage }: Props) {
   const logoScale = logoIn.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
   const taglineTranslateY = taglineIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] });
   const barsTranslateY = barsIn.interpolate({ inputRange: [0, 1], outputRange: [6, 0] });
-  const logoSource = resolvedTheme === "dark" ? LOGO_DARK : LOGO_LIGHT;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: palette.background }]}>
       <Animated.Image
-        source={logoSource}
+        source={LOGO_LIGHT}
         style={[
           styles.logo,
           { opacity: logoOpacity, transform: [{ scale: logoScale }] },
@@ -117,7 +117,7 @@ export function CustomSplash({ statusMessage }: Props) {
       <Animated.Text
         style={[
           styles.tagline,
-          { color: colors.mutedForeground, opacity: taglineIn, transform: [{ translateY: taglineTranslateY }] },
+          { color: palette.mutedForeground, opacity: taglineIn, transform: [{ translateY: taglineTranslateY }] },
         ]}
       >
         Track All Investments. One Portfolio
@@ -125,11 +125,11 @@ export function CustomSplash({ statusMessage }: Props) {
 
       <Animated.View style={[styles.barsWrap, { opacity: barsIn, transform: [{ translateY: barsTranslateY }] }]}>
         {Array.from({ length: BAR_COUNT }).map((_, i) => (
-          <EqualizerBar key={i} index={i} color={colors.primary} />
+          <EqualizerBar key={i} index={i} color={palette.primary} />
         ))}
       </Animated.View>
 
-      <Animated.Text style={[styles.status, { color: colors.mutedForeground, opacity: statusIn }]}>
+      <Animated.Text style={[styles.status, { color: palette.mutedForeground, opacity: statusIn }]}>
         {statusMessage ?? ""}
       </Animated.Text>
     </View>
