@@ -156,6 +156,15 @@ function PortfolioHeroValue({ value, hidden }: { value: number; hidden: boolean 
       numberOfLines={1}
       adjustsFontSizeToFit
       minimumFontScale={0.5}
+      // utils/textScaling.ts caps every plain Text/TextInput at 1.3x, but
+      // its patch only intercepts those two exact component references —
+      // Animated.Text (Animated.createAnimatedComponent(Text)) is a
+      // different component and slips through uncapped. At an extreme
+      // accessibility text size that let this headline number balloon
+      // (adjustsFontSizeToFit only shrinks it back down to 50% of that
+      // already-huge requested size), consuming most of the row's width
+      // and squeezing the currency pill's space to nothing.
+      maxFontSizeMultiplier={1.3}
     >
       {hidden ? '••••••' : displayValue}
     </Animated.Text>
@@ -336,7 +345,7 @@ export default function HomeScreen() {
   const displayName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
-  const { cashAccounts } = useCash();
+  const { cashAccounts, isLoading: cashLoading } = useCash();
   const { recurringIncomes } = useRecurringIncome();
   const { goals } = useGoals();
   const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
@@ -379,6 +388,13 @@ export default function HomeScreen() {
 
   // ── Currency picker visibility ─────────────────────────────────────────────
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  // Measured width of the currency pill (heroValueRow below) — mirrored as
+  // an invisible spacer on the number's other side so the number lands at
+  // the row's true center regardless of the pill's own width (which varies
+  // by currency code length and accessibility text scale), while the pill
+  // itself still sits directly against the number with a fixed small gap
+  // instead of floating off toward the card's edge for a short value.
+  const [currencyPillWidth, setCurrencyPillWidth] = useState(0);
 
   // Auto-dismissing sync error toast for failed holdings CRUD
   const [showSyncError, setShowSyncError] = useState(false);
@@ -778,20 +794,22 @@ export default function HomeScreen() {
   // Real prices AND holdings both loaded — only once this is true does the
   // hero mount PortfolioHeroValue (see its own comment for why the mount
   // timing, not just a visual swap, is what avoids the wrong-number flash).
-  const heroReady = !pricesArePlaceholder && !(holdingsLoading && holdings.length === 0);
+  // Cash's own loading is included the same way holdings' is (only block
+  // if genuinely empty AND still loading — never hold up an already-
+  // populated screen) — CashContext resolves its local AsyncStorage cache
+  // almost instantly, well before prices/holdings typically do, so this
+  // essentially never adds real wait time; what it does fix is the Cash
+  // cell previously being able to render *after* the rest of the hero
+  // body had already appeared (the skeleton disappearing before Cash's
+  // own local-cache read had resolved), popping in a beat late instead of
+  // appearing at the same instant as everything else.
+  const heroReady = !pricesArePlaceholder && !(holdingsLoading && holdings.length === 0) && !(cashLoading && cashAccounts.length === 0);
 
   // Deliberately stricter than heroReady. Cached prices are enough to show a
   // true total (a spot price doesn't expire), but not today's move — those
   // deltas are relative to today's open and are zeroed on rehydration, so
   // rendering them would assert a flat day and then correct itself.
   const todaysChangeKnown = !pricesArePlaceholder && !prices?.changesUnknown;
-  // Ambient wash tinted by today's direction, so the day can be read from
-  // the card's colour before any figure is. Only when today's change is
-  // actually known — a wash on placeholder data would assert a direction
-  // the app hasn't established.
-  const todayTint = !todaysChangeKnown || summary.todayGain === 0
-    ? null
-    : summary.todayGain > 0 ? colors.green : colors.red;
   const { sweep: milestoneSweep, active: milestoneActive } = useMilestoneSweep(summary.totalValue, user?.id);
 
   const topHoldings = useMemo(() => {
@@ -913,25 +931,25 @@ export default function HomeScreen() {
       <CommunityInviteBanner />
       <WhatsNewModal />
 
-      {/* ── Hero Card ───────────────────────────────────────────── */}
-      <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <ExpoLinearGradient
-          colors={[colors.primary + '00', colors.primary + 'CC', colors.primary + '00']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.heroAccent}
-        />
-        {/* Sits under the content and above the card fill, fading out well
-            before the figures so it never tints the text it sits behind. */}
-        {todayTint && (
-          <ExpoLinearGradient
-            pointerEvents="none"
-            colors={[todayTint + '1F', todayTint + '00']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.heroPerfWash}
-          />
-        )}
+      {/* ── Hero section (no bordered card anymore) ─────────────────
+          Content now sits directly on the screen's own background, same
+          horizontal inset as the Greeting/Overview title above it — no
+          card fill, no border, no rounded corners. The old gain/loss
+          today-tint wash (todayTint/heroPerfWash) is replaced by a
+          static, always-on gold-toned wash behind just the top section,
+          matching the approved no-card mockup. */}
+      <View style={styles.heroCard}>
+        {/* No wash of its own anymore — the pre-existing "Gradient bloom"
+            (rendered once, at the very top of the whole screen, above the
+            ScrollView — see its own comment) already covers this section
+            from the true top of the page, exactly matching the approved
+            mockup's structure (one continuous wash starting behind the
+            greeting, not a second one starting mid-screen). Adding
+            another gradient here was the actual bug behind every "still
+            looks like a card" report tonight: two overlapping washes with
+            different start points created a visible seam right at
+            heroCard's own top edge, which is exactly where the plain
+            black (above) met the second gradient's own top (below). */}
         {milestoneActive && (
           <Animated.View
             pointerEvents="none"
@@ -974,15 +992,35 @@ export default function HomeScreen() {
           </View>
 
           {/* Big value + currency pill.
-              Two equal flex:1 spacers (not justifyContent:'center' on the
-              whole row) — centering [number + pill] as one group pulled the
-              number itself ~33pt left of the card's true center, since the
-              pill only adds width on the right. Equal spacers on both
-              sides keep the number at the card's real center regardless of
-              the pill's width; the pill just sits in the right spacer's
-              own space, not touching the number's position at all. */}
+              Ghost spacer on the left, exactly matching the pill's own
+              measured width, then the number, then a fixed 9pt gap, then
+              the real pill. This is what actually satisfies both real
+              requirements at once, which two earlier attempts tonight
+              each traded off against the other:
+                - Two independent flex:1 spacers (number+pill each get
+                  half the remaining space) centers the number precisely,
+                  but at an extreme accessibility text size the number's
+                  Animated.Text intrinsic width (see PortfolioHeroValue's
+                  own comment — Animated.Text isn't covered by the app-wide
+                  font-scale cap) squeezed the pill's flex:1 region to
+                  nothing, truncating it to "EG…" regardless of flexShrink
+                  props on the pill itself.
+                - A single absolutely-positioned pill pinned to the row's
+                  right edge can't be squeezed (it's outside flex flow
+                  entirely), but then sits a FIXED distance from the card
+                  edge no matter the number's width — a short value like
+                  "7,121" left a huge, inconsistent gap before it, while a
+                  long one like "362,321" happened to sit close.
+              Mirroring the pill's real width as an inert spacer on the
+              other side keeps the number at the row's true center (the
+              two flanks balance out) while the pill still sits right next
+              to the number with the same small gap regardless of the
+              value's length — and neither the ghost spacer nor the pill
+              is a flex:1/flexBasis:0 participant, so neither can be
+              squeezed by the number's width the way the first attempt
+              was. */}
           <View style={styles.heroValueRow}>
-            <View style={{ flex: 1 }} />
+            <View style={{ width: currencyPillWidth }} />
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => { impact(); setHideValues(!hideValues); }}
@@ -992,25 +1030,34 @@ export default function HomeScreen() {
             >
               <PortfolioHeroValue value={toDisp(summary.totalValue)} hidden={hideValues} />
             </TouchableOpacity>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingStart: 9 }}>
-              <Pressable
-                onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
-                style={({ pressed }) => [
-                  styles.currencyPill,
-                  {
-                    backgroundColor: colors.primary + (showCurrencyPicker ? '22' : '14'),
-                    borderColor: colors.primary + '40',
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`Display currency: ${displayCurrency}. Tap to change`}
-              >
-                <Text style={[styles.currencyPillText, { color: colors.primary }]}>
-                  {displayCurrency} {showCurrencyPicker ? '▴' : '▾'}
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
+              onLayout={(e) => {
+                const { width } = e.nativeEvent.layout;
+                setCurrencyPillWidth(prev => Math.abs(prev - width) < 0.5 ? prev : width);
+              }}
+              style={({ pressed }) => [
+                styles.currencyPill,
+                { flexShrink: 0 },
+                {
+                  backgroundColor: colors.primary + (showCurrencyPicker ? '22' : '14'),
+                  borderColor: colors.primary + '40',
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Display currency: ${displayCurrency}. Tap to change`}
+            >
+              {/* This small control is exempt from Dynamic Type scaling
+                  entirely (maxFontSizeMultiplier=1) — same treatment
+                  plenty of icon-adjacent controls get; it's a dropdown
+                  trigger, not reading content, so it doesn't need to grow
+                  with accessibility text size. Also keeps its own measured
+                  width (and therefore the ghost spacer above) stable. */}
+              <Text style={[styles.currencyPillText, { color: colors.primary }]} maxFontSizeMultiplier={1} numberOfLines={1}>
+                {displayCurrency} {showCurrencyPicker ? '▴' : '▾'}
+              </Text>
+            </Pressable>
           </View>
 
           {/* Inline currency tab strip — expands on pill tap. Unchanged
@@ -1057,7 +1104,7 @@ export default function HomeScreen() {
               hitSlop={8}
             >
               <Feather name="info" size={10} color={colors.mutedForeground + '88'} />
-              <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]}>
+              <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                 {hideValues
                   ? `${t.netWorthLabel}: ••••••`
                   : `${t.netWorthLabel}: ${fmtCompact(toDisp(netWorthEgp))} ${displayCurrency}`}
@@ -1087,94 +1134,123 @@ export default function HomeScreen() {
           {(cashAccounts.length > 0 || pendingIncomeEGP > 0 || goalsSummary) && (
           <View style={styles.heroExtras}>
           {(cashAccounts.length > 0 || pendingIncomeEGP > 0) && (
-            <View style={[styles.heroWealthStrip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
+            <View style={styles.heroWealthStrip}>
               {cashAccounts.length > 0 && (
                 <TouchableOpacity
                   style={[
                     styles.heroWealthCell,
-                    { paddingStart: 12, paddingEnd: pendingIncomeEGP > 0 ? 10 : 12 },
-                    // Solo state (no Pending Income): space-between has
-                    // nothing to balance against and stretches the badge
-                    // to the far edge of the whole card. Centered reads as
-                    // one cohesive row instead. The two-column case (both
-                    // Cash and Pending present) is untouched — separate
-                    // insets, space-between, exactly as already designed.
-                    !(pendingIncomeEGP > 0) && { justifyContent: 'center' },
+                    { paddingStart: 20, paddingEnd: pendingIncomeEGP > 0 ? 18 : 20 },
+                    // Option F (tint + border) — additive on top of the
+                    // existing strip/divider structure, not a replacement
+                    // for it, per instruction. margin:4 insets the tile
+                    // slightly within its flex:1 slot so its own border
+                    // doesn't sit flush against the strip's outer border
+                    // or the divider between the two cells.
+                    { backgroundColor: colors.text + '0A', borderWidth: 1, borderColor: colors.text + '14', borderRadius: 14, margin: 4 },
                   ]}
                   onPress={() => { impact(); router.push('/cash-accounts' as any); }}
                   activeOpacity={0.75}
                 >
-                  <View style={styles.heroWealthLeftGroup}>
-                    <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
-                      <BanknoteIcon size={13} color={colors.green} />
+                  {/* Header row: icon + label + Today badge — all short,
+                      fixed-length content, so this row can never be the
+                      one that overflows. The value gets an entire row to
+                      itself below, with nothing beside it competing for
+                      width — that's what actually stops a big balance
+                      ("400k EGP") plus the Today badge from fighting each
+                      other for space and truncating one or the other, the
+                      way the old single-row layout could. */}
+                  <View style={styles.heroWealthHeaderRow}>
+                    <View style={styles.heroWealthLeftGroup}>
+                      <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
+                        <BanknoteIcon size={13} color={colors.green} />
+                      </View>
+                      <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.cash}</Text>
                     </View>
-                    {/* Solo state (no Pending Income): label+value go
-                        inline (row, baseline) instead of stacked — with
-                        the whole row's width available and nothing to
-                        keep compact for, "CASH  3.58M" reads as one line
-                        alongside the badge instead of a two-line block. */}
-                    <View style={[styles.heroWealthText, !(pendingIncomeEGP > 0) && { flexDirection: 'row', alignItems: 'baseline', gap: 6 }]}>
-                      {/* flexShrink split so an extreme value truncates
-                          itself in the inline solo row instead of the two
-                          Texts overlapping — "CASH" is short and fixed
-                          (never shrinks), the value is the one that gives
-                          way if it's ever unusually long. */}
-                      <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }, !(pendingIncomeEGP > 0) && { flexShrink: 0 }]} numberOfLines={1}>{t.cash}</Text>
-                      <Text style={[styles.heroWealthValue, { color: colors.text }, !(pendingIncomeEGP > 0) && { flexShrink: 1 }]} numberOfLines={1}>
-                        {hideValues ? '••••••' : (
-                          <>
-                            {cashTotalDispText}{' '}
-                            <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
-                          </>
-                        )}
-                      </Text>
-                    </View>
+                    {!hideValues && (
+                      cashTodayLoading ? (
+                        // Same dimmed-dash convention the Today/Total P/L
+                        // chip below already uses while its own data isn't
+                        // known yet — reserves this badge's exact layout
+                        // space instead of the badge being entirely absent
+                        // and then popping in once the network call (this
+                        // one has no local cache, unlike the cash total
+                        // itself) resolves.
+                        <View style={[styles.heroWealthBadge, { backgroundColor: colors.muted + '22' }]}>
+                          <Text style={[styles.heroWealthBadgeText, { color: colors.mutedForeground + '88' }]}>—</Text>
+                        </View>
+                      ) : (
+                        <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
+                          <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
+                            {t.todayChangeBadge(cashTodayInfo.text)}
+                          </Text>
+                        </View>
+                      )
+                    )}
                   </View>
-                  {!hideValues && !cashTodayLoading && (
-                    <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
-                      <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
-                        {t.todayChangeBadge(cashTodayInfo.text)}
-                      </Text>
-                    </View>
-                  )}
+                  {/* adjustsFontSizeToFit + minimumFontScale, not a bare
+                      numberOfLines={1} — a genuinely huge balance shrinks
+                      its own font to keep fitting on one line instead of
+                      truncating to "400k E…", the same technique
+                      PortfolioHeroValue already uses for the headline
+                      number above. */}
+                  {/* marginStart:32 = heroWealthChip's own width (26) +
+                      heroWealthLeftGroup's gap (6) — starts the value at
+                      the same x as the "CASH" label above it, not under
+                      the icon. Still spans to the cell's own right edge
+                      (no width cap), so adjustsFontSizeToFit above still
+                      has the room it needs for a genuinely large value. */}
+                  <Text
+                    style={[styles.heroWealthValueFull, { color: colors.text, marginStart: 32 }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
+                    {hideValues ? '••••••' : (
+                      <>
+                        {cashTotalDispText}{' '}
+                        <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
+                      </>
+                    )}
+                  </Text>
                 </TouchableOpacity>
               )}
-              {/* Separate stretched View, not a borderRight on the Cash
-                  cell — the border approach let the divider's height
-                  follow the cell's own box instead of the row's, and it
-                  kept overshooting past the row's real bottom edge.
-                  alignSelf:'stretch' ties it to the row directly, same
-                  pattern iDivider already uses between Invested/Current/
-                  Return. */}
-              {cashAccounts.length > 0 && pendingIncomeEGP > 0 && (
-                <View style={[styles.heroWealthDivider, { backgroundColor: colors.border }]} />
-              )}
+              {/* Divider removed — each cell now has its own tint+border
+                  (Option F), which already separates them visually; a
+                  line between two already-bordered tiles was redundant.
+                  Say "revert" to bring this block back verbatim. */}
               {pendingIncomeEGP > 0 && (
                 <TouchableOpacity
-                  style={[styles.heroWealthCell, { paddingStart: 10, paddingEnd: 12, justifyContent: 'center' }]}
+                  style={[
+                    styles.heroWealthCell,
+                    { paddingStart: 18, paddingEnd: 20 },
+                    { backgroundColor: colors.text + '0A', borderWidth: 1, borderColor: colors.text + '14', borderRadius: 14, margin: 4 },
+                  ]}
                   onPress={() => { impact(); router.push('/recurring-income'); }}
                   activeOpacity={0.75}
                 >
-                  <View style={styles.heroWealthLeftGroup}>
-                    <View style={[styles.heroWealthChip, { backgroundColor: '#F59E0B18' }]}>
-                      <Feather name="clock" size={13} color="#F59E0B" />
-                    </View>
-                    {/* alignItems:'center' here only — "PENDING INCOME" is
-                        much wider than its value, so a plain left-aligned
-                        stack left the short amount looking off-center
-                        under the label. */}
-                    <View style={[styles.heroWealthText, { alignItems: 'center' }]}>
+                  <View style={styles.heroWealthHeaderRow}>
+                    <View style={styles.heroWealthLeftGroup}>
+                      <View style={[styles.heroWealthChip, { backgroundColor: '#F59E0B18' }]}>
+                        <Feather name="clock" size={13} color="#F59E0B" />
+                      </View>
                       <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.pendingIncomeLabel}</Text>
-                      <Text style={[styles.heroWealthValue, { color: '#F59E0B' }]} numberOfLines={1}>
-                        {hideValues ? '••••••' : (
-                          <>
-                            {fmtCompact(toDisp(pendingIncomeEGP))}{' '}
-                            <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
-                          </>
-                        )}
-                      </Text>
                     </View>
                   </View>
+                  {/* Same 32pt inset (icon width + gap) as Cash — starts
+                      under "PENDING INCOME", not under the icon. */}
+                  <Text
+                    style={[styles.heroWealthValueFull, { color: '#F59E0B', marginStart: 32 }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
+                    {hideValues ? '••••••' : (
+                      <>
+                        {fmtCompact(toDisp(pendingIncomeEGP))}{' '}
+                        <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
+                      </>
+                    )}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1233,7 +1309,20 @@ export default function HomeScreen() {
                 )}
                 <View style={styles.heroGoalText}>
                   <Text style={[styles.heroGoalLabel, { color: colors.primary }]}>{t.goals}</Text>
-                  <Text style={[styles.heroGoalAmount, { color: colors.text }]} numberOfLines={1}>
+                  {/* This uses toLocaleString (full digits with commas),
+                      not fmtCompact — a large goal or multi-goal total can
+                      genuinely run long ("1,500,000 / 3,000,000 EGP"), and
+                      this pill isn't stretched (stays centered, per
+                      instruction), so it has no extra width to grow into.
+                      adjustsFontSizeToFit is the fallback that keeps it on
+                      one line instead of truncating. */}
+                  <Text
+                    style={[styles.heroGoalAmount, { color: colors.text }]}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1.15}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
                     {hideValues ? '••••••' : (() => {
                       // overviewGoalAmount() returns one combined string
                       // ("50,000 / 10,000 EGP") — the trailing currency word
@@ -1259,13 +1348,12 @@ export default function HomeScreen() {
                       return (
                         <>
                           {full.slice(0, lastSpace)}{' '}
-                          <Text style={{ color: colors.mutedForeground }}>{full.slice(lastSpace + 1)}</Text>
+                          <Text style={{ color: colors.mutedForeground }} maxFontSizeMultiplier={1.15}>{full.slice(lastSpace + 1)}</Text>
                         </>
                       );
                     })()}
                   </Text>
                 </View>
-                <Feather name={forwardChevron()} size={13} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
           )}
@@ -1274,30 +1362,33 @@ export default function HomeScreen() {
 
           {/* Invested · Current · Return strip */}
           {summary.totalCost > 0 && (
-            <View style={[styles.iStrip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
-              <View style={styles.iCell}>
+            <View style={styles.iStrip}>
+              <View style={[styles.iCell, { borderColor: colors.text + '14' }]}>
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.invested}</Text>
                 <View style={styles.iCellValueRow}>
-                  <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(toDisp(summary.totalCost))}</Text>
+                  {/* numberOfLines+adjustsFontSizeToFit — each cell is
+                      only ~1/3 of the strip's width; without this a long
+                      value would wrap onto a second line instead of
+                      staying on one, misaligning with its siblings and
+                      the currency label sitting next to it. */}
+                  <Text style={[styles.iCellValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{hideValues ? '••••' : fmtCompact(toDisp(summary.totalCost))}</Text>
                   {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>{displayCurrency}</Text>}
                 </View>
               </View>
-              <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
-              <View style={styles.iCell}>
+              <View style={[styles.iCell, { borderColor: colors.text + '14' }]}>
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.currentLabel}</Text>
                 <View style={styles.iCellValueRow}>
-                  <Text style={[styles.iCellValue, { color: colors.text }]}>{hideValues ? '••••' : fmtCompact(toDisp(summary.totalValue))}</Text>
+                  <Text style={[styles.iCellValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{hideValues ? '••••' : fmtCompact(toDisp(summary.totalValue))}</Text>
                   {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>{displayCurrency}</Text>}
                 </View>
               </View>
-              <View style={[styles.iDivider, { backgroundColor: colors.border }]} />
               <Pressable
-                style={styles.iCell}
+                style={[styles.iCell, { borderColor: colors.text + '14' }]}
                 onPress={() => showModal(t.returnCalcTitle, t.returnCalcBody)}
               >
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.returnLabel}</Text>
                 <View style={styles.iCellValueRow}>
-                  <Text style={[styles.iCellValue, { color: gainColor }]}>
+                  <Text style={[styles.iCellValue, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                     {/* .toFixed(2), matching the Total P/L chip below —
                         both render the identical summary.gainPct; at
                         different precision a value like 12.35% could read
@@ -1355,7 +1446,7 @@ export default function HomeScreen() {
                     </View>
                     <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
                   </View>
-                  <Text style={[styles.plValue, { color: todayColor }]}>
+                  <Text style={[styles.plValue, { color: todayColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                     {hideValues ? '••••' : isTodayFlat ? `0 ${displayCurrency}` : `${isTodayGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.todayGain)))} ${displayCurrency}`}
                   </Text>
                 </Pressable>
@@ -1375,7 +1466,7 @@ export default function HomeScreen() {
                   </View>
                   <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
                 </View>
-                <Text style={[styles.plValue, { color: gainColor }]}>
+                <Text style={[styles.plValue, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                   {hideValues ? '••••' : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.gain)))} ${displayCurrency}`}
                 </Text>
               </Pressable>
@@ -1482,7 +1573,20 @@ export default function HomeScreen() {
         {/* Allocation strip */}
         {hasHoldings && summary.totalValue > 0 && (
           <View style={[styles.allocationStrip, { borderTopColor: colors.border }]}>
-          <View style={{ width: 352, alignSelf: 'center' }}>
+          {/* 400 — allocationStrip now has marginHorizontal:-12 (its
+              border reaches the P/L chips' outer edge, matching every
+              other row) alongside its existing paddingHorizontal:12 —
+              the margin widens the strip's own box by 24pt total, and
+              since the padding is a fixed pt value (not relative), that
+              widens the CONTENT area by the same 24pt too: heroBody's
+              content width (440 - 2*20 = 400) minus allocationStrip's
+              own 2*12 padding, plus the 24pt the margin adds back =
+              400-24+24 = 400. Re-verify with a pixel screenshot after
+              any further padding/margin change here — the Animated
+              percentage-width chain inside AllocationBar swallows
+              margin/padding several levels up in ways that haven't
+              matched hand calculations cleanly every time tonight. */}
+          <View style={{ width: 400, alignSelf: 'center' }}>
             <AllocationBar
               chipWrapStyle={{ paddingLeft: 4 }}
               segments={[
@@ -2015,14 +2119,30 @@ const styles = StyleSheet.create({
   screenTitle:   { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   titleRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
 
-  heroCard:   { borderRadius: 26, borderWidth: 1, overflow: 'hidden' },
-  heroAccent: { height: 1.25 },
-  // Tall enough to colour the card's upper region, short enough that it has
-  // faded to nothing behind the value itself.
-  heroPerfWash: { position: 'absolute', top: 0, left: 0, right: 0, height: 130 },
+  // No border/radius/fill anymore — just a plain layout wrapper. overflow
+  // is left default (visible) since there's no rounded-corner edge left
+  // for the wash to be clipped to.
+  heroCard:   {},
   // A narrow angled band swept across the card once on a milestone.
   heroSweep: { position: 'absolute', top: -40, bottom: -40, width: 90 },
-  heroBody:   { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 16, alignItems: 'stretch' },
+  // 20, not the old card's 24 — with no border to pad away from, this
+  // just matches the screen's own outer inset (styles.content) directly,
+  // so hero content lines up with the Greeting/Overview title above it
+  // instead of sitting extra-inset. Every "-24/+24 cancel and reapply"
+  // pair below (heroWealthStrip, heroGoalWrap, iStrip, chartWrap,
+  // allocationStrip) moves to -20/+20 to match.
+  // 0, not 20 — this sits INSIDE the scroll container's own 20pt padding
+  // (styles.content), so giving it a horizontal padding of its own just
+  // doubled the inset to 40pt on each side. With no card border to pad
+  // away from anymore, hero content should align exactly with the
+  // Greeting/Overview title above it, using only the screen's own inset.
+  // Each "-20/+20 cancel and reapply" pair below (heroWealthStrip,
+  // heroGoalWrap, iStrip, chartWrap, allocationStrip) drops the -20: with
+  // heroBody itself contributing zero padding, there's nothing left for
+  // them to cancel — their own paddingHorizontal is now a genuine
+  // additional inset for their internal content, on top of (not
+  // instead of) the screen's 20pt, not a workaround for double-padding.
+  heroBody:   { paddingHorizontal: 0, paddingTop: 22, paddingBottom: 24, gap: 16, alignItems: 'stretch' },
 
   // ── EXPERIMENTAL (unified hero card, simulator-only) ────────────────
   // Cash + Pending Income, now living inside the hero card instead of
@@ -2048,23 +2168,35 @@ const styles = StyleSheet.create({
   // adjusting one's gap to the card edge can never move the other's. A
   // shared value on this strip was exactly what caused edits meant for
   // one side to visibly shift the other.
-  heroWealthStrip: { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, marginHorizontal: -24 },
+  // marginHorizontal:-20 — cancels content's own 20pt screen padding
+  // fully, so this border reaches the literal screen edge (0 gap), not
+  // just the P/L chips' previous 8pt-short match. The cells' own inline
+  // paddingStart/paddingEnd (call sites) are bumped by the same +8 this
+  // requires, so the text inset stays exactly where it was.
+  // Top/bottom border removed — each cell now carries its own border
+  // (Option F), so the shared strip's own border was doubling up on top
+  // of that.
+  heroWealthStrip: { flexDirection: 'row', marginHorizontal: -20 },
+  // Column, not row — label+badge live in their own header row up top,
+  // and the value gets the rest of the cell's full width to itself below.
+  // Splitting these onto separate rows (rather than one row where the
+  // value and badge compete for the same horizontal space) is what
+  // actually stops a large balance ("400k EGP") and the Today badge from
+  // fighting over width and one of them truncating.
+  heroWealthCell: { flex: 1, paddingHorizontal: 14, paddingVertical: 8, gap: 3 },
   // justifyContent:'space-between' pushes the two children — the
-  // heroWealthLeftGroup (icon+text) and the badge — to opposite ends.
-  // marginStart:'auto' on the badge alone was tried first and measured
-  // as NOT reaching the cell's edge (confirmed via screenshot, not just
-  // reasoning) — space-between between two real sibling groups is the
-  // more reliable primitive.
-  heroWealthCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8 },
-  // alignSelf:'stretch' ties this to the row's own height, same pattern
-  // iDivider already uses between Invested/Current/Return.
-  heroWealthDivider: { width: 1, alignSelf: 'stretch' },
+  // heroWealthLeftGroup (icon+label) and the badge — to opposite ends of
+  // this header row specifically (short, fixed-length content on both
+  // sides, so this row itself can never be the one that overflows).
+  heroWealthHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroWealthLeftGroup: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 },
   heroWealthChip: { width: 26, height: 26, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  // minWidth guarantees the value/label always keep enough room to read.
-  heroWealthText: { flexShrink: 1, minWidth: 45 },
   heroWealthLabel: { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3, textTransform: 'uppercase' },
-  heroWealthValue: { fontSize: 13, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1 },
+  // Its own full-width row, nothing beside it — adjustsFontSizeToFit at
+  // the JSX call site shrinks this down first if it's ever too long to
+  // fit on one line at full size, same technique PortfolioHeroValue uses
+  // for the headline number, rather than truncating.
+  heroWealthValueFull: { fontSize: 15, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
   // Exact match to cash-accounts.tsx's todayBadge/todayBadgeText — same
   // chip on both screens, single combined "+1k Today" string via
   // t.todayChangeBadge(), not a separate stacked label+value.
@@ -2079,13 +2211,29 @@ const styles = StyleSheet.create({
   // paddingTop:4 (was 8) — measured precisely: the gap above Goals (this
   // padding + heroExtras' own gap:4 between its two children) was ~13.7pt
   // vs. ~9.7pt below Goals. Trimming this to 4 brings both sides in line.
-  heroGoalWrap: { borderTopWidth: 1, paddingTop: 4, marginHorizontal: -24, paddingHorizontal: 24 },
+  // 12, matching iStrip/plChip's own inset — was 20, which sat noticeably
+  // more inset than the Invested/Current/Return row and P/L chips right
+  // below/above it, an inconsistency across rows that shouldn't exist now
+  // that nothing has a card border to keep clear of.
+  // marginHorizontal:-12 alongside the existing paddingHorizontal:12 —
+  // same plRow pattern used everywhere else in this section, so this
+  // border also reaches the P/L chips' outer edge instead of stopping
+  // 12pt short. The Goals band itself stays centered/untouched — this
+  // only affects the border line.
+  // -20/20 (not -12/12) — border reaches the literal screen edge; the
+  // matching +8 padding keeps the Goals band's own centering unaffected.
+  heroGoalWrap: { borderTopWidth: 1, paddingTop: 4, paddingHorizontal: 20, marginHorizontal: -20 },
   // heroGoalWrap (the parent) stretches its child to the full row width by
   // default — heroGoalText's own flex:1 then filled that whole width, but
   // its actual content (a short amount string) never needed that much,
   // leaving a big dead gap between the text and the chevron.
   // alignSelf:'flex-start' makes the band size to its own content instead.
-  heroGoalBand: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, borderWidth: 1, overflow: 'hidden', paddingVertical: 7, paddingHorizontal: 10 },
+  // alignSelf:'stretch' (was 'center') + justifyContent:'center' — spans
+  // the full row width like Cash/Pending/Invested-Current-Return now do,
+  // while keeping its own content (ring + label/amount) centered within
+  // that width rather than left-packed. The trailing chevron is gone, so
+  // there's no longer anything to balance against on the right.
+  heroGoalBand: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 16, borderWidth: 1, overflow: 'hidden', paddingVertical: 7, paddingHorizontal: 10 },
   goalRingCluster: { flexDirection: 'row' },
   // flexShrink (not flex:1 growth) — a flex:1 child inside a shrink-to-fit
   // (alignSelf:'flex-start') parent still forced that parent to expand,
@@ -2097,9 +2245,11 @@ const styles = StyleSheet.create({
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
-  // No justifyContent/gap here anymore — the two flex:1 spacers at the
-  // JSX call site do the centering now (see the comment there).
-  heroValueRow:   { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginTop: -4 },
+  // justifyContent:'center' + gap centers [number + pill] as one group —
+  // see the comment at the JSX call site for why (not two independent
+  // flex:1 spacers, which left the pill's gap from the number
+  // inconsistent depending on the number's length).
+  heroValueRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, alignSelf: 'stretch', marginTop: -4 },
   // tabular-nums keeps every digit the same width. The value is an animated
   // counter, so proportional digits made the number visibly shimmy as it
   // tweened — 1s are narrow, 0s wide — and the whole line re-centred on each
@@ -2118,29 +2268,46 @@ const styles = StyleSheet.create({
   netWorthRow:    { flexDirection: 'row', alignItems: 'center', gap: 5, justifyContent: 'center' },
   netWorthTxt:    { fontSize: 11.5, fontFamily: 'Inter_500Medium', fontVariant: ['tabular-nums'] },
 
-  iStrip:         { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, marginHorizontal: -24, paddingHorizontal: 12 },
-  iCell:          { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 4 },
+  // marginHorizontal:-12 alongside the existing paddingHorizontal:12 —
+  // same plRow pattern as heroWealthStrip above: pushes the border out
+  // by exactly what the padding pulls the text back in by, so the text
+  // inset is unchanged but the border now reaches the P/L chips' outer
+  // edge instead of stopping 12pt short.
+  // -20/20 (not -12/12) — border reaches the literal screen edge; text
+  // inset (0 + 20) stays exactly where it was (8 + 12).
+  iStrip:         { flexDirection: 'row', paddingHorizontal: 20, marginHorizontal: -20 },
+  iCell:          { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 4, borderWidth: 1, borderRadius: 14, margin: 4 },
   iCellLabel:     { fontSize: 10, fontFamily: 'Inter_400Regular', letterSpacing: 0.2 },
   iCellValueRow:  { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
   iCellValue:     { fontSize: 14, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   iCellCur:       { fontSize: 9, fontFamily: 'Inter_400Regular' },
-  // alignSelf:'stretch' (not marginVertical, which deliberately floated
-  // it short of the row's own top/bottom border) — same pattern already
-  // verified correct for the Cash/Pending divider.
-  iDivider:       { width: 1, alignSelf: 'stretch' },
 
   // marginTop/marginBottom trim heroBody's `gap: 16` on both sides down to
   // the same 8pt the Goals row sits in (16 - 8 = 8), instead of the plain
   // 16 every other untouched pair in the card still uses.
-  plRow:          { flexDirection: 'row', gap: 8, marginTop: -8, marginBottom: -8, marginHorizontal: -12 },
-  plChip:         { flex: 1, gap: 5, borderRadius: 18, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  // -20/20 (not -12/12) — pushes the chips' own outer border all the way
+  // to the literal screen edge; the matching padding bump keeps their
+  // internal text inset unchanged (0 + 20, was 8 + 12).
+  // gap removed — now that each plChip carries its own margin:4 (for the
+  // edge inset), that same margin already produces an 8pt gap between
+  // the two chips (4+4) on its own, matching Cash/Pending's own tiles
+  // exactly. Keeping gap:8 here on top of that doubled the space between
+  // the two chips to 16pt instead.
+  plRow:          { flexDirection: 'row', marginTop: -8, marginBottom: -8, marginHorizontal: -20 },
+  // margin:4 — same small inset Cash/Pending's own tiles now have, so
+  // these chips get the same comfortable breathing room from the screen
+  // edge instead of sitting flush against the literal 0pt edge.
+  plChip:         { flex: 1, gap: 5, borderRadius: 18, borderWidth: 1, paddingHorizontal: 20, paddingVertical: 10, margin: 4 },
   plTop:          { flexDirection: 'row', alignItems: 'center', gap: 4 },
   plLabel:        { flex: 1, fontSize: 9, fontFamily: 'Inter_500Medium', letterSpacing: 0.2 },
   plValue:        { fontSize: 13.5, fontFamily: 'Inter_700Bold', flexShrink: 1, letterSpacing: -0.2, fontVariant: ['tabular-nums'] },
   plBadge:        { borderRadius: 10, paddingHorizontal: 5, paddingVertical: 2 },
   plBadgeText:    { fontSize: 9.5, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
-  chartWrap:  { borderTopWidth: 1, paddingTop: 12, marginHorizontal: -24, paddingHorizontal: 24 },
+  // 12, matching iStrip/plChip/heroGoalWrap — same consistency fix.
+  // marginHorizontal:-12 — same plRow pattern, reaches the P/L chips' edge.
+  // -20/20 (not -12/12) — border reaches the literal screen edge.
+  chartWrap:  { borderTopWidth: 1, paddingTop: 12, paddingHorizontal: 20, marginHorizontal: -20 },
   timeRow:    { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 10 },
   timePill:   { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   timePillText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
@@ -2163,7 +2330,13 @@ const styles = StyleSheet.create({
   // (relying only on heroBody's own paddingBottom:24) measured out to a
   // much tighter real gap than expected (~7-8pt, not ~24pt) — rather than
   // chase why, this restores a modest, directly-controlled minimum here.
-  allocationStrip: { borderTopWidth: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 8, gap: 0, marginHorizontal: -24, marginTop: -8 },
+  // 12, matching the other rows — same consistency fix.
+  // marginHorizontal:-12 — same plRow pattern, reaches the P/L chips' edge.
+  // -20/20 (not -12/12) — border reaches the literal screen edge. Content
+  // width is unaffected (both margin and padding grew by the same +8, so
+  // they cancel for the content box specifically) — the AllocationBar
+  // wrapper's hardcoded 400 below does NOT need to change for this.
+  allocationStrip: { borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 0, marginTop: -8, marginHorizontal: -20 },
 
   holdingsSection:  { gap: 12 },
   sectionRow:       { flexDirection: 'row', alignItems: 'center', gap: 8 },

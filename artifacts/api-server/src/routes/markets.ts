@@ -1447,6 +1447,35 @@ export async function getCachedStocks(): Promise<EGXStockResponse[]> {
   return data;
 }
 
+// Non-blocking variants — return the cached value only if it's still warm,
+// otherwise null *immediately*, without ever making the caller wait on a
+// live upstream fetch. A miss still kicks off a background refresh (fire-
+// and-forget, single-flighted the same as the blocking path) so the cache
+// is warm for whoever asks next. Built for callers on a latency-sensitive
+// path that must never block on a live TradingView/CIB/Wise round trip —
+// currently just holdings.ts's price-stamping, which is best-effort (a
+// missed stamp is a normal, already-handled case) and has no business
+// making a plain database write wait on third-party market data.
+export function peekCachedPrices(): MarketPricesResponse | null {
+  const cached = pricesCache.get();
+  if (cached) return cached;
+  // Must actually populate the cache (fetchPricesOnce alone doesn't — only
+  // getCachedPrices/the HTTP route do that) and must swallow a rejection —
+  // fetchPrices() legitimately throws when TradingView is unreachable with
+  // no remembered fallback yet, which every other caller already catches;
+  // an un-awaited, uncaught call here would otherwise be an unhandled
+  // promise rejection.
+  fetchPricesOnce().then(data => pricesCache.set(data)).catch(() => { /* next caller retries */ });
+  return null;
+}
+
+export function peekCachedStocks(): EGXStockResponse[] | null {
+  const cached = stocksCache.get();
+  if (cached) return cached;
+  fetchStocksOnce().then(data => stocksCache.set(data)).catch(() => { /* next caller retries */ });
+  return null;
+}
+
 // Used by the AI Assistant's lookup tool so it can answer about non-EGX
 // names too, without duplicating the multi-provider fallback chain
 // (Twelve Data -> TradingView -> Stooq) that GET /markets/global-stocks

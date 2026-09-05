@@ -39,20 +39,21 @@ export function silverPricePerGram(silverUsd: number, usdToEgp: number): number 
  * server processes the request, not typed in by the user.
  *
  * Returns null for a type with no live price feed (real_estate,
- * personal_asset, fixed_income) or when the EGX feed doesn't have the
- * requested symbol — callers must treat null as "don't stamp anything"
- * rather than fabricate a number.
+ * personal_asset, fixed_income), when the EGX feed doesn't have the
+ * requested symbol, or when `prices` is null (metals cache was cold and the
+ * caller chose not to wait for a live refetch) — callers must treat null as
+ * "don't stamp anything" rather than fabricate a number.
  */
 export function livePricePerUnit(
   holding: StoredHolding,
-  prices: { goldUsd: number; silverUsd: number; usdToEgp: number },
+  prices: { goldUsd: number; silverUsd: number; usdToEgp: number } | null,
   egxPrices: Record<string, number>,
 ): number | null {
   if (holding.type === "gold") {
-    return goldPricePerGram(prices.goldUsd, prices.usdToEgp, (holding.karat as GoldKarat) ?? "24k");
+    return prices ? goldPricePerGram(prices.goldUsd, prices.usdToEgp, (holding.karat as GoldKarat) ?? "24k") : null;
   }
   if (holding.type === "silver") {
-    return silverPricePerGram(prices.silverUsd, prices.usdToEgp);
+    return prices ? silverPricePerGram(prices.silverUsd, prices.usdToEgp) : null;
   }
   if (holding.type === "stock") {
     const price = egxPrices[String(holding.symbol)];

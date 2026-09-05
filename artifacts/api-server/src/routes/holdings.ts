@@ -4,7 +4,7 @@ import { db, holdingsTable, activityLogTable, soldHoldingsTable } from "@workspa
 import { eq, and } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
 import { costBasisEGP, computeHoldingValue, livePricePerUnit, type StoredHolding } from "../lib/portfolioValue";
-import { getCachedPrices, getCachedStocks } from "./markets";
+import { getCachedPrices, getCachedStocks, peekCachedPrices, peekCachedStocks } from "./markets";
 import { tradingDayKey } from "../lib/cairoDate";
 
 function generateSoldHoldingId(): string {
@@ -54,12 +54,16 @@ function holdingQuantity(h: StoredHolding): number | null {
 }
 
 // Fetches everything livePricePerUnit needs in one call — shared by the
-// stamping logic in POST/PUT below.
-async function fetchPriceContext() {
-  const [prices, egxStocks] = await Promise.all([
-    getCachedPrices(),
-    getCachedStocks().catch(() => []),
-  ]);
+// stamping logic in POST/PUT below. Deliberately non-blocking: a holding
+// save is a plain database write and must never wait on a live third-party
+// market-data round trip just to attach a best-effort reference price. If
+// either cache is cold, this returns null/empty immediately (peekCached*
+// kicks off a background refresh for next time) and the caller skips
+// stamping — livePricePerUnit already treats "no data" as a normal,
+// unfakeable-baseline case, not an error.
+function fetchPriceContext() {
+  const prices = peekCachedPrices();
+  const egxStocks = peekCachedStocks() ?? [];
   const egxPrices: Record<string, number> = {};
   for (const s of egxStocks) egxPrices[s.symbol] = s.price;
   return { prices, egxPrices };
@@ -125,7 +129,7 @@ router.post("/holdings", async (req, res) => {
     // personal_asset, fixed_income) or if the feed is down — never
     // fabricated.
     const holdingForPricing = { id: id as string, type: type as string, ...rest } as StoredHolding;
-    const { prices, egxPrices } = await fetchPriceContext();
+    const { prices, egxPrices } = fetchPriceContext();
     const stampedPrice = livePricePerUnit(holdingForPricing, prices, egxPrices);
     const dataToStore = stampedPrice != null ? { ...rest, priceAtCreationEgp: stampedPrice } : rest;
 
@@ -442,7 +446,7 @@ router.put("/holdings/:id", async (req, res) => {
     // been touched.
     let dataToStore: Record<string, unknown> = rest;
     if (quantityChanged) {
-      const { prices, egxPrices } = await fetchPriceContext();
+      const { prices, egxPrices } = fetchPriceContext();
       const stampedPrice = livePricePerUnit(newHolding, prices, egxPrices);
       dataToStore = {
         ...rest,
