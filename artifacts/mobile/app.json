@@ -4,7 +4,7 @@
     "slug": "mobile",
     "version": "1.0.5",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon-chart-glyph.png",
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -34,7 +34,7 @@
       "package": "com.investry.app",
       "versionCode": 43,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "foregroundImage": "./assets/images/adaptive-icon-foreground-chart-glyph.png",
         "backgroundColor": "#FFFFFF"
       },
       "statusBar": {
@@ -44,7 +44,7 @@
       }
     },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/icon-chart-glyph.png"
     },
     "plugins": [
       [
