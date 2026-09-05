@@ -973,8 +973,16 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {/* Big value + currency pill */}
+          {/* Big value + currency pill.
+              Two equal flex:1 spacers (not justifyContent:'center' on the
+              whole row) — centering [number + pill] as one group pulled the
+              number itself ~33pt left of the card's true center, since the
+              pill only adds width on the right. Equal spacers on both
+              sides keep the number at the card's real center regardless of
+              the pill's width; the pill just sits in the right spacer's
+              own space, not touching the number's position at all. */}
           <View style={styles.heroValueRow}>
+            <View style={{ flex: 1 }} />
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => { impact(); setHideValues(!hideValues); }}
@@ -984,23 +992,25 @@ export default function HomeScreen() {
             >
               <PortfolioHeroValue value={toDisp(summary.totalValue)} hidden={hideValues} />
             </TouchableOpacity>
-            <Pressable
-              onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
-              style={({ pressed }) => [
-                styles.currencyPill,
-                {
-                  backgroundColor: colors.primary + (showCurrencyPicker ? '22' : '14'),
-                  borderColor: colors.primary + '40',
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={`Display currency: ${displayCurrency}. Tap to change`}
-            >
-              <Text style={[styles.currencyPillText, { color: colors.primary }]}>
-                {displayCurrency} {showCurrencyPicker ? '▴' : '▾'}
-              </Text>
-            </Pressable>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingStart: 9 }}>
+              <Pressable
+                onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
+                style={({ pressed }) => [
+                  styles.currencyPill,
+                  {
+                    backgroundColor: colors.primary + (showCurrencyPicker ? '22' : '14'),
+                    borderColor: colors.primary + '40',
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Display currency: ${displayCurrency}. Tap to change`}
+              >
+                <Text style={[styles.currencyPillText, { color: colors.primary }]}>
+                  {displayCurrency} {showCurrencyPicker ? '▴' : '▾'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           {/* Inline currency tab strip — expands on pill tap. Unchanged
@@ -1111,17 +1121,19 @@ export default function HomeScreen() {
                           way if it's ever unusually long. */}
                       <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }, !(pendingIncomeEGP > 0) && { flexShrink: 0 }]} numberOfLines={1}>{t.cash}</Text>
                       <Text style={[styles.heroWealthValue, { color: colors.text }, !(pendingIncomeEGP > 0) && { flexShrink: 1 }]} numberOfLines={1}>
-                        {hideValues ? '••••••' : cashTotalDispText}
+                        {hideValues ? '••••••' : (
+                          <>
+                            {cashTotalDispText}{' '}
+                            <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
+                          </>
+                        )}
                       </Text>
                     </View>
                   </View>
                   {!hideValues && !cashTodayLoading && (
                     <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
-                      <Text style={[styles.heroWealthBadgeLabel, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
-                        {t.todayLabel}
-                      </Text>
                       <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
-                        {cashTodayInfo.text}
+                        {t.todayChangeBadge(cashTodayInfo.text)}
                       </Text>
                     </View>
                   )}
@@ -1154,7 +1166,12 @@ export default function HomeScreen() {
                     <View style={[styles.heroWealthText, { alignItems: 'center' }]}>
                       <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.pendingIncomeLabel}</Text>
                       <Text style={[styles.heroWealthValue, { color: '#F59E0B' }]} numberOfLines={1}>
-                        {hideValues ? '••••••' : fmtCompact(toDisp(pendingIncomeEGP))}
+                        {hideValues ? '••••••' : (
+                          <>
+                            {fmtCompact(toDisp(pendingIncomeEGP))}{' '}
+                            <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
+                          </>
+                        )}
                       </Text>
                     </View>
                   </View>
@@ -1217,20 +1234,35 @@ export default function HomeScreen() {
                 <View style={styles.heroGoalText}>
                   <Text style={[styles.heroGoalLabel, { color: colors.primary }]}>{t.goals}</Text>
                   <Text style={[styles.heroGoalAmount, { color: colors.text }]} numberOfLines={1}>
-                    {hideValues ? '••••••' : (goalsSummary.single
-                      ? t.overviewGoalAmount(
-                          goalsSummary.single.saved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                          // targetAmount is typed as a plain number but, like
-                          // savedAmount, has come through null at runtime —
-                          // ?? 0 here is what actually stops the crash this
-                          // specific call site hit (goal.targetAmount.toLocaleString
-                          // on null); effectiveGoalSaved's own ?? 0 covers .saved.
-                          (goalsSummary.single.goal.targetAmount ?? 0).toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                        )
-                      : t.overviewGoalAmount(
-                          goalsSummary.totalSaved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                          goalsSummary.totalTarget.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
-                        ))}
+                    {hideValues ? '••••••' : (() => {
+                      // overviewGoalAmount() returns one combined string
+                      // ("50,000 / 10,000 EGP") — the trailing currency word
+                      // is always the last space-delimited token in both
+                      // locales (EN "EGP", AR "جنيه"), so splitting there
+                      // isolates it for its own muted color without a
+                      // separate i18n key or touching the number formatting.
+                      const full = goalsSummary.single
+                        ? t.overviewGoalAmount(
+                            goalsSummary.single.saved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                            // targetAmount is typed as a plain number but, like
+                            // savedAmount, has come through null at runtime —
+                            // ?? 0 here is what actually stops the crash this
+                            // specific call site hit (goal.targetAmount.toLocaleString
+                            // on null); effectiveGoalSaved's own ?? 0 covers .saved.
+                            (goalsSummary.single.goal.targetAmount ?? 0).toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                          )
+                        : t.overviewGoalAmount(
+                            goalsSummary.totalSaved.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                            goalsSummary.totalTarget.toLocaleString('en-EG', { maximumFractionDigits: 0 }),
+                          );
+                      const lastSpace = full.lastIndexOf(' ');
+                      return (
+                        <>
+                          {full.slice(0, lastSpace)}{' '}
+                          <Text style={{ color: colors.mutedForeground }}>{full.slice(lastSpace + 1)}</Text>
+                        </>
+                      );
+                    })()}
                   </Text>
                 </View>
                 <Feather name={forwardChevron()} size={13} color={colors.mutedForeground} />
@@ -2033,23 +2065,11 @@ const styles = StyleSheet.create({
   heroWealthText: { flexShrink: 1, minWidth: 45 },
   heroWealthLabel: { fontSize: 10, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3, textTransform: 'uppercase' },
   heroWealthValue: { fontSize: 13, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1 },
-  // Matches cash-accounts.tsx's todayBadge sizing — a realistic "today"
-  // delta (a few characters) always fits comfortably here. maxWidth is a
-  // last-resort safety net for a genuinely extreme value, not the normal
-  // case — it should never be visibly hit in real use.
-  // alignItems:'center' + no flexDirection override (defaults to column)
-  // stacks the "Today" label above the value inside this one pill,
-  // staying in the same spot the single-line badge used to sit in.
-  heroWealthBadge: { alignItems: 'center', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 3, marginStart: 6, flexShrink: 1, maxWidth: 100 },
-  // No textTransform — matches plLabel's own chip-internal micro-label
-  // convention ("Today" / "Total P/L" in the P/L chips, natural case),
-  // not heroWealthLabel's section-label convention ("CASH", all caps).
-  // Same role (a small label inside a colored chip), so same styling.
-  heroWealthBadgeLabel: { fontSize: 7, fontFamily: 'Inter_700Bold', letterSpacing: 0.2, opacity: 0.85 },
-  // Smaller and one weight down from heroWealthValue (13/Bold) — this is
-  // a secondary, supporting number next to the cell's real value, not a
-  // second headline competing with it.
-  heroWealthBadgeText: { fontSize: 9, fontFamily: 'Inter_600SemiBold', fontVariant: ['tabular-nums'] },
+  // Exact match to cash-accounts.tsx's todayBadge/todayBadgeText — same
+  // chip on both screens, single combined "+1k Today" string via
+  // t.todayChangeBadge(), not a separate stacked label+value.
+  heroWealthBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, marginStart: 6, flexShrink: 1 },
+  heroWealthBadgeText: { fontSize: 9.5, fontFamily: 'Inter_700Bold' },
 
   // Goals — same GoalRing component and single-vs-cluster logic the old
   // standalone row used, just smaller and living here. Kept its own gold
@@ -2077,7 +2097,9 @@ const styles = StyleSheet.create({
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
-  heroValueRow:   { flexDirection: 'row', alignItems: 'center', gap: 9, justifyContent: 'center', alignSelf: 'stretch', marginTop: -4 },
+  // No justifyContent/gap here anymore — the two flex:1 spacers at the
+  // JSX call site do the centering now (see the comment there).
+  heroValueRow:   { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginTop: -4 },
   // tabular-nums keeps every digit the same width. The value is an animated
   // counter, so proportional digits made the number visibly shimmy as it
   // tweened — 1s are narrow, 0s wide — and the whole line re-centred on each
