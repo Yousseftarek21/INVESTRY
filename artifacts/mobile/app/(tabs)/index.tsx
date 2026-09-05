@@ -1236,10 +1236,11 @@ export default function HomeScreen() {
                       <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.pendingIncomeLabel}</Text>
                     </View>
                   </View>
-                  {/* Same 32pt inset (icon width + gap) as Cash — starts
-                      under "PENDING INCOME", not under the icon. */}
+                  {/* Centered under "PENDING INCOME" — per explicit request,
+                      unlike Cash's value (which stays left-aligned, started
+                      under its own label via marginStart:32). */}
                   <Text
-                    style={[styles.heroWealthValueFull, { color: '#F59E0B', marginStart: 32 }]}
+                    style={[styles.heroWealthValueFull, { color: '#F59E0B', textAlign: 'center' }]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                     minimumFontScale={0.7}
@@ -1498,7 +1499,7 @@ export default function HomeScreen() {
                 <PerfChart
                   period={timeFilter}
                   width={sparkWidth}
-                  height={78}
+                  height={110}
                   snapshots={snapshots}
                   todayValues={todaysChangeKnown && !serverIntradayLoading ? todaySamples : []}
                   liveValue={summary.totalValue}
@@ -2304,10 +2305,13 @@ const styles = StyleSheet.create({
   plBadge:        { borderRadius: 10, paddingHorizontal: 5, paddingVertical: 2 },
   plBadgeText:    { fontSize: 9.5, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
-  // 12, matching iStrip/plChip/heroGoalWrap — same consistency fix.
-  // marginHorizontal:-12 — same plRow pattern, reaches the P/L chips' edge.
-  // -20/20 (not -12/12) — border reaches the literal screen edge.
-  chartWrap:  { borderTopWidth: 1, paddingTop: 12, paddingHorizontal: 20, marginHorizontal: -20 },
+  // Reverted to the chart's pre-redesign shape (3 days ago): a plain
+  // hairline top border with no edge-to-edge extension, unlike its
+  // siblings (heroWealthStrip, iStrip, plRow, allocationStrip) which all
+  // still push their own border out to the literal screen edge via the
+  // paddingHorizontal/marginHorizontal cancel-out trick — deliberately not
+  // applied here per explicit request to leave every other row untouched.
+  chartWrap:  { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
   timeRow:    { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 10 },
   timePill:   { borderRadius: 8, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   timePillText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
