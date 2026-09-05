@@ -824,9 +824,9 @@
                checkout path in the app). -->
           <div class="price-period-toggle">
             <button type="button" id="periodMonthly" class="active" data-i18n="periodMonthly">Monthly</button>
-            <button type="button" id="periodAnnual" data-i18n="periodAnnual">Annual · Save 16%</button>
+            <button type="button" id="periodAnnual" data-i18n="periodAnnual">Annual · Save 33%</button>
           </div>
-          <p class="price-amount" id="proAmount">79 EGP</p>
+          <p class="price-amount" id="proAmount">99 EGP</p>
           <p class="price-unit" id="proUnit" data-i18n="perMonth">per month</p>
           <p class="price-savings-note" id="proSavingsNote" style="display:none;"></p>
           <!-- All 18 rows here mirror getPaywallHighlights() in the mobile
@@ -1152,7 +1152,7 @@
       comparePriority: "Priority",
       faqTitle: "FAQs",
       faq1q: "How do subscriptions work?",
-      faq1a: "Pro is billed monthly (79 EGP) or annually (799 EGP) through Stripe on this website — or via the App Store if you subscribe on iOS. Either way, it applies to your account and unlocks Pro instantly in the app too.",
+      faq1a: "Pro is billed monthly (99 EGP) or annually (799 EGP) through Stripe on this website — or via the App Store if you subscribe on iOS. Either way, it applies to your account and unlocks Pro instantly in the app too.",
       faq2q: "Can I cancel anytime?",
       faq2a: "Yes. Manage or cancel your subscription anytime from this page — no calls, no forms, no waiting.",
       faq3q: "Will my data stay safe?",
@@ -1294,7 +1294,7 @@
       comparePriority: "أولوية",
       faqTitle: "الأسئلة الشائعة",
       faq1q: "الاشتراكات بتشتغل إزاي؟",
-      faq1a: "خطة Pro بتتحاسب شهريًا (79 جنيه) أو سنويًا (799 جنيه) عن طريق Stripe من على الموقع ده — أو من الـ App Store لو هتشترك من الآيفون. في الحالتين، الاشتراك بيتفعل فورًا على حسابك في التطبيق.",
+      faq1a: "خطة Pro بتتحاسب شهريًا (99 جنيه) أو سنويًا (799 جنيه) عن طريق Stripe من على الموقع ده — أو من الـ App Store لو هتشترك من الآيفون. في الحالتين، الاشتراك بيتفعل فورًا على حسابك في التطبيق.",
       faq2q: "أقدر ألغي في أي وقت؟",
       faq2a: "أيوه. تقدر تدير أو تلغي اشتراكك في أي وقت من الصفحة دي — من غير مكالمات أو استمارات أو انتظار.",
       faq3q: "بياناتي هتفضل آمنة؟",
@@ -1495,11 +1495,13 @@
   var periodAnnualBtn = document.getElementById('periodAnnual');
   var proSavingsNote = document.getElementById('proSavingsNote');
   var selectedPeriod = 'monthly';
-  // Matches Paywall.tsx's MONTHLY_PRICE/ANNUAL_PRICE exactly (the same
-  // fallback constants that same file uses for this identical Android/web
-  // Stripe checkout path — iOS shows its own App Store price instead,
-  // per Apple's own requirement, untouched by this page).
-  var PRICES = { monthly: '79 EGP', annual: '799 EGP' };
+  // Real current price (confirmed directly, not from Paywall.tsx's own
+  // MONTHLY_PRICE/ANNUAL_PRICE fallback constants — those are Android/web
+  // only and had drifted stale at 79/799; iOS itself always shows its own
+  // live App Store price via RevenueCat, untouched by this page either
+  // way). If those constants in the app ever get corrected to match,
+  // update this literal alongside them — nothing here reads from there.
+  var PRICES = { monthly: '99 EGP', annual: '799 EGP' };
 
   // The launch free-for-everyone period has ended (BETA_UNLOCK_ALL is off
   // server-side) — Pro is real, paid billing now. Kept as a named flag
