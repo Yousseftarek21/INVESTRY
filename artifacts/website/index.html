@@ -95,8 +95,13 @@
     .nav-links { justify-self: center; }
     .header-actions { justify-self: end; margin-inline-start: 0; }
   }
-  .brand { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; }
-  .brand img { height: 20px; width: auto; opacity: 0.92; }
+  .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; flex-shrink: 0; }
+  .brand img { height: 22px; width: auto; opacity: 0.92; }
+  /* logo-light.png is icon-only now (chart glyph, no wordmark baked in —
+     see mobile's own Sep 4 rebrand) — the company name has to be its own
+     text sibling here, or the header loses "INVESTRY" entirely. */
+  .brand-name { font-family: 'Fraunces', Georgia, serif; font-size: 17px; font-weight: 700; letter-spacing: 0.2px; color: var(--text); }
+  html[dir="rtl"] .brand-name { font-family: 'Cairo', serif; }
   .nav-links { display: flex; align-items: center; gap: 32px; }
   .nav-links a { font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; white-space: nowrap; }
   .nav-links a:hover { color: var(--accent); }
@@ -482,16 +487,25 @@
   }
 
   .price-features { flex: 1; }
-  .price-card.pro .price-features { gap: 16px; margin-bottom: 26px; }
+  .price-card.pro .price-features { gap: 14px; margin-bottom: 26px; }
   .price-card.pro .price-features li { align-items: flex-start; }
-  .price-feature-pro .pf-icon {
-    width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft);
+  /* 18 real features (was 8) need a grid, not a single tall column, to
+     keep the card a sane height — two columns once the card is wide
+     enough to hold them without crowding, one column below that. */
+  .pf-grid { display: grid; grid-template-columns: 1fr; gap: 14px 20px; }
+  @media (min-width: 640px) { .pf-grid { grid-template-columns: 1fr 1fr; } }
+  .price-feature-pro .pf-check {
+    width: 20px; height: 20px; border-radius: 999px; background: var(--accent-soft);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    font-size: 14.5px; line-height: 1;
+    margin-top: 1px;
   }
   .price-feature-pro .pf-text { display: flex; flex-direction: column; gap: 1px; }
-  .price-feature-pro .pf-title { font-size: 14px; font-weight: 600; color: var(--text); }
-  .price-feature-pro .pf-desc { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .price-feature-pro .pf-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .price-feature-pro .pf-desc { font-size: 12px; color: var(--muted); line-height: 1.45; }
+  /* Pro genuinely needs more room at 18 features — Free stays at the
+     shared 320px above. */
+  .price-card.pro { max-width: 620px; flex: 1 1 460px; }
+  .pricing-cards { max-width: 980px; }
 
   .price-cta.primary-lg { padding: 15px 18px; font-size: 15px; transition: opacity 0.15s ease, transform 0.15s ease; }
   .price-cta.primary-lg:hover { opacity: 0.9; transform: translateY(-1px); }
@@ -596,6 +610,7 @@
   <div class="wrap">
     <a class="brand" href="#top">
       <img src="assets/logo-light.png" alt="INVESTRY">
+      <span class="brand-name">INVESTRY</span>
     </a>
     <nav class="nav-links" id="navLinks">
       <a href="#how-it-works" data-i18n="navHow">How It Works</a>
@@ -643,26 +658,22 @@
 
     <div class="hero-visual">
       <div class="hero-shot">
-        <img src="assets/app-screenshot.png?v=5" width="1284" height="1968" alt="INVESTRY portfolio screen showing total value, allocation by asset, and live performance">
+        <img src="assets/app-screenshot.png?v=6" width="1284" height="2778" alt="INVESTRY portfolio screen showing total value, allocation by asset, and live performance">
       </div>
       <div class="preview-card">
         <p class="preview-label" data-i18n="totalValue">Total Portfolio Value</p>
         <p class="preview-value">9,794,297 EGP</p>
         <div class="preview-bar">
-          <span style="width:42.67%; background:#7B5A1E"></span>
-          <span style="width:16.14%; background:#C9A227"></span>
-          <span style="width:12.99%; background:#4A9EFF"></span>
-          <span style="width:9.46%; background:#00976E"></span>
-          <span style="width:7.42%; background:#A47FCA"></span>
-          <span style="width:11.32%; background:#B8BEC7"></span>
+          <span style="width:66%; background:#A47FCA"></span>
+          <span style="width:19%; background:#A9821E"></span>
+          <span style="width:13%; background:#B8BEC7"></span>
+          <span style="width:2%; background:#4A9EFF"></span>
         </div>
         <div class="preview-legend">
-          <div class="legend-row"><span class="legend-dot" style="background:#7B5A1E"></span><span class="name" data-i18n="assetRealEstate">Real Estate</span><span class="pct">46%</span></div>
-          <div class="legend-row"><span class="legend-dot" style="background:#C9A227"></span><span class="name" data-i18n="assetGold">Gold</span><span class="pct">17.4%</span></div>
-          <div class="legend-row"><span class="legend-dot" style="background:#4A9EFF"></span><span class="name" data-i18n="assetStocks">EGX Stocks</span><span class="pct">14%</span></div>
-          <div class="legend-row"><span class="legend-dot" style="background:#00976E"></span><span class="name" data-i18n="assetFixedIncome">Fixed Income</span><span class="pct">10.2%</span></div>
-          <div class="legend-row"><span class="legend-dot" style="background:#A47FCA"></span><span class="name" data-i18n="assetCash">Cash</span><span class="pct">8%</span></div>
-          <div class="legend-row"><span class="legend-dot" style="background:#B8BEC7"></span><span class="name" data-i18n="assetSilver">Silver</span><span class="pct">12.2%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#A47FCA"></span><span class="name" data-i18n="assetRealEstate">Real Estate</span><span class="pct">66%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#A9821E"></span><span class="name" data-i18n="assetGold">Gold</span><span class="pct">19%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#B8BEC7"></span><span class="name" data-i18n="assetSilver">Silver</span><span class="pct">13%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#4A9EFF"></span><span class="name" data-i18n="assetStocks">EGX Stocks</span><span class="pct">2%</span></div>
         </div>
         <p class="preview-note" data-i18n="sampleNote">Sample portfolio, for illustration only</p>
       </div>
@@ -795,11 +806,9 @@
           <p class="price-amount">0 EGP</p>
           <p class="price-unit" data-i18n="planFreeUnit">forever</p>
           <ul class="price-features">
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF1">Up to 3 holdings</span></li>
+            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF1">1 investment</span></li>
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF2">Live prices</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF3">1 price alert</span></li>
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF4">1 cash account</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF5">1 goal</span></li>
             <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF6">Basic portfolio tracking</span></li>
           </ul>
           <button class="price-cta secondary" disabled data-i18n="planCurrentFree">Your current plan</button>
@@ -823,15 +832,33 @@
           <p class="price-amount" id="proAmount">49.99 EGP</p>
           <p class="price-unit" id="proUnit" data-i18n="perMonth">per month</p>
           <p class="price-savings-note" id="proSavingsNote" style="display:none;"></p>
-          <ul class="price-features">
-            <li class="price-feature-pro"><span class="pf-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF1t">Unlimited Investments</span><span class="pf-desc" data-i18n="planProF1d">Track every holding you own — no limits, ever.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 00-2 2v9a2 2 0 002 2h15a1 1 0 001-1v-3M16 12a1 1 0 100 2 1 1 0 000-2z"/><path d="M18 7V5a2 2 0 00-2-2H6a2 2 0 00-2 2v2"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF2t">Unlimited Cash Accounts</span><span class="pf-desc" data-i18n="planProF2d">Every bank balance and wallet, tracked together.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF3t">Unlimited Goals</span><span class="pf-desc" data-i18n="planProF3d">Set and track as many goals as you want.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF4t">Market Intelligence</span><span class="pf-desc" data-i18n="planProF4d">AI-powered insight into your own portfolio.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF5t">Advanced Portfolio Analytics</span><span class="pf-desc" data-i18n="planProF5d">Deeper performance and allocation charts.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF6t">Export Portfolio</span><span class="pf-desc" data-i18n="planProF6d">Download your full portfolio as CSV or Excel.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF7t">Unlimited Price Alerts</span><span class="pf-desc" data-i18n="planProF7d">Never miss a move that matters to you.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF8t">Recurring Income Tracking</span><span class="pf-desc" data-i18n="planProF8d">Salary, dividends, and rent — tracked automatically.</span></span></li>
+          <!-- All 18 rows here mirror getPaywallHighlights() in the mobile
+               app exactly (constants/subscriptionFeatures.ts) — the single
+               source the app itself uses for both its Paywall and its
+               Manage Subscription screen. One shared checkmark icon per
+               row (not a bespoke icon per feature) so this list stays
+               trivially easy to keep in sync — the risk with the old
+               8-item, custom-icon version is exactly what caused it to
+               silently drift out of date and miss 10 real Pro features. -->
+          <ul class="price-features pf-grid">
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF1t">Unlimited Investments</span><span class="pf-desc" data-i18n="planProF1d">Hold as many holdings as you want — no limit, ever.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF2t">Unlimited Cash Accounts</span><span class="pf-desc" data-i18n="planProF2d">Every bank balance and wallet, tracked together.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF3t">Unlimited Goals</span><span class="pf-desc" data-i18n="planProF3d">Set and track as many savings goals as you want.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF4t">Income Tracking</span><span class="pf-desc" data-i18n="planProF4d">Unlimited recurring income, or money owed to you.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF5t">AI Financial Assistant</span><span class="pf-desc" data-i18n="planProF5d">Full access to the AI assistant for your portfolio.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF6t">Alerts &amp; Summaries</span><span class="pf-desc" data-i18n="planProF6d">Unlimited price alerts, plus daily &amp; weekly summaries.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF7t">Notification Controls</span><span class="pf-desc" data-i18n="planProF7d">Full control over every notification setting.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF8t">Live Market Rates</span><span class="pf-desc" data-i18n="planProF8d">Live USD/EGP rate, gold &amp; silver prices by karat.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF9t">Personalized Signals</span><span class="pf-desc" data-i18n="planProF9d">Signals generated from your own real portfolio.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF10t">Portfolio Health Score</span><span class="pf-desc" data-i18n="planProF10d">A health score and diversification breakdown.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF11t">Full Performance Charts</span><span class="pf-desc" data-i18n="planProF11d">Charts across every time frame, not just a snapshot.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF12t">Allocation Breakdown</span><span class="pf-desc" data-i18n="planProF12d">See exactly how your assets are allocated.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF13t">Top Performers</span><span class="pf-desc" data-i18n="planProF13d">See which of your holdings is actually working.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF14t">Benchmark Comparison</span><span class="pf-desc" data-i18n="planProF14d">Compare your portfolio to the community benchmark.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF15t">Fix My Portfolio</span><span class="pf-desc" data-i18n="planProF15d">A concrete rebalancing plan, not just a diagnosis.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF16t">Dividend Tracking</span><span class="pf-desc" data-i18n="planProF16d">Unlimited dividend tracking.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF17t">Export Your Data</span><span class="pf-desc" data-i18n="planProF17d">Export your portfolio as CSV or PDF.</span></span></li>
+            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF18t">Target Allocation</span><span class="pf-desc" data-i18n="planProF18d">Set target allocations to guide rebalancing.</span></span></li>
           </ul>
           <button class="price-cta primary-lg" id="proCta" type="button" data-i18n="subscribeBtn">Unlock Pro</button>
         </div>
@@ -878,7 +905,7 @@
           <tbody>
             <tr>
               <td data-i18n="compareRow1">Number of holdings</td>
-              <td data-i18n-label="compareFree" data-label="Free">3</td>
+              <td data-i18n-label="compareFree" data-label="Free">1</td>
               <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="compareUnlimited">Unlimited</td>
             </tr>
             <tr>
@@ -888,7 +915,7 @@
             </tr>
             <tr>
               <td data-i18n="compareRow3">Goals</td>
-              <td data-i18n-label="compareFree" data-label="Free">1</td>
+              <td data-i18n-label="compareFree" data-label="Free">0</td>
               <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="compareUnlimited">Unlimited</td>
             </tr>
             <tr>
@@ -898,11 +925,11 @@
             </tr>
             <tr>
               <td data-i18n="compareRow5">Price alerts</td>
-              <td data-i18n-label="compareFree" data-label="Free">1</td>
+              <td data-i18n-label="compareFree" data-label="Free">0</td>
               <td class="pro-cell" data-i18n-label="comparePro" data-label="Pro" data-i18n="compareUnlimited">Unlimited</td>
             </tr>
             <tr>
-              <td data-i18n="compareRow6">Export (CSV/Excel)</td>
+              <td data-i18n="compareRow6">Export (CSV/PDF)</td>
               <td data-i18n-label="compareFree" data-label="Free"><svg class="no" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></td>
               <td data-i18n-label="comparePro" data-label="Pro"><svg class="yes" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
             </tr>
@@ -913,6 +940,21 @@
             </tr>
             <tr>
               <td data-i18n="compareRow8">Recurring income tracking</td>
+              <td data-i18n-label="compareFree" data-label="Free"><svg class="no" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></td>
+              <td data-i18n-label="comparePro" data-label="Pro"><svg class="yes" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRowAI">AI Financial Assistant</td>
+              <td data-i18n-label="compareFree" data-label="Free"><svg class="no" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></td>
+              <td data-i18n-label="comparePro" data-label="Pro"><svg class="yes" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRowDividends">Dividend tracking</td>
+              <td data-i18n-label="compareFree" data-label="Free"><svg class="no" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></td>
+              <td data-i18n-label="comparePro" data-label="Pro"><svg class="yes" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
+            </tr>
+            <tr>
+              <td data-i18n="compareRowTarget">Target allocation</td>
               <td data-i18n-label="compareFree" data-label="Free"><svg class="no" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></td>
               <td data-i18n-label="comparePro" data-label="Pro"><svg class="yes" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
             </tr>
@@ -1037,11 +1079,9 @@
       mostPopular: "Most Popular",
       planFree: "Free",
       planFreeUnit: "forever",
-      planFreeF1: "Up to 3 holdings",
+      planFreeF1: "1 investment",
       planFreeF2: "Live prices",
-      planFreeF3: "1 price alert",
       planFreeF4: "1 cash account",
-      planFreeF5: "1 goal",
       planFreeF6: "Basic portfolio tracking",
       planCurrentFree: "Your current plan",
       periodMonthly: "Monthly",
@@ -1050,21 +1090,41 @@
       perYear: "per year",
       annualPerMonth: "Only {price} EGP/month, billed annually",
       planProF1t: "Unlimited Investments",
-      planProF1d: "Track every holding you own — no limits, ever.",
+      planProF1d: "Hold as many holdings as you want — no limit, ever.",
       planProF2t: "Unlimited Cash Accounts",
       planProF2d: "Every bank balance and wallet, tracked together.",
       planProF3t: "Unlimited Goals",
-      planProF3d: "Set and track as many goals as you want.",
-      planProF4t: "Market Intelligence",
-      planProF4d: "AI-powered insight into your own portfolio.",
-      planProF5t: "Advanced Portfolio Analytics",
-      planProF5d: "Deeper performance and allocation charts.",
-      planProF6t: "Export Portfolio",
-      planProF6d: "Download your full portfolio as CSV or Excel.",
-      planProF7t: "Unlimited Price Alerts",
-      planProF7d: "Never miss a move that matters to you.",
-      planProF8t: "Recurring Income Tracking",
-      planProF8d: "Salary, dividends, and rent — tracked automatically.",
+      planProF3d: "Set and track as many savings goals as you want.",
+      planProF4t: "Income Tracking",
+      planProF4d: "Unlimited recurring income, or money owed to you.",
+      planProF5t: "AI Financial Assistant",
+      planProF5d: "Full access to the AI assistant for your portfolio.",
+      planProF6t: "Alerts & Summaries",
+      planProF6d: "Unlimited price alerts, plus daily & weekly summaries.",
+      planProF7t: "Notification Controls",
+      planProF7d: "Full control over every notification setting.",
+      planProF8t: "Live Market Rates",
+      planProF8d: "Live USD/EGP rate, gold & silver prices by karat.",
+      planProF9t: "Personalized Signals",
+      planProF9d: "Signals generated from your own real portfolio.",
+      planProF10t: "Portfolio Health Score",
+      planProF10d: "A health score and diversification breakdown.",
+      planProF11t: "Full Performance Charts",
+      planProF11d: "Charts across every time frame, not just a snapshot.",
+      planProF12t: "Allocation Breakdown",
+      planProF12d: "See exactly how your assets are allocated.",
+      planProF13t: "Top Performers",
+      planProF13d: "See which of your holdings is actually working.",
+      planProF14t: "Benchmark Comparison",
+      planProF14d: "Compare your portfolio to the community benchmark.",
+      planProF15t: "Fix My Portfolio",
+      planProF15d: "A concrete rebalancing plan, not just a diagnosis.",
+      planProF16t: "Dividend Tracking",
+      planProF16d: "Unlimited dividend tracking.",
+      planProF17t: "Export Your Data",
+      planProF17d: "Export your portfolio as CSV or PDF.",
+      planProF18t: "Target Allocation",
+      planProF18d: "Set target allocations to guide rebalancing.",
       trustStripe: "🎉 Free for everyone during launch — no card required",
       whyProTitle: "Why investors choose Pro",
       whyProSub: "Six reasons serious investors don't stay on Free for long.",
@@ -1081,9 +1141,12 @@
       compareRow3: "Goals",
       compareRow4: "Analytics",
       compareRow5: "Price alerts",
-      compareRow6: "Export (CSV/Excel)",
+      compareRow6: "Export (CSV/PDF)",
       compareRow7: "Market intelligence",
       compareRow8: "Recurring income tracking",
+      compareRowAI: "AI Financial Assistant",
+      compareRowDividends: "Dividend tracking",
+      compareRowTarget: "Target allocation",
       compareRow9: "Support",
       compareUnlimited: "Unlimited",
       compareBasic: "Basic",
@@ -1158,11 +1221,9 @@
       mostPopular: "الأكثر طلباً",
       planFree: "مجاني",
       planFreeUnit: "للأبد",
-      planFreeF1: "حتى 3 أصول",
+      planFreeF1: "استثمار واحد",
       planFreeF2: "أسعار حية",
-      planFreeF3: "تنبيه سعر واحد",
       planFreeF4: "حساب نقدي واحد",
-      planFreeF5: "هدف واحد",
       planFreeF6: "متابعة أساسية للمحفظة",
       planCurrentFree: "خطتك الحالية",
       periodMonthly: "شهري",
@@ -1170,22 +1231,42 @@
       perMonth: "شهرياً",
       perYear: "سنوياً",
       annualPerMonth: "بس {price} جنيه/شهرياً، بفاتورة سنوية",
-      planProF1t: "أصول غير محدودة",
-      planProF1d: "تابع كل أصل بتملكه — من غير أي حد، أبداً.",
+      planProF1t: "استثمارات غير محدودة",
+      planProF1d: "احتفظ بأي عدد من الأصول تحبه — من غير أي حد، أبداً.",
       planProF2t: "حسابات نقدية غير محدودة",
       planProF2d: "كل رصيد بنكي ومحفظة، متابَعين مع بعض.",
       planProF3t: "أهداف غير محدودة",
-      planProF3d: "حدد وتابع أي عدد من الأهداف تحبه.",
-      planProF4t: "ذكاء السوق",
-      planProF4d: "رؤى مدعومة بالذكاء الاصطناعي على محفظتك.",
-      planProF5t: "تحليلات محفظة متقدمة",
-      planProF5d: "رسوم بيانية أعمق للأداء وتوزيع الأصول.",
-      planProF6t: "تصدير المحفظة",
-      planProF6d: "حمّل محفظتك بالكامل كملف CSV أو Excel.",
-      planProF7t: "تنبيهات أسعار غير محدودة",
-      planProF7d: "متفوتش أي تحرك سعر مهم بالنسبالك.",
-      planProF8t: "تتبع الدخل المتكرر",
-      planProF8d: "المرتب، والتوزيعات، والإيجار — بيتابعوا تلقائيًا.",
+      planProF3d: "حدد وتابع أي عدد من أهداف الادخار تحبه.",
+      planProF4t: "تتبع الدخل",
+      planProF4d: "تتبّع دخل غير محدود — متكرر، أو مبالغ مستحقة لك.",
+      planProF5t: "المساعد المالي الذكي",
+      planProF5d: "وصول كامل للمساعد المالي الذكي على محفظتك.",
+      planProF6t: "تنبيهات وملخصات",
+      planProF6d: "تنبيهات أسعار غير محدودة، بالإضافة إلى الملخصات اليومية والأسبوعية.",
+      planProF7t: "تحكم في الإشعارات",
+      planProF7d: "تحكم كامل في كل إعدادات الإشعارات.",
+      planProF8t: "أسعار السوق المباشرة",
+      planProF8d: "سعر USD/EGP المباشر وأسعار الذهب والفضة حسب العيار.",
+      planProF9t: "إشارات شخصية",
+      planProF9d: "إشارات مبنية على محفظتك الحقيقية أنت.",
+      planProF10t: "درجة صحة المحفظة",
+      planProF10d: "درجة صحة المحفظة وتوزيع التنويع.",
+      planProF11t: "رسوم أداء كاملة",
+      planProF11d: "مخططات أداء كاملة لكل الفترات الزمنية.",
+      planProF12t: "تفصيل توزيع الأصول",
+      planProF12d: "شوف بالظبط إزاي أصولك موزعة.",
+      planProF13t: "الأفضل أداءً",
+      planProF13d: "شوف أي استثمار فعلاً بيحقق نتيجة.",
+      planProF14t: "مقارنة بمتوسط المجتمع",
+      planProF14d: "قارن محفظتك بمتوسط أداء المجتمع.",
+      planProF15t: "إصلاح محفظتي",
+      planProF15d: "خطة إعادة توازن ملموسة، لا مجرد تشخيص.",
+      planProF16t: "تتبع الأرباح الموزعة",
+      planProF16d: "تتبّع أرباح موزعة غير محدود.",
+      planProF17t: "تصدير بياناتك",
+      planProF17d: "تصدير محفظتك كملف CSV أو PDF.",
+      planProF18t: "نسب توزيع مستهدفة",
+      planProF18d: "حدد نسب توزيع مستهدفة لإعادة التوازن.",
       trustStripe: "🎉 مجاني للجميع طول فترة الإطلاق — من غير كارت",
       whyProTitle: "ليه المستثمرين بيختاروا Pro",
       whyProSub: "ست أسباب ليه المستثمر الجاد ملوش لفة كتير على الخطة المجانية.",
@@ -1202,9 +1283,12 @@
       compareRow3: "الأهداف",
       compareRow4: "التحليلات",
       compareRow5: "تنبيهات الأسعار",
-      compareRow6: "تصدير (CSV/Excel)",
+      compareRow6: "تصدير (CSV/PDF)",
       compareRow7: "ذكاء السوق",
       compareRow8: "تتبع الدخل المتكرر",
+      compareRowAI: "المساعد المالي الذكي",
+      compareRowDividends: "تتبع الأرباح الموزعة",
+      compareRowTarget: "نسب توزيع مستهدفة",
       compareRow9: "الدعم",
       compareUnlimited: "غير محدود",
       compareBasic: "أساسي",
