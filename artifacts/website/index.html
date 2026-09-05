@@ -658,7 +658,7 @@
 
     <div class="hero-visual">
       <div class="hero-shot">
-        <img src="assets/app-screenshot.png?v=6" width="1284" height="2778" alt="INVESTRY portfolio screen showing total value, allocation by asset, and live performance">
+        <img src="assets/app-screenshot.png?v=7" width="1126" height="1975" alt="INVESTRY portfolio screen showing total value, allocation by asset, and live performance">
       </div>
       <div class="preview-card">
         <p class="preview-label" data-i18n="totalValue">Total Portfolio Value</p>
@@ -817,19 +817,16 @@
         <div class="price-card pro">
           <span class="pro-badge">⭐ <span data-i18n="mostPopular">Most Popular</span></span>
           <p class="price-plan">Pro</p>
-          <!-- Pro is free for everyone during launch (PRO_FREE_DURING_LAUNCH
-               in the script below) — the real EGP price only matters once
-               billing turns back on, so the monthly/annual toggle is hidden
-               and proAmount/proUnit are overwritten with "Free" text instead
-               of removing them, so the existing JS keeps working untouched.
-               To restore real pricing: delete this comment + the
-               style="display:none" below, and set PRO_FREE_DURING_LAUNCH =
-               false. -->
-          <div class="price-period-toggle" style="display:none;">
+          <!-- Real billing is live (PRO_FREE_DURING_LAUNCH = false below) —
+               the launch free-for-everyone period has ended. Prices here
+               match Paywall.tsx's own MONTHLY_PRICE/ANNUAL_PRICE constants
+               exactly (the fallback used for this same Android/web Stripe
+               checkout path in the app). -->
+          <div class="price-period-toggle">
             <button type="button" id="periodMonthly" class="active" data-i18n="periodMonthly">Monthly</button>
-            <button type="button" id="periodAnnual" data-i18n="periodAnnual">Annual · Save 33%</button>
+            <button type="button" id="periodAnnual" data-i18n="periodAnnual">Annual · Save 16%</button>
           </div>
-          <p class="price-amount" id="proAmount">49.99 EGP</p>
+          <p class="price-amount" id="proAmount">79 EGP</p>
           <p class="price-unit" id="proUnit" data-i18n="perMonth">per month</p>
           <p class="price-savings-note" id="proSavingsNote" style="display:none;"></p>
           <!-- All 18 rows here mirror getPaywallHighlights() in the mobile
@@ -866,7 +863,7 @@
 
       <p class="price-status-note" id="pricingStatusNote"></p>
       <p class="trust-line">
-        <span data-i18n="trustStripe">🎉 Free for everyone during launch — no card required</span>
+        <span data-i18n="trustStripe">🔒 Secure checkout via Stripe · Cancel anytime</span>
       </p>
     </div>
   </section>
@@ -1125,7 +1122,7 @@
       planProF17d: "Export your portfolio as CSV or PDF.",
       planProF18t: "Target Allocation",
       planProF18d: "Set target allocations to guide rebalancing.",
-      trustStripe: "🎉 Free for everyone during launch — no card required",
+      trustStripe: "🔒 Secure checkout via Stripe · Cancel anytime",
       whyProTitle: "Why investors choose Pro",
       whyProSub: "Six reasons serious investors don't stay on Free for long.",
       whyPro1t: "Advanced Analytics", whyPro1d: "Professional portfolio insights, not just totals.",
@@ -1155,7 +1152,7 @@
       comparePriority: "Priority",
       faqTitle: "FAQs",
       faq1q: "How do subscriptions work?",
-      faq1a: "Pro is free for everyone right now, during launch — no card, no billing. Once paid plans resume, Pro will be billed monthly or annually through Stripe on this website, and apply instantly to your account in the app too.",
+      faq1a: "Pro is billed monthly (79 EGP) or annually (799 EGP) through Stripe on this website — or via the App Store if you subscribe on iOS. Either way, it applies to your account and unlocks Pro instantly in the app too.",
       faq2q: "Can I cancel anytime?",
       faq2a: "Yes. Manage or cancel your subscription anytime from this page — no calls, no forms, no waiting.",
       faq3q: "Will my data stay safe?",
@@ -1267,7 +1264,7 @@
       planProF17d: "تصدير محفظتك كملف CSV أو PDF.",
       planProF18t: "نسب توزيع مستهدفة",
       planProF18d: "حدد نسب توزيع مستهدفة لإعادة التوازن.",
-      trustStripe: "🎉 مجاني للجميع طول فترة الإطلاق — من غير كارت",
+      trustStripe: "🔒 دفع آمن عن طريق Stripe · إلغاء في أي وقت",
       whyProTitle: "ليه المستثمرين بيختاروا Pro",
       whyProSub: "ست أسباب ليه المستثمر الجاد ملوش لفة كتير على الخطة المجانية.",
       whyPro1t: "تحليلات متقدمة", whyPro1d: "رؤى احترافية للمحفظة، مش مجرد أرقام إجمالية.",
@@ -1297,7 +1294,7 @@
       comparePriority: "أولوية",
       faqTitle: "الأسئلة الشائعة",
       faq1q: "الاشتراكات بتشتغل إزاي؟",
-      faq1a: "دلوقتي، Pro مجاني للجميع طول فترة الإطلاق — من غير كارت ولا حساب. لما الاشتراك المدفوع يرجع تاني، هيتحاسب شهريًا أو سنويًا عن طريق Stripe من على الموقع ده، ويتفعل فورًا على حسابك في التطبيق كمان.",
+      faq1a: "خطة Pro بتتحاسب شهريًا (79 جنيه) أو سنويًا (799 جنيه) عن طريق Stripe من على الموقع ده — أو من الـ App Store لو هتشترك من الآيفون. في الحالتين، الاشتراك بيتفعل فورًا على حسابك في التطبيق.",
       faq2q: "أقدر ألغي في أي وقت؟",
       faq2a: "أيوه. تقدر تدير أو تلغي اشتراكك في أي وقت من الصفحة دي — من غير مكالمات أو استمارات أو انتظار.",
       faq3q: "بياناتي هتفضل آمنة؟",
@@ -1498,13 +1495,17 @@
   var periodAnnualBtn = document.getElementById('periodAnnual');
   var proSavingsNote = document.getElementById('proSavingsNote');
   var selectedPeriod = 'monthly';
-  var PRICES = { monthly: '49.99 EGP', annual: '399.99 EGP' };
+  // Matches Paywall.tsx's MONTHLY_PRICE/ANNUAL_PRICE exactly (the same
+  // fallback constants that same file uses for this identical Android/web
+  // Stripe checkout path — iOS shows its own App Store price instead,
+  // per Apple's own requirement, untouched by this page).
+  var PRICES = { monthly: '79 EGP', annual: '799 EGP' };
 
-  // Pro is free for everyone right now (matches the mobile app, which
-  // currently unlocks every feature for every user). While this is true,
-  // the CTA must never reach Stripe — flip to false once real billing
-  // resumes, which also un-hides the period toggle removed above.
-  var PRO_FREE_DURING_LAUNCH = true;
+  // The launch free-for-everyone period has ended (BETA_UNLOCK_ALL is off
+  // server-side) — Pro is real, paid billing now. Kept as a named flag
+  // (not just deleted) since it's still the single place that would need
+  // to flip back to true if a future free period ever happens again.
+  var PRO_FREE_DURING_LAUNCH = false;
 
   function currentLang() {
     return translations[document.documentElement.lang] ? document.documentElement.lang : 'en';
