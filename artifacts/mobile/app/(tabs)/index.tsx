@@ -220,6 +220,28 @@ function HeroSkeleton() {
         {t.totalPortfolioValue}
       </Text>
       <SkeletonBox w={186} h={38} radius={10} style={{ backgroundColor: bg, alignSelf: 'center' }} />
+      {/* Cash/Pending row — modeled on heroWealthStrip's real shape (icon +
+          label on the left, a badge-shaped block on the right, value
+          below) specifically so the Today badge has a reserved position
+          from the very first frame instead of the whole row appearing
+          from nothing once real data lands. Without this, the badge's own
+          correct loading-dash-vs-real logic (see cashTodayLoading below)
+          never gets to show a smooth transition — there's nothing on
+          screen for it to transition from. */}
+      <View style={heroSkSt.wealthStrip}>
+        {[0, 1].map(i => (
+          <View key={i} style={[heroSkSt.wealthCell, { backgroundColor: colors.text + '0A', borderColor: colors.text + '14' }]}>
+            <View style={heroSkSt.wealthHeaderRow}>
+              <View style={heroSkSt.wealthLeftGroup}>
+                <SkeletonBox w={26} h={26} radius={9} style={{ backgroundColor: bg }} />
+                <SkeletonBox w={44} h={8} radius={4} style={{ backgroundColor: bgFaint }} />
+              </View>
+              <SkeletonBox w={38} h={16} radius={6} style={{ backgroundColor: bgFaint }} />
+            </View>
+            <SkeletonBox w={90} h={16} radius={5} style={{ backgroundColor: bg, marginTop: 10, marginStart: 32 }} />
+          </View>
+        ))}
+      </View>
       <View style={[heroSkSt.strip, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
         {[0, 1, 2].map(i => (
           <View key={i} style={heroSkSt.stripCell}>
@@ -242,6 +264,13 @@ function HeroSkeleton() {
 
 const heroSkSt = StyleSheet.create({
   body:     { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24 },
+  // Mirrors heroWealthStrip/heroWealthCell's real geometry (margin:4,
+  // borderRadius:14, the icon+label-vs-badge header row) closely enough
+  // that swapping this for the real cells doesn't visibly jump in size.
+  wealthStrip:      { flexDirection: 'row' },
+  wealthCell:       { flex: 1, borderWidth: 1, borderRadius: 14, margin: 4, paddingHorizontal: 14, paddingVertical: 8 },
+  wealthHeaderRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  wealthLeftGroup:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   strip:    { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: -24, paddingHorizontal: 24, paddingVertical: 14 },
   stripCell:{ flex: 1, alignItems: 'center', gap: 6 },
   plRow:    { flexDirection: 'row', gap: 8 },
