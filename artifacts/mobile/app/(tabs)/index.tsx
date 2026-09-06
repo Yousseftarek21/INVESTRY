@@ -864,13 +864,15 @@ export default function HomeScreen() {
         </Animated.View>
       )}
 
-      {/* Gradient bloom — upper half only */}
+      {/* Gradient bloom — upper half only. Bumped a bit brighter and
+          taller than before (28/10 alpha, 320 height) per explicit
+          request to make it show more. */}
       <ExpoLinearGradient
-        colors={[colors.primary + '28', colors.primary + '10', 'transparent']}
+        colors={[colors.primary + '38', colors.primary + '18', 'transparent']}
         locations={[0, 0.5, 1]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 360 }}
         pointerEvents="none"
       />
       {/* ── Sticky Header — always visible while scrolling ─────── */}
@@ -1084,7 +1086,7 @@ export default function HomeScreen() {
                   with accessibility text size. Also keeps its own measured
                   width (and therefore the ghost spacer above) stable. */}
               <Text style={[styles.currencyPillText, { color: colors.primary }]} maxFontSizeMultiplier={1} numberOfLines={1}>
-                {displayCurrency} {showCurrencyPicker ? '▴' : '▾'}
+                {displayCurrency}
               </Text>
             </Pressable>
           </View>
