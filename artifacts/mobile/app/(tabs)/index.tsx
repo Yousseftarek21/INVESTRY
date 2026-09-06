@@ -565,6 +565,13 @@ export default function HomeScreen() {
     const totalTarget = withPct.reduce((sum, g) => sum + g.goal.targetAmount, 0);
     return { sorted, avgPct, totalSaved, totalTarget, count: goals.length, single: withPct.length === 1 ? withPct[0] : null };
   }, [goals, effectiveGoalSaved]);
+  // One combined progress figure for the Goals band's %/bar — the single
+  // goal's own pct when there's just one, otherwise the same avgPct already
+  // computed above, so this always agrees with the ring(s) drawn beside it.
+  // Not clamped (a finished goal can read "134%", same convention goals.tsx
+  // itself already uses) — only the bar's fill width gets clamped, below.
+  const goalPct = goalsSummary ? (goalsSummary.single ? goalsSummary.single.pct : goalsSummary.avgPct) : 0;
+  const goalPctDone = goalsSummary ? (goalsSummary.single ? goalsSummary.single.done : goalsSummary.avgPct >= 100) : false;
 
   // Auto-refresh prices when app comes back to foreground
   useEffect(() => {
@@ -1397,7 +1404,34 @@ export default function HomeScreen() {
                       );
                     })()}
                   </Text>
+                  {/* Slim progress bar under the amount — same gradient-fill
+                      convention goals.tsx's own ProgressBar uses, so this
+                      reads as the same visual language as the full Goals
+                      screen. Width clamped 0-100 (a finished/overshot goal
+                      still shows a full bar, not one stretching past it);
+                      the %% text beside the ring is intentionally left
+                      unclamped, same as goals.tsx's own pct label. */}
+                  <View style={[styles.heroGoalBarTrack, { backgroundColor: colors.border }]}>
+                    <ExpoLinearGradient
+                      colors={[(goalPctDone ? colors.green : colors.primary) + 'B0', goalPctDone ? colors.green : colors.primary]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={[styles.heroGoalBarFill, { width: `${Math.min(100, Math.max(0, goalPct))}%` }]}
+                    />
+                  </View>
                 </View>
+                {/* Percentage, pinned to the band's right edge — the ring(s)
+                    anchor the left edge, this anchors the right, and
+                    heroGoalText's own flex:1 fills the middle so both ends
+                    land exactly at the band's own padding, not wherever the
+                    text's natural width happened to stop. Not gated behind
+                    hideValues — a percentage isn't an absolute amount, same
+                    convention the Return % badge above already follows. */}
+                <Text
+                  style={[styles.heroGoalPct, { color: goalPctDone ? colors.green : colors.primary }]}
+                  maxFontSizeMultiplier={1.2}
+                >
+                  {Math.round(goalPct)}%
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -2273,20 +2307,31 @@ const styles = StyleSheet.create({
   // its actual content (a short amount string) never needed that much,
   // leaving a big dead gap between the text and the chevron.
   // alignSelf:'flex-start' makes the band size to its own content instead.
-  // alignSelf:'stretch' (was 'center') + justifyContent:'center' — spans
-  // the full row width like Cash/Pending/Invested-Current-Return now do,
-  // while keeping its own content (ring + label/amount) centered within
-  // that width rather than left-packed. The trailing chevron is gone, so
-  // there's no longer anything to balance against on the right.
-  heroGoalBand: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 16, borderWidth: 1, overflow: 'hidden', paddingVertical: 7, paddingHorizontal: 10 },
+  // alignSelf:'stretch' spans the full row width like Cash/Pending/
+  // Invested-Current-Return now do. justifyContent:'flex-start' (was
+  // 'center') — the ring(s) now anchor the band's left edge and the %
+  // anchors its right edge (added alongside the progress bar below), with
+  // heroGoalText's own flex:1 filling the space between them, so this is
+  // no longer a single centered group.
+  heroGoalBand: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 8, borderRadius: 16, borderWidth: 1, overflow: 'hidden', paddingVertical: 7, paddingHorizontal: 10 },
   goalRingCluster: { flexDirection: 'row' },
-  // flexShrink (not flex:1 growth) — a flex:1 child inside a shrink-to-fit
-  // (alignSelf:'flex-start') parent still forced that parent to expand,
-  // which is exactly what kept the band wide after the alignSelf change
-  // alone.
-  heroGoalText: { flexShrink: 1, minWidth: 0 },
+  // flex:1 (was flexShrink:1 only) — now that heroGoalBand's own alignment
+  // pins the ring left and the % right (see its comment above), this needs
+  // to actively grow and consume the space between them, not just avoid
+  // overflowing; minWidth:0 still lets its own text truncate/shrink-to-fit
+  // instead of forcing the row wider.
+  heroGoalText: { flex: 1, minWidth: 0 },
   heroGoalLabel: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textTransform: 'uppercase' },
   heroGoalAmount: { fontSize: 12, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1 },
+  // Slim gradient-fill progress bar under the amount line — track color is
+  // the theme border (same neutral goals.tsx's own ProgressBar uses), fill
+  // is drawn inline at the call site since it needs the done/not-done color.
+  heroGoalBarTrack: { height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 6 },
+  heroGoalBarFill: { height: '100%', borderRadius: 2 },
+  // Pinned to the band's right edge (see heroGoalBand's own comment) —
+  // Inter_800ExtraBold rather than the label's 700Bold so it reads as a
+  // real figure, not another caption, at this small a size.
+  heroGoalPct: { fontSize: 13, fontFamily: 'Inter_800ExtraBold', fontVariant: ['tabular-nums'] },
 
   heroLabelRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   heroLabel:      { fontSize: 11, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.3 },
