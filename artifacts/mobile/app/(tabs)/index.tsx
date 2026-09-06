@@ -1147,11 +1147,23 @@ export default function HomeScreen() {
               Cash shows only the converted total here (same toDisp/
               fmtCompact math the old Cash card used for its own total
               row); the full per-currency breakdown is still one tap away
-              on /cash-accounts, unchanged. Two columns when both exist,
-              a single wider row when only one does — same "don't leave a
-              bordered slot empty" principle already applied to Goals
-              below. Neither renders at all when there's nothing real to
-              show, matching how Net Worth/Pending already gate above.
+              on /cash-accounts, unchanged. Two columns when Pending
+              Income also exists, a single full-width row when it
+              doesn't — same "don't leave a bordered slot empty"
+              principle already applied to Goals below.
+
+              Cash itself is now permanent/unconditional (not gated on
+              cashAccounts.length > 0) — real user feedback: a Cash cell
+              that only exists once you have an account meant the whole
+              row could pop in or out of existence depending on data,
+              which is exactly the "chip has no fixed position" problem
+              its own Today badge was already fixed for one level down.
+              A brand-new user with zero cash accounts now sees a
+              permanent "CASH — 0 EGP" row instead of no row at all;
+              Pending Income stays genuinely conditional (0 pending
+              income is a real, common, unremarkable state most users
+              are in most of the time, unlike "owns no cash at all").
+
               Both blocks below are wrapped in one View so they're a
               single child of heroBody's own `gap: 16` flex layout — that
               gap was compounding with each block's own margin/padding,
@@ -1160,11 +1172,8 @@ export default function HomeScreen() {
               Wrapping them means heroBody's gap only applies outside this
               whole group; the space between Cash/Pending and Goals is
               fully controlled right here instead. */}
-          {(cashAccounts.length > 0 || pendingIncomeEGP > 0 || goalsSummary) && (
           <View style={styles.heroExtras}>
-          {(cashAccounts.length > 0 || pendingIncomeEGP > 0) && (
             <View style={styles.heroWealthStrip}>
-              {cashAccounts.length > 0 && (
                 <TouchableOpacity
                   style={[
                     styles.heroWealthCell,
@@ -1242,7 +1251,6 @@ export default function HomeScreen() {
                     )}
                   </Text>
                 </TouchableOpacity>
-              )}
               {/* Divider removed — each cell now has its own tint+border
                   (Option F), which already separates them visually; a
                   line between two already-bordered tiles was redundant.
@@ -1284,7 +1292,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          )}
 
           {/* ── EXPERIMENTAL (unified hero card, simulator-only) ─────
               Goals, folded in from its own row below — same GoalRing
@@ -1294,12 +1301,11 @@ export default function HomeScreen() {
             <View style={[
               styles.heroGoalWrap,
               { borderTopColor: colors.border },
-              // When Cash/Pending exists right above, heroWealthStrip's
-              // own bottom border already sits there — this wrap's own
-              // top border would be a second line ~4pt below it. Only
-              // draw this one when Goals is the first thing in the
-              // strip (nothing else already provided that divider).
-              (cashAccounts.length > 0 || pendingIncomeEGP > 0) && { borderTopWidth: 0 },
+              // The Cash row above is now permanent/unconditional (always
+              // rendered whenever this Goals block is), so this wrap's own
+              // top border would always be a redundant second line right
+              // under Cash's own tile border — unconditionally suppressed.
+              { borderTopWidth: 0 },
             ]}>
               <TouchableOpacity
                 style={[styles.heroGoalBand, { backgroundColor: colors.card, borderColor: colors.primary + '2E' }]}
@@ -1388,7 +1394,6 @@ export default function HomeScreen() {
             </View>
           )}
           </View>
-          )}
 
           {/* Invested · Current · Return strip */}
           {summary.totalCost > 0 && (
