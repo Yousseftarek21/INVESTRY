@@ -1395,9 +1395,12 @@ export default function HomeScreen() {
           )}
           </View>
 
-          {/* Invested · Current · Return strip */}
-          {summary.totalCost > 0 && (
-            <View style={styles.iStrip}>
+          {/* Invested · Current · Return strip — permanent, same
+              reasoning as the Cash row: gainPct/totalCost are already
+              zero-safe (see summary useMemo), so a brand-new user with
+              no holdings yet sees "0 EGP / 0 EGP / 0%" instead of this
+              whole row not existing. */}
+          <View style={styles.iStrip}>
               <View style={[styles.iCell, { borderColor: colors.text + '14' }]}>
                 <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.invested}</Text>
                 <View style={styles.iCellValueRow}>
@@ -1438,11 +1441,11 @@ export default function HomeScreen() {
                 </View>
               </Pressable>
             </View>
-          )}
 
-          {/* P/L row */}
-          {summary.totalCost > 0 && (
-            <View style={styles.plRow}>
+          {/* Today / Total P/L chips — permanent, same reasoning as
+              Invested/Current/Return above. todayPct/gainPct are already
+              zero-safe. */}
+          <View style={styles.plRow}>
               {!todaysChangeKnown ? (
                 // Today's move isn't known yet — show a neutral loading state
                 // rather than a coloured "+0.00%", which reads as "flat today"
@@ -1506,7 +1509,6 @@ export default function HomeScreen() {
                 </Text>
               </Pressable>
             </View>
-          )}
 
           {/* Performance Chart */}
           {hasHoldings && (
