@@ -519,7 +519,13 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AppSettingsProvider>
         <DirectionWrapper>
-        <View style={{ flex: 1, backgroundColor: "#000000" }}>
+        {/* White, not black — matches the now light-only native launch
+            screen and CustomSplash. This is what's visible for however
+            many frames it takes CustomSplash to mount and paint once the
+            native splash hides; a leftover black value here caused a real,
+            visible black flash between the white native splash and the
+            white JS splash on every cold launch. */}
+        <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
           {showCustomSplash && <CustomSplash statusMessage={updateStatus} />}
 
           {showNetworkError && <NoNetworkScreen />}
