@@ -508,7 +508,13 @@ export default function HomeScreen() {
   // the new number) whenever it changes — including when it changes purely
   // because the display currency was switched, not just when a balance
   // moves. No flash colour: a currency switch isn't a gain or a loss.
-  const { text: cashTotalDispText } = useCounterDisplay(toDisp(cashTotalEGP), fmtCompact, false);
+  // snapWhile=cashLoading: while the cache→server reconciliation is still in
+  // flight (see CashContext's own load sequence), any change to this total
+  // applies instantly instead of tweening — stops the cold-launch "counts
+  // from a stale cached number to the real one" flicker. Once cashLoading
+  // settles, a later genuine change (editing a cash account, a real balance
+  // update) still animates exactly as before.
+  const { text: cashTotalDispText } = useCounterDisplay(toDisp(cashTotalEGP), fmtCompact, false, cashLoading);
   // Width of the amount column, from the longest amount actually shown.
   // Amounts sit left-aligned inside it, so every currency code begins at the
   // same x while staying adjacent to its number — pushing codes to the card's
