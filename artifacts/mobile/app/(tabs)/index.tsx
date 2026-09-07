@@ -1294,19 +1294,29 @@ export default function HomeScreen() {
                             untouched at its normal 10px. */}
                         <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground, fontSize: 12 }]} numberOfLines={1}>{t.cash}</Text>
                       </View>
-                      <Text
-                        style={[styles.heroWealthValueSingle, { color: colors.text }]}
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.6}
-                      >
-                        {hideValues ? '••••••' : (
-                          <>
-                            {cashTotalDispText}{' '}
-                            <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
-                          </>
+                      {/* Split into two sibling Text elements inside a
+                          centered row, not one Text with a nested run —
+                          nested inline text aligns by baseline, which put
+                          the smaller "EGP" run visibly lower than true
+                          center once it stopped matching the amount's own
+                          19px. A real flex row with alignItems:'center'
+                          centers each Text's own box against the other's,
+                          which is what actually reads as centered. */}
+                      <View style={styles.heroWealthValueSingleRow}>
+                        <Text
+                          style={[styles.heroWealthValueSingle, { color: colors.text }]}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.6}
+                        >
+                          {hideValues ? '••••••' : cashTotalDispText}
+                        </Text>
+                        {!hideValues && (
+                          <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_600SemiBold', fontSize: 15, marginStart: 4 }}>
+                            {displayCurrency}
+                          </Text>
                         )}
-                      </Text>
+                      </View>
                       {!hideValues && (
                         cashTodayLoading ? (
                           <View style={[styles.heroWealthBadge, { backgroundColor: colors.muted + '22' }]}>
@@ -2357,12 +2367,20 @@ const styles = StyleSheet.create({
   // are reused as-is (same icon/label/badge look), just laid out as three
   // siblings in a row instead of two rows.
   heroWealthSingleRow: { flexDirection: 'row', alignItems: 'center' },
-  // flex:1 + textAlign:'center' (not alignItems:'center' on the row) — same
-  // reasoning as the Goals band's label/amount: keeps this Text stretched to
-  // its real available width so adjustsFontSizeToFit measures correctly,
-  // while centering the text within that width. Bigger than the paired
-  // layout's heroWealthValueFull (19 vs 15) — nothing sits below it here.
-  heroWealthValueSingle: { flex: 1, textAlign: 'center', fontSize: 19, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
+  // Wraps the amount + "EGP" pair — flex:1 fills the middle space between
+  // the icon/label and the badge, justifyContent:'center' centers the pair
+  // as a group, alignItems:'center' centers each Text's own box against the
+  // other's (see the JSX call site's comment for why this needs to be a
+  // real flex row rather than one Text with a nested smaller run).
+  heroWealthValueSingleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  // No flex:1/textAlign here anymore — heroWealthValueSingleRow (above) now
+  // owns the centering; this is just the number's own typography. flexShrink
+  // (not flexGrow) keeps adjustsFontSizeToFit's shrink-on-overflow behavior
+  // working now that this Text no longer stretches to a fixed width on its
+  // own — a genuinely huge balance still shrinks instead of pushing "EGP"
+  // out past the badge. Bigger than the paired layout's heroWealthValueFull
+  // (19 vs 15) — nothing sits below it here.
+  heroWealthValueSingle: { flexShrink: 1, fontSize: 19, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
   // Goals — same GoalRing component and single-vs-cluster logic the old
   // standalone row used, just smaller and living here. Kept its own gold
