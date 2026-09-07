@@ -1264,7 +1264,10 @@ export default function HomeScreen() {
                         {hideValues ? '••••••' : (
                           <>
                             {cashTotalDispText}{' '}
-                            <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
+                            {/* Semi-bold, not inherited Bold — same
+                                weight distinction as the single-row
+                                layout's own currency suffix. */}
+                            <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_600SemiBold' }}>{displayCurrency}</Text>
                           </>
                         )}
                       </Text>
@@ -1367,7 +1370,7 @@ export default function HomeScreen() {
                     {hideValues ? '••••••' : (
                       <>
                         {fmtCompact(toDisp(pendingIncomeEGP))}{' '}
-                        <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
+                        <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_600SemiBold' }}>{displayCurrency}</Text>
                       </>
                     )}
                   </Text>
