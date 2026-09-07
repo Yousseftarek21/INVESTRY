@@ -1204,67 +1204,124 @@ export default function HomeScreen() {
                   onPress={() => { impact(); router.push('/cash-accounts' as any); }}
                   activeOpacity={0.75}
                 >
-                  {/* Header row: icon + label + Today badge — all short,
-                      fixed-length content, so this row can never be the
-                      one that overflows. The value gets an entire row to
-                      itself below, with nothing beside it competing for
-                      width — that's what actually stops a big balance
-                      ("400k EGP") plus the Today badge from fighting each
-                      other for space and truncating one or the other, the
-                      way the old single-row layout could. */}
-                  <View style={styles.heroWealthHeaderRow}>
-                    <View style={styles.heroWealthLeftGroup}>
-                      <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
-                        <BanknoteIcon size={13} color={colors.green} />
+                  {pendingIncomeEGP > 0 ? (
+                    // ── Paired with Pending Income (2 columns) — unchanged ──
+                    // Header row: icon + label + Today badge — all short,
+                    // fixed-length content, so this row can never be the
+                    // one that overflows. The value gets an entire row to
+                    // itself below, with nothing beside it competing for
+                    // width — that's what actually stops a big balance
+                    // ("400k EGP") plus the Today badge from fighting each
+                    // other for space and truncating one or the other, the
+                    // way the old single-row layout could.
+                    <>
+                      <View style={styles.heroWealthHeaderRow}>
+                        <View style={styles.heroWealthLeftGroup}>
+                          <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
+                            <BanknoteIcon size={13} color={colors.green} />
+                          </View>
+                          <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.cash}</Text>
+                        </View>
+                        {!hideValues && (
+                          cashTodayLoading ? (
+                            // Same dimmed-dash convention the Today/Total P/L
+                            // chip below already uses while its own data isn't
+                            // known yet — reserves this badge's exact layout
+                            // space instead of the badge being entirely absent
+                            // and then popping in once the network call (this
+                            // one has no local cache, unlike the cash total
+                            // itself) resolves.
+                            <View style={[styles.heroWealthBadge, { backgroundColor: colors.muted + '22' }]}>
+                              <Text style={[styles.heroWealthBadgeText, { color: colors.mutedForeground + '88' }]}>—</Text>
+                            </View>
+                          ) : (
+                            <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
+                              <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
+                                {t.todayChangeBadge(cashTodayInfo.text)}
+                              </Text>
+                            </View>
+                          )
+                        )}
                       </View>
-                      <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.cash}</Text>
+                      {/* adjustsFontSizeToFit + minimumFontScale, not a bare
+                          numberOfLines={1} — a genuinely huge balance shrinks
+                          its own font to keep fitting on one line instead of
+                          truncating to "400k E…", the same technique
+                          PortfolioHeroValue already uses for the headline
+                          number above. */}
+                      {/* marginStart:32 = heroWealthChip's own width (26) +
+                          heroWealthLeftGroup's gap (6) — starts the value at
+                          the same x as the "CASH" label above it, not under
+                          the icon. Still spans to the cell's own right edge
+                          (no width cap), so adjustsFontSizeToFit above still
+                          has the room it needs for a genuinely large value. */}
+                      <Text
+                        style={[styles.heroWealthValueFull, { color: colors.text, marginStart: 32 }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                      >
+                        {hideValues ? '••••••' : (
+                          <>
+                            {cashTotalDispText}{' '}
+                            <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
+                          </>
+                        )}
+                      </Text>
+                    </>
+                  ) : (
+                    // ── Alone, full width (no Pending Income) — single row ──
+                    // Chosen redesign (Option 1 of 3 mocked up): icon+label
+                    // anchor the left edge, the badge anchors the right edge
+                    // (same spot it already occupies in the paired layout),
+                    // and the amount takes the middle — flex:1 + textAlign
+                    // center, same technique as the Goals band's own
+                    // label/amount centering, so it grows to fill whatever
+                    // width isn't spoken for. Bigger (19 vs 15) than the
+                    // paired layout's value: with nothing stacked below it
+                    // competing for vertical space, it can afford to be the
+                    // most prominent thing in the tile.
+                    <View style={styles.heroWealthSingleRow}>
+                      <View style={styles.heroWealthLeftGroup}>
+                        <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
+                          <BanknoteIcon size={13} color={colors.green} />
+                        </View>
+                        {/* fontSize:12 override, still Inter_600SemiBold
+                            (heroWealthLabel's own weight, not overridden) —
+                            scoped to just this single-row instance.
+                            heroWealthLabel itself (and therefore the paired/
+                            2-column layout's own "CASH" label) stays
+                            untouched at its normal 10px. */}
+                        <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground, fontSize: 12 }]} numberOfLines={1}>{t.cash}</Text>
+                      </View>
+                      <Text
+                        style={[styles.heroWealthValueSingle, { color: colors.text }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.6}
+                      >
+                        {hideValues ? '••••••' : (
+                          <>
+                            {cashTotalDispText}{' '}
+                            <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
+                          </>
+                        )}
+                      </Text>
+                      {!hideValues && (
+                        cashTodayLoading ? (
+                          <View style={[styles.heroWealthBadge, { backgroundColor: colors.muted + '22' }]}>
+                            <Text style={[styles.heroWealthBadgeText, { color: colors.mutedForeground + '88' }]}>—</Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
+                            <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
+                              {t.todayChangeBadge(cashTodayInfo.text)}
+                            </Text>
+                          </View>
+                        )
+                      )}
                     </View>
-                    {!hideValues && (
-                      cashTodayLoading ? (
-                        // Same dimmed-dash convention the Today/Total P/L
-                        // chip below already uses while its own data isn't
-                        // known yet — reserves this badge's exact layout
-                        // space instead of the badge being entirely absent
-                        // and then popping in once the network call (this
-                        // one has no local cache, unlike the cash total
-                        // itself) resolves.
-                        <View style={[styles.heroWealthBadge, { backgroundColor: colors.muted + '22' }]}>
-                          <Text style={[styles.heroWealthBadgeText, { color: colors.mutedForeground + '88' }]}>—</Text>
-                        </View>
-                      ) : (
-                        <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
-                          <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
-                            {t.todayChangeBadge(cashTodayInfo.text)}
-                          </Text>
-                        </View>
-                      )
-                    )}
-                  </View>
-                  {/* adjustsFontSizeToFit + minimumFontScale, not a bare
-                      numberOfLines={1} — a genuinely huge balance shrinks
-                      its own font to keep fitting on one line instead of
-                      truncating to "400k E…", the same technique
-                      PortfolioHeroValue already uses for the headline
-                      number above. */}
-                  {/* marginStart:32 = heroWealthChip's own width (26) +
-                      heroWealthLeftGroup's gap (6) — starts the value at
-                      the same x as the "CASH" label above it, not under
-                      the icon. Still spans to the cell's own right edge
-                      (no width cap), so adjustsFontSizeToFit above still
-                      has the room it needs for a genuinely large value. */}
-                  <Text
-                    style={[styles.heroWealthValueFull, { color: colors.text, marginStart: 32 }]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.7}
-                  >
-                    {hideValues ? '••••••' : (
-                      <>
-                        {cashTotalDispText}{' '}
-                        <Text style={{ color: colors.mutedForeground }}>{displayCurrency}</Text>
-                      </>
-                    )}
-                  </Text>
+                  )}
                 </TouchableOpacity>
               {/* Divider removed — each cell now has its own tint+border
                   (Option F), which already separates them visually; a
@@ -1335,8 +1392,18 @@ export default function HomeScreen() {
                   pointerEvents="none"
                 />
                 {goalsSummary.single ? (
+                  // size 26 (was 19) — matches heroWealthChip's own 26px icon
+                  // badges (Cash/Pending's icon chips just above this row),
+                  // so the ring reads as the same visual scale as its
+                  // siblings instead of a noticeably smaller afterthought.
+                  // The real reason for the bump: GoalRing's center icon is
+                  // size*0.38 — at 19 that's ~7px, too small for the
+                  // target/check glyph to read as anything but a blur; at
+                  // 26 it's ~10px, a real (if still small) legible icon.
+                  // Everything else — the icon choice, gradient arc, colors,
+                  // done-state — is untouched.
                   <GoalRing
-                    size={19} strokeWidth={2}
+                    size={26} strokeWidth={2.5}
                     pct={goalsSummary.single.pct}
                     color={colors.green}
                     fillColor={colors.primary}
@@ -1345,10 +1412,14 @@ export default function HomeScreen() {
                   />
                 ) : (
                   <View style={styles.goalRingCluster}>
+                    {/* size 22 / -7 overlap (was 19 / -5) — same legibility
+                        reasoning as the single-ring case above, just a touch
+                        smaller so 3 overlapping rings don't grow much wider
+                        than the original cluster's own footprint. */}
                     {goalsSummary.sorted.slice(0, 3).map((g, i) => (
-                      <View key={g.goal.id} style={i > 0 ? { marginLeft: -5 } : undefined}>
+                      <View key={g.goal.id} style={i > 0 ? { marginLeft: -7 } : undefined}>
                         <GoalRing
-                          size={19} strokeWidth={2}
+                          size={22} strokeWidth={2.2}
                           pct={g.pct}
                           color={g.done ? colors.green : GOAL_RING_COLORS[i % GOAL_RING_COLORS.length]}
                           trackColor={colors.border}
@@ -2281,6 +2352,17 @@ const styles = StyleSheet.create({
   // t.todayChangeBadge(), not a separate stacked label+value.
   heroWealthBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 6, marginStart: 6, flexShrink: 1 },
   heroWealthBadgeText: { fontSize: 9.5, fontFamily: 'Inter_700Bold' },
+  // Cash-alone (full-width, no Pending Income) layout — one row instead of
+  // the paired layout's stacked two. heroWealthLeftGroup and heroWealthBadge
+  // are reused as-is (same icon/label/badge look), just laid out as three
+  // siblings in a row instead of two rows.
+  heroWealthSingleRow: { flexDirection: 'row', alignItems: 'center' },
+  // flex:1 + textAlign:'center' (not alignItems:'center' on the row) — same
+  // reasoning as the Goals band's label/amount: keeps this Text stretched to
+  // its real available width so adjustsFontSizeToFit measures correctly,
+  // while centering the text within that width. Bigger than the paired
+  // layout's heroWealthValueFull (19 vs 15) — nothing sits below it here.
+  heroWealthValueSingle: { flex: 1, textAlign: 'center', fontSize: 19, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'] },
 
   // Goals — same GoalRing component and single-vs-cluster logic the old
   // standalone row used, just smaller and living here. Kept its own gold
@@ -2321,8 +2403,14 @@ const styles = StyleSheet.create({
   // overflowing; minWidth:0 still lets its own text truncate/shrink-to-fit
   // instead of forcing the row wider.
   heroGoalText: { flex: 1, minWidth: 0 },
-  heroGoalLabel: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textTransform: 'uppercase' },
-  heroGoalAmount: { fontSize: 12, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1 },
+  // textAlign:'center' (not alignItems:'center' on heroGoalText) —
+  // deliberately keeps these Text elements stretched to the column's full
+  // width so adjustsFontSizeToFit still measures/shrinks against the real
+  // available width; only the text *within* that width is centered. An
+  // alignItems:'center' approach would let a long amount string size to
+  // its own natural width and risk overflowing into the ring or the %.
+  heroGoalLabel: { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.3, textTransform: 'uppercase', textAlign: 'center' },
+  heroGoalAmount: { fontSize: 12, fontFamily: 'Inter_700Bold', fontVariant: ['tabular-nums'], marginTop: 1, textAlign: 'center' },
   // Slim gradient-fill progress bar under the amount line — track color is
   // the theme border (same neutral goals.tsx's own ProgressBar uses), fill
   // is drawn inline at the call site since it needs the done/not-done color.

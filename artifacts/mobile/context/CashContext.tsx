@@ -1,8 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/expo';
 import { CashAccount } from '@/types';
 import { apiFetch } from '@/utils/api';
+import { hydrateCashTodayChangesFromCache, prefetchCashTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 
 /**
  * Returns the per-user AsyncStorage key so that cash accounts from one
@@ -27,6 +29,7 @@ const CashContext = createContext<CashContextValue | null>(null);
 
 export function CashProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isSignedIn, userId } = useAuth();
+  const queryClient = useQueryClient();
   const [cashAccounts, setCashAccounts] = useState<CashAccount[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -74,6 +77,16 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
     // data from a prior user into the current session.
     const capturedUserId = userId;
     let active = true;
+
+    // Fire-and-forget, parallel to this effect's own cash-accounts load
+    // below — not awaited, so a slow/offline today-changes fetch can never
+    // delay Cash's own data. This is the earliest point that can realistically
+    // start it: it needs a real auth token (unlike prices' own prefetch,
+    // which needs none and fires before Clerk even initializes), and auth
+    // has only just resolved right here. See prefetchCashTodayChanges' own
+    // comment for why this still closes nearly the entire gap in practice.
+    void hydrateCashTodayChangesFromCache(queryClient, capturedUserId);
+    prefetchCashTodayChanges(queryClient, capturedUserId, token);
 
     (async () => {
       setIsLoading(true);
