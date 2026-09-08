@@ -168,3 +168,30 @@ export async function ensureFeedbackTables(): Promise<void> {
     logger.error({ err }, "ensureFeedbackTables: failed to create tables — the feedback chat will not work until this is resolved");
   }
 }
+
+// Same self-bootstrapping pattern for push_tickets (see
+// lib/db/src/schema/pushTickets.ts for why this table exists) — real
+// per-token delivery outcomes for every push this server sends, read/written
+// by lib/expoPush.ts and lib/pushReceiptCron.ts.
+export async function ensurePushTicketsTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "push_tickets" (
+        "id" text PRIMARY KEY,
+        "user_id" text,
+        "token" text NOT NULL,
+        "type" text NOT NULL,
+        "status" text NOT NULL DEFAULT 'pending',
+        "stage" text NOT NULL DEFAULT 'ticket',
+        "error_code" text,
+        "error_message" text,
+        "sent_at" timestamptz NOT NULL DEFAULT now(),
+        "checked_at" timestamptz
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "push_tickets_status_sent_at_idx" ON "push_tickets" ("status", "sent_at")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "push_tickets_token_idx" ON "push_tickets" ("token")`);
+  } catch (err) {
+    logger.error({ err }, "ensurePushTicketsTable: failed to create table — push delivery outcomes will not be recorded until this is resolved");
+  }
+}

@@ -9,8 +9,9 @@ import { startLeaderboardRankCron } from "./lib/leaderboardRankCron";
 import { startReferralMonthlyWinnerCron } from "./lib/referralMonthlyWinnerCron";
 import { startLeaderboardPeriodResultsCron } from "./lib/leaderboardPeriodResultsCron";
 import { startPendingIncomeReminderCron } from "./lib/pendingIncomeReminderCron";
+import { startPushReceiptCron } from "./lib/pushReceiptCron";
 import { ensureUserColumns } from "./lib/ensureUserColumns";
-import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable, ensureEgxCloseSnapshotsTable, ensureFeedbackTables, ensurePerformanceLeaderboardResultsTable } from "./lib/ensureDividendsTable";
+import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable, ensureEgxCloseSnapshotsTable, ensureFeedbackTables, ensurePerformanceLeaderboardResultsTable, ensurePushTicketsTable } from "./lib/ensureDividendsTable";
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
 import { sendProGateNotice } from "./lib/proGateNotice";
 // TEMPORARY — see oneTimeCleanup.ts's own header. Remove this import and
@@ -50,6 +51,7 @@ app.listen(port, async (err) => {
   await ensureEgxCloseSnapshotsTable();
   await ensureFeedbackTables();
   await ensurePerformanceLeaderboardResultsTable();
+  await ensurePushTicketsTable();
   await oneTimeClearBadFrozenLeaderboardResults(); // TEMPORARY — see its own header
   await sendCompetitionAnnouncement();
   await sendProGateNotice();
@@ -62,4 +64,5 @@ app.listen(port, async (err) => {
   startReferralMonthlyWinnerCron();
   startLeaderboardPeriodResultsCron();
   startPendingIncomeReminderCron();
+  startPushReceiptCron();
 });
