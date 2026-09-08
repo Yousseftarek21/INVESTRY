@@ -21,12 +21,33 @@ interface ExpoTicket {
   status: "ok" | "error";
   id?: string; // present when status === 'ok'
   message?: string;
-  details?: { error?: string };
+  // `details.error` carries the code for most failures (e.g.
+  // DeviceNotRegistered); a token-level APNs rejection like BadDeviceToken
+  // instead shows up nested under `details.apns.reason`, with `details.error`
+  // itself just saying the generic "DeveloperError" — see errorCodeOf() below.
+  details?: { error?: string; apns?: { reason?: string } };
+}
+
+/** The specific dead-token error code for a ticket/receipt, checking both
+ * of the two places Expo puts it (see ExpoTicket's own comment). */
+export function errorCodeOf(details: { error?: string; apns?: { reason?: string } } | undefined): string | undefined {
+  return details?.apns?.reason ?? details?.error;
 }
 
 function isValidExpoToken(token: string): boolean {
   return typeof token === "string" && token.startsWith("ExponentPushToken[");
 }
+
+// Error codes Expo/Apple return for a token that is permanently unusable —
+// no future send to it will ever succeed, so it's safe to clear immediately.
+// DeviceNotRegistered is the common case (app uninstalled, permission
+// revoked); BadDeviceToken showed up in production tonight for a genuinely
+// malformed/stale token (Apple's own reason, surfaced by Expo as a
+// "DeveloperError" — the string checked here is Apple's underlying
+// `details.apns.reason`, exposed by Expo under `details.error` for
+// DeviceNotRegistered but nested one level deeper for this one, hence
+// checking both fields below rather than just `details.error`).
+export const DEAD_TOKEN_ERROR_CODES = new Set(["DeviceNotRegistered", "BadDeviceToken"]);
 
 function generateTicketRowId(): string {
   return `pt_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -117,9 +138,9 @@ export async function sendPushToTokens(
         const userId = userIdByToken.get(token) ?? null;
 
         if (ticket.status === "error") {
-          const errorCode = ticket.details?.error;
+          const errorCode = errorCodeOf(ticket.details);
           logger.warn({ token, type, errorCode, message: ticket.message }, "Expo push: ticket error");
-          if (errorCode === "DeviceNotRegistered") deadTokens.push(token);
+          if (errorCode && DEAD_TOKEN_ERROR_CODES.has(errorCode)) deadTokens.push(token);
           rowsToInsert.push({
             id: generateTicketRowId(),
             userId,
@@ -151,7 +172,7 @@ export async function sendPushToTokens(
       if (deadTokens.length > 0) {
         await db.update(usersTable).set({ pushToken: null, updatedAt: new Date() })
           .where(inArray(usersTable.pushToken, deadTokens));
-        logger.info({ count: deadTokens.length }, "Expo push: cleared dead token(s) (DeviceNotRegistered)");
+        logger.info({ count: deadTokens.length }, "Expo push: cleared dead token(s)");
       }
     } catch (err) {
       logger.warn({ err, batchSize: batch.length }, "Expo push: request failed");
@@ -165,7 +186,7 @@ const RECEIPTS_BATCH_SIZE = 300; // Expo allows up to 1000; kept conservative
 interface ExpoReceipt {
   status: "ok" | "error";
   message?: string;
-  details?: { error?: string };
+  details?: { error?: string; apns?: { reason?: string } };
 }
 
 /** Thin wrapper Expo's getReceipts endpoint — used by pushReceiptCron.ts. */

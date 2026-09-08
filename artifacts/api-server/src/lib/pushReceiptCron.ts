@@ -1,6 +1,6 @@
 import { and, eq, lt, gt } from "drizzle-orm";
 import { db, usersTable, pushTicketsTable } from "@workspace/db";
-import { fetchExpoReceipts } from "./expoPush";
+import { fetchExpoReceipts, errorCodeOf, DEAD_TOKEN_ERROR_CODES } from "./expoPush";
 import { logger } from "./logger";
 
 // Follows up on every push_tickets row still sitting at status='pending' —
@@ -70,8 +70,8 @@ async function checkReceipts(): Promise<void> {
           .where(eq(pushTicketsTable.id, row.id));
       } else {
         errorCount++;
-        const errorCode = receipt.details?.error;
-        if (errorCode === "DeviceNotRegistered") deadTokens.add(row.token);
+        const errorCode = errorCodeOf(receipt.details);
+        if (errorCode && DEAD_TOKEN_ERROR_CODES.has(errorCode)) deadTokens.add(row.token);
         await db.update(pushTicketsTable)
           .set({ status: "error", stage: "receipt", errorCode: errorCode ?? null, errorMessage: receipt.message ?? null, checkedAt: now })
           .where(eq(pushTicketsTable.id, row.id));
@@ -82,7 +82,7 @@ async function checkReceipts(): Promise<void> {
       for (const token of deadTokens) {
         await db.update(usersTable).set({ pushToken: null, updatedAt: now }).where(eq(usersTable.pushToken, token));
       }
-      logger.info({ count: deadTokens.size }, "Push receipt cron: cleared dead token(s) (DeviceNotRegistered at receipt stage)");
+      logger.info({ count: deadTokens.size }, "Push receipt cron: cleared dead token(s) at receipt stage");
     }
     if (successCount > 0 || errorCount > 0) {
       logger.info({ checked: pending.length, successCount, errorCount }, "Push receipt cron: processed a batch");
