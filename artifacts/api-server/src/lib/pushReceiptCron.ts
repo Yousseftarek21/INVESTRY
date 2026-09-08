@@ -1,6 +1,6 @@
 import { and, eq, lt, gt, sql } from "drizzle-orm";
 import { db, usersTable, pushTicketsTable } from "@workspace/db";
-import { fetchExpoReceipts, errorCodeOf, DEAD_TOKEN_ERROR_CODES } from "./expoPush";
+import { fetchExpoReceipts, errorCodeOf, DEAD_TOKEN_ERROR_CODES, sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
 
 // Follows up on every push_tickets row still sitting at status='pending' —
@@ -35,6 +35,31 @@ const STUCK_PENDING_MIN_AGE_MS = 30 * 60 * 1000; // well past the ~3-15 min rece
 const STUCK_PENDING_ALERT_THRESHOLD = 10; // more than this many stuck this long is a real signal, not noise
 const ERROR_RATE_ALERT_THRESHOLD = 0.5; // >50% of a resolved batch failing is worth a loud log
 const ERROR_RATE_MIN_SAMPLE = 5; // don't alert on a tiny batch where one failure looks catastrophic
+// Same idea, but at the ticket (send-time) stage — closes a real gap the
+// receipt-stage checks above don't cover: if credentials break in a way
+// that gets every ticket rejected immediately (an explicit error, not
+// silence), each one was already logged individually, but nothing
+// aggregated "most of what we just tried to send just failed."
+const TICKET_ERROR_WINDOW_MS = 30 * 60 * 1000;
+const TICKET_ERROR_RATE_ALERT_THRESHOLD = 0.5;
+const TICKET_ERROR_MIN_SAMPLE = 5;
+
+// Pushes a real notification to a designated admin device, not just a log
+// entry nobody's watching — set ADMIN_ALERT_PUSH_TOKEN in the environment
+// to your own Expo push token to receive these. Debounced to once per
+// ALERT_DEBOUNCE_MS regardless of how many conditions fire or how often
+// this cron runs, so an ongoing outage pings once, not every 10 minutes.
+const ALERT_DEBOUNCE_MS = 60 * 60 * 1000;
+let lastAdminAlertAt = 0;
+
+async function sendAdminAlert(message: string): Promise<void> {
+  const token = process.env.ADMIN_ALERT_PUSH_TOKEN;
+  if (!token) return; // no-op until configured — see comment above
+  const now = Date.now();
+  if (now - lastAdminAlertAt < ALERT_DEBOUNCE_MS) return;
+  lastAdminAlertAt = now;
+  await sendPushToTokens([token], "⚠️ Push Delivery Alert", message, { type: "admin_broadcast" });
+}
 
 let running = false;
 
@@ -52,6 +77,31 @@ async function checkReceipts(): Promise<void> {
     await db.update(pushTicketsTable)
       .set({ status: "unknown", stage: "receipt", checkedAt: now })
       .where(and(eq(pushTicketsTable.status, "pending"), lt(pushTicketsTable.sentAt, giveUpCutoff)));
+
+    // Checked unconditionally, before any early return below — this is the
+    // one signal that fires even when there's nothing pending at all (e.g.
+    // credentials broken so badly every ticket fails immediately and never
+    // reaches 'pending' in the first place, which the rest of this
+    // function — keyed off pending rows — would otherwise never see).
+    const ticketWindowCutoff = new Date(now.getTime() - TICKET_ERROR_WINDOW_MS);
+    const ticketStats = await db
+      .select({
+        status: pushTicketsTable.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(pushTicketsTable)
+      .where(and(eq(pushTicketsTable.stage, "ticket"), gt(pushTicketsTable.sentAt, ticketWindowCutoff)))
+      .groupBy(pushTicketsTable.status);
+    const ticketErrorCount = ticketStats.find(s => s.status === "error")?.count ?? 0;
+    const ticketTotal = ticketStats.reduce((sum, s) => sum + s.count, 0);
+    if (ticketTotal >= TICKET_ERROR_MIN_SAMPLE && ticketErrorCount / ticketTotal > TICKET_ERROR_RATE_ALERT_THRESHOLD) {
+      const rate = Math.round((ticketErrorCount / ticketTotal) * 100);
+      logger.error(
+        { ticketErrorCount, ticketTotal, errorRate: ticketErrorCount / ticketTotal },
+        "Push receipt cron: ALERT — high ticket-stage rejection rate, credentials may be broken",
+      );
+      await sendAdminAlert(`${rate}% of pushes are being rejected immediately at send time (${ticketErrorCount}/${ticketTotal} in the last ${TICKET_ERROR_WINDOW_MS / 60_000} min). Likely a credentials problem.`);
+    }
 
     const pending = await db
       .select({ id: pushTicketsTable.id, token: pushTicketsTable.token })
@@ -99,10 +149,12 @@ async function checkReceipts(): Promise<void> {
       logger.info({ checked: pending.length, successCount, errorCount }, "Push receipt cron: processed a batch");
       const resolved = successCount + errorCount;
       if (resolved >= ERROR_RATE_MIN_SAMPLE && errorCount / resolved > ERROR_RATE_ALERT_THRESHOLD) {
+        const rate = Math.round((errorCount / resolved) * 100);
         logger.error(
           { successCount, errorCount, errorRate: errorCount / resolved },
           "Push receipt cron: ALERT — high failure rate in this batch, investigate",
         );
+        await sendAdminAlert(`${rate}% of a recent push batch failed delivery (${errorCount}/${resolved}). Check push_tickets.`);
       }
     }
 
@@ -124,6 +176,7 @@ async function checkReceipts(): Promise<void> {
         { stuckCount, olderThanMinutes: STUCK_PENDING_MIN_AGE_MS / 60_000 },
         "Push receipt cron: ALERT — many tickets stuck pending with no receipt, delivery may be silently broken",
       );
+      await sendAdminAlert(`${stuckCount} pushes have been stuck with no delivery confirmation for over ${STUCK_PENDING_MIN_AGE_MS / 60_000} minutes. This is the same pattern as the 2026-09-08 incident.`);
     }
 
     // Light retention — this table exists for diagnosis, not permanent
