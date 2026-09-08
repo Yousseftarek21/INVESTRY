@@ -93,6 +93,7 @@ export async function sendPushToTokens(
           Accept: "application/json",
           "Accept-Encoding": "gzip, deflate",
           "Content-Type": "application/json",
+          ...(process.env.EXPO_ACCESS_TOKEN ? { Authorization: `Bearer ${process.env.EXPO_ACCESS_TOKEN}` } : {}),
         },
         body: JSON.stringify(messages),
       });
@@ -175,7 +176,11 @@ export async function fetchExpoReceipts(ticketIds: string[]): Promise<Record<str
     try {
       const res = await fetch(EXPO_RECEIPTS_URL, {
         method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(process.env.EXPO_ACCESS_TOKEN ? { Authorization: `Bearer ${process.env.EXPO_ACCESS_TOKEN}` } : {}),
+        },
         body: JSON.stringify({ ids: batch }),
       });
       if (!res.ok) {
