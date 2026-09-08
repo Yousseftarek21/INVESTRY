@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useAuth } from '@clerk/expo';
@@ -67,21 +67,6 @@ export function usePushRegistration(
         );
         const token = tokenResponse.data;
         if (!token) return;
-
-        // TEMPORARY diagnostic — logs the raw Apple APNs device token
-        // (distinct from the Expo-wrapped token above) so it can be tested
-        // directly against Apple's own Notifications Console, bypassing
-        // Expo's relay entirely. Remove once the push investigation is
-        // resolved — see conversation from 2026-09-08.
-        try {
-          const rawDeviceToken = await Notifications.getDevicePushTokenAsync();
-          console.log('[PUSH_DEBUG] Raw APNs device token:', JSON.stringify(rawDeviceToken));
-          if (Platform.OS === 'ios') {
-            Alert.alert('Raw APNs Token (debug)', String(rawDeviceToken.data), [{ text: 'OK' }]);
-          }
-        } catch (rawErr) {
-          console.log('[PUSH_DEBUG] getDevicePushTokenAsync failed:', rawErr);
-        }
 
         const authToken = await getToken();
         if (!authToken) return;

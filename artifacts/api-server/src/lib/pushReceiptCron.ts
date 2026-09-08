@@ -1,4 +1,4 @@
-import { and, eq, lt, gt } from "drizzle-orm";
+import { and, eq, lt, gt, sql } from "drizzle-orm";
 import { db, usersTable, pushTicketsTable } from "@workspace/db";
 import { fetchExpoReceipts, errorCodeOf, DEAD_TOKEN_ERROR_CODES } from "./expoPush";
 import { logger } from "./logger";
@@ -24,6 +24,17 @@ const PENDING_MIN_AGE_MS = 3 * 60 * 1000; // give Apple/Google time before askin
 // rows.
 const GIVE_UP_AFTER_MS = 24 * 60 * 60 * 1000;
 const BATCH_LIMIT = 500;
+
+// Alerting thresholds — added after a real incident (2026-09-08) where
+// every push silently accepted a ticket but never got a receipt, for
+// hours, and nobody knew until users reported it. Two different signals,
+// because the incident's actual symptom (tickets stuck pending forever)
+// wouldn't have shown up in a plain success/error ratio at all — nothing
+// ever resolved to "error" that night, it just never resolved.
+const STUCK_PENDING_MIN_AGE_MS = 30 * 60 * 1000; // well past the ~3-15 min receipts normally take
+const STUCK_PENDING_ALERT_THRESHOLD = 10; // more than this many stuck this long is a real signal, not noise
+const ERROR_RATE_ALERT_THRESHOLD = 0.5; // >50% of a resolved batch failing is worth a loud log
+const ERROR_RATE_MIN_SAMPLE = 5; // don't alert on a tiny batch where one failure looks catastrophic
 
 let running = false;
 
@@ -86,6 +97,33 @@ async function checkReceipts(): Promise<void> {
     }
     if (successCount > 0 || errorCount > 0) {
       logger.info({ checked: pending.length, successCount, errorCount }, "Push receipt cron: processed a batch");
+      const resolved = successCount + errorCount;
+      if (resolved >= ERROR_RATE_MIN_SAMPLE && errorCount / resolved > ERROR_RATE_ALERT_THRESHOLD) {
+        logger.error(
+          { successCount, errorCount, errorRate: errorCount / resolved },
+          "Push receipt cron: ALERT — high failure rate in this batch, investigate",
+        );
+      }
+    }
+
+    // The actual signature of the 2026-09-08 incident: tickets accepted
+    // cleanly, never showing up as an "error" at all, just never resolving.
+    // A plain success/error ratio above is blind to this — this is the
+    // check that would have caught it, hours earlier than a user report.
+    const stuckCutoff = new Date(now.getTime() - STUCK_PENDING_MIN_AGE_MS);
+    const [{ count: stuckCount }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(pushTicketsTable)
+      .where(and(
+        eq(pushTicketsTable.status, "pending"),
+        lt(pushTicketsTable.sentAt, stuckCutoff),
+        gt(pushTicketsTable.sentAt, giveUpCutoff),
+      ));
+    if (stuckCount > STUCK_PENDING_ALERT_THRESHOLD) {
+      logger.error(
+        { stuckCount, olderThanMinutes: STUCK_PENDING_MIN_AGE_MS / 60_000 },
+        "Push receipt cron: ALERT — many tickets stuck pending with no receipt, delivery may be silently broken",
+      );
     }
 
     // Light retention — this table exists for diagnosis, not permanent
