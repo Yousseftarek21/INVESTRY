@@ -32,6 +32,7 @@
     "production": {
       "node": "22.13.0",
       "channel": "production",
+      "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_DOMAIN": "api.investry.app",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA",
