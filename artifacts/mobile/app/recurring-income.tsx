@@ -311,8 +311,14 @@ export default function RecurringIncomeScreen() {
                       {pendingEntries.map(inc => {
                         const stateColor = inc.collected ? colors.green : '#F59E0B';
                         const destAccount = inc.collected ? cashAccounts.find(a => a.id === inc.cashAccountId) : undefined;
-                        return (
-                        <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
+                        // Swipe-to-delete only for collected entries — an
+                        // uncollected (still-pending) card already has its
+                        // own explicit trash-icon button below, and losing
+                        // it to an accidental swipe before it's even been
+                        // collected is a worse failure mode than for a
+                        // settled one. Collected cards keep swipe as an
+                        // additional, faster way to clear them out.
+                        const card = (
                           <View
                             style={[s.pendingCard, {
                               backgroundColor: colors.card, borderColor: colors.border,
@@ -404,7 +410,13 @@ export default function RecurringIncomeScreen() {
                               </View>
                             )}
                           </View>
-                        </SwipeToDelete>
+                        );
+                        return inc.collected ? (
+                          <SwipeToDelete key={inc.id} onDelete={() => handleDelete(inc.id)}>
+                            {card}
+                          </SwipeToDelete>
+                        ) : (
+                          <View key={inc.id}>{card}</View>
                         );
                       })}
                     </>
