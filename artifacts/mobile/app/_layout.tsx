@@ -26,6 +26,7 @@ import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
 import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
 import { DividendsProvider } from "@/context/DividendsContext";
+import { RentalProvider } from "@/context/RentalContext";
 import { GoalsProvider } from "@/context/GoalsContext";
 import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
@@ -151,6 +152,10 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="dividends"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="rental-tracking"
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
@@ -563,11 +568,13 @@ export default function RootLayout() {
                             <GoalsProvider>
                             <RecurringIncomeProvider>
                             <DividendsProvider>
+                            <RentalProvider>
                             <PriceAlertsProvider>
                               <AppWithPaywall>
                                 <RootLayoutNav />
                               </AppWithPaywall>
                             </PriceAlertsProvider>
+                            </RentalProvider>
                             </DividendsProvider>
                             </RecurringIncomeProvider>
                           </GoalsProvider>

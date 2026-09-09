@@ -8,7 +8,8 @@ import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { AssetIcon } from '@/components/AssetIcon';
 import { ConceptIcon } from '@/components/ConceptIcon';
-import { ICON_LOANS } from '@/constants/conceptIcons';
+import { ICON_LOANS, ICON_RENTAL_INCOME } from '@/constants/conceptIcons';
+import { useRentalRecords } from '@/context/RentalContext';
 
 type HoldingLabels = {
   gold: string; silver: string; realEstate: string; personalAsset: string;
@@ -170,6 +171,16 @@ export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle,
   const currentMonth = new Date().toISOString().slice(0, 7);
   const loanPaidThisMonth = !!linkedLoan && linkedLoan.payments.some(p => p.month === currentMonth);
 
+  // Informational only, same as linkedLoan above — rental data lives in its
+  // own independent table (RentalContext), never on the holding itself, so
+  // this never touches currentValue/cost/gain either. See rental-tracking.tsx.
+  const { rentals } = useRentalRecords();
+  const propertyRentals = holding.type === 'real_estate'
+    ? rentals.filter(r => r.holdingId === holding.id)
+    : [];
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const hasActiveRental = propertyRentals.some(r => !r.endDate || r.endDate >= todayIso);
+
   // Icon + title/subtitle only — same trade-off already made and documented
   // in recurring-income.tsx/dividends.tsx: shrinking the tap target away
   // from the value/actions columns is what keeps this a sibling of (never
@@ -277,6 +288,17 @@ export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle,
           {!loanFullyPaid && loanPaidThisMonth && (
             <Feather name="check-circle" size={13} color={colors.green} />
           )}
+        </View>
+      )}
+
+      {propertyRentals.length > 0 && (
+        <View style={[styles.loanRow, { borderTopColor: colors.border }]}>
+          <ConceptIcon icon={ICON_RENTAL_INCOME} size={12} color={colors.mutedForeground} />
+          <Text style={[styles.loanText, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {hasActiveRental
+              ? t.holdingCardRented
+              : `${t.holdingCardRentalHistory} · ${propertyRentals.length}`}
+          </Text>
         </View>
       )}
     </View>

@@ -37,6 +37,7 @@ export function getPaywallHighlights(t: ReturnType<typeof useT>): FeatureRow[] {
     { icon: 'users', text: t.subBenchmarkCompare },
     { icon: 'tool', text: t.subFixMyPortfolio },
     { icon: 'percent', text: t.subDividendsFull },
+    { icon: 'key', text: t.subRentalIncomeFull },
     { icon: 'download', text: t.subExportData },
     { icon: 'crosshair', text: t.subTargetAllocation },
   ];

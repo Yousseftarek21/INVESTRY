@@ -267,6 +267,60 @@ export interface RecurringIncome {
   reminderSentAt?: string;
 }
 
+export type RentalChannel = 'direct_lease' | 'airbnb' | 'booking_com' | 'other';
+// Egypt-relevant payment rails specifically — not a generic/US-centric
+// list (ACH, Venmo, ...), since every other amount/method choice in this
+// app is already scoped to how money actually moves in Egypt.
+export type RentalPaymentMethod = 'cash' | 'bank_transfer' | 'instapay' | 'vodafone_cash' | 'other';
+
+// A logged rental payment — same independent-top-level-record pattern as
+// Dividend/RecurringIncome above (its own table, not embedded on the
+// holding). It has no value/cost of its own: it is never a Holding, never
+// participates in computeCurrentValue/computeCost, and (like real_estate
+// itself) never touches the Leaderboard's ranked-return math.
+//
+// Deliberately NOT tied to real estate in any way: propertyName is always
+// free text the owner types themselves, and holdingId is only ever set as
+// an optional convenience when they pick one of their existing real_estate
+// holdings to auto-fill the name/area. A rental can be logged with zero
+// real_estate holdings on the account, or against a property never
+// tracked as an investment at all (a rented desk, someone's own Airbnb
+// unit that isn't "owned" in this app, etc.) — the real_estate tab is
+// never a precondition for this feature.
+export interface RentalRecord {
+  id: string;
+  /** Set only when the owner picked one of their real_estate holdings as
+      a quick-fill convenience — omitted for a freely-typed property name
+      that doesn't correspond to any holding. Never required. */
+  holdingId?: string;
+  /** Snapshotted at creation/pick time — same reasoning Dividend copies a
+      stock's symbol/companyName rather than joining live. Keeps this
+      record meaningful even if the property is later sold/removed. */
+  propertyName: string;
+  propertyArea?: number;
+  tenantName?: string;
+  /** Any other identifying info about the tenant — phone number, national
+      ID, a note, whatever the owner wants to record. Free text, not
+      validated, not a link to any contacts/tenant entity (this app has
+      none, and building one is out of scope for rental income logging). */
+  tenantInfo?: string;
+  channel: RentalChannel;
+  /** Free text, used only when channel === 'other'. */
+  channelOther?: string;
+  startDate: string;
+  /** Omitted for an open-ended / still-running tenancy. */
+  endDate?: string;
+  amount: number;
+  currency: string;
+  paymentMethod?: RentalPaymentMethod;
+  note?: string;
+  /** Cash account the amount was added to, if the user chose to (one-time
+      bump, not tracked ongoing) — same semantics as Dividend.cashAccountId. */
+  cashAccountId?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface MarketPrices {
   goldUsd: number;
   silverUsd: number;

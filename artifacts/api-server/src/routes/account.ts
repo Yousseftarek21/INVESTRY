@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
-import { db, usersTable, holdingsTable, cashAccountsTable } from "@workspace/db";
+import { db, usersTable, holdingsTable, cashAccountsTable, rentalRecordsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -22,6 +22,12 @@ router.delete("/account", async (req, res) => {
   try {
     await db.delete(holdingsTable).where(eq(holdingsTable.userId, userId));
     await db.delete(cashAccountsTable).where(eq(cashAccountsTable.userId, userId));
+    // Rental records are a new table (2026-09) added specifically without
+    // repeating the pre-existing orphaning gap dividends/recurring_income
+    // already have here (neither is cleaned up on account deletion today —
+    // out of scope to fix generally, but no reason to launch this table
+    // with the same gap on day one).
+    await db.delete(rentalRecordsTable).where(eq(rentalRecordsTable.userId, userId));
     await db.delete(usersTable).where(eq(usersTable.id, userId));
     await clerkClient.users.deleteUser(userId);
 

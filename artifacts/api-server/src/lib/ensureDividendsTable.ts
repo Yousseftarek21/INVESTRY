@@ -195,3 +195,25 @@ export async function ensurePushTicketsTable(): Promise<void> {
     logger.error({ err }, "ensurePushTicketsTable: failed to create table — push delivery outcomes will not be recorded until this is resolved");
   }
 }
+
+// Same self-bootstrapping pattern as ensureDividendsTable above (not
+// Recurring Income's — that table has no such function and was pushed
+// once via drizzle-kit push, a real gap this deliberately doesn't repeat).
+// A logged rental payment, always tied to a specific real_estate holding
+// the owner already saved — see RentalRecord in
+// artifacts/mobile/types/index.ts and routes/rentals.ts.
+export async function ensureRentalRecordsTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "rental_records" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "data" jsonb NOT NULL,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureRentalRecordsTable: failed to create table — rental tracking will be inert until this is resolved");
+  }
+}

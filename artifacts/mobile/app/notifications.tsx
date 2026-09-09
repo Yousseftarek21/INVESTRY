@@ -29,6 +29,8 @@ const EVENT_DESTINATION: Record<string, string> = {
   income_added: '/recurring-income',
   income_edited: '/recurring-income',
   income_collected: '/recurring-income',
+  rental_added: '/rental-tracking',
+  rental_edited: '/rental-tracking',
   // Settings, not straight to the paywall — the paywall itself is a modal
   // opened via a context call (showPaywall/showPaywallFromModal), not a
   // routable screen, and Settings already has a one-tap "Free Plan" card
@@ -65,6 +67,9 @@ function eventVisual(type: string, subtitle: string, colors: ReturnType<typeof u
       return { icon: <Feather name="repeat" size={18} color="#8B5CF6" />, color: '#8B5CF6' };
     case 'income_collected':
       return { icon: <Feather name="check-circle" size={18} color={colors.green} />, color: colors.green };
+    case 'rental_added':
+    case 'rental_edited':
+      return { icon: <Feather name="key" size={18} color="#F59E0B" />, color: '#F59E0B' };
     case 'pro_gate_notice':
       return { icon: <Feather name="lock" size={18} color={colors.primary} />, color: colors.primary };
     case 'portfolio_alert':

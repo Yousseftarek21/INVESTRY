@@ -33,6 +33,9 @@ export const ICON_PENDING_INCOME: RowIcon = { lib: 'feather', name: 'clock' };
 /** Dividend payouts from holdings. */
 export const ICON_DIVIDENDS: RowIcon = { lib: 'feather', name: 'pie-chart' };
 
+/** Rental payments logged against a real estate holding. */
+export const ICON_RENTAL_INCOME: RowIcon = { lib: 'feather', name: 'key' };
+
 /** Portfolio rebalancing / drift alerts. */
 export const ICON_REBALANCING: RowIcon = { lib: 'feather', name: 'target' };
 

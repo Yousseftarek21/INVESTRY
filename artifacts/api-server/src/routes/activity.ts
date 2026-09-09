@@ -26,7 +26,7 @@ const activityLogLimit = rateLimit({
   keyGenerator: (req) => getAuth(req).userId ?? "anonymous",
 });
 
-const VALID_TYPES = new Set(["cash_added", "cash_edited", "holding_added", "holding_edited", "holding_sold", "income_added", "income_edited", "income_collected"]);
+const VALID_TYPES = new Set(["cash_added", "cash_edited", "holding_added", "holding_edited", "holding_sold", "income_added", "income_edited", "income_collected", "rental_added", "rental_edited"]);
 
 function generateActivityId(): string {
   return `act_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;

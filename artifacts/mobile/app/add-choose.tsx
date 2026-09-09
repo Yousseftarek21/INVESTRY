@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { ConceptIcon } from '@/components/ConceptIcon';
-import { ICON_DIVIDENDS, ICON_INVESTMENTS } from '@/constants/conceptIcons';
+import { ICON_DIVIDENDS, ICON_INVESTMENTS, ICON_RENTAL_INCOME } from '@/constants/conceptIcons';
 import { forwardChevron } from '@/utils/rtl';
 import { router } from 'expo-router';
 import React from 'react';
@@ -35,6 +35,7 @@ export default function AddChooseScreen() {
   const goCash = () => router.push('/cash-accounts?openAdd=1' as any);
   const goRecurringIncome = () => router.push('/recurring-income' as any);
   const goDividends = () => router.push('/dividends' as any);
+  const goRentalTracking = () => router.push('/rental-tracking' as any);
 
   const bottomPad = insets.bottom + (Platform.OS === 'android' ? 16 : 8);
 
@@ -112,6 +113,21 @@ export default function AddChooseScreen() {
           <View style={s.cardSmText}>
             <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addDividendOption}</Text>
             <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.addDividendOptionDesc}</Text>
+          </View>
+          <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.cardSm, { backgroundColor: colors.background, borderColor: colors.border }]}
+          onPress={goRentalTracking}
+          activeOpacity={0.72}
+        >
+          <View style={[s.iconWrapSm, { backgroundColor: '#F59E0B1A' }]}>
+            <ConceptIcon icon={ICON_RENTAL_INCOME} size={18} color="#F59E0B" />
+          </View>
+          <View style={s.cardSmText}>
+            <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addRentalTrackingOption}</Text>
+            <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.addRentalTrackingOptionDesc}</Text>
           </View>
           <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
