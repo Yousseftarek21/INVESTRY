@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { ConceptIcon } from '@/components/ConceptIcon';
-import { ICON_COMMUNITY, ICON_INVESTMENTS, ICON_LEADERBOARD } from '@/constants/conceptIcons';
+import { ICON_SIGNALS, ICON_INVESTMENTS, ICON_LEADERBOARD } from '@/constants/conceptIcons';
 import { forwardChevron } from '@/utils/rtl';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
@@ -34,7 +34,7 @@ import { isIOSIAPAvailable } from '@/utils/revenuecat';
 import { ManageSubscriptionSheet } from '@/components/ManageSubscriptionSheet';
 import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
-import { COMMUNITY_URL } from '@/constants/community';
+import { SIGNALS_URL } from '@/constants/signals';
 import { useFeedbackUnread } from '@/hooks/useFeedback';
 
 // Read live from the running binary/update instead of a hand-maintained
@@ -490,9 +490,9 @@ export default function SettingsScreen() {
   };
 
   const goTo = (path: string) => { haptic(); router.push(path as any); };
-  const openCommunity = () => {
+  const openSignals = () => {
     haptic();
-    Linking.openURL(COMMUNITY_URL).catch(() => showModal(t.couldNotOpenLink, t.couldNotOpenLinkDesc));
+    Linking.openURL(SIGNALS_URL).catch(() => showModal(t.couldNotOpenLink, t.couldNotOpenLinkDesc));
   };
 
   // Matches Analytics/Markets exactly: contentInset (not contentOffset)
@@ -572,9 +572,10 @@ export default function SettingsScreen() {
               onPress={() => goTo('/leaderboard')}
             />
             <NavRow
-              icon={ICON_COMMUNITY} iconBg="#1877F2"
-              label={t.communityNav} sublabel={t.communityNavSub}
-              onPress={openCommunity}
+              icon={ICON_SIGNALS} iconBg={colors.primary}
+              label={t.signalsNav} sublabel={t.signalsNavSub}
+              badge={{ text: t.signalsInviteBadge, color: colors.primary }}
+              onPress={openSignals}
               last
             />
           </Sect>
