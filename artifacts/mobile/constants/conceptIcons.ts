@@ -47,3 +47,6 @@ export const ICON_LEADERBOARD: RowIcon = { lib: 'feather', name: 'award' };
 
 /** The INVESTRY Community Facebook group. */
 export const ICON_COMMUNITY: RowIcon = { lib: 'mci', name: 'facebook' };
+
+/** The INVESTRY Signals web tool (technical buy/sell ratings). */
+export const ICON_SIGNALS: RowIcon = { lib: 'mci', name: 'chart-line' };

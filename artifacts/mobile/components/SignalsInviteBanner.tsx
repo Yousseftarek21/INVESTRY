@@ -5,29 +5,27 @@ import { useAuth } from '@clerk/expo';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ConceptIcon } from '@/components/ConceptIcon';
-import { ICON_COMMUNITY } from '@/constants/conceptIcons';
+import { ICON_SIGNALS } from '@/constants/conceptIcons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
-import { COMMUNITY_URL } from '@/constants/community';
+import { SIGNALS_URL } from '@/constants/signals';
 
-// A one-time announcement for the new Facebook Community group, same
-// dismissible-banner shell as CompetitionInviteBanner (per-user AsyncStorage
-// dismiss key, animated fade/slide-in) but its own identity — Facebook's own
-// blue rather than the app's gold, since gold already reads as "prize" here
-// (CompetitionInviteBanner) and this isn't a competition or an in-app
-// feature, it's a link out to a real Facebook group. Tapping "Join on
-// Facebook" opens the group AND dismisses the banner (there's no server-side
-// membership to check, so both the CTA and the close button are equally
-// terminal — no reason to keep asking once someone's already been sent
-// there).
+// Replaces the old Facebook community card in this same Home-screen slot —
+// same dismissible-banner shell (per-user AsyncStorage dismiss key,
+// animated fade/slide-in) as CommunityInviteBanner, but branded in the
+// app's own gold rather than a borrowed brand color: this is our own
+// product (a separate web app, its own domain/auth), not a link to
+// somewhere else's platform, so it should read as ours. Tapping "Open
+// Signals" opens the site AND dismisses the banner, same one-shot
+// reasoning as the community banner — there's no server-side state to
+// check, so once someone's been sent there, there's no reason to keep
+// asking.
 function dismissKey(userId: string) {
-  return `@investry_community_invite_dismissed_${userId}`;
+  return `@investry_signals_invite_dismissed_${userId}`;
 }
 
-const FB_BLUE = '#1877F2';
-
-export function CommunityInviteBanner() {
+export function SignalsInviteBanner() {
   const { userId } = useAuth();
   const colors = useColors();
   const t = useT();
@@ -57,9 +55,9 @@ export function CommunityInviteBanner() {
 
   const close = () => { impact(); dismiss(); };
 
-  const join = () => {
+  const open = () => {
     impact();
-    Linking.openURL(COMMUNITY_URL).catch(() => null);
+    Linking.openURL(SIGNALS_URL).catch(() => null);
     dismiss();
   };
 
@@ -76,33 +74,35 @@ export function CommunityInviteBanner() {
       ]}
     >
       <LinearGradient
-        colors={[FB_BLUE + '26', FB_BLUE + '0A']}
+        colors={[colors.primary + '26', colors.primary + '0A']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[s.card, { borderColor: FB_BLUE + '40' }]}
+        style={[s.card, { borderColor: colors.primary + '40' }]}
       >
         <TouchableOpacity onPress={close} hitSlop={10} style={s.closeBtn} accessibilityLabel={t.dismiss}>
           <Feather name="x" size={15} color={colors.mutedForeground} />
         </TouchableOpacity>
 
         <View style={s.headerRow}>
-          <View style={[s.iconWrap, { backgroundColor: FB_BLUE + '22' }]}>
-            <ConceptIcon icon={ICON_COMMUNITY} size={20} color={FB_BLUE} />
+          <View style={[s.iconWrap, { backgroundColor: colors.primary + '22' }]}>
+            <ConceptIcon icon={ICON_SIGNALS} size={20} color={colors.primary} />
           </View>
-          <Text style={[s.eyebrow, { color: FB_BLUE }]}>{t.communityEyebrow}</Text>
+          <View style={[s.badge, { backgroundColor: colors.primary }]}>
+            <Text style={s.badgeTxt}>{t.signalsInviteBadge}</Text>
+          </View>
         </View>
 
-        <Text style={[s.title, { color: colors.text }]}>{t.communityInviteTitle}</Text>
-        <Text style={[s.body, { color: colors.mutedForeground }]}>{t.communityInviteBody}</Text>
+        <Text style={[s.title, { color: colors.text }]}>{t.signalsInviteTitle}</Text>
+        <Text style={[s.body, { color: colors.mutedForeground }]}>{t.signalsInviteBody}</Text>
 
         <TouchableOpacity
-          onPress={join}
-          style={[s.joinBtn, { backgroundColor: FB_BLUE }]}
+          onPress={open}
+          style={[s.openBtn, { backgroundColor: colors.primary }]}
           activeOpacity={0.85}
         >
-          <ConceptIcon icon={ICON_COMMUNITY} size={15} color="#fff" />
-          <Text style={s.joinBtnTxt}>{t.communityInviteCta}</Text>
-          <Feather name="arrow-right" size={14} color="#fff" />
+          <ConceptIcon icon={ICON_SIGNALS} size={15} color={colors.background} />
+          <Text style={[s.openBtnTxt, { color: colors.background }]}>{t.signalsInviteCta}</Text>
+          <Feather name="arrow-right" size={14} color={colors.background} />
         </TouchableOpacity>
       </LinearGradient>
     </Animated.View>
@@ -116,14 +116,15 @@ const s = StyleSheet.create({
 
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   iconWrap: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  eyebrow: { fontSize: 10.5, fontFamily: 'Inter_800ExtraBold', letterSpacing: 1.1, textTransform: 'uppercase' },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  badgeTxt: { fontSize: 10.5, fontFamily: 'Inter_800ExtraBold', letterSpacing: 1.1, textTransform: 'uppercase', color: '#161616' },
 
   title: { fontSize: 16.5, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.2 },
   body:  { fontSize: 12.5, fontFamily: 'Inter_400Regular', lineHeight: 18, paddingEnd: 18 },
 
-  joinBtn: {
+  openBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
     borderRadius: 12, paddingVertical: 12, marginTop: 4,
   },
-  joinBtnTxt: { fontSize: 14, fontFamily: 'Inter_800ExtraBold', color: '#fff' },
+  openBtnTxt: { fontSize: 14, fontFamily: 'Inter_800ExtraBold' },
 });

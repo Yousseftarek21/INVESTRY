@@ -12,7 +12,7 @@ import { fmtCompact } from '@/utils/formatNumber';
 import { UpdateAvailableBanner } from '@/components/UpdateAvailableBanner';
 import { WhatsNewModal } from '@/components/WhatsNewModal';
 import { CompetitionInviteBanner } from '@/components/CompetitionInviteBanner';
-import { CommunityInviteBanner } from '@/components/CommunityInviteBanner';
+import { SignalsInviteBanner } from '@/components/SignalsInviteBanner';
 import { PerfChart } from '@/components/PerfChart';
 import { CHART_PERIODS, ChartPeriod, getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -968,11 +968,12 @@ export default function HomeScreen() {
           layout beyond the first read — order matters only while more than
           one is visible at once (a first-ever launch could show all three):
           an update nudge first (acts on the app itself), then the
-          low-friction in-app competition ask, then the external Facebook
-          community invite last. */}
+          low-friction in-app competition ask, then the Signals invite last
+          — this used to be the Facebook community invite; replaced with
+          our own web tool's launch announcement in the same slot. */}
       <UpdateAvailableBanner />
       <CompetitionInviteBanner />
-      <CommunityInviteBanner />
+      <SignalsInviteBanner />
       <WhatsNewModal />
 
       {/* ── Hero section (no bordered card anymore) ─────────────────
