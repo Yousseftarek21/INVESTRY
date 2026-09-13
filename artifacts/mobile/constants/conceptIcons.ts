@@ -44,6 +44,3 @@ export const ICON_AI_ASSISTANT: RowIcon = { lib: 'feather', name: 'cpu' };
 
 /** The competition / leaderboard ranking feature. */
 export const ICON_LEADERBOARD: RowIcon = { lib: 'feather', name: 'award' };
-
-/** The INVESTRY Signals web tool (technical buy/sell ratings). */
-export const ICON_SIGNALS: RowIcon = { lib: 'mci', name: 'chart-line' };

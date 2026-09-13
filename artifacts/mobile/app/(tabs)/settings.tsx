@@ -7,7 +7,6 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Linking,
   Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -16,7 +15,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { ConceptIcon } from '@/components/ConceptIcon';
-import { ICON_SIGNALS, ICON_INVESTMENTS, ICON_LEADERBOARD } from '@/constants/conceptIcons';
+import { ICON_INVESTMENTS, ICON_LEADERBOARD } from '@/constants/conceptIcons';
 import { forwardChevron } from '@/utils/rtl';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import Constants from 'expo-constants';
@@ -34,7 +33,6 @@ import { isIOSIAPAvailable } from '@/utils/revenuecat';
 import { ManageSubscriptionSheet } from '@/components/ManageSubscriptionSheet';
 import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
-import { SIGNALS_URL } from '@/constants/signals';
 import { useFeedbackUnread } from '@/hooks/useFeedback';
 
 // Read live from the running binary/update instead of a hand-maintained
@@ -490,10 +488,6 @@ export default function SettingsScreen() {
   };
 
   const goTo = (path: string) => { haptic(); router.push(path as any); };
-  const openSignals = () => {
-    haptic();
-    Linking.openURL(SIGNALS_URL).catch(() => showModal(t.couldNotOpenLink, t.couldNotOpenLinkDesc));
-  };
 
   // Matches Analytics/Markets exactly: contentInset (not contentOffset)
   // plus an imperative scrollTo on mount and onLayout, since the
@@ -570,12 +564,6 @@ export default function SettingsScreen() {
               label={t.leaderboardNav} sublabel={t.leaderboardNavSub}
               badge={{ text: t.leaderboardBetaChip, color: '#F59E0B' }}
               onPress={() => goTo('/leaderboard')}
-            />
-            <NavRow
-              icon={ICON_SIGNALS} iconBg={colors.primary}
-              label={t.signalsNav} sublabel={t.signalsNavSub}
-              badge={{ text: t.signalsInviteBadge, color: colors.primary }}
-              onPress={openSignals}
               last
             />
           </Sect>
