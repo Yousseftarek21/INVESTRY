@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +17,7 @@ export default function SettingsNotificationsScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
   const { notifications, setNotification } = useAppSettings();
-  const { featuresUnlocked } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading } = useSubscription();
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -34,7 +34,11 @@ export default function SettingsNotificationsScreen() {
           <View style={{ width: 22 }} />
         </View>
 
-        {!featuresUnlocked ? (
+        {subLoading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="small" color={colors.mutedForeground} />
+          </View>
+        ) : !featuresUnlocked ? (
           <View style={{ flex: 1, padding: 24 }}>
             <LockedFeatureCard feature={t.settingsCatNotifications} description={t.settingsCatNotificationsSub} fullScreen />
           </View>

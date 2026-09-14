@@ -65,7 +65,7 @@ export default function AIAssistantScreen() {
   const insets = useSafeAreaInsets();
   const { getToken } = useAuth();
   const { language } = useAppSettings();
-  const { featuresUnlocked } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading } = useSubscription();
 
   // Always starts blank — this screen is a fresh conversation every time
   // it's opened, not a restore of wherever the last one left off. Past
@@ -322,7 +322,11 @@ export default function AIAssistantScreen() {
           </TouchableOpacity>
         </View>
 
-        {!featuresUnlocked ? (
+        {subLoading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="small" color={colors.mutedForeground} />
+          </View>
+        ) : !featuresUnlocked ? (
           <View style={{ flex: 1, padding: 24 }}>
             <LockedFeatureCard feature={t.aiAssistantTitle} description={t.subAiAssistantFull} fullScreen fromModalScreen />
           </View>

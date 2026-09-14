@@ -176,7 +176,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     setIsLoading(true);
 
     // Show the cached value immediately (fast paint), then reconcile against
-    // the authoritative backend record.
+    // the authoritative backend record. A cache hit also clears `isLoading`
+    // right here, before the network call returns — a returning Pro user
+    // must see every feature unlocked the instant the app opens, not after
+    // waiting on a round-trip to reconcile something the device already
+    // knows. Only a genuine first-ever load (no cache yet, nothing to show)
+    // still waits on the network fetch's own `finally` below.
     AsyncStorage.getItem(subscriptionKey(capturedUserId))
       .then((v) => {
         if (!active || loadedUserRef.current !== capturedUserId || !v) return;
@@ -186,7 +191,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           setBillingPeriod(cached.billingPeriod ?? 'monthly');
           setBetaUnlockAll(cached.betaUnlockAll ?? false);
           setTempProUntil(cached.tempProUntil ?? null);
-        } catch { /* ignore */ }
+          setIsLoading(false);
+        } catch { /* ignore — fall through to the network fetch's own loading gate */ }
       })
       .catch(() => null);
 
