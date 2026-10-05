@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { Dividend } from '@/types';
 import { apiFetch } from '@/utils/api';
+import { hasCloudSynced, markCloudSynced } from '@/utils/cloudSync';
 
 function storageKey(userId: string) {
   return `@investry_dividends_${userId}`;
@@ -91,18 +92,31 @@ export function DividendsProvider({ children }: { children: React.ReactNode }) {
           if (!active || loadedRef.current !== capturedUserId) return;
 
           if (apiData.length === 0 && localData.length > 0) {
-            await Promise.all(
-              localData.map(d =>
-                apiFetch('/api/dividends', t, { method: 'POST', body: JSON.stringify(d) })
-                  .catch(() => null)
-              )
-            );
+            if (await hasCloudSynced('dividends', capturedUserId)) {
+              // Already synced before on this device — empty server list means
+              // these were deleted elsewhere. See utils/cloudSync.ts.
+              if (!active || loadedRef.current !== capturedUserId) return;
+              setDividends([]);
+              await persist([], capturedUserId);
+            } else {
+              const uploaded = await Promise.all(
+                localData.map(d =>
+                  apiFetch('/api/dividends', t, { method: 'POST', body: JSON.stringify(d) })
+                    .then(res => res.ok)
+                    .catch(() => false)
+                )
+              );
+              if (!active || loadedRef.current !== capturedUserId) return;
+              await persist(localData, capturedUserId);
+              if (uploaded.every(Boolean)) await markCloudSynced('dividends', capturedUserId);
+            }
+          } else {
             if (!active || loadedRef.current !== capturedUserId) return;
-            await persist(localData, capturedUserId);
-          } else if (apiData.length > 0) {
-            if (!active || loadedRef.current !== capturedUserId) return;
-            setDividends(apiData);
-            await persist(apiData, capturedUserId);
+            if (apiData.length > 0) {
+              setDividends(apiData);
+              await persist(apiData, capturedUserId);
+            }
+            await markCloudSynced('dividends', capturedUserId);
           }
         } else {
           if (!active || loadedRef.current !== capturedUserId) return;
@@ -126,10 +140,9 @@ export function DividendsProvider({ children }: { children: React.ReactNode }) {
     setDividends(prev => { const next = [...prev, d]; persist(next, userId); return next; });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch('/api/dividends', t, { method: 'POST', body: JSON.stringify(d) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch('/api/dividends', t, { method: 'POST', body: JSON.stringify(d) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch (err) {
       setDividends(prev => { const next = prev.filter(x => x.id !== d.id); persist(next, userId); return next; });
       setSyncError('Failed to save — please try again.');
@@ -148,10 +161,9 @@ export function DividendsProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/dividends/${d.id}`, t, { method: 'PUT', body: JSON.stringify(d) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/dividends/${d.id}`, t, { method: 'PUT', body: JSON.stringify(d) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch (err) {
       setDividends(prev => {
         if (!previous) return prev;
@@ -175,10 +187,9 @@ export function DividendsProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/dividends/${id}`, t, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/dividends/${id}`, t, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch {
       setDividends(prev => {
         if (!removed || prev.some(x => x.id === id)) return prev;

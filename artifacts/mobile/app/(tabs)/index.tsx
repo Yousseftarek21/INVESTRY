@@ -35,6 +35,7 @@ import { useCounterDisplay } from '@/hooks/useCounterDisplay';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
+import { syncErrorText } from '@/utils/syncErrorText';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { useGoals } from '@/context/GoalsContext';
@@ -872,7 +873,7 @@ export default function HomeScreen() {
           pointerEvents="none"
         >
           <Feather name="alert-circle" size={14} color="#fff" />
-          <Text style={styles.syncToastText}>{holdingsSyncError}</Text>
+          <Text style={styles.syncToastText}>{holdingsSyncError ? syncErrorText(holdingsSyncError, t) : null}</Text>
         </Animated.View>
       )}
 
@@ -937,7 +938,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[styles.bellBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             activeOpacity={0.7}
-            accessibilityLabel="Notifications"
+            accessibilityLabel={t.notificationsTitle}
             onPress={() => router.push('/notifications' as any)}
           >
             <Feather name="bell" size={16} color={colors.text} />
@@ -1014,13 +1015,14 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
-        {/* A real network failure is covered by the full-screen
-            NoNetworkOverlay mounted in (tabs)/_layout.tsx, so nothing is
-            rendered here for it — the important part is simply never showing
-            a total computed from fabricated prices. The skeleton covers the
-            ordinary "still loading" case; PortfolioHeroValue only mounts once
-            heroReady is true either way. */}
-        {pricesErrored ? null : !heroReady ? (
+        {/* A network failure with no real prices at all is covered by the
+            full-screen NoNetworkOverlay mounted in (tabs)/_layout.tsx, so
+            nothing is rendered here for it — the important part is simply
+            never showing a total computed from fabricated prices. A failed
+            background refetch keeps the last real prices, so the hero stays
+            up in that case. The skeleton covers the ordinary "still loading"
+            case; PortfolioHeroValue only mounts once heroReady is true. */}
+        {pricesErrored && !rawPrices ? null : !heroReady ? (
           <HeroSkeleton />
         ) : (
         <View style={styles.heroBody}>

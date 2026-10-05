@@ -29,7 +29,7 @@ import { DetailModal } from '@/components/DetailModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { isIOSIAPAvailable } from '@/utils/revenuecat';
+import { hasActiveIAPEntitlement, isIOSIAPAvailable } from '@/utils/revenuecat';
 import { ManageSubscriptionSheet } from '@/components/ManageSubscriptionSheet';
 import { apiFetch } from '@/utils/api';
 import { Sect, NavRow } from '@/components/SettingsPrimitives';
@@ -145,7 +145,7 @@ function SubscriptionStatusCard() {
   const colors = useColors();
   const t = useT();
   const { impact: haptic } = useHaptic();
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const { isPro, showPaywall } = useSubscription();
   const [opening, setOpening] = useState(false);
   const [manageSheetVisible, setManageSheetVisible] = useState(false);
@@ -160,7 +160,15 @@ function SubscriptionStatusCard() {
     // the actual cancel action still has to happen there (Apple requires
     // it), but there's no reason to skip explaining what they're cancelling.
     if (isIOSIAPAvailable()) {
-      setManageSheetVisible(true);
+      // Only an App Store purchase has anything to show in Apple's sheet.
+      // A plan from elsewhere (website, dev allowlist) used to land on an
+      // empty Apple subscriptions screen; explain instead — deliberately
+      // without an external link, to stay clear of App Store guideline 3.1.1.
+      setOpening(true);
+      const fromAppStore = userId ? await hasActiveIAPEntitlement(userId) : false;
+      setOpening(false);
+      if (fromAppStore) setManageSheetVisible(true);
+      else Alert.alert(t.subNotAppStoreTitle, t.subNotAppStoreDesc);
       return;
     }
     setOpening(true);

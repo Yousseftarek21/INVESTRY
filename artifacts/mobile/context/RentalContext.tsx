@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { RentalRecord } from '@/types';
 import { apiFetch } from '@/utils/api';
+import { hasCloudSynced, markCloudSynced } from '@/utils/cloudSync';
 
 function storageKey(userId: string) {
   return `@investry_rental_records_${userId}`;
@@ -91,18 +92,31 @@ export function RentalProvider({ children }: { children: React.ReactNode }) {
           if (!active || loadedRef.current !== capturedUserId) return;
 
           if (apiData.length === 0 && localData.length > 0) {
-            await Promise.all(
-              localData.map(r =>
-                apiFetch('/api/rentals', t, { method: 'POST', body: JSON.stringify(r) })
-                  .catch(() => null)
-              )
-            );
+            if (await hasCloudSynced('rentals', capturedUserId)) {
+              // Already synced before on this device — empty server list means
+              // these were deleted elsewhere. See utils/cloudSync.ts.
+              if (!active || loadedRef.current !== capturedUserId) return;
+              setRentals([]);
+              await persist([], capturedUserId);
+            } else {
+              const uploaded = await Promise.all(
+                localData.map(r =>
+                  apiFetch('/api/rentals', t, { method: 'POST', body: JSON.stringify(r) })
+                    .then(res => res.ok)
+                    .catch(() => false)
+                )
+              );
+              if (!active || loadedRef.current !== capturedUserId) return;
+              await persist(localData, capturedUserId);
+              if (uploaded.every(Boolean)) await markCloudSynced('rentals', capturedUserId);
+            }
+          } else {
             if (!active || loadedRef.current !== capturedUserId) return;
-            await persist(localData, capturedUserId);
-          } else if (apiData.length > 0) {
-            if (!active || loadedRef.current !== capturedUserId) return;
-            setRentals(apiData);
-            await persist(apiData, capturedUserId);
+            if (apiData.length > 0) {
+              setRentals(apiData);
+              await persist(apiData, capturedUserId);
+            }
+            await markCloudSynced('rentals', capturedUserId);
           }
         } else {
           if (!active || loadedRef.current !== capturedUserId) return;
@@ -126,10 +140,9 @@ export function RentalProvider({ children }: { children: React.ReactNode }) {
     setRentals(prev => { const next = [...prev, r]; persist(next, userId); return next; });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch('/api/rentals', t, { method: 'POST', body: JSON.stringify(r) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch('/api/rentals', t, { method: 'POST', body: JSON.stringify(r) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch (err) {
       setRentals(prev => { const next = prev.filter(x => x.id !== r.id); persist(next, userId); return next; });
       setSyncError('Failed to save — please try again.');
@@ -148,10 +161,9 @@ export function RentalProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/rentals/${r.id}`, t, { method: 'PUT', body: JSON.stringify(r) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/rentals/${r.id}`, t, { method: 'PUT', body: JSON.stringify(r) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch (err) {
       setRentals(prev => {
         if (!previous) return prev;
@@ -175,10 +187,9 @@ export function RentalProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/rentals/${id}`, t, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/rentals/${id}`, t, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch {
       setRentals(prev => {
         if (!removed || prev.some(x => x.id === id)) return prev;

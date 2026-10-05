@@ -38,7 +38,7 @@ export default function SettingsPrivacyScreen() {
   // Not modal-presented (settings-privacy is a plain stack push, see
   // app/_layout.tsx), so showPaywall() (not showPaywallFromModal()) is
   // correct here — same reasoning as settings-notifications.tsx's own gate.
-  const { featuresUnlocked, showPaywall } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
 
   const [modal, setModal] = useState<{ title: string; content: string } | null>(null);
   const [confirm, setConfirm] = useState<{ id: string; title: string; message: string; label: string; danger: boolean } | null>(null);
@@ -95,6 +95,9 @@ export default function SettingsPrivacyScreen() {
     // data (handleDeleteMenu below) stays free regardless of plan — that's
     // a privacy/data-rights control, not a premium feature, and must never
     // be paywalled.
+    // Plan still loading (first launch, nothing cached) — don't flash the
+    // paywall at a Pro user; a second tap a moment later works normally.
+    if (subLoading) return;
     if (!featuresUnlocked) { showPaywall(); return; }
     Alert.alert(t.exportMyData, undefined, [
       { text: t.exportAsCsv, onPress: handleExportCsv },

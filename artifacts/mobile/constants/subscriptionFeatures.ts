@@ -1,6 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import { useT } from '@/hooks/useTranslation';
 
+// Free-tier limits shared by every gate that checks them — the add screens
+// themselves and the add-choose sheet that leads into them — so the
+// up-front check and the on-save check can never disagree.
+export const FREE_INVESTMENT_LIMIT = 1;
+export const FREE_CASH_ACCOUNT_LIMIT = 1;
+
 export interface FeatureRow {
   icon: keyof typeof Feather.glyphMap;
   text: string;
@@ -28,7 +34,6 @@ export function getPaywallHighlights(t: ReturnType<typeof useT>): FeatureRow[] {
     { icon: 'bell', text: t.subNotificationsFull },
     { icon: 'sliders', text: t.subNotificationsControl },
     { icon: 'cpu', text: t.subAiAssistantFull },
-    { icon: 'dollar-sign', text: t.subLiveRates },
     { icon: 'zap', text: t.subPersonalizedSignals },
     { icon: 'heart', text: t.subHealthScore },
     { icon: 'bar-chart-2', text: t.subFullCharts },

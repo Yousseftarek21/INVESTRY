@@ -17,6 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useHoldings } from '@/context/HoldingsContext';
+import { useCash } from '@/context/CashContext';
+import { useSubscription } from '@/context/SubscriptionContext';
+import { FREE_CASH_ACCOUNT_LIMIT, FREE_INVESTMENT_LIMIT } from '@/constants/subscriptionFeatures';
 
 // Entrance/exit are handled entirely by the navigator's own
 // "slide_from_bottom" transition (see _layout.tsx) — a hand-rolled JS
@@ -29,10 +33,24 @@ export default function AddChooseScreen() {
   const t = useT();
   const insets = useSafeAreaInsets();
 
+  const { holdings } = useHoldings();
+  const { cashAccounts } = useCash();
+  const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
+
   const dismiss = () => router.back();
 
-  const goInvestment = () => router.push('/add-investment?mode=investment' as any);
-  const goCash = () => router.push('/cash-accounts?openAdd=1' as any);
+  // Check the free limit before the form opens, not only on Save — a free
+  // user at their limit used to fill in a whole form, then lose it when the
+  // paywall opened. Both destination screens keep their own Save check too.
+  const atFreeLimit = (count: number, limit: number) => !subLoading && !featuresUnlocked && count >= limit;
+  const goInvestment = () => {
+    if (atFreeLimit(holdings.length, FREE_INVESTMENT_LIMIT)) { showPaywallFromModal(); return; }
+    router.push('/add-investment?mode=investment' as any);
+  };
+  const goCash = () => {
+    if (atFreeLimit(cashAccounts.length, FREE_CASH_ACCOUNT_LIMIT)) { showPaywallFromModal(); return; }
+    router.push('/cash-accounts?openAdd=1' as any);
+  };
   const goRecurringIncome = () => router.push('/recurring-income' as any);
   const goDividends = () => router.push('/dividends' as any);
   const goRentalTracking = () => router.push('/rental-tracking' as any);

@@ -11,12 +11,10 @@
  * every plan/isPro reference was removed after that, and this file carried
  * a hardcoded `featuresUnlocked = true` for a while.
  *
- * Gating is deliberately being reinstated now, still via the website's
- * Stripe checkout (no in-app purchase — react-native-purchases stays
- * installed-but-unused, kept on standby for a StoreKit/IAP path later). The
- * risk that reintroduces on iOS re-review has been explicitly discussed and
- * accepted — this file's job is just to gate correctly and reflect the
- * user's real plan, not to relitigate that call.
+ * Gating is real now: iOS purchases go through native In-App Purchase via
+ * RevenueCat (see Paywall.tsx / utils/revenuecat.ts), Android/web through
+ * the website's Stripe checkout. This file's job is to gate correctly and
+ * reflect the user's real plan.
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -25,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { router } from 'expo-router';
 import { apiFetch } from '../utils/api';
+import { hasActiveIAPEntitlement } from '../utils/revenuecat';
 
 export type Plan = 'free' | 'pro';
 export type BillingPeriod = 'monthly' | 'annual';
@@ -113,7 +112,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const res = await apiFetch('/api/subscription', token);
     if (!res.ok) throw new Error(`GET /api/subscription failed: ${res.status}`);
     const data = (await res.json()) as SubscriptionData;
-    return { plan: data.plan, billingPeriod: data.billingPeriod, betaUnlockAll: data.betaUnlockAll ?? false, tempProUntil: data.tempProUntil ?? null };
+    // App Store purchases reach our server via RevenueCat's webhook, which
+    // can lag the purchase itself; StoreKit's own record is authoritative
+    // for IAP, so trust it when the server hasn't caught up yet. Otherwise
+    // the reconcile refresh right after buying re-locked Pro until the
+    // webhook landed.
+    const plan: Plan = data.plan === 'pro' || await hasActiveIAPEntitlement(uid) ? 'pro' : 'free';
+    return { plan, billingPeriod: data.billingPeriod, betaUnlockAll: data.betaUnlockAll ?? false, tempProUntil: data.tempProUntil ?? null };
   }, [getToken]);
 
   // `getToken` (and therefore `fetchSubscription`/`cachePlan`, which close

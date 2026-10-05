@@ -39,9 +39,15 @@ export default function SettingsNotificationsScreen() {
             <ActivityIndicator size="small" color={colors.mutedForeground} />
           </View>
         ) : !featuresUnlocked ? (
-          <View style={{ flex: 1, padding: 24 }}>
-            <LockedFeatureCard feature={t.settingsCatNotifications} description={t.settingsCatNotificationsSub} fullScreen />
-          </View>
+          // Feedback-reply alerts aren't Pro (the server sends them to anyone
+          // who opts in), so they stay reachable below the lock card instead
+          // of being hidden along with the Pro alerts.
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: botPad + 32 }]} showsVerticalScrollIndicator={false}>
+            <LockedFeatureCard feature={t.settingsCatNotifications} description={t.settingsCatNotificationsSub} />
+            <Sect label={t.settingsSectNotifications}>
+              <ToggleRow icon="message-circle" iconBg="#EC4899" label={t.feedbackAlertsLabel} sublabel={t.feedbackAlertsDesc} value={notifications.feedbackAlerts} onChange={v => setNotification('feedbackAlerts', v)} last />
+            </Sect>
+          </ScrollView>
         ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: botPad + 32 }]} showsVerticalScrollIndicator={false}>
           <Sect label={t.settingsSectNotifications}>

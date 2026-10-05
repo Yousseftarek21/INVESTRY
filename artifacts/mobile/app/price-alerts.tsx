@@ -143,7 +143,13 @@ export default function PriceAlertsScreen() {
     setQuery('');
   }, []);
 
-  const openAdd = () => { resetForm(); setShowForm(true); };
+  // Gate here too, not only on Save — otherwise a free user fills in the
+  // whole form before learning it's Pro, and loses it when the paywall opens.
+  const openAdd = () => {
+    if (!subLoading && !featuresUnlocked && alerts.length >= FREE_LIMIT) { showPaywallFromModal(); return; }
+    resetForm();
+    setShowForm(true);
+  };
 
   const handleSave = async () => {
     if (!userId) return;
@@ -233,6 +239,22 @@ export default function PriceAlertsScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
+                <>
+                {/* The server only sends price alerts to Pro users, so after a
+                    lapse these still list here but silently stopped firing. */}
+                {!subLoading && !featuresUnlocked && (
+                  <TouchableOpacity
+                    onPress={() => { impact(); showPaywallFromModal(); }}
+                    activeOpacity={0.85}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 12, backgroundColor: colors.primary + '14', borderColor: colors.primary + '40' }}
+                  >
+                    <Feather name="pause-circle" size={20} color={colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontFamily: 'Inter_600SemiBold', color: colors.text }}>{t.priceAlertsPausedTitle}</Text>
+                      <Text style={{ fontSize: 12.5, fontFamily: 'Inter_400Regular', color: colors.mutedForeground, marginTop: 2 }}>{t.priceAlertsPausedDesc}</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
                 <View style={s.list}>
                   {alerts.map(a => {
                     const current = pricesDict[a.assetKey];
@@ -274,6 +296,7 @@ export default function PriceAlertsScreen() {
                     );
                   })}
                 </View>
+                </>
               )
             ) : (
               <View style={s.form}>

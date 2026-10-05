@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
-import { Holding, MarketPrices } from '@/types';
+import { Holding, MarketPrices, PersonalAssetCategory, PropertyType } from '@/types';
 import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { AssetIcon } from '@/components/AssetIcon';
@@ -105,18 +105,36 @@ function getTitle(holding: Holding, labels: HoldingLabels): string {
 
 const KARAT_PURITY: Record<string, number> = { '24k': 1, '22k': 0.9167, '21k': 0.875, '18k': 0.75 };
 
-function getSubtitle(holding: Holding, labels: HoldingLabels): string {
+type Translations = ReturnType<typeof useT>;
+
+function categoryLabel(c: PersonalAssetCategory, t: Translations): string {
+  const map: Record<PersonalAssetCategory, string> = {
+    watches: t.catWatches, jewelry: t.catJewelry, artwork: t.catArtwork,
+    collectibles: t.catCollectibles, luxury: t.catLuxury, electronics: t.catElectronics,
+    furniture: t.catFurniture, instruments: t.catInstruments, other: t.catOther,
+  };
+  return map[c] ?? c;
+}
+
+function propertyTypeLabel(p: PropertyType, t: Translations): string {
+  const map: Record<PropertyType, string> = {
+    apartment: t.apartment, villa: t.villa, duplex: t.duplex, penthouse: t.penthouse,
+    townhouse: t.townhouse, chalet: t.chalet, land: t.land, office: t.office,
+    retail_shop: t.retailShop, commercial: t.commercial, medical_clinic: t.medicalClinic,
+    warehouse: t.warehouse,
+  };
+  return map[p] ?? p;
+}
+
+function getSubtitle(holding: Holding, labels: HoldingLabels, t: Translations): string {
   if (holding.type === 'gold') {
     const purity = KARAT_PURITY[holding.karat] ?? 1;
-    const fineGrams = (holding.grams * purity).toFixed(2);
-    return `${holding.grams.toLocaleString('en-EG')} g · ${fineGrams}g fine · ${holding.form}`;
+    const fineGrams = ((holding.grams ?? 0) * purity).toFixed(2);
+    return `${(holding.grams ?? 0).toLocaleString('en-EG')} g · ${t.fineGrams(fineGrams)} · ${holding.form === 'digital' ? t.digital : t.physical}`;
   }
-  if (holding.type === 'silver') return `${holding.grams.toLocaleString('en-EG')} g · ${holding.form}`;
-  if (holding.type === 'stock') return `${holding.shares.toLocaleString('en-EG')} ${labels.sharesLabel} · ${holding.companyName}`;
-  if (holding.type === 'personal_asset') {
-    const c = holding.category;
-    return c.charAt(0).toUpperCase() + c.slice(1);
-  }
+  if (holding.type === 'silver') return `${(holding.grams ?? 0).toLocaleString('en-EG')} g · ${holding.form === 'digital' ? t.digital : t.physical}`;
+  if (holding.type === 'stock') return `${(holding.shares ?? 0).toLocaleString('en-EG')} ${labels.sharesLabel} · ${holding.companyName}`;
+  if (holding.type === 'personal_asset') return categoryLabel(holding.category, t);
   if (holding.type === 'fixed_income') {
     const today = new Date();
     const maturity = new Date(holding.maturityDate);
@@ -133,7 +151,7 @@ function getSubtitle(holding: Holding, labels: HoldingLabels): string {
         : '';
     return `${holding.annualRate}% · ${holding.institution}${payout ? ' · ' + payout : ''}${suffix ? ' · ' + suffix : ''}`;
   }
-  const typeLabel = holding.propertyType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const typeLabel = propertyTypeLabel(holding.propertyType, t);
   const place = [holding.district, holding.city].filter(Boolean).join(', ');
   return place ? `${typeLabel} · ${place}` : typeLabel;
 }
@@ -204,7 +222,7 @@ export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle,
             </View>
           )}
         </View>
-        {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels)}</Text>}
+        {!hideSubtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>{getSubtitle(holding, labels, t)}</Text>}
       </View>
     </>
   );

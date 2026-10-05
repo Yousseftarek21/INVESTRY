@@ -102,7 +102,10 @@ export default function RecurringIncomeScreen() {
     setShowForm(false);
   }, []);
 
+  // Gate here too, not only on Save — otherwise a free user fills in the
+  // whole form before learning it's Pro, and loses it when the paywall opens.
   const openAdd = () => {
+    if (!subLoading && !featuresUnlocked && recurringIncomes.length >= FREE_LIMIT) { showPaywallFromModal(); return; }
     resetForm();
     setShowForm(true);
   };

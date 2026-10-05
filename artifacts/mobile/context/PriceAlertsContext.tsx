@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { apiFetch } from '@/utils/api';
+import { hasCloudSynced, markCloudSynced } from '@/utils/cloudSync';
 
 export interface PriceAlert {
   id: string;
@@ -116,19 +117,32 @@ export function PriceAlertsProvider({ children }: { children: React.ReactNode })
           if (!active || loadedRef.current !== capturedUserId) return;
 
           if (apiData.length === 0 && localData.length > 0) {
-            // One-time migration: push this user's own local alerts to the cloud.
-            await Promise.all(
-              localData.map(a =>
-                apiFetch('/api/price-alerts', t, { method: 'POST', body: JSON.stringify(a) })
-                  .catch(() => null)
-              )
-            );
+            if (await hasCloudSynced('price_alerts', capturedUserId)) {
+              // Already synced before on this device — empty server list means
+              // these were deleted elsewhere. See utils/cloudSync.ts.
+              if (!active || loadedRef.current !== capturedUserId) return;
+              setAlerts([]);
+              await persist([], capturedUserId);
+            } else {
+              // One-time migration: push this user's own local alerts to the cloud.
+              const uploaded = await Promise.all(
+                localData.map(a =>
+                  apiFetch('/api/price-alerts', t, { method: 'POST', body: JSON.stringify(a) })
+                    .then(res => res.ok)
+                    .catch(() => false)
+                )
+              );
+              if (!active || loadedRef.current !== capturedUserId) return;
+              await persist(localData, capturedUserId);
+              if (uploaded.every(Boolean)) await markCloudSynced('price_alerts', capturedUserId);
+            }
+          } else {
             if (!active || loadedRef.current !== capturedUserId) return;
-            await persist(localData, capturedUserId);
-          } else if (apiData.length > 0) {
-            if (!active || loadedRef.current !== capturedUserId) return;
-            setAlerts(apiData);
-            await persist(apiData, capturedUserId);
+            if (apiData.length > 0) {
+              setAlerts(apiData);
+              await persist(apiData, capturedUserId);
+            }
+            await markCloudSynced('price_alerts', capturedUserId);
           }
         } else {
           if (!active || loadedRef.current !== capturedUserId) return;
@@ -165,10 +179,9 @@ export function PriceAlertsProvider({ children }: { children: React.ReactNode })
     setAlerts(prev => { const next = [...prev, a]; persist(next, userId); return next; });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch('/api/price-alerts', t, { method: 'POST', body: JSON.stringify(a) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch('/api/price-alerts', t, { method: 'POST', body: JSON.stringify(a) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch (err) {
       setAlerts(prev => {
         const next = prev.filter(x => x.id !== a.id);
@@ -192,10 +205,9 @@ export function PriceAlertsProvider({ children }: { children: React.ReactNode })
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/price-alerts/${id}`, t, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/price-alerts/${id}`, t, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch {
       setAlerts(prev => {
         if (!removed || prev.some(x => x.id === id)) return prev;

@@ -65,7 +65,7 @@ export default function AIAssistantScreen() {
   const insets = useSafeAreaInsets();
   const { getToken } = useAuth();
   const { language } = useAppSettings();
-  const { featuresUnlocked, isLoading: subLoading } = useSubscription();
+  const { featuresUnlocked, isLoading: subLoading, refresh: refreshSubscription } = useSubscription();
 
   // Always starts blank — this screen is a fresh conversation every time
   // it's opened, not a restore of wherever the last one left off. Past
@@ -276,6 +276,14 @@ export default function AIAssistantScreen() {
         method: 'POST',
         body: JSON.stringify({ messages: nextMessages, language }),
       });
+      if (res.status === 403) {
+        // Server says not Pro while this device says Pro — right after a
+        // purchase, before the RevenueCat webhook lands, or a stale cache
+        // after a lapse. Re-check: if the plan really lapsed, the screen
+        // flips to the locked card on its own; otherwise it's still activating.
+        refreshSubscription();
+        throw new Error('not-pro-yet');
+      }
       if (!res.ok) throw new Error(`status-${res.status}`);
       const data = (await res.json()) as { reply: string };
       setMessages((prev) => {
@@ -284,8 +292,8 @@ export default function AIAssistantScreen() {
         return next;
       });
       if (fromVoice) speak(data.reply, voiceLang);
-    } catch {
-      setError(t.aiAssistantError);
+    } catch (err) {
+      setError(err instanceof Error && err.message === 'not-pro-yet' ? t.aiAssistantActivating : t.aiAssistantError);
       // Drop the still-empty placeholder bubble rather than leaving a blank one.
       setMessages((prev) => {
         const last = prev[prev.length - 1];
@@ -298,7 +306,7 @@ export default function AIAssistantScreen() {
       setLoading(false);
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     }
-  }, [messages, loading, getToken, impact, t, language, speak, voiceLang]);
+  }, [messages, loading, getToken, impact, t, language, speak, voiceLang, refreshSubscription]);
 
   const suggestions = [t.aiSuggestion1, t.aiSuggestion2, t.aiSuggestion3];
 

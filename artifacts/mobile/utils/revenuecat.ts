@@ -22,6 +22,9 @@ export function isIOSIAPAvailable(): boolean {
 }
 
 let configuredForUser: string | null = null;
+// An account switch's logIn() is async; until it settles the SDK may still
+// answer for the previous user.
+let pendingLogIn: Promise<unknown> | null = null;
 
 // Called once Clerk resolves the signed-in user (see _layout.tsx). Configures
 // the SDK on first call, and re-logs-in on every subsequent user change (e.g.
@@ -45,13 +48,33 @@ export function syncRevenueCatUser(clerkUserId: string | null): void {
     if (!configuredForUser) {
       Purchases.configure({ apiKey: REVENUECAT_API_KEY_IOS!, appUserID: clerkUserId });
     } else {
-      Purchases.logIn(clerkUserId).catch(() => null);
+      pendingLogIn = Purchases.logIn(clerkUserId).catch(() => null);
     }
     configuredForUser = clerkUserId;
   } catch {
     // Leave configuredForUser unset — every subsequent call this session
     // will retry (and fail the same safe way) rather than silently
     // pretending IAP is configured when it never actually was.
+  }
+}
+
+// Whether RevenueCat/StoreKit itself reports an active Pro entitlement for
+// this Clerk user. Our server only learns about an App Store purchase when
+// RevenueCat's webhook lands — seconds (occasionally much longer) after the
+// purchase — so on its own, the first server check right after buying could
+// read "free" and re-lock what the user just paid for. Never throws: a
+// binary without the native module, or any SDK error, reads as "no".
+export async function hasActiveIAPEntitlement(clerkUserId: string): Promise<boolean> {
+  if (!isIOSIAPAvailable() || configuredForUser !== clerkUserId) return false;
+  try {
+    if (pendingLogIn) await pendingLogIn;
+    // Never report another account's entitlement for this user — e.g. a
+    // switch whose logIn() failed, or one still in flight.
+    if (configuredForUser !== clerkUserId || (await Purchases.getAppUserID()) !== clerkUserId) return false;
+    const info = await Purchases.getCustomerInfo();
+    return !!info.entitlements.active[REVENUECAT_ENTITLEMENT_ID];
+  } catch {
+    return false;
   }
 }
 

@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { Holding } from '@/types';
 import { apiFetch } from '@/utils/api';
+import { hasCloudSynced, markCloudSynced } from '@/utils/cloudSync';
+import type { SyncErrorCode } from '@/utils/syncErrorText';
 
 /**
  * Returns the per-user AsyncStorage key so that holdings from one account
@@ -30,7 +32,7 @@ interface HoldingsContextValue {
   updateHolding: (holding: Holding) => Promise<void>;
   sellHolding: (id: string, saleProceeds: number, saleDate: string, notes?: string, quantity?: number) => Promise<void>;
   isLoading: boolean;
-  syncError: string | null;
+  syncError: SyncErrorCode | null;
 }
 
 const HoldingsContext = createContext<HoldingsContextValue | null>(null);
@@ -39,7 +41,7 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   const { getToken, isSignedIn, userId } = useAuth();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<SyncErrorCode | null>(null);
   // Tracks the userId whose data is currently loaded in memory.
   const loadedUserRef = useRef<string | null>(null);
 
@@ -115,30 +117,42 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
           if (!active || loadedUserRef.current !== capturedUserId) return;
 
           if (apiData.length === 0 && localData.length > 0) {
-            // One-time migration: push this user's own local holdings to the
-            // cloud. We only reach here if the per-user key had data, which
-            // means those holdings were written by this specific userId.
-            await Promise.all(
-              localData.map(h =>
-                apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(h) })
-                  .catch(() => null)
-              )
-            );
+            if (await hasCloudSynced('holdings', capturedUserId)) {
+              // Already synced before on this device — empty server list means
+              // these were deleted elsewhere. See utils/cloudSync.ts.
+              if (!active || loadedUserRef.current !== capturedUserId) return;
+              setHoldings([]);
+              await persist([], capturedUserId);
+            } else {
+              // One-time migration: push this user's own local holdings to the
+              // cloud. We only reach here if the per-user key had data, which
+              // means those holdings were written by this specific userId.
+              const uploaded = await Promise.all(
+                localData.map(h =>
+                  apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(h) })
+                    .then(res => res.ok)
+                    .catch(() => false)
+                )
+              );
+              if (!active || loadedUserRef.current !== capturedUserId) return;
+              await persist(localData, capturedUserId);
+              if (uploaded.every(Boolean)) await markCloudSynced('holdings', capturedUserId);
+            }
+          } else {
             if (!active || loadedUserRef.current !== capturedUserId) return;
-            await persist(localData, capturedUserId);
-          } else if (apiData.length > 0) {
-            if (!active || loadedUserRef.current !== capturedUserId) return;
-            setHoldings(apiData);
-            await persist(apiData, capturedUserId);
+            if (apiData.length > 0) {
+              setHoldings(apiData);
+              await persist(apiData, capturedUserId);
+            }
+            await markCloudSynced('holdings', capturedUserId);
           }
-          // else: both empty — nothing to do
         } else {
           if (!active || loadedUserRef.current !== capturedUserId) return;
-          setSyncError('Could not sync — showing local data.');
+          setSyncError('sync');
         }
       } catch {
         if (!active || loadedUserRef.current !== capturedUserId) return;
-        setSyncError('Offline — showing local data.');
+        setSyncError('offline');
       } finally {
         if (active && loadedUserRef.current === capturedUserId) {
           setIsLoading(false);
@@ -173,17 +187,16 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(holding) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch('/api/holdings', t, { method: 'POST', body: JSON.stringify(holding) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch (err) {
       setHoldings(prev => {
         const next = prev.filter(h => h.id !== holding.id);
         persist(next, userId);
         return next;
       });
-      setSyncError('Failed to save — please try again.');
+      setSyncError('save');
       throw err; // let the caller know the save actually failed instead of navigating away as if it succeeded
     }
   }, [token, persist, userId]);
@@ -200,10 +213,9 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/holdings/${id}`, t, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/holdings/${id}`, t, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch {
       setHoldings(prev => {
         if (!removed || prev.some(h => h.id === id)) return prev;
@@ -211,7 +223,7 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         persist(next, userId);
         return next;
       });
-      setSyncError('Could not remove — please try again.');
+      setSyncError('remove');
     }
   }, [token, persist, userId]);
 
@@ -291,10 +303,9 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/holdings/${holding.id}`, t, { method: 'PUT', body: JSON.stringify(holding) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/holdings/${holding.id}`, t, { method: 'PUT', body: JSON.stringify(holding) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch (err) {
       setHoldings(prev => {
         if (!previous) return prev;
@@ -302,7 +313,7 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
         persist(next, userId);
         return next;
       });
-      setSyncError('Could not update — please try again.');
+      setSyncError('update');
       throw err; // let the caller know the save actually failed instead of navigating away as if it succeeded
     }
   }, [token, persist, userId]);

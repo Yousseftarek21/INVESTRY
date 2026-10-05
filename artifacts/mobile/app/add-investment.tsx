@@ -23,10 +23,11 @@ import { RE_PRICES, REAreaPrice, RE_COMPOUNDS, RECompound } from '@/data/egypt-r
 import { useRealEstateCompoundPrices } from '@/hooks/useRealEstateCompoundPrices';
 import { useRealEstatePrices, RealEstateAreaLive } from '@/hooks/useRealEstatePrices';
 import { parseAmount, cleanAmountInput } from '@/utils/parseAmount';
+import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
-
-const FREE_LIMIT = 1;
+import { FREE_INVESTMENT_LIMIT as FREE_LIMIT } from '@/constants/subscriptionFeatures';
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset' | 'fixed_income';
 
@@ -447,6 +448,7 @@ function SearchPickerModal({
   otherLabel: string;
 }) {
   const colors = useColors();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
   const [query, setQuery] = useState('');
@@ -473,7 +475,7 @@ function SearchPickerModal({
             <Feather name="search" size={15} color={colors.mutedForeground} />
             <TextInput
               style={[pickerStyles.searchInput, { color: colors.text }]}
-              placeholder="Search..."
+              placeholder={t.searchEllipsis}
               placeholderTextColor={colors.mutedForeground}
               value={query}
               onChangeText={setQuery}
@@ -549,6 +551,8 @@ export default function AddInvestmentScreen() {
   const { featuresUnlocked, isLoading: subLoading, showPaywallFromModal } = useSubscription();
   const { cashAccounts } = useCash();
   const { isSignedIn } = useAuth();
+  const { data: egxStocks } = useEGXMarket();
+  const { data: marketPrices, isPlaceholderData: pricesArePlaceholder } = useMarketPrices();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
 
   const editingHolding = holdingId ? holdings.find(h => h.id === holdingId) ?? null : null;
@@ -899,7 +903,21 @@ export default function AddInvestmentScreen() {
     ]);
   };
 
+  const saveInFlight = useRef(false);
+  // Guards the whole save, including the price-check alert it may await —
+  // `saving` state alone only kicks in after that alert, so a quick double
+  // tap could open two alerts and add the same lot twice.
   const handleSave = async () => {
+    if (saveInFlight.current) return;
+    saveInFlight.current = true;
+    try {
+      await saveHolding();
+    } finally {
+      saveInFlight.current = false;
+    }
+  };
+
+  const saveHolding = async () => {
     // Without a signed-in account there is nowhere to persist this holding —
     // catch it here before any validation so we never silently drop it.
     if (!isSignedIn) {
@@ -1022,6 +1040,62 @@ export default function AddInvestmentScreen() {
     }
 
     if (!holding) return;
+
+    // The empty-field checks above let "." and "0" through — "." parses to
+    // NaN, which saves as null and later crashes HoldingCard's toLocaleString.
+    const positive = (n: number | undefined) => typeof n === 'number' && Number.isFinite(n) && n > 0;
+    const nonNegative = (n: number | undefined) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
+    const optional = (n: number | undefined) => n === undefined || nonNegative(n);
+    const amountsValid = ((h: Holding) => {
+      switch (h.type) {
+        case 'gold':
+        case 'silver': return positive(h.grams) && nonNegative(h.purchasePricePerGram);
+        case 'stock': return positive(h.shares) && nonNegative(h.purchasePricePerShare);
+        case 'real_estate': return positive(h.area) && nonNegative(h.purchasePrice)
+          && optional(h.downPayment) && optional(h.remainingBalance) && optional(h.monthlyInstallment) && optional(h.monthlyRent);
+        case 'personal_asset': return nonNegative(h.purchasePrice) && nonNegative(h.currentValue);
+        case 'fixed_income': return positive(h.principal) && nonNegative(h.annualRate)
+          && (!h.linkedLoan || (nonNegative(h.linkedLoan.outstandingBalance) && nonNegative(h.linkedLoan.monthlyInstallment)));
+        default: return true;
+      }
+    })(holding);
+    if (!amountsValid) {
+      Alert.alert(t.invalidAmountTitle, t.invalidAmountDesc);
+      return;
+    }
+
+    // Soft typo check against today's market price (warn, never block — a
+    // purchase from years ago can legitimately be far below today's price).
+    // Only where a real live price exists: EGX stocks, and gold/silver once
+    // real (non-placeholder) prices have loaded.
+    const paidPerUnit = holding.type === 'stock' ? holding.purchasePricePerShare
+      : holding.type === 'gold' || holding.type === 'silver' ? holding.purchasePricePerGram
+      : null;
+    let marketPerUnit: number | null = null;
+    if (holding.type === 'stock') {
+      const sym = holding.symbol;
+      const live = egxStocks?.find(s => s.ticker === sym);
+      marketPerUnit = live && live.price > 0 ? live.price : null;
+    } else if (!pricesArePlaceholder && marketPrices) {
+      if (holding.type === 'gold') marketPerUnit = goldPricePerGram(marketPrices, holding.karat);
+      else if (holding.type === 'silver') marketPerUnit = silverPricePerGram(marketPrices);
+    }
+    const priceChanged = !isEditing || editingHolding == null
+      || (editingHolding.type === 'stock' && holding.type === 'stock' && editingHolding.purchasePricePerShare !== holding.purchasePricePerShare)
+      || ((editingHolding.type === 'gold' || editingHolding.type === 'silver') && (holding.type === 'gold' || holding.type === 'silver')
+        && editingHolding.purchasePricePerGram !== holding.purchasePricePerGram);
+    if (priceChanged && paidPerUnit != null && marketPerUnit != null && Number.isFinite(marketPerUnit) && marketPerUnit > 0
+      && (paidPerUnit < marketPerUnit * 0.05 || paidPerUnit > marketPerUnit * 3)) {
+      const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+      const proceed = await new Promise<boolean>(resolve => {
+        Alert.alert(t.priceCheckTitle, t.priceCheckDesc(fmt(paidPerUnit), fmt(marketPerUnit!)), [
+          { text: t.priceCheckEdit, style: 'cancel', onPress: () => resolve(false) },
+          { text: t.priceCheckSaveAnyway, onPress: () => resolve(true) },
+        ], { cancelable: true, onDismiss: () => resolve(false) });
+      });
+      if (!proceed) return;
+    }
+
     notify();
     // Short "what this is" line for the activity-log confirmation — no
     // field-by-field diffing between old/new on edit (six holding shapes
@@ -1166,12 +1240,12 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.weightGrams}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 50" placeholderTextColor={colors.mutedForeground}
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('50')} placeholderTextColor={colors.mutedForeground}
                 value={grams} onChangeText={setGrams} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 3900" placeholderTextColor={colors.mutedForeground}
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('3900')} placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
             </View>
             <View style={[styles.section, { marginBottom: 0 }]}>
@@ -1192,12 +1266,12 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.weightGrams}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 500" placeholderTextColor={colors.mutedForeground}
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('500')} placeholderTextColor={colors.mutedForeground}
                 value={grams} onChangeText={setGrams} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 52" placeholderTextColor={colors.mutedForeground}
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('52')} placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
             </View>
             <View style={[styles.section, { marginBottom: 0 }]}>
@@ -1247,12 +1321,12 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.numberOfShares}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 100" placeholderTextColor={colors.mutedForeground}
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('100')} placeholderTextColor={colors.mutedForeground}
                 value={shares} onChangeText={setShares} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePricePerShare}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 95.50" placeholderTextColor={colors.mutedForeground}
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('95.50')} placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerShare} onChangeText={setPurchasePricePerShare} />
             </View>
             <View style={[styles.section, { marginBottom: 0 }]}>
@@ -1406,7 +1480,7 @@ export default function AddInvestmentScreen() {
 
             <View style={styles.section}>
               <Text style={labelStyle}>{t.realEstatePurchasePrice}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 3500000" placeholderTextColor={colors.mutedForeground}
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('3500000')} placeholderTextColor={colors.mutedForeground}
                 value={purchasePrice} onChangeText={setPurchasePrice} />
               <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
                 {t.realEstatePurchasePriceHint}
@@ -1523,13 +1597,13 @@ export default function AddInvestmentScreen() {
               {hasInstallmentPlan && installmentExpanded && (
                 <View style={styles.collapsibleBody}>
                   <Text style={labelStyle}>{t.downPayment}</Text>
-                  <AmountInput style={inputStyle} placeholder="e.g. 500000" placeholderTextColor={colors.mutedForeground}
+                  <AmountInput style={inputStyle} placeholder={t.exampleValue('500000')} placeholderTextColor={colors.mutedForeground}
                     value={downPayment} onChangeText={setDownPayment} />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.remainingBalance}</Text>
-                  <AmountInput style={inputStyle} placeholder="e.g. 2000000" placeholderTextColor={colors.mutedForeground}
+                  <AmountInput style={inputStyle} placeholder={t.exampleValue('2000000')} placeholderTextColor={colors.mutedForeground}
                     value={remainingBalance} onChangeText={setRemainingBalance} />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.monthlyInstallment}</Text>
-                  <AmountInput style={inputStyle} placeholder="e.g. 15000" placeholderTextColor={colors.mutedForeground}
+                  <AmountInput style={inputStyle} placeholder={t.exampleValue('15000')} placeholderTextColor={colors.mutedForeground}
                     value={monthlyInstallment} onChangeText={setMonthlyInstallment} />
                   <View style={{ marginTop: 12 }}>
                     <DatePickerField label={t.installmentEndDate} value={installmentEndDate} onChange={setInstallmentEndDate} onClear={() => setInstallmentEndDate('')} />
@@ -1558,11 +1632,11 @@ export default function AddInvestmentScreen() {
               {hasRentalInfo && rentalExpanded && (
                 <View style={styles.collapsibleBody}>
                   <Text style={labelStyle}>{t.monthlyRent}</Text>
-                  <AmountInput style={inputStyle} placeholder="e.g. 20000" placeholderTextColor={colors.mutedForeground}
+                  <AmountInput style={inputStyle} placeholder={t.exampleValue('20000')} placeholderTextColor={colors.mutedForeground}
                     value={monthlyRent}
                     onChangeText={(v) => { setMonthlyRent(v); const n = parseAmount(v); setAnnualRent(!isNaN(n) ? cleanAmountInput(String(n * 12)) : ''); }} />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.annualRent}</Text>
-                  <AmountInput style={inputStyle} placeholder="e.g. 240000" placeholderTextColor={colors.mutedForeground}
+                  <AmountInput style={inputStyle} placeholder={t.exampleValue('240000')} placeholderTextColor={colors.mutedForeground}
                     value={annualRent}
                     onChangeText={(v) => { setAnnualRent(v); const n = parseAmount(v); setMonthlyRent(!isNaN(n) ? cleanAmountInput(String(n / 12)) : ''); }} />
                   <Text style={[labelStyle, { marginTop: 12 }]}>{t.propertyStatus}</Text>
@@ -1622,7 +1696,7 @@ export default function AddInvestmentScreen() {
           {type === 'personal_asset' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.assetName}</Text>
-              <TextInput style={inputStyle} placeholder="e.g. Rolex Submariner" placeholderTextColor={colors.mutedForeground}
+              <TextInput style={inputStyle} placeholder={t.exampleValue('Rolex Submariner')} placeholderTextColor={colors.mutedForeground}
                 value={assetName} onChangeText={setAssetName} />
             </View>
             <View style={styles.section}>
@@ -1656,12 +1730,12 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePrice}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 250000" placeholderTextColor={colors.mutedForeground}
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('250000')} placeholderTextColor={colors.mutedForeground}
                 value={purchasePrice} onChangeText={setPurchasePrice} />
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.currentEstimatedValue}</Text>
-              <AmountInput style={inputStyle} placeholder="Defaults to purchase price if left blank"
+              <AmountInput style={inputStyle} placeholder={t.defaultsToPurchasePrice}
                 placeholderTextColor={colors.mutedForeground}
                 value={currentValue} onChangeText={setCurrentValue} />
             </View>
@@ -1708,7 +1782,7 @@ export default function AddInvestmentScreen() {
             </View>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.fiPrincipal}</Text>
-              <AmountInput style={inputStyle} placeholder="e.g. 100000"
+              <AmountInput style={inputStyle} placeholder={t.exampleValue('100000')}
                 placeholderTextColor={colors.mutedForeground}
                 value={fiPrincipal} onChangeText={setFiPrincipal} />
             </View>
@@ -1761,10 +1835,10 @@ export default function AddInvestmentScreen() {
                 {hasLoan && loanExpanded && (
                   <View style={styles.collapsibleBody}>
                     <Text style={labelStyle}>{t.loanOutstandingBalance}</Text>
-                    <AmountInput style={inputStyle} placeholder="e.g. 80000" placeholderTextColor={colors.mutedForeground}
+                    <AmountInput style={inputStyle} placeholder={t.exampleValue('80000')} placeholderTextColor={colors.mutedForeground}
                       value={loanOutstandingBalance} onChangeText={setLoanOutstandingBalance} />
                     <Text style={[labelStyle, { marginTop: 12 }]}>{t.loanMonthlyInstallment}</Text>
-                    <AmountInput style={inputStyle} placeholder="e.g. 5000" placeholderTextColor={colors.mutedForeground}
+                    <AmountInput style={inputStyle} placeholder={t.exampleValue('5000')} placeholderTextColor={colors.mutedForeground}
                       value={loanMonthlyInstallment} onChangeText={setLoanMonthlyInstallment} />
                     <View style={{ marginTop: 12 }}>
                       <DatePickerField label={t.loanStartDate} value={loanStartDate} onChange={setLoanStartDate} />

@@ -23,6 +23,7 @@ import { BanknoteIcon } from '@/components/BanknoteIcon';
 import { ConceptIcon, RowIcon } from '@/components/ConceptIcon';
 import { ICON_AI_ASSISTANT, ICON_LEADERBOARD, ICON_REBALANCING } from '@/constants/conceptIcons';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { PricesLoadingNotice } from '@/components/PricesLoadingNotice';
 import { pricesAreFresh } from '@/utils/pricesCache';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
@@ -35,6 +36,7 @@ import { useServerIntraday } from '@/hooks/useServerIntraday';
 import { Holding, MarketPrices } from '@/types';
 import { FinancialTools } from '@/components/FinancialTools';
 import { PremiumGate } from '@/components/PremiumGate';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { BetaChip } from '@/components/BetaChip';
 import { PerfChart } from '@/components/PerfChart';
 import { getHistoryCoverage, isPeriodAvailable, periodLimitedByHistory } from '@/utils/chartUtils';
@@ -266,7 +268,7 @@ function DriftRow({ label, icon, color, currentPct, targetPct }: {
       <View style={dr.body}>
         <Text style={[dr.label, { color: colors.text }]}>{label}</Text>
         <Text style={[dr.sub, { color: colors.mutedForeground }]}>
-          {currentPct.toFixed(0)}% · target {targetPct.toFixed(0)}%
+          {t.allocCurrentVsTarget(currentPct.toFixed(0), targetPct.toFixed(0))}
         </Text>
       </View>
       <View style={[dr.badge, { backgroundColor: badgeColor + '18' }]}>
@@ -669,6 +671,7 @@ export default function AnalyticsScreen() {
   // what each group answers: "how am I doing overall," "what exactly do I
   // hold," "what happened over time" — not by arbitrary card order.
   const [activeSection, setActiveSection] = useState<'overview' | 'breakdown' | 'history'>('overview');
+  const { featuresUnlocked, isLoading: subLoading } = useSubscription();
   const [chartWidth, setChartWidth] = useState(0);
 
   // ── Maths ─────────────────────────────────────────────────────────────────────
@@ -1111,6 +1114,7 @@ export default function AnalyticsScreen() {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
     >
+      <PricesLoadingNotice />
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={s.header}>
         <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
@@ -1342,7 +1346,7 @@ export default function AnalyticsScreen() {
             {/* ── Performance chart ────────────────────────────────────── */}
             {activeSection === 'overview' && (
             <View style={s.chartSection}>
-              <SLabel icon="activity" title={t.performanceLabel} sub={`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}% all-time`} />
+              <SLabel icon="activity" title={t.performanceLabel} sub={t.performanceAllTime(`${sm.gain >= 0 ? '+' : ''}${sm.gainPct.toFixed(2)}`)} />
               <View
                 onLayout={(e: LayoutChangeEvent) => {
                   const w = e.nativeEvent.layout.width;
@@ -1756,7 +1760,11 @@ export default function AnalyticsScreen() {
            only other things that render under History, this still reads
            as one coherent History-tab flow even though it lives outside
            the gated tree structurally. */}
-      {activeSection === 'history' && hasHoldings && sm.totalValue > 0 && (
+      {/* Free users can't reach the History sub-tab (its switcher lives
+           inside the PremiumGate above), so for them the recap shows
+           unconditionally — otherwise this "free for everyone" card was
+           unreachable for exactly the users it's meant for. */}
+      {(activeSection === 'history' || (!subLoading && !featuresUnlocked)) && hasHoldings && sm.totalValue > 0 && (
         <Pressable
           style={[s.recapCard, { backgroundColor: colors.card, borderColor: colors.border }]}
           onPress={() => { impact(); setRecapVisible(true); }}

@@ -10,7 +10,9 @@ import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
+import { syncErrorText } from '@/utils/syncErrorText';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
+import { PricesLoadingNotice } from '@/components/PricesLoadingNotice';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { getRECurrentValue } from '@/utils/rePrice';
@@ -329,7 +331,7 @@ export default function HoldingsScreen() {
           pointerEvents="none"
         >
           <Feather name="alert-circle" size={14} color="#fff" />
-          <Text style={styles.syncToastText}>{syncError}</Text>
+          <Text style={styles.syncToastText}>{syncError ? syncErrorText(syncError, t) : null}</Text>
         </Animated.View>
       )}
 
@@ -338,6 +340,7 @@ export default function HoldingsScreen() {
         contentContainerStyle={[styles.content, { paddingTop: topInsets + 20, paddingBottom: botInsets + 100 }]}
         showsVerticalScrollIndicator={false}
       >
+        <PricesLoadingNotice />
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -357,7 +360,7 @@ export default function HoldingsScreen() {
                 activeOpacity={0.8}
               >
                 <Feather name="plus" size={18} color={colors.primaryForeground} />
-                <Text style={[styles.headerAddText, { color: colors.primaryForeground }]}>Add</Text>
+                <Text style={[styles.headerAddText, { color: colors.primaryForeground }]}>{t.addTab}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity

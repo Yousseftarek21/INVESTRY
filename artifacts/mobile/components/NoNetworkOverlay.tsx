@@ -19,13 +19,20 @@ import { useMarketPrices } from '@/hooks/usePrices';
 // usable connection, not merely "our server is down". React Query keeps
 // retrying on its own interval, so this clears itself the moment a real
 // response arrives; the button is just an immediate manual nudge.
+//
+// Only when there's no real price data at all — never fetched, nothing
+// hydrated from the on-disk cache. (React Query only applies placeholderData
+// while pending, so a failed first load leaves `data` undefined.) A failed
+// *background* refetch keeps the last real data, and blocking every tab over
+// that on a flaky mobile connection hid a perfectly usable app; the
+// contexts' own "Offline — showing local data" notice already covers that.
 export function NoNetworkOverlay() {
   const colors = useColors();
   const t = useT();
   const insets = useSafeAreaInsets();
-  const { isError, isFetching, refetch } = useMarketPrices();
+  const { data, isError, isFetching, refetch } = useMarketPrices();
 
-  if (!isError) return null;
+  if (!isError || data !== undefined) return null;
 
   return (
     <View

@@ -12,6 +12,8 @@ import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { backArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useAppSettings } from '@/context/AppSettingsContext';
+import { authErrorText } from '@/utils/authErrorText';
 import { FieldPlaceholder } from '@/components/FieldPlaceholder';
 import { useAppleAuthWithName } from '@/hooks/useAppleAuthWithName';
 
@@ -29,6 +31,7 @@ export default function SignInScreen() {
   useWarmUpBrowser();
   const colors = useColors();
   const t = useT();
+  const { language } = useAppSettings();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -85,14 +88,14 @@ export default function SignInScreen() {
     setGlobalError('');
     try {
       const result = await signIn.password({ emailAddress: email, password });
-      if (result.error) { setGlobalError(result.error.message ?? 'Incorrect email or password.'); return; }
+      if (result.error) { setGlobalError(authErrorText(result.error, t.authIncorrectCredentials, t, language)); return; }
       if (signIn.status === 'complete' || signIn.status === 'needs_client_trust') {
         await activateSession(signIn.createdSessionId);
       } else {
-        setGlobalError(`Sign-in could not complete. Please try again. (${signIn.status})`);
+        setGlobalError(`${t.authSignInIncomplete} (${signIn.status})`);
       }
     } catch (err: any) {
-      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Sign in failed. Please try again.');
+      setGlobalError(authErrorText(err, t.authSignInFailed, t, language));
     }
   };
 
@@ -110,10 +113,10 @@ export default function SignInScreen() {
     try {
       await signIn.create({ identifier: resetEmail });
       const { error } = await signIn.resetPasswordEmailCode.sendCode();
-      if (error) { setResetError(error.message ?? 'Could not send reset code.'); return; }
+      if (error) { setResetError(authErrorText(error, t.authResetSendFailed, t, language)); return; }
       setResetMode('verify');
     } catch (err: any) {
-      setResetError(err?.errors?.[0]?.message ?? err?.message ?? 'Could not send reset code. Please try again.');
+      setResetError(authErrorText(err, t.authResetSendFailed, t, language));
     }
   };
 
@@ -122,16 +125,16 @@ export default function SignInScreen() {
     setResetError('');
     try {
       const verify = await signIn.resetPasswordEmailCode.verifyCode({ code: resetCode });
-      if (verify.error) { setResetError(verify.error.message ?? 'Invalid code. Please check and try again.'); return; }
+      if (verify.error) { setResetError(authErrorText(verify.error, t.authCodeInvalid, t, language)); return; }
       const submit = await signIn.resetPasswordEmailCode.submitPassword({ password: newPassword });
-      if (submit.error) { setResetError(submit.error.message ?? 'Could not set new password.'); return; }
+      if (submit.error) { setResetError(authErrorText(submit.error, t.authResetSetPasswordFailed, t, language)); return; }
       if (signIn.status === 'complete') {
         await activateSession(signIn.createdSessionId);
       } else {
-        setResetError(`Reset could not complete. Please try again. (${signIn.status})`);
+        setResetError(`${t.authResetIncomplete} (${signIn.status})`);
       }
     } catch (err: any) {
-      setResetError(err?.errors?.[0]?.message ?? err?.message ?? 'Reset failed. Please try again.');
+      setResetError(authErrorText(err, t.authResetFailed, t, language));
     }
   };
 
@@ -150,14 +153,14 @@ export default function SignInScreen() {
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       } else {
-        setGlobalError('Google sign-in did not complete. Please try again.');
+        setGlobalError(t.authGoogleIncomplete);
       }
     } catch (err: any) {
-      setGlobalError(err?.message ?? 'Google sign-in failed');
+      setGlobalError(authErrorText(err, t.authGoogleFailed, t, language));
     } finally {
       setGoogleLoading(false);
     }
-  }, [startSSOFlow]);
+  }, [startSSOFlow, t, language]);
 
   const handleApple = useCallback(async () => {
     setGlobalError('');
@@ -177,17 +180,17 @@ export default function SignInScreen() {
           }).catch(() => {});
         }
       } else {
-        setGlobalError('Apple sign-in did not complete. Please try again.');
+        setGlobalError(t.authAppleIncomplete);
       }
     } catch (err: any) {
       // The user dismissing the native Apple prompt is not an error worth surfacing.
       if (err?.code !== 'ERR_REQUEST_CANCELED') {
-        setGlobalError(err?.message ?? 'Apple sign-in failed');
+        setGlobalError(authErrorText(err, t.authAppleFailed, t, language));
       }
     } finally {
       setAppleLoading(false);
     }
-  }, [startAppleAuthenticationFlow, clerk]);
+  }, [startAppleAuthenticationFlow, clerk, t, language]);
 
   if (resetMode !== 'none') {
     return (

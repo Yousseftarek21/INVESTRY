@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/expo';
 import { CashAccount } from '@/types';
 import { apiFetch } from '@/utils/api';
+import { hasCloudSynced, markCloudSynced } from '@/utils/cloudSync';
 import { hydrateCashTodayChangesFromCache, prefetchCashTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 
 /**
@@ -118,23 +119,35 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
           if (!active || loadedUserRef.current !== capturedUserId) return;
 
           if (apiData.length === 0 && localData.length > 0) {
-            // One-time migration: push this user's own local cash accounts to
-            // the cloud. We only reach here if the per-user key had data,
-            // which means those accounts were written by this specific userId.
-            await Promise.all(
-              localData.map(a =>
-                apiFetch('/api/cash-accounts', t, { method: 'POST', body: JSON.stringify(a) })
-                  .catch(() => null)
-              )
-            );
+            if (await hasCloudSynced('cash_accounts', capturedUserId)) {
+              // Already synced before on this device — empty server list means
+              // these were deleted elsewhere. See utils/cloudSync.ts.
+              if (!active || loadedUserRef.current !== capturedUserId) return;
+              setCashAccounts([]);
+              await persist([], capturedUserId);
+            } else {
+              // One-time migration: push this user's own local cash accounts to
+              // the cloud. We only reach here if the per-user key had data,
+              // which means those accounts were written by this specific userId.
+              const uploaded = await Promise.all(
+                localData.map(a =>
+                  apiFetch('/api/cash-accounts', t, { method: 'POST', body: JSON.stringify(a) })
+                    .then(res => res.ok)
+                    .catch(() => false)
+                )
+              );
+              if (!active || loadedUserRef.current !== capturedUserId) return;
+              await persist(localData, capturedUserId);
+              if (uploaded.every(Boolean)) await markCloudSynced('cash_accounts', capturedUserId);
+            }
+          } else {
             if (!active || loadedUserRef.current !== capturedUserId) return;
-            await persist(localData, capturedUserId);
-          } else if (apiData.length > 0) {
-            if (!active || loadedUserRef.current !== capturedUserId) return;
-            setCashAccounts(apiData);
-            await persist(apiData, capturedUserId);
+            if (apiData.length > 0) {
+              setCashAccounts(apiData);
+              await persist(apiData, capturedUserId);
+            }
+            await markCloudSynced('cash_accounts', capturedUserId);
           }
-          // else: both empty — nothing to do
         } else {
           if (!active || loadedUserRef.current !== capturedUserId) return;
           setSyncError('Could not sync — showing local data.');
@@ -167,10 +180,9 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch('/api/cash-accounts', t, { method: 'POST', body: JSON.stringify(account) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch('/api/cash-accounts', t, { method: 'POST', body: JSON.stringify(account) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch {
       setCashAccounts(prev => {
         const next = prev.filter(a => a.id !== account.id);
@@ -193,10 +205,9 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/cash-accounts/${id}`, t, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/cash-accounts/${id}`, t, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch {
       setCashAccounts(prev => {
         if (!removed || prev.some(a => a.id === id)) return prev;
@@ -220,10 +231,9 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
     });
     try {
       const t = await token();
-      if (t) {
-        const res = await apiFetch(`/api/cash-accounts/${account.id}`, t, { method: 'PUT', body: JSON.stringify(account) });
-        if (!res.ok) throw new Error(`${res.status}`);
-      }
+      if (!t) throw new Error('Not signed in');
+      const res = await apiFetch(`/api/cash-accounts/${account.id}`, t, { method: 'PUT', body: JSON.stringify(account) });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch {
       setCashAccounts(prev => {
         if (!previous) return prev;
@@ -265,13 +275,12 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const t = await token();
-      if (t) {
-        const [fromRes, toRes] = await Promise.all([
-          apiFetch(`/api/cash-accounts/${fromId}`, t, { method: 'PUT', body: JSON.stringify(updatedFrom) }),
-          apiFetch(`/api/cash-accounts/${toId}`, t, { method: 'PUT', body: JSON.stringify(updatedTo) }),
-        ]);
-        if (!fromRes.ok || !toRes.ok) throw new Error('transfer failed');
-      }
+      if (!t) throw new Error('Not signed in');
+      const [fromRes, toRes] = await Promise.all([
+        apiFetch(`/api/cash-accounts/${fromId}`, t, { method: 'PUT', body: JSON.stringify(updatedFrom) }),
+        apiFetch(`/api/cash-accounts/${toId}`, t, { method: 'PUT', body: JSON.stringify(updatedTo) }),
+      ]);
+      if (!fromRes.ok || !toRes.ok) throw new Error('transfer failed');
     } catch {
       setCashAccounts(prev => {
         const next = prev.map(a => a.id === fromId ? from : a.id === toId ? to : a);

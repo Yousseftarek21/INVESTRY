@@ -138,7 +138,13 @@ export default function GoalsScreen() {
     setLinkedAccountId(null);
   }, []);
 
-  const openAdd = () => { resetForm(); setShowForm(true); };
+  // Gate here too, not only on Save — otherwise a free user fills in the
+  // whole form before learning it's Pro, and loses it when the paywall opens.
+  const openAdd = () => {
+    if (!subLoading && !featuresUnlocked && goals.length >= FREE_LIMIT) { showPaywallFromModal(); return; }
+    resetForm();
+    setShowForm(true);
+  };
   const openEdit = (g: Goal) => {
     setEditingId(g.id);
     setName(g.name);

@@ -36,7 +36,19 @@ export function Paywall() {
   const insets = useSafeAreaInsets();
   const { impact } = useHaptic();
   const getToken = useStableGetToken();
-  const { paywallVisible, closePaywall, refresh, markProLocally } = useSubscription();
+  const { paywallVisible, closePaywall, refresh, markProLocally, featuresUnlocked } = useSubscription();
+  // Set when the user comes back from the Stripe checkout page — there's no
+  // client-side proof of payment on that path, so success is only known once
+  // the server poll flips featuresUnlocked. Cleared whenever the paywall closes.
+  const awaitingCheckout = useRef(false);
+  useEffect(() => {
+    if (!paywallVisible) { awaitingCheckout.current = false; return; }
+    if (awaitingCheckout.current && featuresUnlocked) {
+      awaitingCheckout.current = false;
+      closePaywall();
+      Alert.alert(t.subPaymentSuccessTitle, t.subPaymentSuccessDesc);
+    }
+  }, [paywallVisible, featuresUnlocked, closePaywall, t]);
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState(false);
@@ -94,6 +106,7 @@ export function Paywall() {
     const { url } = (await res.json()) as { url?: string };
     if (!url) { setError(true); return; }
     await WebBrowser.openBrowserAsync(url);
+    awaitingCheckout.current = true;
     // The user just came back from checkout (completed, cancelled, or
     // just closed it) — re-check entitlement right away rather than
     // waiting for the next app-foreground refetch that already exists in
@@ -125,11 +138,20 @@ export function Paywall() {
         closePaywall();
         Alert.alert(t.subPaymentSuccessTitle, t.subPaymentSuccessDesc);
         reconcileWithServer();
+      } else {
+        // Completed without an active entitlement yet (rare — still
+        // propagating). Used to do nothing at all; say so and keep checking.
+        Alert.alert(t.subPurchasePendingTitle, t.subPurchasePendingDesc);
+        reconcileWithServer();
       }
     } catch (err: any) {
       // A user tapping Cancel on the App Store's own purchase sheet isn't an
       // error state — stay on the paywall quietly instead of showing a banner.
-      if (err?.code !== PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
+      // Ask to Buy (waiting on a parent) is reported as an error too, but
+      // it's a pending purchase, not a failed one.
+      if (err?.code === PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR) {
+        Alert.alert(t.subPurchasePendingTitle, t.subPurchasePendingDesc);
+      } else if (err?.code !== PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
         setError(true);
       }
     }
@@ -164,10 +186,12 @@ export function Paywall() {
         Alert.alert(t.subRestoreSuccessTitle, t.subRestoreSuccessDesc);
         reconcileWithServer();
       } else {
-        setError(true);
+        // Not an error — there's just nothing to restore. The paywall's own
+        // error banner says "could not start checkout", which is wrong here.
+        Alert.alert(t.subRestoreNoneTitle, t.subRestoreNoneDesc);
       }
     } catch {
-      setError(true);
+      Alert.alert(t.subRestoreErrorTitle, t.subRestoreErrorDesc);
     } finally {
       setRestoring(false);
     }

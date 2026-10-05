@@ -12,6 +12,8 @@ import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { backArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useAppSettings } from '@/context/AppSettingsContext';
+import { authErrorText } from '@/utils/authErrorText';
 import { FieldPlaceholder } from '@/components/FieldPlaceholder';
 import { useAppleAuthWithName } from '@/hooks/useAppleAuthWithName';
 import { apiFetch } from '@/utils/api';
@@ -70,6 +72,7 @@ export default function SignUpScreen() {
   useWarmUpBrowser();
   const colors = useColors();
   const t = useT();
+  const { language } = useAppSettings();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -103,15 +106,15 @@ export default function SignUpScreen() {
   const isFetching = fetchStatus === 'fetching';
   const handleSignUp = async () => {
     if (!signUp) return;
-    if (!agreedToTerms) { setGlobalError('Please accept the Terms & Privacy Policy to continue.'); return; }
+    if (!agreedToTerms) { setGlobalError(t.authAcceptTerms); return; }
     setGlobalError('');
     try {
       const { error } = await signUp.password({ emailAddress: email, password });
-      if (error) { setGlobalError(error.message ?? 'Sign up failed'); return; }
+      if (error) { setGlobalError(authErrorText(error, t.authSignUpFailed, t, language)); return; }
       await signUp.verifications.sendEmailCode();
       setVerificationDismissed(false);
     } catch (err: any) {
-      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Sign up failed. Please try again.');
+      setGlobalError(authErrorText(err, t.authSignUpFailed, t, language));
     }
   };
 
@@ -156,10 +159,10 @@ export default function SignUpScreen() {
       if (signUp.status === 'complete') {
         await signUp.finalize({ navigate: finalizeNavigate });
       } else {
-        setGlobalError('Invalid code. Please check and try again.');
+        setGlobalError(t.authCodeInvalid);
       }
     } catch (err: any) {
-      setGlobalError(err?.errors?.[0]?.message ?? err?.message ?? 'Verification failed. Please try again.');
+      setGlobalError(authErrorText(err, t.authVerificationFailed, t, language));
     }
   };
 
@@ -175,14 +178,14 @@ export default function SignUpScreen() {
       if (createdSessionId) {
         await setActive!({ session: createdSessionId, navigate: finalizeNavigate });
       } else {
-        setGlobalError('Google sign-up did not complete. Please try again.');
+        setGlobalError(t.authGoogleIncomplete);
       }
     } catch (err: any) {
-      setGlobalError(err?.message ?? 'Google sign-up failed');
+      setGlobalError(authErrorText(err, t.authGoogleFailed, t, language));
     } finally {
       setGoogleLoading(false);
     }
-  }, [startSSOFlow]);
+  }, [startSSOFlow, t, language]);
 
   const handleApple = useCallback(async () => {
     setGlobalError('');
@@ -202,16 +205,16 @@ export default function SignUpScreen() {
           }).catch(() => {});
         }
       } else {
-        setGlobalError('Apple sign-up did not complete. Please try again.');
+        setGlobalError(t.authAppleIncomplete);
       }
     } catch (err: any) {
       if (err?.code !== 'ERR_REQUEST_CANCELED') {
-        setGlobalError(err?.message ?? 'Apple sign-up failed');
+        setGlobalError(authErrorText(err, t.authAppleFailed, t, language));
       }
     } finally {
       setAppleLoading(false);
     }
-  }, [startAppleAuthenticationFlow, clerk]);
+  }, [startAppleAuthenticationFlow, clerk, t, language]);
 
   // Email verification step
   const needsVerification =
@@ -278,7 +281,7 @@ export default function SignUpScreen() {
 
           <Pressable onPress={async () => {
             try { await signUp.verifications.sendEmailCode(); } catch (err: any) {
-              setGlobalError(err?.errors?.[0]?.message ?? 'Failed to resend. Please try again.');
+              setGlobalError(authErrorText(err, t.authResendFailed, t, language));
             }
           }}>
             <Text style={[styles.linkText, { color: colors.primary, textAlign: 'center' }]}>{t.resendCode}</Text>

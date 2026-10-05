@@ -23,14 +23,15 @@ import { parseAmount, toWesternDigits } from '@/utils/parseAmount';
 import { fmtCompact } from '@/utils/formatNumber';
 import { tradingDayLabel, tradingDaysAgo } from '@/utils/cairoDate';
 import { useMarketPrices } from '@/hooks/usePrices';
+import { PricesLoadingNotice } from '@/components/PricesLoadingNotice';
 import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
 import { useCashAccountsTodayChanges } from '@/hooks/useCashAccountsTodayChanges';
 import { useRecentCashUpdates } from '@/hooks/useRecentCashUpdates';
 import { useActivityLog } from '@/hooks/useActivityLog';
+import { FREE_CASH_ACCOUNT_LIMIT as FREE_LIMIT_CASH } from '@/constants/subscriptionFeatures';
 
 type EntryType = CashAccountType | 'recurring_income';
 
-const FREE_LIMIT_CASH = 1;
 // Recurring income is a Pro-only feature — same policy as recurring-income.tsx.
 const FREE_LIMIT_INCOME = 0;
 // A genuinely short at-a-glance preview — 8 (the old default) was high
@@ -209,6 +210,9 @@ export default function CashAccountsScreen() {
 
   const openAdd = () => {
     impact();
+    // At the free account limit nothing in this form can be saved (income
+    // entries are Pro-only too), so say so before the form, not after it.
+    if (!subLoading && !featuresUnlocked && cashAccounts.length >= FREE_LIMIT_CASH) { showPaywallFromModal(); return; }
     resetForm();
     setShowForm(true);
   };
@@ -552,6 +556,7 @@ export default function CashAccountsScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {!showForm && <PricesLoadingNotice />}
         {showForm ? (
           <>
             {/* ── Account Type (2 × 2 grid) ──────────────────────── */}
