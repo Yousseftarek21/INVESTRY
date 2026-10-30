@@ -60,7 +60,12 @@ export default function SellHoldingScreen() {
   const { holdings, sellHolding } = useHoldings();
   const { logActivity } = useActivityLog();
   const queryClient = useQueryClient();
-  const holding = useMemo(() => holdings.find(h => h.id === holdingId), [holdings, holdingId]);
+  const liveHolding = useMemo(() => holdings.find(h => h.id === holdingId), [holdings, holdingId]);
+  // Pinned when Confirm is tapped: the sale updates the holdings list before
+  // this screen closes, which used to redraw it mid-dismiss as "not found"
+  // (full sale) or with the shrunken quantity (partial sale).
+  const [pinnedHolding, setPinnedHolding] = useState<typeof liveHolding>(undefined);
+  const holding = pinnedHolding ?? liveHolding;
 
   const { data: rawPrices } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
@@ -135,6 +140,7 @@ export default function SellHoldingScreen() {
     }
     setError(null);
     setSaving(true);
+    setPinnedHolding(holding);
     impact();
     try {
       await sellHolding(holding.id, proceeds, saleDate, notes.trim() || undefined, quantityToSend);
@@ -144,6 +150,7 @@ export default function SellHoldingScreen() {
       void logActivity('holding_sold', t.activityHoldingSoldTitle, subtitle, holding.id);
       router.back();
     } catch {
+      setPinnedHolding(undefined);
       setError(t.sellHoldingFailed);
     } finally {
       setSaving(false);

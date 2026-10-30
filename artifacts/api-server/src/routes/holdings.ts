@@ -193,12 +193,16 @@ router.delete("/holdings/:id", async (req, res) => {
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
     const isLeaderboardEligible = holding.type === "gold" || holding.type === "silver" || holding.type === "stock";
 
+    // Fetched before the transaction opens: on a cold cache this is a live
+    // market fetch of a few seconds, and holding a DB transaction (and its
+    // pooled connection) open across it slowed everyone else's requests.
+    const market = isLeaderboardEligible
+      ? await Promise.all([getCachedPrices(), getCachedStocks().catch(() => [])])
+      : null;
+
     await db.transaction(async (tx) => {
-      if (isLeaderboardEligible) {
-        const [prices, egxStocks] = await Promise.all([
-          getCachedPrices(),
-          getCachedStocks().catch(() => []),
-        ]);
+      if (market) {
+        const [prices, egxStocks] = market;
         const egxPrices: Record<string, number> = {};
         for (const s of egxStocks) egxPrices[s.symbol] = s.price;
 
@@ -292,7 +296,12 @@ router.post("/holdings/:id/sell", async (req, res) => {
     }
 
     const holding = { id: row.id, type: row.type, ...(decryptFromStorage(row.data) as object) } as StoredHolding;
-    const prices = await getCachedPrices();
+    // Only a USD-priced personal asset needs the exchange rate for its cost
+    // basis (see costBasisEGP). Everything else skips the price lookup —
+    // on a cold 30s cache it's a live TradingView/Wise fetch, measured at
+    // ~4s, which every sale used to wait on for nothing.
+    const needsFx = holding.type === "personal_asset" && (holding as { currency?: string }).currency === "USD";
+    const usdToEgp = needsFx ? (await getCachedPrices()).usdToEgp : 0;
     const fullQuantity = holdingQuantity(holding);
     const isFungible = holding.type === "gold" || holding.type === "silver" || holding.type === "stock";
 
@@ -312,7 +321,7 @@ router.post("/holdings/:id/sell", async (req, res) => {
 
     const isPartial = isFungible && fullQuantity != null && sellQuantity != null && sellQuantity < fullQuantity - 1e-9;
     const portion = isPartial && fullQuantity ? sellQuantity! / fullQuantity : 1;
-    const amountInvested = costBasisEGP(holding, prices.usdToEgp) * portion;
+    const amountInvested = costBasisEGP(holding, usdToEgp) * portion;
     const realizedGainLoss = saleProceeds - amountInvested;
 
     const soldId = generateSoldHoldingId();
