@@ -17,6 +17,7 @@ import { useUSIndices, USIndexLive, usIndicesStaticFallback } from '@/hooks/useU
 import { fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { RangeBar } from '@/components/RangeBar';
 import { MarketStatusCard } from '@/components/MarketStatusCard';
+import { marketTimeIn } from '@/utils/cairoDate';
 
 // Rebuilt to match EGXMarket.tsx's structure and polish exactly: one
 // virtualized FlatList (not a ScrollView + .map, which never recycles rows),
@@ -27,8 +28,7 @@ import { MarketStatusCard } from '@/components/MarketStatusCard';
 // policy: no other provider silently standing in.
 
 // ─── Timezone helpers ─────────────────────────────────────────────────────────
-// Egypt is always UTC+2. US Eastern is EDT (UTC-4) Mar 2nd-Sun → Nov 1st-Sun, else EST (UTC-5).
-// Cairo is +6h ahead of EDT, +7h ahead of EST.
+// US Eastern is EDT (UTC-4) Mar 2nd-Sun → Nov 1st-Sun, else EST (UTC-5).
 
 function isUSOnEDT(d: Date = new Date()): boolean {
   const y = d.getFullYear();
@@ -39,10 +39,11 @@ function isUSOnEDT(d: Date = new Date()): boolean {
   return d >= edtStart && d < edtEnd;
 }
 
-// Returns NYSE/NASDAQ session hours in Cairo time (e.g. "15:30–22:00 Cairo")
+// NYSE/NASDAQ session hours in Cairo time (e.g. "16:30–23:00 Cairo"). Both
+// countries shift for daylight saving on different dates, so this converts
+// through the real time zones rather than assuming a fixed gap.
 function nyseHoursInCairo(): string {
-  const edt = isUSOnEDT();
-  return edt ? '15:30–22:00 Cairo' : '16:30–23:00 Cairo';
+  return `${marketTimeIn('America/New_York', 9, 30, 'Africa/Cairo')}–${marketTimeIn('America/New_York', 16, 0, 'Africa/Cairo')} Cairo`;
 }
 
 function etLabel(): string {

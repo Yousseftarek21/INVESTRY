@@ -16,6 +16,7 @@ import { useEGXIndices, EGXIndex } from '@/hooks/useEGXIndices';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 import { RangeBar } from '@/components/RangeBar';
 import { MarketStatusCard } from '@/components/MarketStatusCard';
+import { marketTimeIn } from '@/utils/cairoDate';
 
 // ─── Timezone helpers ─────────────────────────────────────────────────────────
 // Egypt observes EEST (UTC+3) Apr–Oct and EET (UTC+2) Nov–Mar (DST reintroduced 2023).
@@ -33,10 +34,13 @@ function isUSOnEDT(d: Date = new Date()): boolean {
   return d >= edtStart && d < edtEnd;
 }
 
-// Returns EGX session hours converted to US ET string (e.g. "04:00–08:30 EDT")
+// EGX session hours (10:00–14:30 Cairo) in US Eastern time, e.g.
+// "03:00–07:30 EST" — converted through the real time zones, since Egypt and
+// the US switch daylight saving on different dates.
 function egxHoursInET(): string {
-  const edt = isUSOnEDT();
-  return edt ? '04:00–08:30 EDT' : '03:00–07:30 EST';
+  const open = marketTimeIn('Africa/Cairo', 10, 0, 'America/New_York');
+  const close = marketTimeIn('Africa/Cairo', 14, 30, 'America/New_York');
+  return `${open}–${close} ${isUSOnEDT() ? 'EDT' : 'EST'}`;
 }
 
 // ─── Section switcher: Equity Funds | EGX Stocks ──────────────────────────────

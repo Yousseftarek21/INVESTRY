@@ -129,3 +129,37 @@ export function cairoTimeLabel(
 ): string {
   return d.toLocaleTimeString(locale, { ...options, timeZone: 'Africa/Cairo' });
 }
+
+// ─── Market hours across timezones ────────────────────────────────────────────
+// Both Egypt (since 2023) and the US observe daylight saving, on different
+// dates, so the gap between Cairo and New York is 6 or 7 hours depending on
+// the time of year. Converting through the IANA zones keeps session-hour
+// labels right all year without hardcoding either offset.
+
+/** Milliseconds to add to a UTC instant to read `tz`'s wall clock. */
+function zoneOffsetMs(d: Date, tz: string): number {
+  const date = d.toLocaleDateString('en-CA', { timeZone: tz });
+  const [h, m, s] = d
+    .toLocaleTimeString('en-GB', { timeZone: tz, hour12: false })
+    .split(':')
+    .map(Number);
+  return Date.parse(`${date}T${pad(h % 24)}:${pad(m)}:${pad(s)}Z`) - (d.getTime() - d.getMilliseconds());
+}
+
+/**
+ * Today's `hour`:`minute` wall-clock time in `fromTz`, rendered as HH:MM in
+ * `toTz` — e.g. NYSE's 09:30 New York open in Cairo time.
+ */
+export function marketTimeIn(fromTz: string, hour: number, minute: number, toTz: string, now: Date = new Date()): string {
+  const dateKey = now.toLocaleDateString('en-CA', { timeZone: fromTz });
+  const wall = Date.parse(`${dateKey}T${pad(hour)}:${pad(minute)}:00Z`);
+  let t = wall;
+  // Second pass gets the DST switch days right — the offset at the first
+  // guess can differ from the offset at the answer.
+  for (let i = 0; i < 2; i++) t = wall - zoneOffsetMs(new Date(t), fromTz);
+  const [hh, mm] = new Date(t)
+    .toLocaleTimeString('en-GB', { timeZone: toTz, hour12: false })
+    .split(':')
+    .map(Number);
+  return `${pad(hh % 24)}:${pad(mm)}`;
+}
