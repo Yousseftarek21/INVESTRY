@@ -75,6 +75,12 @@ export function RentalPropertiesProvider({ children }: { children: React.ReactNo
     setLoaded(true);
     persist(next, uid);
   }, [token, persist]);
+  // The load effect below must run only when the signed-in user changes.
+  // Clerk's getToken (and so fetchAll) is a new function on most renders;
+  // with fetchAll in the effect's deps every load re-rendered, re-ran the
+  // effect and fetched again — an endless request loop.
+  const fetchAllRef = useRef(fetchAll);
+  fetchAllRef.current = fetchAll;
 
   useEffect(() => {
     if (!isSignedIn || !userId) {
@@ -99,11 +105,11 @@ export function RentalPropertiesProvider({ children }: { children: React.ReactNo
         const raw = await AsyncStorage.getItem(storageKey(uid));
         if (active && raw && loadedRef.current === uid) setData({ ...EMPTY, ...JSON.parse(raw) });
       } catch { /* ignore a corrupt cache */ }
-      try { await fetchAll(uid); } catch { /* offline — keep the cache */ }
+      try { await fetchAllRef.current(uid); } catch { /* offline — keep the cache */ }
       if (active && loadedRef.current === uid) setIsLoading(false);
     })();
     return () => { active = false; };
-  }, [isSignedIn, userId, fetchAll]);
+  }, [isSignedIn, userId]);
 
   const reload = useCallback(async () => {
     if (loadedRef.current) {
