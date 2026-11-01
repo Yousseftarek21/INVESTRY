@@ -27,6 +27,7 @@ import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
+import { AddInvestmentPreview, type PreviewRow } from '@/components/AddInvestmentPreview';
 import { FREE_INVESTMENT_LIMIT as FREE_LIMIT } from '@/constants/subscriptionFeatures';
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset' | 'fixed_income';
@@ -836,6 +837,71 @@ export default function AddInvestmentScreen() {
   const reAnnualRentNum = hasRentalInfo ? (parseAmount(annualRent) || 0) : 0;
   const reROIPct = rePurchasePriceNum > 0 ? ((reGainLoss + reAnnualRentNum) / rePurchasePriceNum) * 100 : 0;
   const reShowSummary = reAreaNum > 0 && rePricePerM2Num > 0 && rePurchasePriceNum > 0;
+
+  // Live preview for the other types (real estate has its own summary card
+  // above). Only positive, finite inputs count — a half-typed "." or empty
+  // field just hides the card instead of showing NaN.
+  const preview = useMemo((): { rows: PreviewRow[]; currency: string; note?: string } | null => {
+    const num = (v: string) => { const n = parseAmount(v); return Number.isFinite(n) && n > 0 ? n : null; };
+    const fmt = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const gainRows = (cost: number, value: number): PreviewRow[] => {
+      const pct = cost > 0 ? ((value - cost) / cost) * 100 : 0;
+      return [
+        { label: t.previewPaid, value: cost },
+        { label: t.previewWorthToday, value },
+        { label: `${t.previewGain} (${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)`, value: value - cost, signed: true },
+      ];
+    };
+    const livePrices = marketPrices && !pricesArePlaceholder ? marketPrices : null;
+
+    if (type === 'gold' || type === 'silver') {
+      const g = num(grams); const ppg = num(purchasePricePerGram);
+      if (g == null || ppg == null) return null;
+      const cost = g * ppg;
+      const live = livePrices ? (type === 'gold' ? goldPricePerGram(livePrices, karat) : silverPricePerGram(livePrices)) : null;
+      if (live == null || !Number.isFinite(live) || live <= 0) {
+        return { rows: [{ label: t.previewPaid, value: cost }], currency: 'EGP', note: t.previewNoLive };
+      }
+      return { rows: gainRows(cost, g * live), currency: 'EGP', note: t.previewAtPrice(fmt(live), t.previewPerGram) };
+    }
+    if (type === 'stock') {
+      // US prices are quoted in dollars; only EGX gets a today's-value line.
+      if (stockMarket !== 'EGX') return null;
+      const n = num(shares); const pps = num(purchasePricePerShare);
+      if (n == null || pps == null) return null;
+      const sym = customSymbol.trim().toUpperCase() || selectedStock.symbol;
+      const live = egxStocks?.find(st => st.ticker === sym)?.price;
+      const cost = n * pps;
+      if (!live || !Number.isFinite(live) || live <= 0) {
+        return { rows: [{ label: t.previewPaid, value: cost }], currency: 'EGP', note: t.previewNoLive };
+      }
+      return { rows: gainRows(cost, n * live), currency: 'EGP', note: t.previewAtPrice(fmt(live), t.previewPerShare) };
+    }
+    if (type === 'fixed_income') {
+      const p = num(fiPrincipal); const rate = num(fiAnnualRate);
+      if (p == null || rate == null) return null;
+      const yearly = p * rate / 100;
+      const rows: PreviewRow[] = [
+        { label: t.previewInvested, value: p },
+        { label: t.previewYearlyInterest, value: yearly, signed: true },
+      ];
+      const days = fiMaturityDate && fiPurchaseDate
+        ? (Date.parse(fiMaturityDate) - Date.parse(fiPurchaseDate)) / 86_400_000
+        : NaN;
+      if (Number.isFinite(days) && days > 0) rows.push({ label: t.previewInterestToMaturity, value: yearly * days / 365, signed: true });
+      return { rows, currency: 'EGP' };
+    }
+    if (type === 'personal_asset') {
+      const cost = num(purchasePrice);
+      if (cost == null) return null;
+      const value = num(currentValue);
+      return value == null
+        ? { rows: [{ label: t.previewPaid, value: cost }], currency: assetCurrency }
+        : { rows: gainRows(cost, value), currency: assetCurrency };
+    }
+    return null;
+  }, [type, grams, purchasePricePerGram, karat, marketPrices, pricesArePlaceholder, stockMarket, shares, purchasePricePerShare,
+      customSymbol, selectedStock, egxStocks, fiPrincipal, fiAnnualRate, fiPurchaseDate, fiMaturityDate, purchasePrice, currentValue, assetCurrency, t]);
   // Heuristic: a total purchase price for a property bigger than ~5 m² should be a
   // multiple of the per-m² rate, not roughly equal to it. If the number the user typed
   // as the "total" is within the same order of magnitude as the current price/m², they
@@ -1220,7 +1286,8 @@ export default function AddInvestmentScreen() {
           </View>
 
           {/* Gold */}
-          {type === 'gold' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {type === 'gold' && (<>
+          <FormSection icon="star" title={t.formSecDetails}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.karat}</Text>
               <View style={styles.chips}>
@@ -1238,6 +1305,8 @@ export default function AddInvestmentScreen() {
                 ))}
               </View>
             </View>
+          </FormSection>
+          <FormSection icon="shopping-bag" title={t.formSecPurchase}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.weightGrams}</Text>
               <AmountInput style={inputStyle} placeholder={t.exampleValue('50')} placeholderTextColor={colors.mutedForeground}
@@ -1248,13 +1317,15 @@ export default function AddInvestmentScreen() {
               <AmountInput style={inputStyle} placeholder={t.exampleValue('3900')} placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
             </View>
-            <View style={[styles.section, { marginBottom: 0 }]}>
+            <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
-          </View>)}
+          </FormSection>
+          </>)}
 
           {/* Silver */}
-          {type === 'silver' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {type === 'silver' && (<>
+          <FormSection icon="star" title={t.formSecDetails}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.form}</Text>
               <View style={styles.chips}>
@@ -1264,6 +1335,8 @@ export default function AddInvestmentScreen() {
                 ))}
               </View>
             </View>
+          </FormSection>
+          <FormSection icon="shopping-bag" title={t.formSecPurchase}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.weightGrams}</Text>
               <AmountInput style={inputStyle} placeholder={t.exampleValue('500')} placeholderTextColor={colors.mutedForeground}
@@ -1274,13 +1347,15 @@ export default function AddInvestmentScreen() {
               <AmountInput style={inputStyle} placeholder={t.exampleValue('52')} placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
             </View>
-            <View style={[styles.section, { marginBottom: 0 }]}>
+            <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
-          </View>)}
+          </FormSection>
+          </>)}
 
           {/* Stock */}
-          {type === 'stock' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {type === 'stock' && (<>
+          <FormSection icon="trending-up" title={t.formSecStock}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.stockSymbol}</Text>
 
@@ -1319,6 +1394,8 @@ export default function AddInvestmentScreen() {
                 autoCapitalize="characters"
               />
             </View>
+          </FormSection>
+          <FormSection icon="shopping-bag" title={t.formSecPurchase}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.numberOfShares}</Text>
               <AmountInput style={inputStyle} placeholder={t.exampleValue('100')} placeholderTextColor={colors.mutedForeground}
@@ -1329,13 +1406,15 @@ export default function AddInvestmentScreen() {
               <AmountInput style={inputStyle} placeholder={t.exampleValue('95.50')} placeholderTextColor={colors.mutedForeground}
                 value={purchasePricePerShare} onChangeText={setPurchasePricePerShare} />
             </View>
-            <View style={[styles.section, { marginBottom: 0 }]}>
+            <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
-          </View>)}
+          </FormSection>
+          </>)}
 
           {/* Real Estate */}
-          {type === 'real_estate' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {type === 'real_estate' && (<>
+          <FormSection icon="home" title={t.formSecProperty}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.propertyName}</Text>
               <TextInput style={inputStyle} placeholder={t.propertyNamePlaceholder} placeholderTextColor={colors.mutedForeground}
@@ -1352,6 +1431,8 @@ export default function AddInvestmentScreen() {
               </ScrollView>
             </View>
 
+          </FormSection>
+          <FormSection icon="map-pin" title={t.formSecLocation}>
             {/* First, explicit choice: this decides which fields show next.
                 No more asking a standalone-property owner to pick a
                 compound they don't have, and no more asking a compound
@@ -1359,7 +1440,7 @@ export default function AddInvestmentScreen() {
                 already implies. */}
             <View style={styles.section}>
               <Text style={labelStyle}>{t.isInCompoundLabel}</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 <Chip value="no" selected={isInCompound === false} onPress={() => {
                   setIsInCompound(false);
                   setCompoundName(''); setReCompoundId(undefined);
@@ -1472,6 +1553,8 @@ export default function AddInvestmentScreen() {
               </View>
             </>)}
 
+          </FormSection>
+          <FormSection icon="maximize" title={t.formSecSizePrice}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.area}</Text>
               <AmountInput style={inputStyle} placeholder={t.areaPlaceholder} placeholderTextColor={colors.mutedForeground}
@@ -1499,6 +1582,8 @@ export default function AddInvestmentScreen() {
               <DatePickerField label={t.purchaseDate} value={realEstatePurchaseDate} onChange={setRealEstatePurchaseDate} />
             </View>
 
+          </FormSection>
+          <FormSection icon="bar-chart-2" title={t.formSecMarketValue}>
             {/* Current Market Price — editable, pre-filled from live data when available.
                 Prefers the selected compound's own price (live scrape, or its area's
                 honest fallback) over the plain area-level lookup below. */}
@@ -1556,6 +1641,8 @@ export default function AddInvestmentScreen() {
               </View>
             </View>
 
+          </FormSection>
+          <FormSection icon="list" title={t.formSecMore}>
             {/* Purchase info */}
             {/* Skipped when a curated compound was picked — its developer is
                 already shown and auto-filled right in the compound section
@@ -1690,10 +1777,12 @@ export default function AddInvestmentScreen() {
                 </View>
               </View>
             )}
-          </View>)}
+          </FormSection>
+          </>)}
 
           {/* Personal Asset */}
-          {type === 'personal_asset' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {type === 'personal_asset' && (<>
+          <FormSection icon="tag" title={t.formSecItem}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.assetName}</Text>
               <TextInput style={inputStyle} placeholder={t.exampleValue('Rolex Submariner')} placeholderTextColor={colors.mutedForeground}
@@ -1728,6 +1817,8 @@ export default function AddInvestmentScreen() {
                 })}
               </View>
             </View>
+          </FormSection>
+          <FormSection icon="dollar-sign" title={t.formSecValue}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.purchasePrice}</Text>
               <AmountInput style={inputStyle} placeholder={t.exampleValue('250000')} placeholderTextColor={colors.mutedForeground}
@@ -1747,13 +1838,15 @@ export default function AddInvestmentScreen() {
                 ))}
               </View>
             </View>
-            <View style={[styles.section, { marginBottom: 0 }]}>
+            <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={assetPurchaseDate} onChange={setAssetPurchaseDate} />
             </View>
-          </View>)}
+          </FormSection>
+          </>)}
 
           {/* Fixed Income */}
-          {type === 'fixed_income' && (<View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {type === 'fixed_income' && (<>
+          <FormSection icon="briefcase" title={t.formSecCertificate}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.fiSubtype}</Text>
               <View style={styles.chips}>
@@ -1780,6 +1873,8 @@ export default function AddInvestmentScreen() {
                 placeholderTextColor={colors.mutedForeground}
                 value={fiInstitution} onChangeText={setFiInstitution} />
             </View>
+          </FormSection>
+          <FormSection icon="percent" title={t.formSecAmountRate}>
             <View style={styles.section}>
               <Text style={labelStyle}>{t.fiPrincipal}</Text>
               <AmountInput style={inputStyle} placeholder={t.exampleValue('100000')}
@@ -1792,6 +1887,8 @@ export default function AddInvestmentScreen() {
                 placeholderTextColor={colors.mutedForeground}
                 value={fiAnnualRate} onChangeText={setFiAnnualRate} />
             </View>
+          </FormSection>
+          <FormSection icon="calendar" title={t.formSecDates}>
             <View style={styles.section}>
               <DatePickerField label={t.fiPurchaseDate} value={fiPurchaseDate} onChange={setFiPurchaseDate} />
             </View>
@@ -1863,7 +1960,10 @@ export default function AddInvestmentScreen() {
                 )}
               </View>
             )}
-          </View>)}
+          </FormSection>
+          </>)}
+
+          {preview && <AddInvestmentPreview rows={preview.rows} currency={preview.currency} note={preview.note} />}
 
           {/* Notes */}
           <View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -1968,6 +2068,23 @@ export default function AddInvestmentScreen() {
   );
 }
 
+/** One titled card of the Add investment form. Sections inside keep their
+ *  own 16pt bottom margin, so the card drops its bottom padding. */
+function FormSection({ icon, title, children }: { icon: keyof typeof Feather.glyphMap; title: string; children: React.ReactNode }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.formCard, styles.formSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.formSectionHeader}>
+        <View style={[styles.formSectionIcon, { backgroundColor: colors.primary + '1A' }]}>
+          <Feather name={icon} size={13} color={colors.primary} />
+        </View>
+        <Text style={[styles.formSectionTitle, { color: colors.text }]}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   modalHeader: {
@@ -1979,6 +2096,10 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 20, gap: 4 },
   section: { marginBottom: 16 },
   formCard: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 14 },
+  formSection: { paddingBottom: 0, marginBottom: 12 },
+  formSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  formSectionIcon: { width: 24, height: 24, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  formSectionTitle: { fontSize: 14, fontFamily: 'Inter_700Bold' },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium', marginBottom: 8, letterSpacing: 0.3 },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   typeChip: {

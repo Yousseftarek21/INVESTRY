@@ -5,7 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
-import Purchases, { PURCHASES_ERROR_CODE, type PurchasesPackage } from 'react-native-purchases';
+import Purchases, { INTRO_ELIGIBILITY_STATUS, PURCHASES_ERROR_CODE, type PurchasesPackage } from 'react-native-purchases';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -13,7 +13,8 @@ import { useStableGetToken } from '@/hooks/useStableGetToken';
 import { apiFetch } from '@/utils/api';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { isIOSIAPAvailable, REVENUECAT_ENTITLEMENT_ID } from '@/utils/revenuecat';
-import { getPaywallHighlights } from '@/constants/subscriptionFeatures';
+import { getPaywallHighlights, PAYWALL_TOP_COUNT } from '@/constants/subscriptionFeatures';
+import { getApiBaseUrl } from '@/utils/api';
 
 // Fallback display numbers for the Android/web Stripe path only — kept in
 // sync by hand with subFromMonthly/subFromAnnual's display text
@@ -42,7 +43,7 @@ export function Paywall() {
   // the server poll flips featuresUnlocked. Cleared whenever the paywall closes.
   const awaitingCheckout = useRef(false);
   useEffect(() => {
-    if (!paywallVisible) { awaitingCheckout.current = false; return; }
+    if (!paywallVisible) { awaitingCheckout.current = false; setShowAllFeatures(false); return; }
     if (awaitingCheckout.current && featuresUnlocked) {
       awaitingCheckout.current = false;
       closePaywall();
@@ -52,7 +53,12 @@ export function Paywall() {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState(false);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  // Opens on the yearly plan — the better deal, and the one most people pick
+  // when it's shown first.
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('annual');
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
+  // Product ids whose free trial / intro offer this Apple ID can still use.
+  const [introEligible, setIntroEligible] = useState<Set<string>>(new Set());
 
   const iosIAP = isIOSIAPAvailable();
   const [monthlyPkg, setMonthlyPkg] = useState<PurchasesPackage | null>(null);
@@ -87,6 +93,19 @@ export function Paywall() {
         setMonthlyPkg(current?.monthly ?? null);
         setAnnualPkg(current?.annual ?? null);
         if (!current?.monthly && !current?.annual) setOfferingsError(true);
+        // A trial is only shown to someone Apple will actually give it to —
+        // anyone who already used it would see "free" and then get charged.
+        const withIntro = [current?.monthly, current?.annual]
+          .filter((p): p is PurchasesPackage => !!p?.product.introPrice)
+          .map(p => p.product.identifier);
+        if (withIntro.length === 0) { setIntroEligible(new Set()); return; }
+        Purchases.checkTrialOrIntroductoryPriceEligibility(withIntro)
+          .then(res => {
+            if (!active) return;
+            setIntroEligible(new Set(withIntro.filter(id =>
+              res[id]?.status === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE)));
+          })
+          .catch(() => { if (active) setIntroEligible(new Set()); });
       })
       .catch(() => { if (active) setOfferingsError(true); })
       .finally(() => { if (active) setOfferingsLoading(false); });
@@ -213,6 +232,17 @@ export function Paywall() {
       : null)
     : FALLBACK_SAVINGS_PCT;
 
+  // Free trial for the selected plan, if this Apple ID is eligible for it.
+  const intro = activePkg?.product.introPrice;
+  const trialLength = intro && intro.price === 0 && introEligible.has(activePkg!.product.identifier)
+    ? t.subTrialLength(intro.periodNumberOfUnits, intro.periodUnit)
+    : null;
+  const visibleHighlights = showAllFeatures ? highlights : highlights.slice(0, PAYWALL_TOP_COUNT);
+  const openLegal = (page: 'terms' | 'privacy') => {
+    // Web's API base is relative (''), which a new browser tab can't resolve.
+    WebBrowser.openBrowserAsync(`${getApiBaseUrl() || 'https://api.investry.app'}/api/legal/${page}`).catch(() => null);
+  };
+
   const canSubscribe = iosIAP ? (!!activePkg && !offeringsLoading) : true;
   const showLoadingPrice = iosIAP && offeringsLoading;
   const showUnavailable = iosIAP && !offeringsLoading && (offeringsError || !activePkg);
@@ -324,11 +354,13 @@ export function Paywall() {
                   {iosIAP && activePkg ? activePkg.product.priceString : t.subFromAnnual} · {t.subSaveVsMonthly}
                 </Text>
               )}
-              <Text style={styles.heroSub}>{t.subHeroSub}</Text>
+              <Text style={styles.heroSub}>
+                {trialLength && activePkg ? t.subTrialThen(trialLength, activePkg.product.priceString) : t.subHeroSub}
+              </Text>
 
               <View style={styles.divider} />
 
-              {highlights.map(f => (
+              {visibleHighlights.map(f => (
                 <View key={f.text} style={styles.featureRow}>
                   <View style={styles.featureIcon}>
                     <Feather name="check" size={11} color="#2b2308" />
@@ -336,6 +368,19 @@ export function Paywall() {
                   <Text style={styles.featureText}>{f.text}</Text>
                 </View>
               ))}
+              {highlights.length > PAYWALL_TOP_COUNT && (
+                <TouchableOpacity
+                  onPress={() => { impact(); setShowAllFeatures(v => !v); }}
+                  style={styles.seeAll}
+                  hitSlop={8}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.seeAllText}>
+                    {showAllFeatures ? t.subShowFewerFeatures : t.subSeeAllFeatures(highlights.length)}
+                  </Text>
+                  <Feather name={showAllFeatures ? 'chevron-up' : 'chevron-down'} size={14} color="rgba(255,255,255,0.9)" />
+                </TouchableOpacity>
+              )}
             </ExpoLinearGradient>
           </View>
 
@@ -368,7 +413,7 @@ export function Paywall() {
               <ActivityIndicator size="small" color={colors.primaryForeground} />
             ) : (
               <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
-                {t.subUpgradeTo} {t.subComparePro}
+                {trialLength ? t.subTrialCta(trialLength) : `${t.subUpgradeTo} ${t.subComparePro}`}
               </Text>
             )}
           </TouchableOpacity>
@@ -382,6 +427,22 @@ export function Paywall() {
               )}
             </TouchableOpacity>
           )}
+
+          {/* Renewal terms + legal links — required on the purchase screen. */}
+          <Text style={[styles.legalNote, { color: colors.mutedForeground }]}>
+            {iosIAP
+              ? (activePkg ? t.subAutoRenewIOS(activePkg.product.priceString, isAnnual) : '')
+              : t.subAutoRenewWeb(isAnnual)}
+          </Text>
+          <View style={styles.legalLinks}>
+            <TouchableOpacity onPress={() => openLegal('terms')} hitSlop={8}>
+              <Text style={[styles.legalLink, { color: colors.mutedForeground }]}>{t.subTermsOfUse}</Text>
+            </TouchableOpacity>
+            <Text style={[styles.legalLink, { color: colors.mutedForeground }]}>·</Text>
+            <TouchableOpacity onPress={() => openLegal('privacy')} hitSlop={8}>
+              <Text style={[styles.legalLink, { color: colors.mutedForeground }]}>{t.privacyPolicy}</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -446,4 +507,9 @@ const styles = StyleSheet.create({
   ctaText: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   restoreBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
   restoreText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 8 },
+  seeAllText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: 'rgba(255,255,255,0.9)' },
+  legalNote: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16, textAlign: 'center', marginTop: 4 },
+  legalLinks: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8 },
+  legalLink: { fontSize: 12, fontFamily: 'Inter_500Medium', textDecorationLine: 'underline' },
 });

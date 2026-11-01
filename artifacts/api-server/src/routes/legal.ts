@@ -48,7 +48,7 @@ router.get("/legal/privacy", (_req, res) => {
 <body>
   ${BACK_LINK}
   <h1>Privacy Policy</h1>
-  <div class="updated">Last updated: July 2026</div>
+  <div class="updated">Last updated: November 2026</div>
 
   <p>INVESTRY ("we", "our", "the app") helps you track gold, silver, EGX stock, real estate, and cash holdings. This policy explains what data we collect and how it is used.</p>
 
@@ -62,7 +62,7 @@ router.get("/legal/privacy", (_req, res) => {
   <p>We fetch live prices from third-party providers to display market data. No personal information is sent to these providers — only anonymous, public price lookups.</p>
 
   <h2>Subscriptions</h2>
-  <p>All features are currently available free of charge. We do not process payments or store card details.</p>
+  <p>Payments are processed by Apple (App Store) or Stripe. We never see or store your card details. We receive only your subscription status (plan, renewal and expiry dates) from Apple via RevenueCat, or from Stripe, so we can unlock Pro on your account.</p>
 
   <h2>Data Retention & Deletion</h2>
   <p>You can permanently delete your account and all associated data at any time from within the app (Settings → Delete Account). This immediately and permanently removes your portfolio data, cash accounts, and authentication account from our servers.</p>
@@ -81,7 +81,7 @@ router.get("/legal/terms", (_req, res) => {
 <body>
   ${BACK_LINK}
   <h1>Terms of Service</h1>
-  <div class="updated">Last updated: July 2026</div>
+  <div class="updated">Last updated: November 2026</div>
 
   <p>By using INVESTRY, you agree to the following terms.</p>
 
@@ -92,7 +92,10 @@ router.get("/legal/terms", (_req, res) => {
   <p>You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account.</p>
 
   <h2>Subscriptions</h2>
-  <p>All features are currently available free of charge. No payment or subscription is required to use INVESTRY.</p>
+  <p>INVESTRY offers an optional paid plan, INVESTRY Pro, billed monthly or yearly. On iPhone and iPad it is purchased through your Apple ID and billed by Apple; on Android and the web it is billed through Stripe.</p>
+  <p>Pro renews automatically at the end of each period unless you cancel at least 24 hours before it ends. On Apple devices, manage or cancel it in your App Store account settings; elsewhere, from Settings → Manage Subscription in the app. Cancelling stops future renewals — you keep Pro until the paid period ends.</p>
+  <p>If a free trial is offered, any unused part of it ends when you buy a subscription. Prices are shown in the app before you buy. Refunds for App Store purchases are handled by Apple under its policies.</p>
+  <p>The free plan stays available and includes portfolio tracking, markets and other core features.</p>
 
   <h2>Disclaimer</h2>
   <p>We make no guarantees about the accuracy of market data. INVESTRY is not liable for financial decisions made using data shown in the app.</p>

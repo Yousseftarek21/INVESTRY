@@ -26,24 +26,28 @@ export interface FeatureRow {
 // actually changes. Each bullet below now names one real, distinct
 // capability instead of an umbrella term.
 export function getPaywallHighlights(t: ReturnType<typeof useT>): FeatureRow[] {
+  // Ordered by what moves people to subscribe — the paywall shows the first
+  // PAYWALL_TOP_COUNT and folds the rest behind "See all".
   return [
     { icon: 'briefcase', text: t.subUnlimitedInvestments },
+    { icon: 'cpu', text: t.subAiAssistantFull },
+    { icon: 'tool', text: t.subFixMyPortfolio },
+    { icon: 'key', text: t.subRentalIncomeFull },
+    { icon: 'heart', text: t.subHealthScore },
+    { icon: 'bell', text: t.subNotificationsFull },
     { icon: 'credit-card', text: t.subUnlimitedCash },
     { icon: 'repeat', text: t.subRecurringIncomeFull },
     { icon: 'target', text: t.subUnlimitedGoals },
-    { icon: 'bell', text: t.subNotificationsFull },
     { icon: 'sliders', text: t.subNotificationsControl },
-    { icon: 'cpu', text: t.subAiAssistantFull },
     { icon: 'zap', text: t.subPersonalizedSignals },
-    { icon: 'heart', text: t.subHealthScore },
     { icon: 'bar-chart-2', text: t.subFullCharts },
     { icon: 'pie-chart', text: t.subAllocationBreakdown },
     { icon: 'award', text: t.subTopPerformers },
     { icon: 'users', text: t.subBenchmarkCompare },
-    { icon: 'tool', text: t.subFixMyPortfolio },
     { icon: 'percent', text: t.subDividendsFull },
-    { icon: 'key', text: t.subRentalIncomeFull },
     { icon: 'download', text: t.subExportData },
     { icon: 'crosshair', text: t.subTargetAllocation },
   ];
 }
+
+export const PAYWALL_TOP_COUNT = 6;
