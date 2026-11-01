@@ -16,7 +16,8 @@ export const realEstatePricesTable = pgTable("real_estate_prices", {
   changePercent: real("change_percent"), // vs. previous scrape; null until a 2nd successful run exists
   sampleSize:    integer("sample_size").notNull(), // # of listings averaged this run
   type:          text("type").notNull(), // residential | villa | commercial | land | coastal
-  source:        text("source").notNull(), // 'property_finder' — leaves room to add another source later
+  source:        text("source").notNull(), // 'aqarmap' | 'property_finder'
+  priceBasis:    text("price_basis"), // 'apartment' | 'chalet' | 'villa' — the kind of unit this price describes
   updatedAt:     timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   areaUnique: unique().on(t.id),

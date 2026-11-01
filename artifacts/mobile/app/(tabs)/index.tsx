@@ -38,6 +38,7 @@ import { useHoldings } from '@/context/HoldingsContext';
 import { syncErrorText } from '@/utils/syncErrorText';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
+import { RentalHomeCard } from '@/components/rental/RentalHomeCard';
 import { useGoals } from '@/context/GoalsContext';
 import { GoalRing } from '@/components/GoalRing';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
@@ -1789,6 +1790,9 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+
+      {/* ── Rental Properties (only once the owner has a unit) ──── */}
+      <RentalHomeCard prices={prices} toDisp={toDisp} displayCurrency={displayCurrency} hideValues={hideValues} />
 
       {/* ── Top Investments ─────────────────────────────────────── */}
       <View style={styles.holdingsSection}>

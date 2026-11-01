@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { lt, desc, eq } from "drizzle-orm";
-import { db, marketCloseSnapshotsTable, egxCloseSnapshotsTable, realEstatePricesTable, realEstateCompoundPricesTable } from "@workspace/db";
-import { RE_PRICES, RE_COMPOUNDS } from "@workspace/shared-data";
+import { lt, desc, eq, and, gte, asc } from "drizzle-orm";
+import { db, marketCloseSnapshotsTable, egxCloseSnapshotsTable, realEstatePricesTable, realEstateCompoundPricesTable, realEstatePriceHistoryTable } from "@workspace/db";
+import { RE_PRICES, RE_COMPOUNDS, priceBasisForArea, priceBasisForCompound } from "@workspace/shared-data";
 import { logger } from "../lib/logger";
 import { cairoDateString, tradingDayKey } from "../lib/cairoDate";
 import { shariahScreeningReference } from "../lib/shariahScreening";
@@ -1773,13 +1773,26 @@ router.get("/markets/us-indices", async (req, res) => {
 // area fallback, was the source of the "Palm Hills ≈ 16k" figure. A null
 // the client renders as "no data yet" is the honest answer; the curated
 // list still supplies each area's real id/name/governorate.
+// Freshness: the price job runs twice a day and keeps an area's last good
+// price when a run misses it. Older than STALE_AFTER it's still shown but no
+// longer "live"; older than DROP_AFTER it's treated as no data at all.
+const RE_STALE_AFTER_MS = 14 * 86_400_000;
+const RE_DROP_AFTER_MS = 60 * 86_400_000;
+
+function reFreshness(updatedAt: Date): "live" | "stale" | "expired" {
+  const age = Date.now() - updatedAt.getTime();
+  return age > RE_DROP_AFTER_MS ? "expired" : age > RE_STALE_AFTER_MS ? "stale" : "live";
+}
+
 router.get("/markets/real-estate", async (req, res) => {
   try {
     const rows = await db.select().from(realEstatePricesTable);
     const byId = new Map(rows.map((r) => [r.id, r]));
 
     const data = RE_PRICES.map((area) => {
-      const scraped = byId.get(area.id);
+      const row = byId.get(area.id);
+      const freshness = row ? reFreshness(row.updatedAt) : "expired";
+      const scraped = freshness === "expired" ? undefined : row;
       if (scraped) {
         return {
           id: scraped.id,
@@ -1791,7 +1804,10 @@ router.get("/markets/real-estate", async (req, res) => {
           changePercent: scraped.changePercent,
           sampleSize: scraped.sampleSize,
           type: scraped.type,
-          isLive: true,
+          isLive: freshness === "live",
+          stale: freshness === "stale",
+          source: scraped.source,
+          priceBasis: scraped.priceBasis ?? priceBasisForArea(area),
           updatedAt: scraped.updatedAt,
         };
       }
@@ -1806,6 +1822,9 @@ router.get("/markets/real-estate", async (req, res) => {
         sampleSize: 0,
         type: area.type,
         isLive: false,
+        stale: false,
+        source: null,
+        priceBasis: priceBasisForArea(area),
         updatedAt: null,
       };
     });
@@ -1831,8 +1850,8 @@ router.get("/markets/real-estate/compounds", async (req, res) => {
       db.select().from(realEstateCompoundPricesTable),
       db.select().from(realEstatePricesTable),
     ]);
-    const compoundById = new Map(compoundRows.map((r) => [r.id, r]));
-    const areaById = new Map(areaRows.map((r) => [r.id, r]));
+    const compoundById = new Map(compoundRows.filter((r) => reFreshness(r.updatedAt) !== "expired").map((r) => [r.id, r]));
+    const areaById = new Map(areaRows.filter((r) => reFreshness(r.updatedAt) !== "expired").map((r) => [r.id, r]));
 
     const data = RE_COMPOUNDS.map((c) => {
       const scraped = compoundById.get(c.id);
@@ -1848,7 +1867,10 @@ router.get("/markets/real-estate/compounds", async (req, res) => {
           changePercent: scraped.changePercent,
           sampleSize: scraped.sampleSize,
           type: c.type,
-          isLive: true,
+          isLive: reFreshness(scraped.updatedAt) === "live",
+          stale: reFreshness(scraped.updatedAt) === "stale",
+          source: scraped.source as string | null,
+          priceBasis: scraped.priceBasis ?? priceBasisForCompound(c),
           priceSource: "compound" as const,
           areaLabel: null as string | null,
           updatedAt: scraped.updatedAt,
@@ -1876,6 +1898,9 @@ router.get("/markets/real-estate/compounds", async (req, res) => {
           sampleSize: 0,
           type: c.type,
           isLive: false,
+          stale: reFreshness(liveArea.updatedAt) === "stale",
+          source: liveArea.source as string | null,
+          priceBasis: liveArea.priceBasis ?? priceBasisForCompound(c),
           priceSource: "area_estimate" as const,
           areaLabel: liveArea.area,
           updatedAt: liveArea.updatedAt,
@@ -1894,6 +1919,9 @@ router.get("/markets/real-estate/compounds", async (req, res) => {
         sampleSize: 0,
         type: c.type,
         isLive: false,
+        stale: false,
+        source: null,
+        priceBasis: priceBasisForCompound(c),
         priceSource: "none" as const,
         areaLabel: null,
         updatedAt: null,
@@ -1904,6 +1932,41 @@ router.get("/markets/real-estate/compounds", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch real estate compound prices");
     res.status(500).json({ error: "Failed to fetch real estate compound prices" });
+  }
+});
+
+// GET /markets/real-estate/history?kind=area|compound&id=<id>&days=365 —
+// one point per day with a successful scrape (see realEstatePriceCron.ts).
+router.get("/markets/real-estate/history", async (req, res) => {
+  const kind = req.query.kind === "compound" ? "compound" : "area";
+  const id = typeof req.query.id === "string" ? req.query.id : "";
+  const known = kind === "area" ? RE_PRICES.some((a) => a.id === id) : RE_COMPOUNDS.some((c) => c.id === id);
+  if (!known) {
+    res.status(404).json({ error: "Unknown area or compound" });
+    return;
+  }
+  const days = Math.min(Math.max(Number(req.query.days) || 365, 7), 1825);
+  const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+  try {
+    const rows = await db
+      .select({
+        day: realEstatePriceHistoryTable.day,
+        avgPricePerM2: realEstatePriceHistoryTable.avgPricePerM2,
+        sampleSize: realEstatePriceHistoryTable.sampleSize,
+        source: realEstatePriceHistoryTable.source,
+        priceBasis: realEstatePriceHistoryTable.priceBasis,
+      })
+      .from(realEstatePriceHistoryTable)
+      .where(and(
+        eq(realEstatePriceHistoryTable.kind, kind),
+        eq(realEstatePriceHistoryTable.refId, id),
+        gte(realEstatePriceHistoryTable.day, since),
+      ))
+      .orderBy(asc(realEstatePriceHistoryTable.day));
+    res.json({ kind, id, points: rows });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch real estate price history");
+    res.status(500).json({ error: "Failed to fetch real estate price history" });
   }
 });
 

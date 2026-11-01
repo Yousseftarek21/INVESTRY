@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { router } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
@@ -9,7 +10,8 @@ import { getRECurrentValue } from '@/utils/rePrice';
 import { AssetIcon } from '@/components/AssetIcon';
 import { ConceptIcon } from '@/components/ConceptIcon';
 import { ICON_LOANS, ICON_RENTAL_INCOME } from '@/constants/conceptIcons';
-import { useRentalRecords } from '@/context/RentalContext';
+import { useRentalProperties } from '@/context/RentalPropertiesContext';
+import { isLeaseActive, todayIso as cairoToday } from '@/utils/rentalMath';
 
 type HoldingLabels = {
   gold: string; silver: string; realEstate: string; personalAsset: string;
@@ -189,15 +191,17 @@ export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle,
   const currentMonth = new Date().toISOString().slice(0, 7);
   const loanPaidThisMonth = !!linkedLoan && linkedLoan.payments.some(p => p.month === currentMonth);
 
-  // Informational only, same as linkedLoan above — rental data lives in its
-  // own independent table (RentalContext), never on the holding itself, so
-  // this never touches currentValue/cost/gain either. See rental-tracking.tsx.
-  const { rentals } = useRentalRecords();
-  const propertyRentals = holding.type === 'real_estate'
-    ? rentals.filter(r => r.holdingId === holding.id)
+  // Informational only, same as linkedLoan above — rental units live in
+  // their own tables (RentalPropertiesContext) and only point at a holding
+  // via holdingId, so this never touches currentValue/cost/gain either.
+  const { units: rentalUnits, bookings: rentalBookings, leases: rentalLeases } = useRentalProperties();
+  const linkedUnits = holding.type === 'real_estate'
+    ? rentalUnits.filter(u => u.holdingId === holding.id && !u.archived)
     : [];
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const hasActiveRental = propertyRentals.some(r => !r.endDate || r.endDate >= todayIso);
+  const today = cairoToday();
+  const hasActiveRental = linkedUnits.some(u =>
+    rentalLeases.some(l => l.unitId === u.id && isLeaseActive(l, today)) ||
+    rentalBookings.some(b => b.unitId === u.id && b.status !== 'cancelled' && b.checkIn <= today && b.checkOut > today));
 
   // Icon + title/subtitle only — same trade-off already made and documented
   // in recurring-income.tsx/dividends.tsx: shrinking the tap target away
@@ -309,15 +313,17 @@ export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle,
         </View>
       )}
 
-      {propertyRentals.length > 0 && (
-        <View style={[styles.loanRow, { borderTopColor: colors.border }]}>
-          <ConceptIcon icon={ICON_RENTAL_INCOME} size={12} color={colors.mutedForeground} />
+      {linkedUnits.length > 0 && (
+        <TouchableOpacity
+          style={[styles.loanRow, { borderTopColor: colors.border }]}
+          onPress={() => router.push({ pathname: '/rental-unit', params: { unitId: linkedUnits[0].id } } as any)}
+          activeOpacity={0.7}
+        >
+          <ConceptIcon icon={ICON_RENTAL_INCOME} size={12} color={hasActiveRental ? colors.green : colors.mutedForeground} />
           <Text style={[styles.loanText, { color: colors.mutedForeground }]} numberOfLines={1}>
-            {hasActiveRental
-              ? t.holdingCardRented
-              : `${t.holdingCardRentalHistory} · ${propertyRentals.length}`}
+            {hasActiveRental ? t.holdingCardRented : t.holdingCardRentalHistory}
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
     </View>
   );

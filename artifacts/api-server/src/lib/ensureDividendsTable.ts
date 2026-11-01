@@ -217,3 +217,73 @@ export async function ensureRentalRecordsTable(): Promise<void> {
     logger.error({ err }, "ensureRentalRecordsTable: failed to create table — rental tracking will be inert until this is resolved");
   }
 }
+
+// Real estate price data: the per-row unit type, and the daily history
+// behind the single current row (see realEstatePriceCron.ts).
+export async function ensureRealEstatePriceTables(): Promise<void> {
+  try {
+    await db.execute(sql`ALTER TABLE "real_estate_prices" ADD COLUMN IF NOT EXISTS "price_basis" text`);
+    await db.execute(sql`ALTER TABLE "real_estate_compound_prices" ADD COLUMN IF NOT EXISTS "price_basis" text`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "real_estate_price_history" (
+        "id" text PRIMARY KEY,
+        "kind" text NOT NULL,
+        "ref_id" text NOT NULL,
+        "day" text NOT NULL,
+        "avg_price_per_m2" integer NOT NULL,
+        "min_price_per_m2" integer NOT NULL,
+        "max_price_per_m2" integer NOT NULL,
+        "sample_size" integer NOT NULL,
+        "source" text NOT NULL,
+        "price_basis" text,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS "real_estate_price_history_ref_idx"
+      ON "real_estate_price_history" ("kind", "ref_id", "day")
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureRealEstatePriceTables: failed — real estate price writes may fail until resolved");
+  }
+}
+
+// Rental Properties — units plus their bookings, leases and expenses (see
+// lib/db/src/schema/rentalProperties.ts and routes/rentalProperties.ts).
+export async function ensureRentalPropertyTables(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "rental_units" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "data" jsonb NOT NULL,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "rental_units_user_idx" ON "rental_units" ("user_id")`);
+    for (const table of ["rental_bookings", "rental_leases", "rental_expenses"]) {
+      await db.execute(sql.raw(`
+        CREATE TABLE IF NOT EXISTS "${table}" (
+          "id" text PRIMARY KEY,
+          "user_id" text NOT NULL,
+          "unit_id" text NOT NULL,
+          "data" jsonb NOT NULL,
+          "created_at" timestamptz NOT NULL DEFAULT now(),
+          "updated_at" timestamptz NOT NULL DEFAULT now()
+        )
+      `));
+      await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS "${table}_user_idx" ON "${table}" ("user_id")`));
+    }
+    // One row per reminder push already sent — see rentalReminderCron.ts.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "rental_reminders_sent" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "sent_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureRentalPropertyTables: failed — Rental Properties will be inert until this is resolved");
+  }
+}

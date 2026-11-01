@@ -26,6 +26,7 @@ const DESTINATION: Record<string, string> = {
   activity_log: '/notifications',
   feedback_message: '/feedback',
   pending_income_reminder: '/recurring-income',
+  rental_reminder: '/rentals',
   pro_gate_notice: '/(tabs)/settings',
 };
 

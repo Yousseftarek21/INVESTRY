@@ -23,7 +23,8 @@ export const realEstateCompoundPricesTable = pgTable("real_estate_compound_price
   changePercent: real("change_percent"),
   sampleSize:    integer("sample_size").notNull(),
   type:          text("type").notNull(),
-  source:        text("source").notNull(), // 'property_finder'
+  source:        text("source").notNull(), // 'aqarmap' | 'property_finder'
+  priceBasis:    text("price_basis"), // 'apartment' | 'chalet' | 'villa'
   updatedAt:     timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   compoundUnique: unique().on(t.id),

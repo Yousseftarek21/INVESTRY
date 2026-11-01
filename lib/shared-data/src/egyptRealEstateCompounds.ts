@@ -39,7 +39,7 @@ export const RE_COMPOUNDS: RECompound[] = [
   { id: 'palm-hills-palm-valley', name: 'Palm Valley', developer: 'Palm Hills Developments', governorate: 'Giza', areaId: 'giza-sheikh-zayed', type: 'residential' },
 
   // ── Hassan Allam Developments ────────────────────────────────────────────
-  { id: 'hassan-allam-swan-lake', name: 'Swan Lake Residence', developer: 'Hassan Allam Developments', governorate: 'Giza', areaId: 'giza-sheikh-zayed', type: 'residential', aliases: ['Swan Lake'] },
+  { id: 'hassan-allam-swan-lake', name: 'Swan Lake Residence', developer: 'Hassan Allam Developments', governorate: 'Cairo', areaId: 'cairo-new-cairo', type: 'residential', aliases: ['Swan Lake'] },
   { id: 'hassan-allam-swan-lake-north-coast', name: 'Swan Lake North Coast', developer: 'Hassan Allam Developments', governorate: 'North Coast', areaId: 'nc-el-alamein', type: 'coastal', aliases: ['Swan Lake North Coast', 'Swan Lake Northcoast'] },
   { id: 'hassan-allam-haptown', name: 'Haptown', developer: 'Hassan Allam Developments', governorate: 'Cairo', areaId: 'cairo-mostakbal-city', type: 'residential' },
 
@@ -60,7 +60,7 @@ export const RE_COMPOUNDS: RECompound[] = [
   // ── Talaat Moustafa Group ────────────────────────────────────────────────
   { id: 'tmg-madinaty', name: 'Madinaty', developer: 'Talaat Moustafa Group', governorate: 'Cairo', areaId: 'cairo-madinaty', type: 'residential' },
   { id: 'tmg-al-rehab', name: 'Al Rehab City', developer: 'Talaat Moustafa Group', governorate: 'Cairo', areaId: 'cairo-rehab', type: 'residential' },
-  { id: 'tmg-celia', name: 'Celia', developer: 'Talaat Moustafa Group', governorate: 'Cairo', areaId: 'cairo-new-cairo', type: 'residential' },
+  { id: 'tmg-celia', name: 'Celia', developer: 'Talaat Moustafa Group', governorate: 'Cairo', areaId: 'cairo-new-capital', type: 'residential' },
 
   // ── Emaar Misr ───────────────────────────────────────────────────────────
   { id: 'emaar-uptown-cairo', name: 'Uptown Cairo', developer: 'Emaar Misr', governorate: 'Cairo', areaId: 'cairo-mokattam', type: 'residential' },
@@ -73,7 +73,7 @@ export const RE_COMPOUNDS: RECompound[] = [
 
   // ── Tatweer Misr ─────────────────────────────────────────────────────────
   { id: 'tatweer-misr-fouka-bay', name: 'Fouka Bay', developer: 'Tatweer Misr', governorate: 'North Coast', areaId: 'nc-el-alamein', type: 'coastal' },
-  { id: 'tatweer-misr-il-bosco', name: 'IL Bosco', developer: 'Tatweer Misr', governorate: 'Cairo', areaId: 'cairo-new-capital', type: 'residential' },
+  { id: 'tatweer-misr-il-bosco', name: 'IL Bosco', developer: 'Misr Italia Properties', governorate: 'Cairo', areaId: 'cairo-new-capital', type: 'residential' },
   { id: 'tatweer-misr-bloomfields', name: 'Bloomfields', developer: 'Tatweer Misr', governorate: 'Cairo', areaId: 'cairo-mostakbal-city', type: 'residential' },
 
   // ── Marakez ──────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ export const RE_COMPOUNDS: RECompound[] = [
   { id: 'orascom-makadi-heights', name: 'Makadi Heights', developer: 'Orascom Development Egypt', governorate: 'Red Sea', areaId: 'rs-makadi', type: 'coastal' },
 
   // ── Misr Italia Properties ───────────────────────────────────────────────
-  { id: 'misr-italia-il-monte-galala', name: 'IL Monte Galala', developer: 'Misr Italia Properties', governorate: 'Red Sea', areaId: 'rs-ain-sokhna', type: 'coastal' },
+  { id: 'misr-italia-il-monte-galala', name: 'IL Monte Galala', developer: 'Tatweer Misr', governorate: 'Red Sea', areaId: 'rs-ain-sokhna', type: 'coastal' },
   { id: 'misr-italia-la-vista-sokhna', name: 'La Vista Ain Sokhna', developer: 'Misr Italia Properties', governorate: 'Red Sea', areaId: 'rs-ain-sokhna', type: 'coastal', aliases: ['La Vista'] },
 
   // ── Madinet Masr ─────────────────────────────────────────────────────────

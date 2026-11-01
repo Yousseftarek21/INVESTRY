@@ -29,8 +29,8 @@ const EVENT_DESTINATION: Record<string, string> = {
   income_added: '/recurring-income',
   income_edited: '/recurring-income',
   income_collected: '/recurring-income',
-  rental_added: '/rental-tracking',
-  rental_edited: '/rental-tracking',
+  rental_added: '/rentals',
+  rental_edited: '/rentals',
   // Settings, not straight to the paywall — the paywall itself is a modal
   // opened via a context call (showPaywall/showPaywallFromModal), not a
   // routable screen, and Settings already has a one-tap "Free Plan" card

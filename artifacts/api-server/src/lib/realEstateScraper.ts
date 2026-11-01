@@ -1,4 +1,4 @@
-import { RE_PRICES, REAreaPrice, RE_COMPOUNDS, RECompound } from "@workspace/shared-data";
+import { RE_PRICES, REAreaPrice, RE_COMPOUNDS, RECompound, priceBasisForArea, priceBasisForCompound, type PriceBasis } from "@workspace/shared-data";
 import { logger } from "./logger";
 
 // Requests with no User-Agent from a cloud datacenter IP are exactly what a
@@ -33,7 +33,9 @@ const PAGE_DELAY_MS = 1800;
 export const MIN_SAMPLE_SIZE = 8;
 
 interface ScrapedListing {
+  id: string;
   pricePerM2: number;
+  propertyType?: string; // e.g. "Apartment", "Chalet", "Villa", "Townhouse"
   pathName: string; // e.g. "Cairo, New Cairo City, The 5th Settlement, 5th Settlement Compounds"
   locationType?: string; // e.g. "COMPOUND" — siblings of pathName on the same property.location object, no extra request needed
   locationName?: string; // e.g. "Piacera", "Swan Lake"
@@ -74,7 +76,9 @@ async function fetchListingsPage(page: number): Promise<ScrapedListing[]> {
       const pathName = p?.location?.path_name;
       if (typeof pricePerM2 === "number" && pricePerM2 > 0 && typeof pathName === "string") {
         out.push({
+          id: String(p?.id ?? l?.id ?? `${pathName}|${pricePerM2}`),
           pricePerM2,
+          propertyType: typeof p?.property_type === "string" ? p.property_type : undefined,
           pathName,
           locationType: typeof p?.location?.type === "string" ? p.location.type : undefined,
           locationName: typeof p?.location?.name === "string" ? p.location.name : undefined,
@@ -94,6 +98,30 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/[—-]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// Looser form for area names only: listing sites and our list spell the
+// same place differently ("Al Rehab City" vs "Rehab", "El Shorouk" vs
+// "Shorouk City", "The 5th Settlement" vs "5th Settlement").
+function normalizeName(s: string): string {
+  return ` ${s.toLowerCase().replace(/[—,\-()]/g, " ")} `
+    .replace(/ (el|al|the|city) /g, " ")
+    .replace(/ (el|al|the|city) /g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Which Property Finder property types count toward each price basis — an
+// apartment area's price must not be pulled up by villas or down by land.
+const PF_TYPES: Record<PriceBasis, string[]> = {
+  apartment: ["apartment", "duplex", "penthouse", "studio", "hotel apartment", "roof"],
+  chalet: ["chalet", "apartment", "duplex", "penthouse"],
+  villa: ["villa", "townhouse", "twin house", "ivilla"],
+};
+
+function typeMatches(listing: ScrapedListing, basis: PriceBasis): boolean {
+  if (!listing.propertyType) return false;
+  return PF_TYPES[basis].includes(listing.propertyType.toLowerCase());
+}
+
 // Buckets a scraped listing into one of the 65 static areas by checking
 // whether the area's name (and, for areas with a qualifier after an
 // em-dash like "New Cairo — 5th Settlement", that qualifier too) appears in
@@ -101,12 +129,20 @@ function normalize(s: string): string {
 // matching — good enough to bucket real listings per area without needing
 // to reverse-engineer Property Finder's internal location-ID scheme for
 // all 65 areas individually.
-function matchesArea(pathName: string, area: REAreaPrice): boolean {
-  const p = normalize(pathName);
-  const [base, qualifier] = area.area.split("—").map((s) => (s ? normalize(s) : undefined));
-  if (!base || !p.includes(base)) return false;
-  if (qualifier && !p.includes(qualifier)) return false;
-  return true;
+// Returns the length of the matched name (0 = no match) so a listing that
+// matches several areas goes to the most specific one — "New Mansoura"
+// listings also contain "Mansoura", and must not count toward Mansoura.
+function areaMatchScore(pathName: string, area: REAreaPrice): number {
+  const p = ` ${normalizeName(pathName)} `;
+  let best = 0;
+  // "Zayed 2 / Beverly Hills" — either spelling identifies the area.
+  for (const alt of area.area.split("/")) {
+    const [base = "", qualifier = ""] = alt.split("—").map((s) => normalizeName(s));
+    if (!base || !p.includes(` ${base} `)) continue;
+    if (qualifier && !p.includes(` ${qualifier} `)) continue;
+    best = Math.max(best, base.length + qualifier.length);
+  }
+  return best;
 }
 
 // Matches on Property Finder's own structured location.type/location.name
@@ -160,25 +196,41 @@ export interface ScrapeResults {
   compounds: Map<string, ScrapedAreaResult>;
 }
 
-export async function scrapeRealEstatePrices(): Promise<ScrapeResults> {
+export async function scrapeRealEstatePrices(maxPages: number = MAX_PAGES): Promise<ScrapeResults> {
   const allListings: ScrapedListing[] = [];
-  for (let page = 1; page <= MAX_PAGES; page++) {
+  for (let page = 1; page <= maxPages; page++) {
     const listings = await fetchListingsPage(page);
     allListings.push(...listings);
     await sleep(PAGE_DELAY_MS);
   }
-  logger.info({ totalListings: allListings.length, pages: MAX_PAGES }, "Real estate scrape: fetched listings");
+  logger.info({ totalListings: allListings.length, pages: maxPages }, "Property Finder scrape: fetched listings");
+
+  // Featured listings repeat across pages — count each listing once.
+  const unique = [...new Map(allListings.map((l) => [l.id, l])).values()];
+
+  const byArea = new Map<string, ScrapedListing[]>();
+  for (const listing of unique) {
+    let bestArea: REAreaPrice | null = null;
+    let bestScore = 0;
+    for (const area of RE_PRICES) {
+      const score = areaMatchScore(listing.pathName, area);
+      if (score > bestScore) { bestScore = score; bestArea = area; }
+    }
+    if (!bestArea || !typeMatches(listing, priceBasisForArea(bestArea))) continue;
+    const list = byArea.get(bestArea.id) ?? [];
+    list.push(listing);
+    byArea.set(bestArea.id, list);
+  }
 
   const areas = new Map<string, ScrapedAreaResult>();
-  for (const area of RE_PRICES) {
-    const matched = allListings.filter((l) => matchesArea(l.pathName, area));
-    if (matched.length < MIN_SAMPLE_SIZE) continue;
-    areas.set(area.id, aggregate(matched));
+  for (const [id, matched] of byArea) {
+    if (matched.length >= MIN_SAMPLE_SIZE) areas.set(id, aggregate(matched));
   }
 
   const compounds = new Map<string, ScrapedAreaResult>();
   for (const compound of RE_COMPOUNDS) {
-    const matched = allListings.filter((l) => matchesCompound(l, compound));
+    const basis = priceBasisForCompound(compound);
+    const matched = unique.filter((l) => matchesCompound(l, compound) && typeMatches(l, basis));
     if (matched.length < MIN_SAMPLE_SIZE) continue;
     compounds.set(compound.id, aggregate(matched));
   }

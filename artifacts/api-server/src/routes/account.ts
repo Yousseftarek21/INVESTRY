@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
-import { db, usersTable, holdingsTable, cashAccountsTable, rentalRecordsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, holdingsTable, cashAccountsTable, rentalRecordsTable, rentalUnitsTable, rentalBookingsTable, rentalLeasesTable, rentalExpensesTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -28,6 +28,10 @@ router.delete("/account", async (req, res) => {
     // out of scope to fix generally, but no reason to launch this table
     // with the same gap on day one).
     await db.delete(rentalRecordsTable).where(eq(rentalRecordsTable.userId, userId));
+    for (const table of [rentalBookingsTable, rentalLeasesTable, rentalExpensesTable, rentalUnitsTable]) {
+      await db.delete(table).where(eq(table.userId, userId));
+    }
+    await db.execute(sql`DELETE FROM "rental_reminders_sent" WHERE "user_id" = ${userId}`);
     await db.delete(usersTable).where(eq(usersTable.id, userId));
     await clerkClient.users.deleteUser(userId);
 

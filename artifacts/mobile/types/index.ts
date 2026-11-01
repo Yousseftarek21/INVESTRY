@@ -267,56 +267,129 @@ export interface RecurringIncome {
   reminderSentAt?: string;
 }
 
-export type RentalChannel = 'direct_lease' | 'airbnb' | 'booking_com' | 'other';
 // Egypt-relevant payment rails specifically — not a generic/US-centric
 // list (ACH, Venmo, ...), since every other amount/method choice in this
 // app is already scoped to how money actually moves in Egypt.
 export type RentalPaymentMethod = 'cash' | 'bank_transfer' | 'instapay' | 'vodafone_cash' | 'other';
 
-// A logged rental payment — same independent-top-level-record pattern as
-// Dividend/RecurringIncome above (its own table, not embedded on the
-// holding). It has no value/cost of its own: it is never a Holding, never
-// participates in computeCurrentValue/computeCost, and (like real_estate
-// itself) never touches the Leaderboard's ranked-return math.
-//
-// Deliberately NOT tied to real estate in any way: propertyName is always
-// free text the owner types themselves, and holdingId is only ever set as
-// an optional convenience when they pick one of their existing real_estate
-// holdings to auto-fill the name/area. A rental can be logged with zero
-// real_estate holdings on the account, or against a property never
-// tracked as an investment at all (a rented desk, someone's own Airbnb
-// unit that isn't "owned" in this app, etc.) — the real_estate tab is
-// never a precondition for this feature.
-export interface RentalRecord {
+// ─── Rental Properties ────────────────────────────────────────────────────────
+// Units the owner rents out, with what happens in them: short stays
+// (bookings), long-term tenants (leases) and running costs (expenses).
+// Separate from real estate investments — a unit may link to one via
+// holdingId, but neither requires the other. Money here never enters net
+// worth on its own; it only does when the owner deposits received money
+// into a cash account.
+
+export type RentalMode = 'short_stay' | 'long_term' | 'both';
+export type BookingPlatform = 'airbnb' | 'booking_com' | 'direct' | 'other';
+export type RentalExpenseCategory =
+  | 'cleaning' | 'maintenance' | 'utilities' | 'internet' | 'building_fees'
+  | 'furnishing' | 'management' | 'taxes' | 'supplies' | 'other';
+
+export interface RentalUnit {
   id: string;
-  /** Set only when the owner picked one of their real_estate holdings as
-      a quick-fill convenience — omitted for a freely-typed property name
-      that doesn't correspond to any holding. Never required. */
+  name: string;
+  mode: RentalMode;
+  propertyType?: PropertyType;
+  /** Free-text location, e.g. "Sheikh Zayed, Beverly Hills". */
+  location?: string;
+  bedrooms?: number;
+  maxGuests?: number;
+  /** Optional link to the same property tracked as an investment. */
   holdingId?: string;
-  /** Snapshotted at creation/pick time — same reasoning Dividend copies a
-      stock's symbol/companyName rather than joining live. Keeps this
-      record meaningful even if the property is later sold/removed. */
-  propertyName: string;
-  propertyArea?: number;
-  tenantName?: string;
-  /** Any other identifying info about the tenant — phone number, national
-      ID, a note, whatever the owner wants to record. Free text, not
-      validated, not a link to any contacts/tenant entity (this app has
-      none, and building one is out of scope for rental income logging). */
+  /** Currency the unit's totals are shown in; entries may differ. */
+  currency: string;
+  defaultNightlyRate?: number;
+  defaultCleaningFee?: number;
+  defaultMonthlyRent?: number;
+  notes?: string;
+  archived?: boolean;
+  /** Created from the old flat rental-payment list. */
+  migratedFromLegacy?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface RentalBooking {
+  id: string;
+  unitId: string;
+  guestName?: string;
+  guestPhone?: string;
+  /** Free text — ID number, nationality, a note. */
+  guestInfo?: string;
+  guests?: number;
+  /** YYYY-MM-DD. Nights = checkOut − checkIn (checkout day isn't a night). */
+  checkIn: string;
+  checkOut: string;
+  platform: BookingPlatform;
+  platformOther?: string;
+  /** Everything the guest paid, cleaning fee included. */
+  totalAmount: number;
+  /** Platform commission/service fee deducted from the payout. */
+  platformFee?: number;
+  /** The part of totalAmount charged as a cleaning fee (informational). */
+  cleaningFee?: number;
+  currency: string;
+  status: 'confirmed' | 'cancelled';
+  received: boolean;
+  receivedDate?: string;
+  paymentMethod?: RentalPaymentMethod;
+  /** Account the payout was deposited into, once, when marked received. */
+  cashAccountId?: string;
+  notes?: string;
+  legacyRecordId?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface RentalLeasePayment {
+  /** The rent month this pays, YYYY-MM. */
+  month: string;
+  amount: number;
+  paidDate: string;
+  method?: RentalPaymentMethod;
+  cashAccountId?: string;
+  /** A month deliberately not charged (free month, vacancy credit). */
+  waived?: boolean;
+  note?: string;
+}
+
+export interface RentalLease {
+  id: string;
+  unitId: string;
+  tenantName: string;
+  tenantPhone?: string;
   tenantInfo?: string;
-  channel: RentalChannel;
-  /** Free text, used only when channel === 'other'. */
-  channelOther?: string;
+  /** YYYY-MM-DD. */
   startDate: string;
-  /** Omitted for an open-ended / still-running tenancy. */
+  /** YYYY-MM-DD; omitted for an open-ended tenancy. */
   endDate?: string;
+  monthlyRent: number;
+  currency: string;
+  /** Day of the month rent is due, 1–28. */
+  dueDay: number;
+  securityDeposit?: number;
+  /** Rent rises by this % on each contract anniversary. */
+  annualIncreasePct?: number;
+  payments: RentalLeasePayment[];
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface RentalExpense {
+  id: string;
+  unitId: string;
+  category: RentalExpenseCategory;
   amount: number;
   currency: string;
-  paymentMethod?: RentalPaymentMethod;
+  /** YYYY-MM-DD; for a monthly expense, the first occurrence. */
+  date: string;
+  /** Repeats on the same day every month. */
+  monthly?: boolean;
+  /** Last month a monthly expense applies to, YYYY-MM-DD. */
+  monthlyUntil?: string;
   note?: string;
-  /** Cash account the amount was added to, if the user chose to (one-time
-      bump, not tracked ongoing) — same semantics as Dividend.cashAccountId. */
-  cashAccountId?: string;
   createdAt: string;
   updatedAt?: string;
 }

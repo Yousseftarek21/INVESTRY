@@ -1,4 +1,4 @@
-import { RE_PRICES } from "@workspace/shared-data";
+import type { AqarmapSource } from "@workspace/shared-data";
 import { aggregatePrices, MIN_SAMPLE_SIZE, ScrapedAreaResult } from "./realEstateScraper";
 import { logger } from "./logger";
 
@@ -6,87 +6,134 @@ import { logger } from "./logger";
 // ordinary browser, not a bare server request.
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-// Aqarmap gives each curated area its own dedicated listing page (see
-// RE_PRICES's aqarmapPath field — hand-verified, not guessed; read that
-// field's doc comment for what "verified" means here). That's a real
-// advantage over Property Finder, which has no per-area page and had to be
-// crawled as one big paginated pool with fuzzy text matching — the fuzzy
-// matching left 57 of 65 areas empty most runs. A direct per-area page
-// needs far fewer requests for far better coverage: 2 pages per area, only
-// for areas with a verified path, not hundreds of pages hoping enough
-// listings for a given area happen to show up in the sample.
-const PAGES_PER_AREA = 2;
+// ~22 listings per page. A single-path target reads up to 3 pages (~66
+// listings); a multi-path target (e.g. 5th Settlement, built from its core
+// districts) reads 1 page per path, since the paths already add breadth.
+const MAX_PAGES_SINGLE_PATH = 3;
+const MAX_PAGES_MULTI_PATH = 1;
 const PAGE_DELAY_MS = 1200;
+const RETRY_DELAY_MS = 6000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Aqarmap is plain server-rendered HTML (no embedded JSON blob to parse,
-// unlike Property Finder's __NEXT_DATA__), so prices are pulled from the
-// rendered text directly: every price-per-m² figure on a listing card is
-// immediately followed by the literal "EGP/m²" label, with nothing else in
-// between once tags are stripped — confirmed by hand against real fetched
-// pages before relying on it. Range-clamped so an unrelated "0 EGP/m²"
-// placeholder or a wildly-off outlier can't corrupt the sample.
-function extractPricesPerM2(html: string): number[] {
-  const noScripts = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "");
-  const textWithMarkers = noScripts.replace(/<[^>]+>/g, "|");
-  const parts = textWithMarkers.split("|").map((p) => p.trim()).filter(Boolean);
-
-  const prices: number[] = [];
-  for (let i = 1; i < parts.length; i++) {
-    if (parts[i] !== "EGP/m²") continue;
-    const raw = parts[i - 1].replace(/,/g, "");
-    const n = Number(raw);
-    if (Number.isFinite(n) && n >= 3_000 && n <= 1_000_000) prices.push(n);
-  }
-  return prices;
+interface PageResult {
+  /** False when the page couldn't be used. */
+  ok: boolean;
+  /** "missing": Aqarmap redirected away from the requested location — it
+   *  silently serves the parent area for an unknown slug, which would
+   *  attribute the parent's prices to this location. "error": a timeout or
+   *  network failure, worth one retry. */
+  failure?: "missing" | "error";
+  /** Listing cards as [dedupe key, price per m²]. */
+  listings: Array<[string, number]>;
+  /** The page's own "N Apartments For sale" total, when present. */
+  total: number | null;
 }
 
-async function fetchAreaPage(path: string, page: number): Promise<string | null> {
-  const url = `https://aqarmap.com.eg${path}${page > 1 ? `?page=${page}` : ""}`;
+// Aqarmap is server-rendered HTML. On each listing card the total price
+// and the price per m² sit next to each other once tags are stripped:
+// "5,525,000 EGP" "–" "25,938" "EGP/m²". The per-m² figure is Aqarmap's own
+// (price ÷ the card's area), so it's taken as-is. The total price is kept
+// only to de-duplicate cards repeated across pages (promoted listings).
+function extractListings(html: string): Array<[string, number]> {
+  const noScripts = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "");
+  const parts = noScripts.replace(/<[^>]+>/g, "|").split("|").map((p) => p.trim()).filter(Boolean);
+  const out: Array<[string, number]> = [];
+  for (let i = 1; i < parts.length; i++) {
+    if (parts[i] !== "EGP/m²") continue;
+    const perM2 = Number(parts[i - 1].replace(/,/g, ""));
+    if (!Number.isFinite(perM2) || perM2 < 3_000 || perM2 > 1_000_000) continue;
+    const totalLabel = i >= 3 ? parts[i - 3] : "";
+    out.push([`${totalLabel}|${perM2}`, perM2]);
+  }
+  return out;
+}
+
+async function fetchPage(unit: string, path: string, page: number): Promise<PageResult> {
+  const requested = `/en/for-sale/${unit}${path}`;
+  const url = `https://aqarmap.com.eg${requested}${page > 1 ? `?page=${page}` : ""}`;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
     const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: controller.signal });
-    if (!res.ok) return null;
-    return await res.text();
+    if (!res.ok) return { ok: false, failure: res.status === 404 ? "missing" : "error", listings: [], total: null };
+    const finalPath = new URL(res.url).pathname;
+    if (finalPath !== requested) return { ok: false, failure: "missing", listings: [], total: null };
+    const html = await res.text();
+    const totalMatch = html.match(/<title>[^<]*?- ([\d,]+) [A-Z]/);
+    return {
+      ok: true,
+      listings: extractListings(html),
+      total: totalMatch ? Number(totalMatch[1].replace(/,/g, "")) : null,
+    };
   } catch (err) {
-    logger.warn({ err, url }, "Aqarmap area fetch failed");
-    return null;
+    logger.warn({ err: err instanceof Error ? err.message : err, url }, "Aqarmap page fetch failed");
+    return { ok: false, failure: "error", listings: [], total: null };
   } finally {
     clearTimeout(timeout);
   }
 }
 
 /**
- * Scrapes real per-area prices from Aqarmap for every RE_PRICES entry that
- * has a hand-verified aqarmapPath. Returns a Map the same shape as
- * realEstateScraper.ts's area map, meant to be merged over (takes priority
- * over) the Property Finder result for any area both cover — a direct,
- * verified per-area page is a stronger source than fuzzy breadcrumb
- * matching against a general listings pool.
+ * Scrapes a price per m² for each source (an area or a compound): every
+ * path's first pages, de-duplicated, then the shared trim + median. Entries
+ * under MIN_SAMPLE_SIZE are left out — the caller keeps their last good
+ * value rather than publishing a number built on a handful of listings.
  */
-export async function scrapeAqarmapAreaPrices(): Promise<Map<string, ScrapedAreaResult>> {
+export async function scrapeAqarmapSources(
+  sources: Record<string, AqarmapSource>,
+  label: string,
+): Promise<Map<string, ScrapedAreaResult>> {
   const results = new Map<string, ScrapedAreaResult>();
-  const targets = RE_PRICES.filter((a) => a.aqarmapPath);
+  let brokenPaths = 0;
 
-  for (const area of targets) {
-    const prices: number[] = [];
-    for (let page = 1; page <= PAGES_PER_AREA; page++) {
-      const html = await fetchAreaPage(area.aqarmapPath!, page);
-      if (html) prices.push(...extractPricesPerM2(html));
-      await sleep(PAGE_DELAY_MS);
+  for (const [id, source] of Object.entries(sources)) {
+    const seen = new Map<string, number>();
+    const maxPages = source.paths.length > 1 ? MAX_PAGES_MULTI_PATH : MAX_PAGES_SINGLE_PATH;
+
+    for (const path of source.paths) {
+      // A location with few (or zero) matching listings pads its page with
+      // "similar" listings from other places — confirmed live: a compound
+      // with 0 apartments still rendered 50 prices. Only the first `total`
+      // cards belong to this location, so never take more than that.
+      let remaining = Infinity;
+      for (let page = 1; page <= maxPages && remaining > 0; page++) {
+        let result = await fetchPage(source.unit, path, page);
+        await sleep(PAGE_DELAY_MS);
+        if (!result.ok && result.failure === "error") {
+          await sleep(RETRY_DELAY_MS);
+          result = await fetchPage(source.unit, path, page);
+          await sleep(PAGE_DELAY_MS);
+        }
+        if (!result.ok) {
+          if (page === 1) {
+            brokenPaths++;
+            logger.warn({ id, path, unit: source.unit, failure: result.failure }, "Aqarmap: location page unusable this run — skipping path");
+          }
+          break;
+        }
+        if (page === 1) {
+          // No readable total means the page can't be trusted to be only this location.
+          if (result.total == null) break;
+          remaining = result.total;
+        }
+        const own = result.listings.slice(0, remaining);
+        remaining -= own.length;
+        const before = seen.size;
+        for (const [key, price] of own) seen.set(key, price);
+        if (seen.size === before) break;
+      }
     }
 
-    if (prices.length < MIN_SAMPLE_SIZE) {
-      logger.warn({ areaId: area.id, n: prices.length }, "Aqarmap area: below minimum sample size, skipping");
-      continue;
-    }
-    results.set(area.id, aggregatePrices(prices));
+    if (seen.size < MIN_SAMPLE_SIZE) continue;
+    results.set(id, aggregatePrices([...seen.values()]));
   }
 
-  logger.info({ areasMatched: results.size, areasTargeted: targets.length }, "Aqarmap area scrape: run complete");
+  logger.info(
+    { label, matched: results.size, targeted: Object.keys(sources).length, brokenPaths },
+    "Aqarmap scrape: run complete",
+  );
   return results;
 }

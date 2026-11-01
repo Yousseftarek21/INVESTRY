@@ -9,16 +9,8 @@
 // because removing the fields is a larger, separate cleanup; do not read
 // them for anything user-facing.
 //
-// aqarmapPath is the real, hand-verified source now: each one was checked
-// two ways before being added — structurally (the page's own <link
-// rel="canonical"> must point back to that exact path, not silently
-// redirect up to the governorate page, which is what an invented/guessed
-// slug does) and semantically (confirmed by hand that Aqarmap's page is
-// actually describing the same real place, not just a similar-sounding
-// name — a same-word fuzzy match had wrongly paired "Sidi Heneish" with
-// "Sidi Bishr" and "Mostakbal City" (New Cairo) with an unrelated small
-// town of the same name in Ismailia governorate before this was caught).
-// Left unset for areas with no verified match — an honest gap, not a guess.
+// Live prices come from the verified listing-site paths in
+// realEstateSources.ts, not from this file.
 //
 // Single source of truth for both the mobile app (data/egypt-real-estate-prices.ts
 // re-exports this) and the API server's AI Assistant context (lib/egyptRealEstatePrices.ts
@@ -39,7 +31,6 @@ export interface REAreaPrice {
   changePercent: number;   // legacy, unused — see file header
   type: REPropertyType;
   note?: string;           // optional context (e.g. "Seasonal / chalet")
-  aqarmapPath?: string;    // hand-verified path on aqarmap.com.eg, e.g. '/en/for-sale/property-type/cairo/el-maadi/' — the real scraper's actual source
 }
 
 export const LAST_UPDATED = '2026-06-01';
@@ -62,7 +53,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'cairo-new-cairo',
-    aqarmapPath: '/en/for-sale/property-type/cairo/new-cairo/',
     governorate: 'Cairo',
     area: 'New Cairo — 5th Settlement',
     minPricePerM2: 28_000, maxPricePerM2: 65_000, avgPricePerM2: 42_000,
@@ -113,7 +103,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'cairo-maadi',
-    aqarmapPath: '/en/for-sale/property-type/cairo/el-maadi/',
     governorate: 'Cairo',
     area: 'Maadi',
     minPricePerM2: 20_000, maxPricePerM2: 45_000, avgPricePerM2: 32_000,
@@ -121,7 +110,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'cairo-nasr-city',
-    aqarmapPath: '/en/for-sale/property-type/cairo/nasr-city/',
     governorate: 'Cairo',
     area: 'Nasr City',
     minPricePerM2: 14_000, maxPricePerM2: 28_000, avgPricePerM2: 20_000,
@@ -129,7 +117,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'cairo-new-capital',
-    aqarmapPath: '/en/for-sale/property-type/cairo/new-administrative-capital/',
     governorate: 'Cairo',
     area: 'New Administrative Capital',
     minPricePerM2: 18_000, maxPricePerM2: 45_000, avgPricePerM2: 28_000,
@@ -152,7 +139,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'cairo-mokattam',
-    aqarmapPath: '/en/for-sale/property-type/cairo/mokattam/',
     governorate: 'Cairo',
     area: 'Mokattam',
     minPricePerM2: 12_000, maxPricePerM2: 22_000, avgPricePerM2: 16_000,
@@ -162,7 +148,6 @@ export const RE_PRICES: REAreaPrice[] = [
   // ── Giza ────────────────────────────────────────────────────────────────────
   {
     id: 'giza-sheikh-zayed',
-    aqarmapPath: '/en/for-sale/property-type/cairo/el-sheikh-zayed-city/',
     governorate: 'Giza',
     area: 'Sheikh Zayed',
     minPricePerM2: 18_000, maxPricePerM2: 45_000, avgPricePerM2: 30_000,
@@ -170,7 +155,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'giza-6-october',
-    aqarmapPath: '/en/for-sale/property-type/cairo/6th-of-october/',
     governorate: 'Giza',
     area: '6th of October',
     minPricePerM2: 10_000, maxPricePerM2: 24_000, avgPricePerM2: 16_000,
@@ -185,7 +169,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'giza-dokki',
-    aqarmapPath: '/en/for-sale/property-type/cairo/dokki/',
     governorate: 'Giza',
     area: 'Dokki',
     minPricePerM2: 18_000, maxPricePerM2: 38_000, avgPricePerM2: 27_000,
@@ -193,7 +176,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'giza-haram',
-    aqarmapPath: '/en/for-sale/property-type/cairo/el-haram/',
     governorate: 'Giza',
     area: 'Haram',
     minPricePerM2: 9_000, maxPricePerM2: 18_000, avgPricePerM2: 13_000,
@@ -201,7 +183,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'giza-faisal',
-    aqarmapPath: '/en/for-sale/property-type/cairo/faisal/',
     governorate: 'Giza',
     area: 'Faisal',
     minPricePerM2: 7_000, maxPricePerM2: 14_000, avgPricePerM2: 10_000,
@@ -239,7 +220,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'alex-smouha',
-    aqarmapPath: '/en/for-sale/property-type/alexandria/smouha/',
     governorate: 'Alexandria',
     area: 'Smouha',
     minPricePerM2: 14_000, maxPricePerM2: 30_000, avgPricePerM2: 21_000,
@@ -247,7 +227,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'alex-miami',
-    aqarmapPath: '/en/for-sale/property-type/alexandria/miami/',
     governorate: 'Alexandria',
     area: 'Miami',
     minPricePerM2: 12_000, maxPricePerM2: 24_000, avgPricePerM2: 17_000,
@@ -255,7 +234,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'alex-mandara',
-    aqarmapPath: '/en/for-sale/property-type/alexandria/el-mandara/',
     governorate: 'Alexandria',
     area: 'Mandara',
     minPricePerM2: 10_000, maxPricePerM2: 20_000, avgPricePerM2: 14_000,
@@ -270,7 +248,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'alex-agami',
-    aqarmapPath: '/en/for-sale/property-type/alexandria/al-agamy/',
     governorate: 'Alexandria',
     area: 'Agami',
     minPricePerM2: 9_000, maxPricePerM2: 18_000, avgPricePerM2: 13_000,
@@ -319,7 +296,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'nc-el-alamein',
-    aqarmapPath: '/en/for-sale/property-type/north-coast/new-alamein/',
     governorate: 'North Coast',
     area: 'New El Alamein City',
     minPricePerM2: 12_000, maxPricePerM2: 32_000, avgPricePerM2: 20_000,
@@ -329,7 +305,6 @@ export const RE_PRICES: REAreaPrice[] = [
   // ── Red Sea ──────────────────────────────────────────────────────────────────
   {
     id: 'rs-el-gouna',
-    aqarmapPath: '/en/for-sale/property-type/red-sea/el-gouna/',
     governorate: 'Red Sea',
     area: 'El Gouna',
     minPricePerM2: 18_000, maxPricePerM2: 50_000, avgPricePerM2: 32_000,
@@ -337,7 +312,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'rs-hurghada',
-    aqarmapPath: '/en/for-sale/property-type/red-sea/hurghada-city/',
     governorate: 'Red Sea',
     area: 'Hurghada',
     minPricePerM2: 7_000, maxPricePerM2: 22_000, avgPricePerM2: 13_000,
@@ -345,7 +319,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'rs-ain-sokhna',
-    aqarmapPath: '/en/for-sale/property-type/ain-elsokhna/resorts/',
     governorate: 'Red Sea',
     area: 'Ain Sokhna',
     minPricePerM2: 18_000, maxPricePerM2: 55_000, avgPricePerM2: 34_000,
@@ -386,7 +359,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'sharqia-10-ramadan',
-    aqarmapPath: '/en/for-sale/property-type/sharqia/10th-of-ramadan/',
     governorate: 'Sharqia',
     area: '10th of Ramadan',
     minPricePerM2: 5_000, maxPricePerM2: 12_000, avgPricePerM2: 8_000,
@@ -396,7 +368,6 @@ export const RE_PRICES: REAreaPrice[] = [
   // ── Dakahlia / Mansoura ───────────────────────────────────────────────────────
   {
     id: 'dakahlia-mansoura',
-    aqarmapPath: '/en/for-sale/property-type/dakahlia/mansoura/',
     governorate: 'Dakahlia',
     area: 'Mansoura',
     minPricePerM2: 6_000, maxPricePerM2: 16_000, avgPricePerM2: 10_000,
@@ -404,7 +375,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'dakahlia-new-mansoura',
-    aqarmapPath: '/en/for-sale/property-type/dakahlia/new-mansoura-city/',
     governorate: 'Dakahlia',
     area: 'New Mansoura City',
     minPricePerM2: 8_000, maxPricePerM2: 20_000, avgPricePerM2: 13_000,
@@ -414,7 +384,6 @@ export const RE_PRICES: REAreaPrice[] = [
   // ── Ismailia ──────────────────────────────────────────────────────────────────
   {
     id: 'ismailia-city',
-    aqarmapPath: '/en/for-sale/property-type/ismailia/ismailia-city/',
     governorate: 'Ismailia',
     area: 'Ismailia City',
     minPricePerM2: 5_000, maxPricePerM2: 13_000, avgPricePerM2: 8_500,
@@ -424,7 +393,6 @@ export const RE_PRICES: REAreaPrice[] = [
   // ── Suez ──────────────────────────────────────────────────────────────────────
   {
     id: 'suez-city',
-    aqarmapPath: '/en/for-sale/property-type/suez/suez-city/',
     governorate: 'Suez',
     area: 'Suez City',
     minPricePerM2: 4_500, maxPricePerM2: 11_000, avgPricePerM2: 7_000,
@@ -434,7 +402,6 @@ export const RE_PRICES: REAreaPrice[] = [
   // ── Luxor / Aswan ──────────────────────────────────────────────────────────────
   {
     id: 'luxor-city',
-    aqarmapPath: '/en/for-sale/property-type/luxor/luxor-city/',
     governorate: 'Luxor',
     area: 'Luxor City',
     minPricePerM2: 3_500, maxPricePerM2: 9_000, avgPricePerM2: 5_500,
@@ -442,7 +409,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'aswan-city',
-    aqarmapPath: '/en/for-sale/property-type/aswan/aswan-city/',
     governorate: 'Aswan',
     area: 'Aswan City',
     minPricePerM2: 3_000, maxPricePerM2: 8_000, avgPricePerM2: 5_000,
@@ -452,7 +418,6 @@ export const RE_PRICES: REAreaPrice[] = [
   // ── Other governorates ──────────────────────────────────────────────────────
   {
     id: 'port-said-city',
-    aqarmapPath: '/en/for-sale/property-type/port-said/mdyn-bwr-s-yd/',
     governorate: 'Port Said',
     area: 'Port Said City',
     minPricePerM2: 8_000, maxPricePerM2: 20_000, avgPricePerM2: 13_000,
@@ -460,7 +425,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'damietta-city',
-    aqarmapPath: '/en/for-sale/property-type/damietta/mdyn-dmyt/',
     governorate: 'Damietta',
     area: 'Damietta City',
     minPricePerM2: 6_000, maxPricePerM2: 15_000, avgPricePerM2: 10_000,
@@ -468,7 +432,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'beheira-damanhur',
-    aqarmapPath: '/en/for-sale/property-type/beheira/damanhour/',
     governorate: 'Beheira',
     area: 'Damanhur',
     minPricePerM2: 4_000, maxPricePerM2: 10_000, avgPricePerM2: 6_500,
@@ -483,7 +446,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'gharbia-tanta',
-    aqarmapPath: '/en/for-sale/property-type/gharbia/tanta/',
     governorate: 'Gharbia',
     area: 'Tanta',
     minPricePerM2: 5_500, maxPricePerM2: 13_000, avgPricePerM2: 8_500,
@@ -512,7 +474,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'beni-suef-city',
-    aqarmapPath: '/en/for-sale/property-type/beni-suef/mdyn-bny-swyf/',
     governorate: 'Beni Suef',
     area: 'Beni Suef City',
     minPricePerM2: 3_500, maxPricePerM2: 9_000, avgPricePerM2: 5_500,
@@ -534,7 +495,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'sohag-city',
-    aqarmapPath: '/en/for-sale/property-type/sohag/sohag-city/',
     governorate: 'Sohag',
     area: 'Sohag City',
     minPricePerM2: 2_800, maxPricePerM2: 7_500, avgPricePerM2: 4_800,
@@ -556,7 +516,6 @@ export const RE_PRICES: REAreaPrice[] = [
   },
   {
     id: 'north-sinai-arish',
-    aqarmapPath: '/en/for-sale/property-type/north-sinai/arish/',
     governorate: 'North Sinai',
     area: 'Arish',
     minPricePerM2: 3_500, maxPricePerM2: 9_000, avgPricePerM2: 5_500,

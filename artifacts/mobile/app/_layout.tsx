@@ -26,7 +26,7 @@ import { HoldingsProvider } from "@/context/HoldingsContext";
 import { CashProvider } from "@/context/CashContext";
 import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
 import { DividendsProvider } from "@/context/DividendsContext";
-import { RentalProvider } from "@/context/RentalContext";
+import { RentalPropertiesProvider } from "@/context/RentalPropertiesContext";
 import { GoalsProvider } from "@/context/GoalsContext";
 import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
@@ -155,7 +155,31 @@ function RootLayoutNav() {
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
-        name="rental-tracking"
+        name="rentals"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="rental-unit"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="rental-unit-form"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="rental-booking-form"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="rental-lease-form"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="rental-payment-form"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="rental-expense-form"
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
@@ -568,13 +592,13 @@ export default function RootLayout() {
                             <GoalsProvider>
                             <RecurringIncomeProvider>
                             <DividendsProvider>
-                            <RentalProvider>
+                            <RentalPropertiesProvider>
                             <PriceAlertsProvider>
                               <AppWithPaywall>
                                 <RootLayoutNav />
                               </AppWithPaywall>
                             </PriceAlertsProvider>
-                            </RentalProvider>
+                            </RentalPropertiesProvider>
                             </DividendsProvider>
                             </RecurringIncomeProvider>
                           </GoalsProvider>

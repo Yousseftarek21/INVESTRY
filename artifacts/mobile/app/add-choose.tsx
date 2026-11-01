@@ -53,7 +53,7 @@ export default function AddChooseScreen() {
   };
   const goRecurringIncome = () => router.push('/recurring-income' as any);
   const goDividends = () => router.push('/dividends' as any);
-  const goRentalTracking = () => router.push('/rental-tracking' as any);
+  const goRentalTracking = () => router.push('/rentals' as any);
 
   const bottomPad = insets.bottom + (Platform.OS === 'android' ? 16 : 8);
 
@@ -144,8 +144,8 @@ export default function AddChooseScreen() {
             <ConceptIcon icon={ICON_RENTAL_INCOME} size={18} color="#F59E0B" />
           </View>
           <View style={s.cardSmText}>
-            <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.addRentalTrackingOption}</Text>
-            <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.addRentalTrackingOptionDesc}</Text>
+            <Text style={[s.cardTitleSm, { color: colors.text }]}>{t.rpTitle}</Text>
+            <Text style={[s.cardDescSm, { color: colors.mutedForeground }]}>{t.rpAddChooseDesc}</Text>
           </View>
           <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
