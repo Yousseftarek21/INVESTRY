@@ -38,18 +38,6 @@ interface ApiIndex {
   changePercent: number;
 }
 
-// Static, hardcoded reference prices — last-resort *render* fallback only
-// (GlobalStocksMarket.tsx), never stored as this hook's actual query data.
-export function usIndicesStaticFallback(): USIndexLive[] {
-  return US_INDICES.map(idx => ({
-    ...idx,
-    price: idx.fallbackPrice,
-    change: 0,
-    changePercent: 0,
-    isLive: false,
-  }));
-}
-
 async function fetchUSIndicesViaApi(): Promise<USIndexLive[]> {
   const res = await fetch(`${API_BASE}/markets/us-indices`, {
     headers: { Accept: 'application/json' },
@@ -60,16 +48,16 @@ async function fetchUSIndicesViaApi(): Promise<USIndexLive[]> {
 
   const bySymbol = new Map(data.map(i => [i.symbol, i]));
 
-  return US_INDICES.map(meta => {
+  return US_INDICES.flatMap(meta => {
     const d = bySymbol.get(meta.symbol);
-    if (!d || !d.price) return { ...meta, price: meta.fallbackPrice, change: 0, changePercent: 0, isLive: false };
-    return {
+    if (!d || !d.price) return [];
+    return [{
       ...meta,
       price: d.price,
       change: d.change,
       changePercent: d.changePercent,
       isLive: true,
-    };
+    }];
   });
 }
 

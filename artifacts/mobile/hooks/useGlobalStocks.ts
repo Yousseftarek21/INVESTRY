@@ -15,6 +15,8 @@ export interface GlobalStockLive extends GlobalCompany {
   low52w?: number;
   pe?: number;
   dividendYield?: number;
+  /** Company logo (SVG URL). */
+  logoUrl?: string;
 }
 
 const GLOBAL_STOCKS_KEY = ['global-stocks'];
@@ -27,15 +29,8 @@ interface ApiStock {
   previousClose: number;
   change: number;
   changePercent: number;
+  logoUrl?: string;
 }
-
-// Static, hardcoded reference prices — used only as a last-resort *render*
-// fallback in GlobalStocksMarket.tsx when a query has never once succeeded
-// and there's no cached last-good fetch either, never stored as this
-// hook's actual query data. Same role EGX_STATIC_FALLBACK plays for EGX.
-export const GLOBAL_STOCKS_STATIC_FALLBACK: GlobalStockLive[] = GLOBAL_COMPANIES.map(c => (
-  { ...c, price: c.fallbackPrice, change: 0, changePercent: 0, isLive: false }
-));
 
 async function fetchGlobalStocksViaApi(): Promise<GlobalStockLive[]> {
   const res = await fetch(`${API_BASE}/markets/global-stocks`, {
@@ -47,16 +42,19 @@ async function fetchGlobalStocksViaApi(): Promise<GlobalStockLive[]> {
 
   const byTicker = new Map(data.map(s => [s.symbol, s]));
 
-  return GLOBAL_COMPANIES.map(company => {
+  // Only stocks with a real price today — a stored reference price used to
+  // stand in for a missing quote, which showed an old number as if current.
+  return GLOBAL_COMPANIES.flatMap(company => {
     const s = byTicker.get(company.ticker);
-    if (!s || !s.price) return { ...company, price: company.fallbackPrice, change: 0, changePercent: 0, isLive: false };
-    return {
+    if (!s || !s.price) return [];
+    return [{
       ...company,
       price: s.price,
       change: s.change,
       changePercent: s.changePercent,
+      logoUrl: s.logoUrl,
       isLive: true,
-    };
+    }];
   });
 }
 

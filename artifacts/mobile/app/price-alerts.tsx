@@ -20,8 +20,6 @@ import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { buildAlertPricesDict } from '@/hooks/usePriceAlerts';
 import { usePriceAlertsContext } from '@/context/PriceAlertsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { EGX_COMPANIES } from '@/data/egx-companies';
-import { GLOBAL_COMPANIES } from '@/data/global-stocks';
 import { parseAmount } from '@/utils/parseAmount';
 import { AmountInput } from '@/components/AmountInput';
 
@@ -99,26 +97,26 @@ export default function PriceAlertsScreen() {
       { key: 'silver_gram', label: t.silverGramLabel, group: 'metals',   price: pricesDict.silver_gram ?? 0 },
       { key: 'usd_egp',     label: t.usDollar,        group: 'currency', price: pricesDict.usd_egp ?? 0 },
     ];
-    [...EGX_COMPANIES].sort((a, b) => a.ticker.localeCompare(b.ticker)).forEach(c => {
-      const price = pricesDict[`stock_${c.ticker}`] ?? c.fallbackPrice;
+    // Only stocks trading today, with their real price — the live lists
+    // include new listings and leave out suspended ones.
+    [...(egxStocks ?? [])].sort((a, b) => a.ticker.localeCompare(b.ticker)).forEach(c => {
       opts.push({
         key: `stock_${c.ticker}`,
         label: `${c.ticker} · ${language === 'ar' ? c.nameAr : c.nameEn}`,
         group: 'stocks',
-        price,
+        price: c.price,
       });
     });
-    [...GLOBAL_COMPANIES].sort((a, b) => a.ticker.localeCompare(b.ticker)).forEach(c => {
-      const price = pricesDict[`stock_${c.ticker}`] ?? c.fallbackPrice;
+    [...(globalStocks ?? [])].sort((a, b) => a.ticker.localeCompare(b.ticker)).forEach(c => {
       opts.push({
         key: `stock_${c.ticker}`,
         label: `${c.ticker} · ${c.name}`,
         group: 'us_stocks',
-        price,
+        price: c.price,
       });
     });
     return opts;
-  }, [pricesDict, t, language]);
+  }, [pricesDict, egxStocks, globalStocks, t, language]);
 
   const tabOptions = useMemo(
     () => assetOptions.filter(o => tabOf(o.group) === assetTab),

@@ -11,10 +11,11 @@ import { useColors } from '@/hooks/useColors';
 import { useCounterDisplay } from '@/hooks/useCounterDisplay';
 import { useT } from '@/hooks/useTranslation';
 import { EGX_SECTORS, EGXSector, getSectorCounts, searchCompanies } from '@/data/egx-companies';
-import { useEGXMarket, EGXStockLive, EGX_STATIC_FALLBACK, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
+import { useEGXMarket, EGXStockLive, fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { useEGXIndices, EGXIndex } from '@/hooks/useEGXIndices';
 import { getEGXMarketStatus } from '@/data/egx-companies';
 import { RangeBar } from '@/components/RangeBar';
+import { StockLogo } from '@/components/StockLogo';
 import { MarketStatusCard } from '@/components/MarketStatusCard';
 import { marketTimeIn } from '@/utils/cairoDate';
 
@@ -286,7 +287,6 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
   // No flash-on-change — see IndexHalf's comment above.
   const { text: priceStr } = useCounterDisplay(stock.price, stockPriceFormatter, false);
 
-  const initials = stock.ticker.length <= 4 ? stock.ticker : stock.ticker.slice(0, 4);
 
   return (
     <Pressable
@@ -300,9 +300,7 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
       {/* Main row */}
       <View style={sc.main}>
         {/* Avatar */}
-        <View style={[sc.avatar, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '28' }]}>
-          <Text style={[sc.avatarTxt, { color: colors.primary }]}>{initials}</Text>
-        </View>
+        <StockLogo symbol={stock.ticker} logoUrl={stock.logoUrl} size={44} radius={13} />
 
         {/* Info */}
         <View style={sc.info}>
@@ -537,7 +535,7 @@ export function EGXMarket({
   // very first launch with no network). A transient failure on a later
   // background refetch just keeps showing liveStocks' last good value
   // (react-query's default), never silently swapping in fake numbers.
-  const allStocks = liveStocks ?? (isError ? EGX_STATIC_FALLBACK : []);
+  const allStocks = liveStocks ?? [];
   const [section, setSection] = useState<'stocks' | 'funds'>('stocks');
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');
@@ -685,18 +683,19 @@ export function EGXMarket({
         </View>
       );
     }
+    const failed = isError && allStocks.length === 0;
     return !isLoading && displayed.length === 0 ? (
       <View style={[em.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Feather name="search" size={28} color={colors.mutedForeground} />
+        <Feather name={failed ? 'wifi-off' : 'search'} size={28} color={colors.mutedForeground} />
         <Text style={[em.emptyTxt, { color: colors.mutedForeground }]}>
-          {t.noCompaniesFound} "{query}"
+          {failed ? t.stocksLoadFailed : `${t.noCompaniesFound} "${query}"`}
         </Text>
         <Text style={[em.emptySub, { color: colors.mutedForeground }]}>
-          {t.egxSearchTip}
+          {failed ? t.stocksLoadFailedHint : t.egxSearchTip}
         </Text>
       </View>
     ) : null;
-  }, [section, isLoading, displayed.length, query, colors.card, colors.border, colors.mutedForeground, t]);
+  }, [section, isLoading, isError, allStocks.length, displayed.length, query, colors.card, colors.border, colors.mutedForeground, t]);
 
   const ListFooter = useMemo(() => (
     section === 'stocks' && !hasLive ? (

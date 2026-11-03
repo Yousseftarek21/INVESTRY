@@ -12,8 +12,9 @@ import {
   GLOBAL_CATEGORIES, GlobalCategory, getCategoryCounts, searchGlobalCompanies, GLOBAL_COMPANIES,
   getUSMarketStatus,
 } from '@/data/global-stocks';
-import { useGlobalStocks, GlobalStockLive, GLOBAL_STOCKS_STATIC_FALLBACK } from '@/hooks/useGlobalStocks';
-import { useUSIndices, USIndexLive, usIndicesStaticFallback } from '@/hooks/useUSIndices';
+import { useGlobalStocks, GlobalStockLive } from '@/hooks/useGlobalStocks';
+import { useUSIndices, USIndexLive } from '@/hooks/useUSIndices';
+import { StockLogo } from '@/components/StockLogo';
 import { fmtMarketCap, fmtVolume } from '@/hooks/useEGXMarket';
 import { RangeBar } from '@/components/RangeBar';
 import { MarketStatusCard } from '@/components/MarketStatusCard';
@@ -107,7 +108,7 @@ function USIndexChips() {
   // Static fallback only as a genuine last resort — every live source
   // failed AND there's no cached last-good fetch (hydrateUSIndicesFromCache
   // covers the far more common case of "cache exists, just stale").
-  const indices = liveIndices ?? (isError ? usIndicesStaticFallback() : []);
+  const indices = liveIndices ?? [];
   const hasLive = indices.some(i => i.isLive);
   if (indices.length < 3) return null;
   return (
@@ -255,7 +256,6 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
     : isPos ? colors.green : colors.red;
   const { text: priceStr } = useCounterDisplay(stock.price, stockPriceFormatter, false);
 
-  const initials = stock.ticker.length <= 4 ? stock.ticker : stock.ticker.slice(0, 4);
 
   return (
     <Pressable
@@ -267,9 +267,7 @@ function StockCard({ stock, isLast }: { stock: GlobalStockLive; isLast: boolean 
       ]}
     >
       <View style={sc.main}>
-        <View style={[sc.avatar, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '28' }]}>
-          <Text style={[sc.avatarTxt, { color: colors.primary }]}>{initials}</Text>
-        </View>
+        <StockLogo symbol={stock.ticker} logoUrl={stock.logoUrl} size={44} radius={13} />
 
         <View style={sc.info}>
           <View style={sc.topRow}>
@@ -473,7 +471,7 @@ export function GlobalStocksMarket({
   // AND there's no cached last-good fetch (hydrateGlobalStocksFromCache
   // covers the far more common "cache exists, just stale" case). Matches
   // EGXMarket.tsx's own EGX_STATIC_FALLBACK pattern.
-  const allStocks = liveStocks ?? (isError ? GLOBAL_STOCKS_STATIC_FALLBACK : []);
+  const allStocks = liveStocks ?? [];
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<GlobalCategory>('All');
   const counts = useMemo(() => getCategoryCounts(), []);
@@ -593,16 +591,16 @@ export function GlobalStocksMarket({
   const ListEmpty = useMemo(() => (
     !isLoading && displayed.length === 0 ? (
       <View style={[gm.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Feather name="search" size={28} color={colors.mutedForeground} />
+        <Feather name={isError && allStocks.length === 0 ? 'wifi-off' : 'search'} size={28} color={colors.mutedForeground} />
         <Text style={[gm.emptyTxt, { color: colors.mutedForeground }]}>
-          {t.noTickersFound} "{query}"
+          {isError && allStocks.length === 0 ? t.stocksLoadFailed : `${t.noTickersFound} "${query}"`}
         </Text>
         <Text style={[gm.emptySub, { color: colors.mutedForeground }]}>
-          {t.globalSearchTip}
+          {isError && allStocks.length === 0 ? t.stocksLoadFailedHint : t.globalSearchTip}
         </Text>
       </View>
     ) : null
-  ), [isLoading, displayed.length, query, colors.card, colors.border, colors.mutedForeground, t]);
+  ), [isLoading, isError, allStocks.length, displayed.length, query, colors.card, colors.border, colors.mutedForeground, t]);
 
   const ListFooter = useMemo(() => (
     !hasLive ? (

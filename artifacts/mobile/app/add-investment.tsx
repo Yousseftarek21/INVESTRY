@@ -24,10 +24,12 @@ import { useRealEstateCompoundPrices } from '@/hooks/useRealEstateCompoundPrices
 import { useRealEstatePrices, RealEstateAreaLive } from '@/hooks/useRealEstatePrices';
 import { parseAmount, cleanAmountInput } from '@/utils/parseAmount';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
 import { AddInvestmentPreview, type PreviewRow } from '@/components/AddInvestmentPreview';
+import { StockLogo } from '@/components/StockLogo';
 import { FREE_INVESTMENT_LIMIT as FREE_LIMIT } from '@/constants/subscriptionFeatures';
 
 type InvestmentType = 'gold' | 'silver' | 'stock' | 'real_estate' | 'personal_asset' | 'fixed_income';
@@ -51,93 +53,11 @@ const PERSONAL_ASSET_ICONS: (keyof typeof Feather.glyphMap)[] = [
 ];
 
 // ─── EGX stock picker list ─────────────────────────────────────────────────────
-// Primary source: EGX_COMPANIES from egx-companies.ts — these have live prices,
-// correct names, and 4-letter tickers (no .CA). Adding a ticker there is enough.
-// Extended: additional valid EGX stocks without live price data (users can still
-// add holdings; price is entered manually at purchase time).
-
-const EGX_LIVE_SET = new Set(EGX_COMPANIES.map(c => c.ticker));
-
-const EGX_EXTRA_SYMBOLS: { symbol: string; name: string }[] = [
-  { symbol: 'AIVC', name: 'Arabia Investments' },
-  { symbol: 'ALEX', name: 'Alexandria Mineral Oils' },
-  { symbol: 'AMER', name: 'Americana Restaurants' },
-  { symbol: 'ARAB', name: 'Arab Bank Egypt' },
-  { symbol: 'ARKI', name: 'Ark Investment & Real Estate' },
-  { symbol: 'ASCM', name: 'Alexandria Spinning & Weaving' },
-  { symbol: 'AUTO', name: 'Egyptian Automotive' },
-  { symbol: 'BFED', name: 'Banque du Caire' },
-  { symbol: 'BMOB', name: 'Banque Misr' },
-  { symbol: 'BMOS', name: 'Bank of Alexandria' },
-  { symbol: 'BRCI', name: 'Beltone Financial Holding' },
-  { symbol: 'BTFH', name: 'Beltone Capital Holding' },
-  { symbol: 'CCFH', name: 'Cairo for Housing & Development' },
-  { symbol: 'CCSM', name: 'Ceramica Cleopatra Group' },
-  { symbol: 'COMD', name: 'Commercial Warehousing' },
-  { symbol: 'CPTH', name: 'Cairo Pharmaceuticals' },
-  { symbol: 'DCRC', name: 'Delta Construction & Rebuilding' },
-  { symbol: 'DSCR', name: 'Discover Vision Group' },
-  { symbol: 'DYSE', name: 'Dice Sport & Casual Wear' },
-  { symbol: 'EAIG', name: 'Egypt Insurance Group' },
-  { symbol: 'EALY', name: 'Egyptian Aluminium' },
-  { symbol: 'ECAP', name: 'Egyptian Capital Holding' },
-  { symbol: 'ECAR', name: 'Egypt Car' },
-  { symbol: 'ECHO', name: 'Egyptian Company for Hotels' },
-  { symbol: 'EDBE', name: 'Egyptian Arab Development Bank' },
-  { symbol: 'EFID', name: 'Egyptian Financial & Industrial' },
-  { symbol: 'ELKA', name: 'El Kahera Housing' },
-  { symbol: 'ELSH', name: 'El Shams Housing' },
-  { symbol: 'ELWS', name: 'El Wady Ceramics' },
-  { symbol: 'EMIC', name: 'Egyptian Media Production City' },
-  { symbol: 'ENPI', name: "Egyptian Nat'l Posts" },
-  { symbol: 'ETRS', name: 'Egyptian Transport' },
-  { symbol: 'EXPA', name: 'Export Development Bank' },
-  { symbol: 'GAMA', name: 'Ghabbour Auto' },
-  { symbol: 'GTHE', name: 'GTHE' },
-  { symbol: 'GWIC', name: 'Gulf Western Investments' },
-  { symbol: 'HERO', name: 'Egyptian Real Estate Group' },
-  { symbol: 'ICON', name: 'Icon Real Estate' },
-  { symbol: 'IDEG', name: 'IDEG' },
-  { symbol: 'IFAP', name: 'Integrated Finance' },
-  { symbol: 'IRAX', name: 'Arabia Real Estate' },
-  { symbol: 'KFSB', name: 'El Kahera El Watania Inv.' },
-  { symbol: 'MCIT', name: 'Misr Chemical Industries' },
-  { symbol: 'MEDC', name: 'Middle East Glass' },
-  { symbol: 'MNHD', name: 'Madinet Nasr for Housing' },
-  { symbol: 'MOSI', name: 'Mosharaka Ins. & Reinsurance' },
-  { symbol: 'MPCI', name: 'Misr Petroleum' },
-  { symbol: 'MRSE', name: 'Maser Shipping' },
-  { symbol: 'NASR', name: 'Nasr City Housing' },
-  { symbol: 'NCGR', name: 'National Co. for Glass' },
-  { symbol: 'NGAS', name: 'National Gas & Mining' },
-  { symbol: 'NTGL', name: 'National Textile' },
-  { symbol: 'ORAM', name: 'Orascom Media' },
-  { symbol: 'ORPD', name: 'Orascom Development' },
-  { symbol: 'PORT', name: 'Alexandria Port Said' },
-  { symbol: 'RAIA', name: 'Raia Medical Center' },
-  { symbol: 'RCYC', name: 'Recyclomed' },
-  { symbol: 'SDCH', name: 'Sidi Kerir Petrochemicals' },
-  { symbol: 'SEMG', name: 'Americana Group Egypt' },
-  { symbol: 'SMFR', name: 'Samcrete Egypt' },
-  { symbol: 'SUGR', name: 'Upper Egypt Sugar' },
-  { symbol: 'TMHC', name: 'Trans Ocean Hotels' },
-  { symbol: 'TOYS', name: 'Toys Home' },
-  { symbol: 'UEGC', name: 'United Egypt Group' },
-  { symbol: 'UNIT', name: 'United Housing & Development' },
-  { symbol: 'UTAC', name: 'United Arab Contractors' },
-  { symbol: 'VIOS', name: 'Viossi' },
-  { symbol: 'WATA', name: 'Wataniya Insurance' },
-  { symbol: 'WMCK', name: 'Wadi Kom Ombo' },
-  { symbol: 'ZCAP', name: 'Zap Capital' },
-  { symbol: 'ZNHO', name: 'Zahraa Nasr City' },
-].filter(s => !EGX_LIVE_SET.has(s.symbol));
-
-// Merge: live-data stocks first (correct names from egx-companies.ts), then extras
-// Sorted alphabetically so the picker is easy to scan.
-const EGX_SYMBOLS = [
-  ...EGX_COMPANIES.map(c => ({ symbol: c.ticker, name: c.nameEn })),
-  ...EGX_EXTRA_SYMBOLS,
-].sort((a, b) => a.symbol.localeCompare(b.symbol));
+// Offline fallback only — the picker prefers the live list (useEGXMarket),
+// which includes new listings and leaves out stocks that aren't trading.
+const EGX_SYMBOLS = EGX_COMPANIES
+  .map(c => ({ symbol: c.ticker, name: c.nameEn }))
+  .sort((a, b) => a.symbol.localeCompare(b.symbol));
 
 // ─── US stock picker list ──────────────────────────────────────────────────────
 // GLOBAL_COMPANIES already carries live prices via useGlobalStocks (see
@@ -203,7 +123,20 @@ function StockPickerModal({
   const { impact } = useHaptic();
   const [query, setQuery] = useState('');
 
-  const list = market === 'EGX' ? EGX_SYMBOLS : US_SYMBOLS;
+  // Live lists first (today's trading stocks, with logos); the built-in
+  // lists only cover the moment before they've loaded.
+  const { data: egxLive } = useEGXMarket();
+  const { data: usLive } = useGlobalStocks();
+  const list = useMemo<{ symbol: string; name: string; logoUrl?: string }[]>(() => {
+    if (market === 'EGX') {
+      return egxLive?.length
+        ? egxLive.map(c => ({ symbol: c.ticker, name: c.nameEn, logoUrl: c.logoUrl })).sort((a, b) => a.symbol.localeCompare(b.symbol))
+        : EGX_SYMBOLS;
+    }
+    return usLive?.length
+      ? usLive.map(c => ({ symbol: c.ticker, name: c.name, logoUrl: c.logoUrl })).sort((a, b) => a.symbol.localeCompare(b.symbol))
+      : US_SYMBOLS;
+  }, [market, egxLive, usLive]);
   const filtered = useMemo(() => {
     const q = query.trim().toUpperCase();
     if (!q) return list;
@@ -276,14 +209,7 @@ function StockPickerModal({
                 }}
                 activeOpacity={0.65}
               >
-                <View style={[pickerStyles.avatar, {
-                  backgroundColor: isSelected ? colors.primary + '25' : colors.muted,
-                  borderColor: isSelected ? colors.primary + '60' : colors.border,
-                }]}>
-                  <Text style={[pickerStyles.avatarText, { color: isSelected ? colors.primary : colors.mutedForeground }]}>
-                    {item.symbol.substring(0, 4)}
-                  </Text>
-                </View>
+                <StockLogo symbol={item.symbol} logoUrl={item.logoUrl} size={40} radius={12} />
                 <View style={pickerStyles.stockInfo}>
                   <Text style={[pickerStyles.symbol, { color: colors.text }]}>{item.symbol}</Text>
                   <Text style={[pickerStyles.stockName, { color: colors.mutedForeground }]} numberOfLines={1}>
@@ -553,6 +479,7 @@ export default function AddInvestmentScreen() {
   const { cashAccounts } = useCash();
   const { isSignedIn } = useAuth();
   const { data: egxStocks } = useEGXMarket();
+  const { data: usStocks } = useGlobalStocks();
   const { data: marketPrices, isPlaceholderData: pricesArePlaceholder } = useMarketPrices();
   const { holdingId } = useLocalSearchParams<{ holdingId?: string }>();
 
@@ -1506,15 +1433,18 @@ export default function AddInvestmentScreen() {
                 onPress={() => { impact(); setStockPickerVisible(true); }}
                 activeOpacity={0.75}
               >
-                <View style={[styles.dropdownAvatar, { backgroundColor: colors.primary + '20' }]}>
-                  {activeStock ? (
-                    <Text style={[styles.dropdownAvatarText, { color: colors.primary }]}>
-                      {activeStock.symbol.substring(0, 4)}
-                    </Text>
-                  ) : (
+                {activeStock ? (
+                  <StockLogo
+                    symbol={activeStock.symbol}
+                    logoUrl={(stockMarket === 'EGX' ? egxStocks?.find(x => x.ticker === activeStock.symbol) : usStocks?.find(x => x.ticker === activeStock.symbol))?.logoUrl}
+                    size={40}
+                    radius={12}
+                  />
+                ) : (
+                  <View style={[styles.dropdownAvatar, { backgroundColor: colors.primary + '20' }]}>
                     <Feather name="search" size={16} color={colors.primary} />
-                  )}
-                </View>
+                  </View>
+                )}
                 <View style={styles.dropdownInfo}>
                   <Text style={[styles.dropdownSymbol, { color: activeStock ? colors.text : colors.mutedForeground }]}>
                     {activeStock ? activeStock.symbol : t.chooseStock}

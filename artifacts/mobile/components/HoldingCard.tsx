@@ -8,6 +8,9 @@ import { Holding, MarketPrices, PersonalAssetCategory, PropertyType } from '@/ty
 import { goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { getRECurrentValue } from '@/utils/rePrice';
 import { AssetIcon } from '@/components/AssetIcon';
+import { StockLogo } from '@/components/StockLogo';
+import { useEGXMarket } from '@/hooks/useEGXMarket';
+import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { ConceptIcon } from '@/components/ConceptIcon';
 import { ICON_LOANS, ICON_RENTAL_INCOME } from '@/constants/conceptIcons';
 import { useRentalProperties } from '@/context/RentalPropertiesContext';
@@ -199,6 +202,12 @@ export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle,
     ? rentalUnits.filter(u => u.holdingId === holding.id && !u.archived)
     : [];
   const today = cairoToday();
+  // Company logo for stock holdings, from the live EGX or US list.
+  const { data: egxLive } = useEGXMarket();
+  const { data: usLive } = useGlobalStocks();
+  const stockLogoUrl = holding.type === 'stock'
+    ? (egxLive?.find(s => s.ticker === holding.symbol)?.logoUrl ?? usLive?.find(s => s.ticker === holding.symbol)?.logoUrl)
+    : undefined;
   const hasActiveRental = linkedUnits.some(u =>
     rentalLeases.some(l => l.unitId === u.id && isLeaseActive(l, today)) ||
     rentalBookings.some(b => b.unitId === u.id && b.status !== 'cancelled' && b.checkIn <= today && b.checkOut > today));
@@ -210,12 +219,16 @@ export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle,
   // makes it safe to nest inside SwipeToDelete.
   const tappableInfo = (
     <>
-      <View style={[styles.iconWrap, { backgroundColor: iconColor + '17', borderColor: iconColor + '4A' }]}>
-        {holding.type === 'personal_asset'
-          ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={18} color={iconColor} />
-          : <AssetIcon type={holding.type} size={18} color={iconColor} />
-        }
-      </View>
+      {holding.type === 'stock' && stockLogoUrl ? (
+        <StockLogo symbol={holding.symbol} logoUrl={stockLogoUrl} size={42} radius={13} />
+      ) : (
+        <View style={[styles.iconWrap, { backgroundColor: iconColor + '17', borderColor: iconColor + '4A' }]}>
+          {holding.type === 'personal_asset'
+            ? <Feather name={getPersonalAssetFeatherIcon(holding)} size={18} color={iconColor} />
+            : <AssetIcon type={holding.type} size={18} color={iconColor} />
+          }
+        </View>
+      )}
 
       <View style={styles.info}>
         <View style={styles.titleRow}>

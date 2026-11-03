@@ -120,6 +120,8 @@ export interface EGXStockResponse {
   freeCashFlowTtm?: number;
   cashAndEquivalents?: number;
   employees?: number;
+  /** Company logo (SVG), when the exchange data has one. */
+  logoUrl?: string;
 }
 
 interface HistoricalRates {
@@ -1168,9 +1170,12 @@ export async function fetchPrices(): Promise<MarketPricesResponse> {
 // Build lookup maps from our authoritative EGX ticker list
 const EGX_NAMES: Record<string, string>  = Object.fromEntries(EGX_TICKERS.map(t => [t.symbol, t.name]));
 const EGX_SYMBOL_SET: Set<string>        = new Set(EGX_TICKERS.map(t => t.symbol));
+// Every symbol the exchange returned on the last successful scan — includes
+// new listings that aren't in EGX_TICKERS yet.
+const liveEgxSymbols = new Set<string>();
+const TV_BATCH_SIZE = 150;
 
 // Batch size kept at 150 — TradingView accepts it in one call with no rate issues.
-const TV_BATCH_SIZE = 150;
 
 // Does this bar belong to a session that ran today (Cairo)? TradingView's
 // "time" column is unix seconds for the row's bar; between sessions it keeps
@@ -1198,44 +1203,80 @@ type TVRow = [
   number | null, // free_cash_flow_ttm
   number | null, // cash_n_short_term_invest_fq
   number | null, // number_of_employees
+  string | null, // logoid
+  string | null, // description (company name)
+  number | null, // average_volume_30d_calc
 ];
 
+// Every EGX stock symbol, from the exchange's symbol search — the scanner's
+// own market filter lags on new listings (MNT-Halan, HALN, was trading for
+// weeks before it appeared there). Refreshed every 6 hours; on failure the
+// last good list (or the curated EGX_TICKERS) keeps prices flowing.
+const EGX_DISCOVERY_TTL_MS = 6 * 60 * 60 * 1000;
+let discoveredEgx: { at: number; symbols: string[] } | null = null;
+
+async function discoverEgxSymbols(): Promise<string[]> {
+  if (discoveredEgx && Date.now() - discoveredEgx.at < EGX_DISCOVERY_TTL_MS) return discoveredEgx.symbols;
+  try {
+    const found = new Set<string>();
+    for (let start = 0, page = 0; page < 20; page++, start += 50) {
+      const res = await safeFetch(
+        `https://symbol-search.tradingview.com/symbol_search/v3/?text=&exchange=EGX&lang=en&search_type=stocks&domain=production&start=${start}`,
+        { headers: { Origin: "https://www.tradingview.com", Referer: "https://www.tradingview.com/" } },
+      );
+      if (!res?.ok) throw new Error(`symbol search ${res?.status}`);
+      const data = await res.json() as { symbols_remaining?: number; symbols?: Array<{ symbol?: string; exchange?: string }> };
+      for (const x of data.symbols ?? []) {
+        if (x.exchange === "EGX" && x.symbol) found.add(x.symbol.replace(/<\/?em>/g, ""));
+      }
+      if (!data.symbols_remaining) break;
+    }
+    if (found.size < 100) throw new Error(`symbol search returned only ${found.size}`);
+    discoveredEgx = { at: Date.now(), symbols: [...found] };
+    logger.info({ count: found.size }, "EGX symbol discovery refreshed");
+  } catch (err) {
+    logger.warn({ err }, "EGX symbol discovery failed — using last known list");
+  }
+  return discoveredEgx?.symbols ?? [];
+}
+
 async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
-  const allSymbols = EGX_TICKERS.map(t => t.symbol);
+  const allSymbols = [...new Set([...EGX_TICKERS.map(t => t.symbol), ...await discoverEgxSymbols()])];
   const priceMap: Record<string, TVRow> = {};
 
-  // Split into batches and query each with explicit symbol list so TradingView
-  // returns prices for every ticker, not just its own "top active" subset.
   for (let i = 0; i < allSymbols.length; i += TV_BATCH_SIZE) {
     const batch = allSymbols.slice(i, i + TV_BATCH_SIZE);
     const body = JSON.stringify({
-      columns: [
-        // Verified live against TradingView's scanner (not guessed): "52_week_high"/"52_week_low"/
-        // "P.E" all silently return null for every EGX ticker — the working field names are
-        // "price_52_week_high"/"price_52_week_low"/"price_earnings_ttm".
-        "close", "change_abs", "change", "volume", "market_cap_basic", "price_52_week_high", "price_52_week_low",
-        "price_earnings_ttm", "dividends_yield_current", "sector", "earnings_per_share_basic_ttm",
-        "total_revenue_yoy_growth_ttm", "after_tax_margin", "return_on_equity", "debt_to_equity",
-        "price_book_ratio",
-        // Unix seconds for the bar this row describes — i.e. which session
-        // "change" is measured over. Appended last on purpose: the columns
-        // array is positional, so adding anywhere else shifts every index
-        // in the destructure below. Verified live (not guessed) — returns
-        // the session open, e.g. 1786604400 = 13/08/2026 10:00 Cairo, EGX's
-        // Thursday open. "market_status" and "is_market_open" were tried
-        // first and both return null for EGX tickers.
-        "time",
-        // Appended after "time" for the same positional reason.
-        "total_debt",
-        // Deeper financials, appended last again for the same reason.
-        // Verified live: "current_ratio"/"quick_ratio"/"return_on_assets"/
-        // "free_cash_flow_ttm"/"cash_n_short_term_invest_fq"/
-        // "number_of_employees" all return real values for at least some EGX
-        // tickers (COMI, HRHO, SWDY spot-checked) — sparser than the core
-        // set, never guessed.
-        "current_ratio", "quick_ratio", "return_on_assets", "free_cash_flow_ttm",
-        "cash_n_short_term_invest_fq", "number_of_employees",
-      ],
+        columns: [
+          // Verified live against TradingView's scanner (not guessed): "52_week_high"/"52_week_low"/
+          // "P.E" all silently return null for every EGX ticker — the working field names are
+          // "price_52_week_high"/"price_52_week_low"/"price_earnings_ttm".
+          "close", "change_abs", "change", "volume", "market_cap_basic", "price_52_week_high", "price_52_week_low",
+          "price_earnings_ttm", "dividends_yield_current", "sector", "earnings_per_share_basic_ttm",
+          "total_revenue_yoy_growth_ttm", "after_tax_margin", "return_on_equity", "debt_to_equity",
+          "price_book_ratio",
+          // Unix seconds for the bar this row describes — i.e. which session
+          // "change" is measured over. Appended last on purpose: the columns
+          // array is positional, so adding anywhere else shifts every index
+          // in the destructure below. Verified live (not guessed) — returns
+          // the session open, e.g. 1786604400 = 13/08/2026 10:00 Cairo, EGX's
+          // Thursday open. "market_status" and "is_market_open" were tried
+          // first and both return null for EGX tickers.
+          "time",
+          // Appended after "time" for the same positional reason.
+          "total_debt",
+          // Deeper financials, appended last again for the same reason.
+          // Verified live: "current_ratio"/"quick_ratio"/"return_on_assets"/
+          // "free_cash_flow_ttm"/"cash_n_short_term_invest_fq"/
+          // "number_of_employees" all return real values for at least some EGX
+          // tickers (COMI, HRHO, SWDY spot-checked) — sparser than the core
+          // set, never guessed.
+          "current_ratio", "quick_ratio", "return_on_assets", "free_cash_flow_ttm",
+          "cash_n_short_term_invest_fq", "number_of_employees",
+          // Logo id and full company name — appended last for the same
+          // positional reason. Verified live: 284 of 297 EGX stocks have a logo.
+          "logoid", "description", "average_volume_30d_calc",
+        ],
       symbols: { tickers: batch.map(s => `EGX:${s}`) },
     });
 
@@ -1248,24 +1289,23 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
 
     const data = await res.json() as { data: Array<{ s: string; d: TVRow }> };
     if (!data?.data) throw new Error("TV scanner: no data field");
-
-    for (const item of data.data) {
-      const sym = item.s.replace(/^EGX:/, "");
-      priceMap[sym] = item.d;
-    }
+    for (const item of data.data) priceMap[item.s.replace(/^EGX:/, "")] = item.d;
   }
 
   const results: EGXStockResponse[] = [];
-  for (const { symbol, name } of EGX_TICKERS) {
-    const d = priceMap[symbol];
-    if (!d) continue;
+  for (const [symbol, d] of Object.entries(priceMap)) {
     const [
       close, changeAbs, changePct, volume, marketCap, high52w, low52w, pe, divYield,
       sector, epsTtm, revenueGrowthYoy, netMargin, roe, debtToEquity, priceToBook,
       barTime, totalDebt,
       currentRatio, quickRatio, returnOnAssets, freeCashFlowTtm, cashAndEquivalents, employees,
+      logoId, description, avgVolume30d,
     ] = d;
     if (!close) continue;                              // skip if TV returned no price
+    // Listed but not trading (suspended, cancelled, or a new listing that
+    // hasn't opened yet): no volume today and none over the last 30 days.
+    if (!(volume && volume > 0) && !(avgVolume30d && avgVolume30d > 0)) continue;
+    liveEgxSymbols.add(symbol);
     // Only report a change when the bar actually belongs to today's session.
     // Between sessions TradingView keeps serving the last one's numbers, so
     // without this the app folded Thursday's move into "today" all through
@@ -1280,7 +1320,8 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
     const changePct2  = tradedToday ? round2(changePct) : 0;
     results.push({
       symbol,
-      name:          EGX_NAMES[symbol] ?? name,
+      // Curated English name when we have one, else the exchange's own.
+      name:          EGX_NAMES[symbol] ?? description ?? symbol,
       price:         round2(close),
       previousClose: round2(close - change),
       change,
@@ -1306,6 +1347,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       freeCashFlowTtm:   freeCashFlowTtm ?? undefined,
       cashAndEquivalents: cashAndEquivalents ?? undefined,
       employees:         employees ?? undefined,
+      logoUrl:           logoId ? `https://s3-symbol-logo.tradingview.com/${logoId}.svg` : undefined,
     });
   }
   return results;
@@ -1500,7 +1542,8 @@ export async function getCachedStockNews(symbol: string): Promise<StockNewsItem[
 }
 
 export function isKnownEgxSymbol(symbol: string): boolean {
-  return EGX_SYMBOL_SET.has(symbol.toUpperCase());
+  const s = symbol.toUpperCase();
+  return EGX_SYMBOL_SET.has(s) || liveEgxSymbols.has(s);
 }
 
 // ─── EGX indices (EGX30, EGX70 EWI) ────────────────────────────────────────────
@@ -1615,9 +1658,9 @@ async function fetchGlobalStocksViaTradingView(): Promise<EGXStockResponse[]> {
   const res = await safeFetch("https://scanner.tradingview.com/america/scan", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Origin": "https://www.tradingview.com" },
-    body: JSON.stringify({ symbols: { tickers }, columns: ["close", "change_abs", "change"] }),
+    body: JSON.stringify({ symbols: { tickers }, columns: ["close", "change_abs", "change", "logoid"] }),
   });
-  const data = await safeJson<{ data: Array<{ s: string; d: [number, number, number] }> }>(
+  const data = await safeJson<{ data: Array<{ s: string; d: [number, number, number, string | null] }> }>(
     res, "Global stocks TradingView"
   );
   const rows = data?.data ?? [];
@@ -1631,11 +1674,12 @@ async function fetchGlobalStocksViaTradingView(): Promise<EGXStockResponse[]> {
     if (!d || !(d[0] > 0)) {
       return { symbol: t.symbol, name: t.name, price: 0, previousClose: 0, change: 0, changePercent: 0 };
     }
-    const [close, changeAbs, changePct] = d;
+    const [close, changeAbs, changePct, logoId] = d;
     return {
       symbol: t.symbol, name: t.name,
       price: round2(close), previousClose: round2(close - changeAbs),
       change: round2(changeAbs), changePercent: round2(changePct),
+      logoUrl: logoId ? `https://s3-symbol-logo.tradingview.com/${logoId}.svg` : undefined,
     };
   });
 }
@@ -1702,7 +1746,7 @@ router.get("/markets/stocks", async (req, res) => {
 
 router.get("/markets/stock-news", async (req, res) => {
   const symbol = String(req.query.symbol ?? "").toUpperCase();
-  if (!EGX_SYMBOL_SET.has(symbol)) {
+  if (!isKnownEgxSymbol(symbol)) {
     res.status(400).json({ error: "Unknown or missing symbol" });
     return;
   }

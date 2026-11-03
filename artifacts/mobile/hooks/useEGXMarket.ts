@@ -26,6 +26,8 @@ export interface EGXStockLive extends EGXCompany {
   freeCashFlowTtm?: number;
   cashAndEquivalents?: number;
   employees?: number;
+  /** Company logo (SVG URL), when the exchange data has one. */
+  logoUrl?: string;
   isLive: boolean;
 }
 
@@ -56,7 +58,27 @@ interface ServerEGXStock {
   freeCashFlowTtm?: number;
   cashAndEquivalents?: number;
   employees?: number;
+  sector?: string;
+  logoUrl?: string;
 }
+
+// The exchange's sector names, mapped onto the app's sector filters — only
+// used for listings that aren't in EGX_COMPANIES yet (new IPOs).
+const SECTOR_MAP: Record<string, EGXCompany['sector']> = {
+  'Finance': 'Financial Services',
+  'Communications': 'Telecommunications',
+  'Technology Services': 'Technology',
+  'Electronic Technology': 'Technology',
+  'Health Technology': 'Healthcare',
+  'Health Services': 'Healthcare',
+  'Consumer Non-Durables': 'Food & Beverage',
+  'Process Industries': 'Chemicals & Fertilizers',
+  'Non-Energy Minerals': 'Construction Materials',
+  'Energy Minerals': 'Energy',
+  'Utilities': 'Energy',
+  'Transportation': 'Transportation',
+  'Consumer Services': 'Hotels & Tourism',
+};
 
 // AbortSignal.timeout() isn't reliably available in React Native's JS
 // engine (Hermes) — calling it can throw synchronously instead of just
@@ -83,51 +105,55 @@ async function fetchFromServer(): Promise<EGXStockLive[]> {
   const data: ServerEGXStock[] = await res.json();
   if (!data.length || data.every(s => s.price === 0)) throw new Error('no prices');
 
-  const bySymbol = new Map(data.map(s => [s.symbol, s]));
-  return EGX_COMPANIES.map(company => {
-    const s = bySymbol.get(company.ticker);
-    if (!s || s.price === 0) return { ...company, price: company.fallbackPrice, change: 0, changePercent: 0, isLive: false };
-    return {
-      ...company,
-      price:         s.price,
-      change:        s.change,
-      changePercent: s.changePercent,
-      volume:        s.volume,
-      marketCap:     s.marketCap,
-      high52w:       s.high52w,
-      low52w:        s.low52w,
-      pe:            s.pe,
-      dividendYield: s.dividendYield,
-      epsTtm:            s.epsTtm,
-      revenueGrowthYoy:  s.revenueGrowthYoy,
-      netMargin:         s.netMargin,
-      roe:               s.roe,
-      debtToEquity:      s.debtToEquity,
-      priceToBook:       s.priceToBook,
-      totalDebt:         s.totalDebt,
-      currentRatio:      s.currentRatio,
-      quickRatio:        s.quickRatio,
-      returnOnAssets:    s.returnOnAssets,
-      freeCashFlowTtm:   s.freeCashFlowTtm,
-      cashAndEquivalents: s.cashAndEquivalents,
-      employees:         s.employees,
-      // Only "live" when the exchange actually traded today. A price always
-      // comes back — TradingView keeps serving the last session's bar while
-      // EGX is shut — so asserting true here made the pulsing green LIVE dot
-      // claim a closed market was trading, all weekend and every night after
-      // the daily reset zeroed the change. Older servers omit the field;
-      // treated as live so a stale deploy can't wrongly grey the dot out.
-      isLive:        s.sessionLive !== false,
-    };
-  });
+  // The server's list is the source of truth — it includes new listings and
+  // leaves out stocks that aren't trading. EGX_COMPANIES only adds the
+  // curated Arabic name, sector and industry where we have them.
+  const known = new Map(EGX_COMPANIES.map(c => [c.ticker, c]));
+  return data
+    .filter(s => s.price > 0)
+    .map(s => {
+      const company: EGXCompany = known.get(s.symbol) ?? {
+        ticker: s.symbol,
+        nameEn: s.name,
+        nameAr: s.name,
+        sector: (s.sector && SECTOR_MAP[s.sector]) || 'Industrial',
+        industry: s.sector ?? '',
+        fallbackPrice: 0,
+      };
+      return {
+        ...company,
+        price:         s.price,
+        change:        s.change,
+        changePercent: s.changePercent,
+        volume:        s.volume,
+        marketCap:     s.marketCap,
+        high52w:       s.high52w,
+        low52w:        s.low52w,
+        pe:            s.pe,
+        dividendYield: s.dividendYield,
+        epsTtm:            s.epsTtm,
+        revenueGrowthYoy:  s.revenueGrowthYoy,
+        netMargin:         s.netMargin,
+        roe:               s.roe,
+        debtToEquity:      s.debtToEquity,
+        priceToBook:       s.priceToBook,
+        totalDebt:         s.totalDebt,
+        currentRatio:      s.currentRatio,
+        quickRatio:        s.quickRatio,
+        returnOnAssets:    s.returnOnAssets,
+        freeCashFlowTtm:   s.freeCashFlowTtm,
+        cashAndEquivalents: s.cashAndEquivalents,
+        employees:         s.employees,
+        logoUrl:           s.logoUrl,
+        // Only "live" when the exchange actually traded today. A price always
+        // comes back — the last session's bar is served while EGX is shut —
+        // so asserting true here made the pulsing LIVE dot claim a closed
+        // market was trading. Older servers omit the field; treated as live
+        // so a stale deploy can't wrongly grey the dot out.
+        isLive:        s.sessionLive !== false,
+      };
+    });
 }
-
-// Static, hardcoded reference prices — used only as a last-resort *render*
-// fallback in EGXMarket.tsx when a query has never once succeeded, never
-// stored as this hook's actual query data (see fetchAllEGX below for why).
-export const EGX_STATIC_FALLBACK: EGXStockLive[] = EGX_COMPANIES.map(c => (
-  { ...c, price: c.fallbackPrice, change: 0, changePercent: 0, isLive: false }
-));
 
 // Throws on failure instead of quietly "succeeding" with static fallback
 // data. A silent fallback here used to look like a successful fetch to
