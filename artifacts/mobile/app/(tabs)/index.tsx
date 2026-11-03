@@ -43,7 +43,7 @@ import { ComingUpStrip } from '@/components/home/ComingUpStrip';
 import { TrackChooser } from '@/components/home/TrackChooser';
 import { useRentalProperties } from '@/context/RentalPropertiesContext';
 import { todayIso as cairoTodayIso } from '@/utils/rentalMath';
-import { comingUp, estimateInstallmentDebtEGP } from '@/utils/homeSummary';
+import { comingUp } from '@/utils/homeSummary';
 import { useGoals } from '@/context/GoalsContext';
 import { GoalRing } from '@/components/GoalRing';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
@@ -813,30 +813,8 @@ export default function HomeScreen() {
   // not look like a demotion.
   const netWorthEgp = summary.totalValue + cashTotalEGP + pendingIncomeEGP;
 
-  // ── Headline: Investments | Net worth ─────────────────────────────────────
-  // Net worth here also subtracts what's still owed on properties bought in
-  // installments (an estimate — see utils/homeSummary.ts). Tiers keep using
-  // netWorthEgp above, so nobody's tier moves because of this.
   const todayCairo = cairoTodayIso();
-  const installmentDebtEGP = useMemo(() => estimateInstallmentDebtEGP(holdings, todayCairo), [holdings, todayCairo]);
-  const headlineNetWorthEGP = Math.max(0, netWorthEgp - installmentDebtEGP);
-  const hasNetWorthExtras = cashTotalEGP > 0 || pendingIncomeEGP > 0 || installmentDebtEGP > 0;
-  // One headline, no modes: Net worth once there's cash or a debt, else
-  // the portfolio value. The tiles under it show what it adds up from.
-  const headlineValueEGP = hasNetWorthExtras ? headlineNetWorthEGP : summary.totalValue;
 
-  // "Why it moved today": the asset type behind most of today's change.
-  const todayDriver = useMemo(() => {
-    if (Math.abs(summary.todayGain) < 1) return null;
-    const parts = [
-      { label: t.gold, v: summary.todayGold },
-      { label: t.silver, v: summary.todaySilver },
-      { label: t.egxStocksAllocLabel, v: summary.todayStock },
-      { label: t.fixedIncome, v: summary.todayFI },
-    ].filter(p => Number.isFinite(p.v) && Math.abs(p.v) >= 1);
-    if (parts.length === 0) return null;
-    return parts.reduce((a, b) => (Math.abs(b.v) > Math.abs(a.v) ? b : a));
-  }, [summary, t]);
 
   // ── Rentals ────────────────────────────────────────────────────────────────
   const { units: rentalUnits, bookings: rentalBookings, leases: rentalLeases, expenses: rentalExpenses, isLoading: rentalsLoading } = useRentalProperties();
@@ -1106,7 +1084,7 @@ export default function HomeScreen() {
           {/* Label */}
           <View style={styles.heroLabelRow}>
             <Text style={[styles.heroLabel, heroEyebrow(language), { color: colors.mutedForeground, textAlign: 'center' }]}>
-              {hasNetWorthExtras ? t.homeNetWorth : t.totalPortfolioValue}
+              {t.totalPortfolioValue}
             </Text>
           </View>
 
@@ -1147,7 +1125,7 @@ export default function HomeScreen() {
               accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
               style={{ flexShrink: 1 }}
             >
-              <PortfolioHeroValue value={toDisp(headlineValueEGP)} hidden={hideValues} />
+              <PortfolioHeroValue value={toDisp(summary.totalValue)} hidden={hideValues} />
             </TouchableOpacity>
             <Pressable
               onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
@@ -1210,40 +1188,248 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {todayDriver && !hideValues && (
-            <Text style={[styles.todayDriverTxt, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {t.homeTodayDriverName(todayDriver.label)}
-            </Text>
+          {/* Net worth (investments + cash + pending income) — additive row,
+              only when the user has cash accounts and/or pending income.
+              Tappable (real user, Feedback & Ideas chat, asked for exactly
+              this — a Thndr-style info tap explaining where the gap between
+              this figure and Total Portfolio Value comes from) opens a
+              breakdown of cash-at-home vs bank vs pending vs any loans. */}
+          {(cashTotalEGP > 0 || pendingIncomeEGP > 0) && (
+            <Pressable
+              style={styles.netWorthRow}
+              onPress={() => { impact(); setShowNetWorthBreakdown(true); }}
+              hitSlop={8}
+            >
+              <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {hideValues
+                  ? `${t.homeNetWorth}: ••••••`
+                  : `${t.homeNetWorth}: ${fmtCompact(toDisp(netWorthEgp))} ${displayCurrency}`}
+              </Text>
+              <Feather name={forwardChevron()} size={12} color={colors.mutedForeground + '99'} />
+            </Pressable>
           )}
 
-          {/* What you have and owe — each amount appears once on Home.
-              Investments is left out when it already IS the headline. */}
+          {/* ── EXPERIMENTAL (unified hero card, simulator-only) ─────
+              Cash + Pending Income, folded in from what used to be their
+              own separate cards below — no more scrolling to see them.
+              Cash shows only the converted total here (same toDisp/
+              fmtCompact math the old Cash card used for its own total
+              row); the full per-currency breakdown is still one tap away
+              on /cash-accounts, unchanged. Two columns when Pending
+              Income also exists, a single full-width row when it
+              doesn't — same "don't leave a bordered slot empty"
+              principle already applied to Goals below.
+
+              Cash itself is now permanent/unconditional (not gated on
+              cashAccounts.length > 0) — real user feedback: a Cash cell
+              that only exists once you have an account meant the whole
+              row could pop in or out of existence depending on data,
+              which is exactly the "chip has no fixed position" problem
+              its own Today badge was already fixed for one level down.
+              A brand-new user with zero cash accounts now sees a
+              permanent "CASH — 0 EGP" row instead of no row at all;
+              Pending Income stays genuinely conditional (0 pending
+              income is a real, common, unremarkable state most users
+              are in most of the time, unlike "owns no cash at all").
+
+              Both blocks below are wrapped in one View so they're a
+              single child of heroBody's own `gap: 16` flex layout — that
+              gap was compounding with each block's own margin/padding,
+              turning what should've been one tight hairline between them
+              into a wide dead zone with a line lost in the middle of it.
+              Wrapping them means heroBody's gap only applies outside this
+              whole group; the space between Cash/Pending and Goals is
+              fully controlled right here instead. */}
           <View style={styles.heroExtras}>
-          <View style={[styles.nwList, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {[
-              hasNetWorthExtras && { key: 'inv', icon: 'trending-up' as const, label: t.investmentsLabel, value: summary.totalValue, color: colors.text, go: () => router.push('/(tabs)/holdings' as any) },
-              { key: 'cash', icon: 'credit-card' as const, label: t.homeCashShort, value: cashTotalEGP, color: colors.text, go: () => router.push('/cash-accounts' as any) },
-              pendingIncomeEGP > 0 && { key: 'owed', icon: 'clock' as const, label: t.homeOwedToYou, value: pendingIncomeEGP, color: colors.text, go: () => router.push('/recurring-income' as any) },
-              installmentDebtEGP > 0 && { key: 'debt', icon: 'file-minus' as const, label: t.homeDebtsShort, value: -installmentDebtEGP, color: colors.red, go: () => setShowNetWorthBreakdown(true) },
-            ].filter(Boolean).map((r, i, arr) => {
-              const row = r as { key: string; icon: keyof typeof Feather.glyphMap; label: string; value: number; color: string; go: () => void };
-              return (
-                <Pressable
-                  key={row.key}
-                  onPress={() => { impact(); row.go(); }}
-                  style={[styles.nwRow, i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
-                  accessibilityRole="button"
+            <View style={styles.heroWealthStrip}>
+                <TouchableOpacity
+                  style={[
+                    styles.heroWealthCell,
+                    { paddingStart: 20, paddingEnd: pendingIncomeEGP > 0 ? 18 : 20 },
+                    // Option F (tint + border) — additive on top of the
+                    // existing strip/divider structure, not a replacement
+                    // for it, per instruction. margin:4 insets the tile
+                    // slightly within its flex:1 slot so its own border
+                    // doesn't sit flush against the strip's outer border
+                    // or the divider between the two cells.
+                    { backgroundColor: colors.text + '0A', borderWidth: 1, borderColor: colors.text + '14', borderRadius: 14, margin: 4 },
+                  ]}
+                  onPress={() => { impact(); router.push('/cash-accounts' as any); }}
+                  activeOpacity={0.75}
                 >
-                  <Feather name={row.icon} size={15} color={colors.mutedForeground} />
-                  <Text style={[styles.nwLabel, { color: colors.text }]} numberOfLines={1}>{row.label}</Text>
-                  <Text style={[styles.nwValue, { color: row.color }]} numberOfLines={1}>
-                    {hideValues ? '••••' : `${row.value < 0 ? '−' : ''}${fmtCompact(Math.abs(toDisp(row.value)))} ${displayCurrency}`}
+                  {pendingIncomeEGP > 0 ? (
+                    // ── Paired with Pending Income (2 columns) — unchanged ──
+                    // Header row: icon + label + Today badge — all short,
+                    // fixed-length content, so this row can never be the
+                    // one that overflows. The value gets an entire row to
+                    // itself below, with nothing beside it competing for
+                    // width — that's what actually stops a big balance
+                    // ("400k EGP") plus the Today badge from fighting each
+                    // other for space and truncating one or the other, the
+                    // way the old single-row layout could.
+                    <>
+                      <View style={styles.heroWealthHeaderRow}>
+                        <View style={styles.heroWealthLeftGroup}>
+                          <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
+                            <BanknoteIcon size={13} color={colors.green} />
+                          </View>
+                          <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.cash}</Text>
+                        </View>
+                        {!hideValues && (
+                          cashTodayLoading ? (
+                            // Same dimmed-dash convention the Today/Total P/L
+                            // chip below already uses while its own data isn't
+                            // known yet — reserves this badge's exact layout
+                            // space instead of the badge being entirely absent
+                            // and then popping in once the network call (this
+                            // one has no local cache, unlike the cash total
+                            // itself) resolves.
+                            <View style={[styles.heroWealthBadge, { backgroundColor: colors.muted + '22' }]}>
+                              <Text style={[styles.heroWealthBadgeText, { color: colors.mutedForeground + '88' }]}>—</Text>
+                            </View>
+                          ) : (
+                            <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
+                              <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
+                                {t.todayChangeBadge(cashTodayInfo.text)}
+                              </Text>
+                            </View>
+                          )
+                        )}
+                      </View>
+                      {/* adjustsFontSizeToFit + minimumFontScale, not a bare
+                          numberOfLines={1} — a genuinely huge balance shrinks
+                          its own font to keep fitting on one line instead of
+                          truncating to "400k E…", the same technique
+                          PortfolioHeroValue already uses for the headline
+                          number above. */}
+                      {/* marginStart:32 = heroWealthChip's own width (26) +
+                          heroWealthLeftGroup's gap (6) — starts the value at
+                          the same x as the "CASH" label above it, not under
+                          the icon. Still spans to the cell's own right edge
+                          (no width cap), so adjustsFontSizeToFit above still
+                          has the room it needs for a genuinely large value. */}
+                      <Text
+                        style={[styles.heroWealthValueFull, { color: colors.text, marginStart: 32 }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                      >
+                        {hideValues ? '••••••' : (
+                          <>
+                            {cashTotalDispText}{' '}
+                            {/* Semi-bold, not inherited Bold — same
+                                weight distinction as the single-row
+                                layout's own currency suffix. */}
+                            <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_600SemiBold' }}>{displayCurrency}</Text>
+                          </>
+                        )}
+                      </Text>
+                    </>
+                  ) : (
+                    // ── Alone, full width (no Pending Income) — single row ──
+                    // Chosen redesign (Option 1 of 3 mocked up): icon+label
+                    // anchor the left edge, the badge anchors the right edge
+                    // (same spot it already occupies in the paired layout),
+                    // and the amount takes the middle — flex:1 + textAlign
+                    // center, same technique as the Goals band's own
+                    // label/amount centering, so it grows to fill whatever
+                    // width isn't spoken for. Bigger (19 vs 15) than the
+                    // paired layout's value: with nothing stacked below it
+                    // competing for vertical space, it can afford to be the
+                    // most prominent thing in the tile.
+                    <View style={styles.heroWealthSingleRow}>
+                      <View style={styles.heroWealthLeftGroup}>
+                        <View style={[styles.heroWealthChip, { backgroundColor: colors.green + '18' }]}>
+                          <BanknoteIcon size={13} color={colors.green} />
+                        </View>
+                        {/* fontSize:12 override, still Inter_600SemiBold
+                            (heroWealthLabel's own weight, not overridden) —
+                            scoped to just this single-row instance.
+                            heroWealthLabel itself (and therefore the paired/
+                            2-column layout's own "CASH" label) stays
+                            untouched at its normal 10px. */}
+                        <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground, fontSize: 12 }]} numberOfLines={1}>{t.cash}</Text>
+                      </View>
+                      {/* Split into two sibling Text elements inside a
+                          centered row, not one Text with a nested run —
+                          nested inline text aligns by baseline, which put
+                          the smaller "EGP" run visibly lower than true
+                          center once it stopped matching the amount's own
+                          19px. A real flex row with alignItems:'center'
+                          centers each Text's own box against the other's,
+                          which is what actually reads as centered. */}
+                      <View style={styles.heroWealthValueSingleRow}>
+                        <Text
+                          style={[styles.heroWealthValueSingle, { color: colors.text }]}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          minimumFontScale={0.6}
+                        >
+                          {hideValues ? '••••••' : cashTotalDispText}
+                        </Text>
+                        {!hideValues && (
+                          <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_600SemiBold', fontSize: 15, marginStart: 4 }}>
+                            {displayCurrency}
+                          </Text>
+                        )}
+                      </View>
+                      {!hideValues && (
+                        cashTodayLoading ? (
+                          <View style={[styles.heroWealthBadge, { backgroundColor: colors.muted + '22' }]}>
+                            <Text style={[styles.heroWealthBadgeText, { color: colors.mutedForeground + '88' }]}>—</Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.heroWealthBadge, { backgroundColor: (cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red) + '18' }]}>
+                            <Text style={[styles.heroWealthBadgeText, { color: cashTodayInfo.isFlat ? colors.mutedForeground : cashTodayInfo.up ? colors.green : colors.red }]} numberOfLines={1}>
+                              {t.todayChangeBadge(cashTodayInfo.text)}
+                            </Text>
+                          </View>
+                        )
+                      )}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              {/* Divider removed — each cell now has its own tint+border
+                  (Option F), which already separates them visually; a
+                  line between two already-bordered tiles was redundant.
+                  Say "revert" to bring this block back verbatim. */}
+              {pendingIncomeEGP > 0 && (
+                <TouchableOpacity
+                  style={[
+                    styles.heroWealthCell,
+                    { paddingStart: 18, paddingEnd: 20 },
+                    { backgroundColor: colors.text + '0A', borderWidth: 1, borderColor: colors.text + '14', borderRadius: 14, margin: 4 },
+                  ]}
+                  onPress={() => { impact(); router.push('/recurring-income'); }}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.heroWealthHeaderRow}>
+                    <View style={styles.heroWealthLeftGroup}>
+                      <View style={[styles.heroWealthChip, { backgroundColor: '#F59E0B18' }]}>
+                        <Feather name="clock" size={13} color="#F59E0B" />
+                      </View>
+                      <Text style={[styles.heroWealthLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{t.pendingIncomeLabel}</Text>
+                    </View>
+                  </View>
+                  {/* Centered under "PENDING INCOME" — per explicit request,
+                      unlike Cash's value (which stays left-aligned, started
+                      under its own label via marginStart:32). */}
+                  <Text
+                    style={[styles.heroWealthValueFull, { color: '#F59E0B', textAlign: 'center' }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
+                    {hideValues ? '••••••' : (
+                      <>
+                        {fmtCompact(toDisp(pendingIncomeEGP))}{' '}
+                        <Text style={{ color: colors.mutedForeground, fontFamily: 'Inter_600SemiBold' }}>{displayCurrency}</Text>
+                      </>
+                    )}
                   </Text>
-                  <Feather name={forwardChevron()} size={14} color={colors.mutedForeground + '99'} />
-                </Pressable>
-              );
-            })}
-          </View>
+                </TouchableOpacity>
+              )}
+            </View>
 
           {/* ── EXPERIMENTAL (unified hero card, simulator-only) ─────
               Goals, folded in from its own row below — same GoalRing
@@ -1388,6 +1574,58 @@ export default function HomeScreen() {
           )}
           </View>
 
+          {/* Invested · Current · Return strip — permanent, same
+              reasoning as the Cash row: gainPct/totalCost are already
+              zero-safe (see summary useMemo), so a brand-new user with
+              no holdings yet sees "0 EGP / 0 EGP / 0%" instead of this
+              whole row not existing. */}
+          <View style={styles.iStrip}>
+              <View style={[styles.iCell, { borderColor: colors.text + '14' }]}>
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.invested}</Text>
+                <View style={styles.iCellValueRow}>
+                  {/* numberOfLines+adjustsFontSizeToFit — each cell is
+                      only ~1/3 of the strip's width; without this a long
+                      value would wrap onto a second line instead of
+                      staying on one, misaligning with its siblings and
+                      the currency label sitting next to it. */}
+                  <Text style={[styles.iCellValue, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{hideValues ? '••••' : fmtCompact(toDisp(summary.totalCost))}</Text>
+                  {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>{displayCurrency}</Text>}
+                </View>
+              </View>
+              <Pressable
+                style={[styles.iCell, { borderColor: colors.text + '14' }]}
+                onPress={() => { impact(); setShowTotalPLBreakdown(true); }}
+              >
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.homeProfit}</Text>
+                <View style={styles.iCellValueRow}>
+                  <Text style={[styles.iCellValue, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                    {hideValues ? '••••' : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.gain)))}`}
+                  </Text>
+                  {!hideValues && <Text style={[styles.iCellCur, { color: colors.mutedForeground }]}>{displayCurrency}</Text>}
+                </View>
+              </Pressable>
+              <Pressable
+                style={[styles.iCell, { borderColor: colors.text + '14' }]}
+                onPress={() => showModal(t.returnCalcTitle, t.returnCalcBody)}
+              >
+                <Text style={[styles.iCellLabel, { color: colors.mutedForeground }]}>{t.returnLabel}</Text>
+                <View style={styles.iCellValueRow}>
+                  <Text style={[styles.iCellValue, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                    {/* .toFixed(2), matching the Total P/L chip below —
+                        both render the identical summary.gainPct; at
+                        different precision a value like 12.35% could read
+                        as "12.3%" here and "12.35%" there, looking like
+                        two different numbers instead of the same one. */}
+                    {`${isGain ? '+' : ''}${summary.gainPct.toFixed(2)}%`}
+                  </Text>
+                  <Text style={[styles.iCellCur, { color: gainColor + 'AA' }]}>
+                    {isGain ? '▲' : '▼'}
+                  </Text>
+                  <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
+                </View>
+              </Pressable>
+            </View>
+
           {/* Today / Total P/L chips — permanent, same reasoning as
               Invested/Current/Return above. todayPct/gainPct are already
               zero-safe. */}
@@ -1436,29 +1674,6 @@ export default function HomeScreen() {
                 </Pressable>
               )}
 
-              <Pressable
-                onPress={() => { impact(); setShowTotalPLBreakdown(true); }}
-                style={[styles.plChip, { backgroundColor: gainColor + '0D', borderColor: gainColor + '20' }]}
-              >
-                <View style={styles.plTop}>
-                  <Feather name={isGain ? 'trending-up' : 'trending-down'} size={10} color={gainColor + 'CC'} />
-                  <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.totalPL}</Text>
-                  <View style={[styles.plBadge, { backgroundColor: gainColor + '1A' }]}>
-                    <Text style={[styles.plBadgeText, { color: gainColor }]}>
-                      {`${isGain ? '+' : ''}${summary.gainPct.toFixed(2)}%`}
-                    </Text>
-                  </View>
-                  <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
-                </View>
-                <Text style={[styles.plValue, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                  {hideValues ? '••••' : `${isGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.gain)))} ${displayCurrency}`}
-                </Text>
-                {!hideValues && summary.totalCost > 0 && (
-                  <Text style={[styles.plSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {t.homePaidSub(`${fmtCompact(toDisp(summary.totalCost))} ${displayCurrency}`)}
-                  </Text>
-                )}
-              </Pressable>
             </View>
 
           {/* Performance Chart */}
@@ -1732,8 +1947,8 @@ export default function HomeScreen() {
       bankValue={bankEGP}
       pendingIncomeValue={pendingIncomeEGP}
       loansValue={summary.totalLoans}
-      installmentsValue={installmentDebtEGP}
-      totalAmount={headlineNetWorthEGP}
+      installmentsValue={0}
+      totalAmount={netWorthEgp}
       hideValues={hideValues}
       toDisp={toDisp}
       displayCurrency={displayCurrency}
@@ -2125,12 +2340,6 @@ const styles = StyleSheet.create({
   // is left default (visible) since there's no rounded-corner edge left
   // for the wash to be clipped to.
   heroCard:   {},
-  todayDriverTxt:   { fontSize: 12, fontFamily: 'Inter_500Medium', textAlign: 'center', marginTop: 4 },
-  nwList:           { alignSelf: 'stretch', borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, marginHorizontal: 4, marginBottom: 12 },
-  nwRow:            { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
-  nwLabel:          { flex: 1, fontSize: 14.5, fontFamily: 'Inter_500Medium' },
-  nwValue:          { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  plSub:            { fontSize: 11.5, fontFamily: 'Inter_400Regular', marginTop: 2 },
   // A narrow angled band swept across the card once on a milestone.
   heroSweep: { position: 'absolute', top: -40, bottom: -40, width: 90 },
   // 20, not the old card's 24 — with no border to pad away from, this
