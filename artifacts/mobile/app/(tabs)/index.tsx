@@ -1646,31 +1646,29 @@ export default function HomeScreen() {
                 // the one tile that wasn't ready at the moment every other
                 // number had already appeared. A dimmed dash says "not yet"
                 // without competing for attention.
-                <View style={[styles.plChip, { backgroundColor: colors.muted + '22', borderColor: colors.border }]}>
-                  <View style={styles.plTop}>
-                    <Feather name="clock" size={10} color={colors.mutedForeground + '99'} />
-                    <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
-                  </View>
-                  <Text style={[styles.plValue, { color: colors.mutedForeground + '88' }]}>—</Text>
+                <View style={[styles.todayCard, { backgroundColor: colors.muted + '22', borderColor: colors.border }]}>
+                  <Feather name="clock" size={13} color={colors.mutedForeground + '99'} />
+                  <Text style={[styles.todayLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
+                  <Text style={[styles.todayValue, { color: colors.mutedForeground + '88' }]}>—</Text>
                 </View>
               ) : (
                 <Pressable
                   onPress={() => { impact(); setShowTodayBreakdown(true); }}
-                  style={[styles.plChip, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}
+                  style={[styles.todayCard, { backgroundColor: todayColor + '0D', borderColor: todayColor + '20' }]}
+                  accessibilityRole="button"
                 >
-                  <View style={styles.plTop}>
-                    <Feather name={isTodayFlat ? 'minus' : isTodayGain ? 'trending-up' : 'trending-down'} size={10} color={todayColor + 'CC'} />
-                    <Text style={[styles.plLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
-                    <View style={[styles.plBadge, { backgroundColor: todayColor + '1A' }]}>
-                      <Text style={[styles.plBadgeText, { color: todayColor }]}>
-                        {`${!isTodayFlat && isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
-                      </Text>
-                    </View>
-                    <Feather name="info" size={10} color={colors.mutedForeground + '99'} />
-                  </View>
-                  <Text style={[styles.plValue, { color: todayColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                  {/* One centred line: icon · Today · amount · % · › */}
+                  <Feather name={isTodayFlat ? 'minus' : isTodayGain ? 'trending-up' : 'trending-down'} size={14} color={todayColor} />
+                  <Text style={[styles.todayLabel, { color: colors.mutedForeground }]}>{t.todayLabel}</Text>
+                  <Text style={[styles.todayValue, { color: todayColor }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                     {hideValues ? '••••' : isTodayFlat ? `0 ${displayCurrency}` : `${isTodayGain ? '+' : '−'}${fmtCompact(Math.abs(toDisp(summary.todayGain)))} ${displayCurrency}`}
                   </Text>
+                  <View style={[styles.plBadge, styles.todayBadge, { backgroundColor: todayColor + '1A' }]}>
+                    <Text style={[styles.plBadgeText, styles.todayBadgeText, { color: todayColor }]}>
+                      {`${!isTodayFlat && isTodayGain ? '+' : ''}${summary.todayPct.toFixed(2)}%`}
+                    </Text>
+                  </View>
+                  <Feather name={forwardChevron()} size={14} color={colors.mutedForeground + '99'} />
                 </Pressable>
               )}
 
@@ -2546,7 +2544,13 @@ const styles = StyleSheet.create({
   // the two chips (4+4) on its own, matching Cash/Pending's own tiles
   // exactly. Keeping gap:8 here on top of that doubled the space between
   // the two chips to 16pt instead.
-  plRow:          { flexDirection: 'row', marginTop: -8, marginBottom: -8, marginHorizontal: -20 },
+  plRow:          { flexDirection: 'row', marginTop: -8, marginBottom: -8, marginHorizontal: -20, paddingHorizontal: 20 },
+  // Same width as the Invested · Profit · Return boxes above it.
+  todayCard:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1, paddingVertical: 12, paddingHorizontal: 14, margin: 4 },
+  todayLabel:     { fontSize: 13, fontFamily: 'Inter_500Medium' },
+  todayValue:     { fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.2, fontVariant: ['tabular-nums'], flexShrink: 1 },
+  todayBadge:     { paddingHorizontal: 7, paddingVertical: 3 },
+  todayBadgeText: { fontSize: 11.5 },
   // margin:4 — same small inset Cash/Pending's own tiles now have, so
   // these chips get the same comfortable breathing room from the screen
   // edge instead of sitting flush against the literal 0pt edge.
