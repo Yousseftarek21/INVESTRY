@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Animated, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView,
+  ActivityIndicator, Alert, Animated, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -193,7 +193,7 @@ function StockPickerModal({
       picker itself. Matches how Gold/Silver/every other type has no
       internal sub-picker of its own. */
   market: 'EGX' | 'US';
-  selected: { symbol: string; name: string };
+  selected: { symbol: string; name: string } | null;
   onSelect: (s: { symbol: string; name: string }) => void;
   onClose: () => void;
 }) {
@@ -259,7 +259,7 @@ function StockPickerModal({
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
           renderItem={({ item, index }) => {
-            const isSelected = selected.symbol === item.symbol;
+            const isSelected = selected?.symbol === item.symbol;
             const isLast = index === filtered.length - 1;
             return (
               <TouchableOpacity
@@ -565,7 +565,9 @@ export default function AddInvestmentScreen() {
   const [form, setForm] = useState<MetalForm>('physical');
   const [grams, setGrams] = useState('');
   const [purchasePricePerGram, setPurchasePricePerGram] = useState('');
-  const [selectedStock, setSelectedStock] = useState(EGX_SYMBOLS[0]);
+  // Nothing pre-selected: a default stock used to get saved by people who
+  // never opened the picker.
+  const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string } | null>(null);
   const [customSymbol, setCustomSymbol] = useState('');
   const [stockPickerVisible, setStockPickerVisible] = useState(false);
   // Which market the "EGX Stock" / "US Stock" type chip the user tapped
@@ -578,6 +580,14 @@ export default function AddInvestmentScreen() {
   const [stockMarket, setStockMarket] = useState<'EGX' | 'US'>('EGX');
   const [shares, setShares] = useState('');
   const [purchasePricePerShare, setPurchasePricePerShare] = useState('');
+  // Price entry: per unit (gram/share) or the total paid. The per-unit field
+  // stays the single source of truth — "total" just writes it for you.
+  const [priceMode, setPriceMode] = useState<'unit' | 'total'>('unit');
+  const [totalPaid, setTotalPaid] = useState('');
+  // Gold can be entered as grams, Egyptian gold pounds (8 g of 21k) or
+  // ounces (31.1 g); it's always stored as grams.
+  const [goldUnit, setGoldUnit] = useState<'g' | 'pound' | 'oz'>('g');
+  const [unitQty, setUnitQty] = useState('');
   const [propertyType, setPropertyType] = useState<PropertyType>('apartment');
   const [propertyName, setPropertyName] = useState('');
   const [governorate, setGovernorate] = useState('');
@@ -869,7 +879,8 @@ export default function AddInvestmentScreen() {
       if (stockMarket !== 'EGX') return null;
       const n = num(shares); const pps = num(purchasePricePerShare);
       if (n == null || pps == null) return null;
-      const sym = customSymbol.trim().toUpperCase() || selectedStock.symbol;
+      const sym = customSymbol.trim().toUpperCase() || selectedStock?.symbol;
+      if (!sym) return null;
       const live = egxStocks?.find(st => st.ticker === sym)?.price;
       const cost = n * pps;
       if (!live || !Number.isFinite(live) || live <= 0) {
@@ -928,6 +939,9 @@ export default function AddInvestmentScreen() {
   // stale EGX pick showing while the US list is active, or vice versa.
   const selectType = (key: TypeChipKey) => {
     if (isEditing) return;
+    // A typed total belongs to the previous type's quantity — start clean.
+    setPriceMode('unit');
+    setTotalPaid('');
     Animated.sequence([
       Animated.timing(typeCardAnims[key], { toValue: 0.94, duration: 80, useNativeDriver: true }),
       Animated.timing(typeCardAnims[key], { toValue: 1, duration: 120, useNativeDriver: true }),
@@ -935,12 +949,12 @@ export default function AddInvestmentScreen() {
     if (key === 'us_stock') {
       setType('stock');
       setStockMarket('US');
-      setSelectedStock(US_SYMBOLS[0]);
+      setSelectedStock(null);
       setCustomSymbol('');
     } else if (key === 'stock') {
       setType('stock');
       setStockMarket('EGX');
-      setSelectedStock(EGX_SYMBOLS[0]);
+      setSelectedStock(null);
       setCustomSymbol('');
     } else {
       setType(key);
@@ -1008,9 +1022,10 @@ export default function AddInvestmentScreen() {
       if (!grams || !purchasePricePerGram) { Alert.alert(t.missingFields, t.enterGramsAndPrice); return; }
       holding = { id, type: 'silver', form, grams: parseAmount(grams), purchasePricePerGram: parseAmount(purchasePricePerGram), purchaseDate, notes };
     } else if (type === 'stock') {
+      const sym = customSymbol.trim().toUpperCase() || selectedStock?.symbol;
+      if (!sym) { Alert.alert(t.missingFields, t.chooseStockFirst); return; }
       if (!shares || !purchasePricePerShare) { Alert.alert(t.missingFields, t.enterSharesAndPrice); return; }
-      const sym = customSymbol.trim().toUpperCase() || selectedStock.symbol;
-      const name = customSymbol.trim() ? customSymbol.trim().toUpperCase() : selectedStock.name;
+      const name = customSymbol.trim() ? customSymbol.trim().toUpperCase() : (selectedStock?.name ?? sym);
       holding = { id, type: 'stock', symbol: sym, companyName: name, shares: parseAmount(shares), purchasePricePerShare: parseAmount(purchasePricePerShare), purchaseDate, notes };
     } else if (type === 'real_estate') {
       const finalGovernorate = governorate.trim();
@@ -1212,6 +1227,148 @@ export default function AddInvestmentScreen() {
     }
   };
 
+  const GOLD_UNIT_GRAMS = { g: 1, pound: 8, oz: 31.1035 } as const;
+  const numStr = (n: number) => String(Math.round(n * 10000) / 10000);
+  const posNum = (v: string) => { const n = parseAmount(v); return Number.isFinite(n) && n > 0 ? n : null; };
+  const isStock = type === 'stock';
+  const qtyValue = isStock ? shares : grams;
+  const setQty = isStock ? setShares : setGrams;
+  const unitPrice = isStock ? purchasePricePerShare : purchasePricePerGram;
+  const setUnitPrice = isStock ? setPurchasePricePerShare : setPurchasePricePerGram;
+  const unitWord = isStock ? t.previewPerShare : t.previewPerGram;
+
+  // Quantity in base units (grams or shares) changed: keep a typed total in sync.
+  const applyQty = (base: string) => {
+    setQty(base);
+    if (priceMode === 'total') {
+      const q = posNum(base); const tot = posNum(totalPaid);
+      setUnitPrice(q != null && tot != null ? numStr(tot / q) : '');
+    }
+  };
+  const onUnitQtyChange = (v: string) => {
+    setUnitQty(v);
+    const n = posNum(v);
+    applyQty(n != null ? numStr(n * GOLD_UNIT_GRAMS[goldUnit]) : '');
+  };
+  const selectGoldUnit = (u: 'g' | 'pound' | 'oz') => {
+    setGoldUnit(u);
+    if (u === 'pound') setKarat('21k');
+    if (u === 'oz') setKarat('24k');
+    const g = posNum(grams);
+    setUnitQty(g != null && u !== 'g' ? numStr(g / GOLD_UNIT_GRAMS[u]) : '');
+  };
+  const onTotalChange = (v: string) => {
+    setTotalPaid(v);
+    const q = posNum(qtyValue); const tot = posNum(v);
+    setUnitPrice(q != null && tot != null ? numStr(tot / q) : '');
+  };
+  const selectPriceMode = (m: 'unit' | 'total') => {
+    if (m === 'total') {
+      const q = posNum(qtyValue); const u = posNum(unitPrice);
+      setTotalPaid(q != null && u != null ? numStr(q * u) : '');
+    }
+    setPriceMode(m);
+  };
+
+  // Today's price per gram/share, where a real one exists.
+  const todayUnitPrice = (() => {
+    if (type === 'gold' || type === 'silver') {
+      if (!marketPrices || pricesArePlaceholder) return null;
+      const v = type === 'gold' ? goldPricePerGram(marketPrices, karat) : silverPricePerGram(marketPrices);
+      return Number.isFinite(v) && v > 0 ? v : null;
+    }
+    if (type === 'stock' && stockMarket === 'EGX') {
+      const sym = customSymbol.trim().toUpperCase() || selectedStock?.symbol;
+      const v = sym ? egxStocks?.find(st => st.ticker === sym)?.price : undefined;
+      return v && Number.isFinite(v) && v > 0 ? v : null;
+    }
+    return null;
+  })();
+  const useTodayPrice = () => {
+    if (todayUnitPrice == null) return;
+    impact();
+    setUnitPrice(numStr(Math.round(todayUnitPrice * 100) / 100));
+    setPriceMode('unit');
+  };
+  const fmt2 = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+
+  // Quantity + price fields shared by gold, silver and stocks. Plain render
+  // functions (not components) so inputs keep focus between keystrokes.
+  const renderQuantity = () => {
+    if (isStock) {
+      return (
+        <View style={styles.section}>
+          <Text style={labelStyle}>{t.numberOfShares}</Text>
+          <AmountInput style={inputStyle} placeholder={t.exampleValue('100')} placeholderTextColor={colors.mutedForeground}
+            value={shares} onChangeText={applyQty} />
+        </View>
+      );
+    }
+    const byUnit = type === 'gold' && goldUnit !== 'g';
+    return (
+      <View style={styles.section}>
+        {type === 'gold' && (
+          <View style={[styles.chips, { marginBottom: 12 }]}>
+            {(['g', 'pound', 'oz'] as const).map(u => (
+              <Chip key={u} value={u} selected={goldUnit === u} onPress={() => selectGoldUnit(u)}
+                label={u === 'g' ? t.goldUnitGrams : u === 'pound' ? t.goldUnitPound : t.goldUnitOunce} />
+            ))}
+          </View>
+        )}
+        <Text style={labelStyle}>{byUnit ? (goldUnit === 'pound' ? t.qtyGoldPounds : t.qtyOunces) : t.weightGrams}</Text>
+        {byUnit ? (
+          <>
+            <AmountInput style={inputStyle} placeholder={t.exampleValue('2')} placeholderTextColor={colors.mutedForeground}
+              value={unitQty} onChangeText={onUnitQtyChange} />
+            {posNum(grams) != null && (
+              <Text style={[styles.hintText, { color: colors.mutedForeground }]}>{t.equalsGrams(fmt2(parseAmount(grams)))}</Text>
+            )}
+          </>
+        ) : (
+          <AmountInput style={inputStyle} placeholder={t.exampleValue(type === 'gold' ? '50' : '500')} placeholderTextColor={colors.mutedForeground}
+            value={grams} onChangeText={applyQty} />
+        )}
+      </View>
+    );
+  };
+
+  const renderPrice = () => (
+    <View style={styles.section}>
+      <View style={[styles.chips, { marginBottom: 12 }]}>
+        <Chip value="unit" selected={priceMode === 'unit'} onPress={() => selectPriceMode('unit')}
+          label={isStock ? t.priceModeUnitShare : t.priceModeUnitGram} />
+        <Chip value="total" selected={priceMode === 'total'} onPress={() => selectPriceMode('total')} label={t.priceModeTotal} />
+      </View>
+      {priceMode === 'unit' ? (
+        <>
+          <Text style={labelStyle}>{isStock ? t.purchasePricePerShare : t.purchasePricePerGram}</Text>
+          <AmountInput style={inputStyle}
+            placeholder={t.exampleValue(isStock ? '95.50' : type === 'gold' ? '3900' : '52')}
+            placeholderTextColor={colors.mutedForeground}
+            value={unitPrice} onChangeText={setUnitPrice} />
+        </>
+      ) : (
+        <>
+          <Text style={labelStyle}>{t.totalPaidLabel}</Text>
+          <AmountInput style={inputStyle} placeholder={t.exampleValue('195000')} placeholderTextColor={colors.mutedForeground}
+            value={totalPaid} onChangeText={onTotalChange} />
+          {posNum(unitPrice) != null && (
+            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>{t.perUnitHint(fmt2(parseAmount(unitPrice)), unitWord)}</Text>
+          )}
+        </>
+      )}
+      {todayUnitPrice != null && (
+        <TouchableOpacity onPress={useTodayPrice} activeOpacity={0.75}
+          style={[styles.todayPriceBtn, { backgroundColor: colors.primary + '14', borderColor: colors.primary + '40' }]}>
+          <Feather name="zap" size={13} color={colors.primary} />
+          <Text style={[styles.todayPriceText, { color: colors.primary }]} numberOfLines={1}>
+            {t.useTodayPrice(fmt2(todayUnitPrice), unitWord)}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
@@ -1307,16 +1464,8 @@ export default function AddInvestmentScreen() {
             </View>
           </FormSection>
           <FormSection icon="shopping-bag" title={t.formSecPurchase}>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.weightGrams}</Text>
-              <AmountInput style={inputStyle} placeholder={t.exampleValue('50')} placeholderTextColor={colors.mutedForeground}
-                value={grams} onChangeText={setGrams} />
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
-              <AmountInput style={inputStyle} placeholder={t.exampleValue('3900')} placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
-            </View>
+            {renderQuantity()}
+            {renderPrice()}
             <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
@@ -1337,16 +1486,8 @@ export default function AddInvestmentScreen() {
             </View>
           </FormSection>
           <FormSection icon="shopping-bag" title={t.formSecPurchase}>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.weightGrams}</Text>
-              <AmountInput style={inputStyle} placeholder={t.exampleValue('500')} placeholderTextColor={colors.mutedForeground}
-                value={grams} onChangeText={setGrams} />
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.purchasePricePerGram}</Text>
-              <AmountInput style={inputStyle} placeholder={t.exampleValue('52')} placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerGram} onChangeText={setPurchasePricePerGram} />
-            </View>
+            {renderQuantity()}
+            {renderPrice()}
             <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
@@ -1366,15 +1507,23 @@ export default function AddInvestmentScreen() {
                 activeOpacity={0.75}
               >
                 <View style={[styles.dropdownAvatar, { backgroundColor: colors.primary + '20' }]}>
-                  <Text style={[styles.dropdownAvatarText, { color: colors.primary }]}>
-                    {activeStock.symbol.substring(0, 4)}
-                  </Text>
+                  {activeStock ? (
+                    <Text style={[styles.dropdownAvatarText, { color: colors.primary }]}>
+                      {activeStock.symbol.substring(0, 4)}
+                    </Text>
+                  ) : (
+                    <Feather name="search" size={16} color={colors.primary} />
+                  )}
                 </View>
                 <View style={styles.dropdownInfo}>
-                  <Text style={[styles.dropdownSymbol, { color: colors.text }]}>{activeStock.symbol}</Text>
-                  <Text style={[styles.dropdownName, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {activeStock.name}
+                  <Text style={[styles.dropdownSymbol, { color: activeStock ? colors.text : colors.mutedForeground }]}>
+                    {activeStock ? activeStock.symbol : t.chooseStock}
                   </Text>
+                  {!!activeStock && (
+                    <Text style={[styles.dropdownName, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {activeStock.name}
+                    </Text>
+                  )}
                 </View>
                 <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
@@ -1382,7 +1531,7 @@ export default function AddInvestmentScreen() {
               {/* Custom symbol override */}
               <View style={styles.customRow}>
                 <View style={[styles.customDivider, { backgroundColor: colors.border }]} />
-                <Text style={[styles.customOr, { color: colors.mutedForeground }]}>or enter custom</Text>
+                <Text style={[styles.customOr, { color: colors.mutedForeground }]}>{t.orEnterCustom}</Text>
                 <View style={[styles.customDivider, { backgroundColor: colors.border }]} />
               </View>
               <TextInput
@@ -1396,16 +1545,8 @@ export default function AddInvestmentScreen() {
             </View>
           </FormSection>
           <FormSection icon="shopping-bag" title={t.formSecPurchase}>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.numberOfShares}</Text>
-              <AmountInput style={inputStyle} placeholder={t.exampleValue('100')} placeholderTextColor={colors.mutedForeground}
-                value={shares} onChangeText={setShares} />
-            </View>
-            <View style={styles.section}>
-              <Text style={labelStyle}>{t.purchasePricePerShare}</Text>
-              <AmountInput style={inputStyle} placeholder={t.exampleValue('95.50')} placeholderTextColor={colors.mutedForeground}
-                value={purchasePricePerShare} onChangeText={setPurchasePricePerShare} />
-            </View>
+            {renderQuantity()}
+            {renderPrice()}
             <View style={styles.section}>
               <DatePickerField label={t.purchaseDate} value={purchaseDate} onChange={setPurchaseDate} />
             </View>
@@ -1974,6 +2115,17 @@ export default function AddInvestmentScreen() {
             </View>
           </View>
 
+          <TouchableOpacity
+            style={[styles.bottomSave, { backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 }]}
+            onPress={handleSave}
+            disabled={saving}
+            activeOpacity={0.85}
+          >
+            {saving
+              ? <ActivityIndicator color={colors.primaryForeground} />
+              : <Text style={[styles.bottomSaveText, { color: colors.primaryForeground }]}>{isEditing ? t.addSaveChanges : t.addSaveInvestment}</Text>}
+          </TouchableOpacity>
+
           </>)}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -2114,6 +2266,10 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, fontFamily: 'Inter_400Regular' },
   notesInput: { minHeight: 80, textAlignVertical: 'top' },
+  todayPriceBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, marginTop: 10, maxWidth: '100%' },
+  todayPriceText: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold', flexShrink: 1 },
+  bottomSave: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', marginTop: 4, marginBottom: 8 },
+  bottomSaveText: { fontSize: 16, fontFamily: 'Inter_700Bold' },
   hintText: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 6, lineHeight: 15 },
   warningBanner: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
