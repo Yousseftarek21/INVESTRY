@@ -39,6 +39,10 @@ import { syncErrorText } from '@/utils/syncErrorText';
 import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { RentalHomeCard } from '@/components/rental/RentalHomeCard';
+import { ComingUpStrip } from '@/components/home/ComingUpStrip';
+import { useRentalProperties } from '@/context/RentalPropertiesContext';
+import { todayIso as cairoTodayIso } from '@/utils/rentalMath';
+import { comingUp, estimateInstallmentDebtEGP } from '@/utils/homeSummary';
 import { useGoals } from '@/context/GoalsContext';
 import { GoalRing } from '@/components/GoalRing';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
@@ -366,6 +370,9 @@ const chipSt = StyleSheet.create({
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
+
+const HEADLINE_KEY = '@investry_home_headline';
+const NET_WORTH_SEEN_KEY = '@investry_home_networth_seen';
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -807,6 +814,70 @@ export default function HomeScreen() {
   // disagree. Always EGP, never the display currency: switching to USD must
   // not look like a demotion.
   const netWorthEgp = summary.totalValue + cashTotalEGP + pendingIncomeEGP;
+
+  // ── Headline: Investments | Net worth ─────────────────────────────────────
+  // Net worth here also subtracts what's still owed on properties bought in
+  // installments (an estimate — see utils/homeSummary.ts). Tiers keep using
+  // netWorthEgp above, so nobody's tier moves because of this.
+  const todayCairo = cairoTodayIso();
+  const installmentDebtEGP = useMemo(() => estimateInstallmentDebtEGP(holdings, todayCairo), [holdings, todayCairo]);
+  const headlineNetWorthEGP = Math.max(0, netWorthEgp - installmentDebtEGP);
+  const hasNetWorthExtras = cashTotalEGP > 0 || pendingIncomeEGP > 0 || installmentDebtEGP > 0;
+  // null until the saved choice has been read. Existing users keep
+  // Investments unless they switch; someone with no investments yet starts on
+  // Net worth, since Investments would read 0.
+  const [savedHeadline, setSavedHeadline] = useState<'investments' | 'networth' | null>(null);
+  const [netWorthSeen, setNetWorthSeen] = useState(true);
+  useEffect(() => {
+    AsyncStorage.multiGet([HEADLINE_KEY, NET_WORTH_SEEN_KEY])
+      .then(([[, mode], [, seen]]) => {
+        if (mode === 'investments' || mode === 'networth') setSavedHeadline(mode);
+        setNetWorthSeen(seen === '1');
+      })
+      .catch(() => null);
+  }, []);
+  const headlineMode: 'investments' | 'networth' = !hasNetWorthExtras
+    ? 'investments'
+    : savedHeadline ?? (holdings.length === 0 ? 'networth' : 'investments');
+  const chooseHeadline = (mode: 'investments' | 'networth') => {
+    impact();
+    setSavedHeadline(mode);
+    AsyncStorage.setItem(HEADLINE_KEY, mode).catch(() => null);
+    if (mode === 'networth' && !netWorthSeen) {
+      setNetWorthSeen(true);
+      AsyncStorage.setItem(NET_WORTH_SEEN_KEY, '1').catch(() => null);
+    }
+  };
+  const headlineValueEGP = headlineMode === 'networth' ? headlineNetWorthEGP : summary.totalValue;
+
+  // "Why it moved today": the asset type behind most of today's change.
+  const todayDriver = useMemo(() => {
+    if (Math.abs(summary.todayGain) < 1) return null;
+    const parts = [
+      { label: t.gold, v: summary.todayGold },
+      { label: t.silver, v: summary.todaySilver },
+      { label: t.egxStocksAllocLabel, v: summary.todayStock },
+      { label: t.fixedIncome, v: summary.todayFI },
+    ].filter(p => Number.isFinite(p.v) && Math.abs(p.v) >= 1);
+    if (parts.length === 0) return null;
+    return parts.reduce((a, b) => (Math.abs(b.v) > Math.abs(a.v) ? b : a));
+  }, [summary, t]);
+
+  // ── Rentals ────────────────────────────────────────────────────────────────
+  const { units: rentalUnits, bookings: rentalBookings, leases: rentalLeases, expenses: rentalExpenses, isLoading: rentalsLoading } = useRentalProperties();
+  const activeRentalData = useMemo(() => rentalUnits.filter(u => !u.archived).map(unit => ({
+    unit,
+    bookings: rentalBookings.filter(b => b.unitId === unit.id),
+    leases: rentalLeases.filter(l => l.unitId === unit.id),
+    expenses: rentalExpenses.filter(e => e.unitId === unit.id),
+  })), [rentalUnits, rentalBookings, rentalLeases, rentalExpenses]);
+  // Someone who only tracks rental units gets rental profit as the headline
+  // instead of a 0 portfolio.
+  const rentalsOnly = holdings.length === 0 && cashAccounts.length === 0 && pendingIncomeEGP === 0 && activeRentalData.length > 0;
+  const comingUpItems = useMemo(
+    () => comingUp(activeRentalData, holdings, recurringIncomes, todayCairo),
+    [activeRentalData, holdings, recurringIncomes, todayCairo],
+  );
   const { tier, since: tierSince, change: tierChange, clearChange: clearTierChange } = usePortfolioTier(netWorthEgp);
   const [showTierCard, setShowTierCard] = useState(false);
 
@@ -846,7 +917,8 @@ export default function HomeScreen() {
   // body had already appeared (the skeleton disappearing before Cash's
   // own local-cache read had resolved), popping in a beat late instead of
   // appearing at the same instant as everything else.
-  const heroReady = !pricesArePlaceholder && !(holdingsLoading && holdings.length === 0) && !(cashLoading && cashAccounts.length === 0);
+  const heroReady = !pricesArePlaceholder && !(holdingsLoading && holdings.length === 0) && !(cashLoading && cashAccounts.length === 0)
+    && !(rentalsLoading && rentalUnits.length === 0 && holdings.length === 0 && cashAccounts.length === 0);
 
   // Deliberately stricter than heroReady. Cached prices are enough to show a
   // true total (a spot price doesn't expire), but not today's move — those
@@ -1025,13 +1097,43 @@ export default function HomeScreen() {
             case; PortfolioHeroValue only mounts once heroReady is true. */}
         {pricesErrored && !rawPrices ? null : !heroReady ? (
           <HeroSkeleton />
+        ) : rentalsOnly ? (
+          <View style={styles.heroBody}>
+            <RentalHomeCard prices={prices} toDisp={toDisp} displayCurrency={displayCurrency} hideValues={hideValues} variant="hero" />
+          </View>
         ) : (
         <View style={styles.heroBody}>
           {/* Label */}
           <View style={styles.heroLabelRow}>
-            <Text style={[styles.heroLabel, heroEyebrow(language), { color: colors.mutedForeground, textAlign: 'center' }]}>
-              {t.totalPortfolioValue}
-            </Text>
+            {hasNetWorthExtras ? (
+              <View style={[styles.headlineToggle, { backgroundColor: colors.muted + '80', borderColor: colors.border }]}>
+                {(['investments', 'networth'] as const).map(mode => {
+                  const active = headlineMode === mode;
+                  return (
+                    <Pressable
+                      key={mode}
+                      onPress={() => chooseHeadline(mode)}
+                      style={[styles.headlinePill, active && { backgroundColor: colors.card }]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                    >
+                      <Text style={[styles.headlinePillText, { color: active ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
+                        {mode === 'investments' ? t.investmentsLabel : t.homeNetWorth}
+                      </Text>
+                      {mode === 'networth' && !netWorthSeen && !active && (
+                        <View style={[styles.headlineNew, { backgroundColor: colors.primary }]}>
+                          <Text style={[styles.headlineNewText, { color: colors.primaryForeground }]}>{t.homeNew}</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : (
+              <Text style={[styles.heroLabel, heroEyebrow(language), { color: colors.mutedForeground, textAlign: 'center' }]}>
+                {t.totalPortfolioValue}
+              </Text>
+            )}
           </View>
 
           {/* Big value + currency pill.
@@ -1071,7 +1173,7 @@ export default function HomeScreen() {
               accessibilityLabel={hideValues ? 'Show portfolio values' : 'Hide portfolio values'}
               style={{ flexShrink: 1 }}
             >
-              <PortfolioHeroValue value={toDisp(summary.totalValue)} hidden={hideValues} />
+              <PortfolioHeroValue value={toDisp(headlineValueEGP)} hidden={hideValues} />
             </TouchableOpacity>
             <Pressable
               onPress={() => { impact(); setShowCurrencyPicker(v => !v); }}
@@ -1140,7 +1242,7 @@ export default function HomeScreen() {
               this — a Thndr-style info tap explaining where the gap between
               this figure and Total Portfolio Value comes from) opens a
               breakdown of cash-at-home vs bank vs pending vs any loans. */}
-          {(cashTotalEGP > 0 || pendingIncomeEGP > 0) && (
+          {hasNetWorthExtras && (
             <Pressable
               style={styles.netWorthRow}
               onPress={() => { impact(); setShowNetWorthBreakdown(true); }}
@@ -1148,11 +1250,29 @@ export default function HomeScreen() {
             >
               <Feather name="info" size={10} color={colors.mutedForeground + '88'} />
               <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                {hideValues
-                  ? `${t.netWorthLabel}: ••••••`
-                  : `${t.netWorthLabel}: ${fmtCompact(toDisp(netWorthEgp))} ${displayCurrency}`}
+                {(() => {
+                  // Spell out how the two numbers relate, so Net worth being
+                  // lower than Investments (installments still owed) never
+                  // reads as a bug.
+                  const c = (egp: number) => (hideValues ? '••••' : fmtCompact(toDisp(egp)));
+                  const cashSide = cashTotalEGP + pendingIncomeEGP;
+                  if (headlineMode === 'networth') {
+                    return [
+                      `${t.investmentsLabel} ${c(summary.totalValue)}`,
+                      cashSide > 0 ? `+ ${t.homeCashShort} ${c(cashSide)}` : null,
+                      installmentDebtEGP > 0 ? `− ${t.homeInstallmentsShort} ${c(installmentDebtEGP)}` : null,
+                    ].filter(Boolean).join('  ·  ');
+                  }
+                  const nw = `${t.homeNetWorth}: ${c(headlineNetWorthEGP)} ${displayCurrency}`;
+                  return installmentDebtEGP > 0 ? `${nw} · ${t.homeAfterInstallments(c(installmentDebtEGP))}` : nw;
+                })()}
               </Text>
             </Pressable>
+          )}
+          {todayDriver && !hideValues && (
+            <Text style={[styles.todayDriverTxt, { color: summary.todayGain >= 0 ? colors.green : colors.red }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {t.homeTodayDriver(todayDriver.label, `${todayDriver.v >= 0 ? '+' : '−'}${fmtCompact(Math.abs(toDisp(todayDriver.v)))} ${displayCurrency}`)}
+            </Text>
           )}
 
           {/* ── EXPERIMENTAL (unified hero card, simulator-only) ─────
@@ -1791,8 +1911,13 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {/* ── Coming up: next dated things across the app ─────────── */}
+      <ComingUpStrip items={comingUpItems} today={todayCairo} hideValues={hideValues} />
+
       {/* ── Rental Properties (only once the owner has a unit) ──── */}
-      <RentalHomeCard prices={prices} toDisp={toDisp} displayCurrency={displayCurrency} hideValues={hideValues} />
+      {!rentalsOnly && (
+        <RentalHomeCard prices={prices} toDisp={toDisp} displayCurrency={displayCurrency} hideValues={hideValues} />
+      )}
 
       {/* ── Top Investments ─────────────────────────────────────── */}
       <View style={styles.holdingsSection}>
@@ -1899,7 +2024,8 @@ export default function HomeScreen() {
       bankValue={bankEGP}
       pendingIncomeValue={pendingIncomeEGP}
       loansValue={summary.totalLoans}
-      totalAmount={netWorthEgp}
+      installmentsValue={installmentDebtEGP}
+      totalAmount={headlineNetWorthEGP}
       hideValues={hideValues}
       toDisp={toDisp}
       displayCurrency={displayCurrency}
@@ -2172,11 +2298,12 @@ function TotalPLBreakdownModal({
 interface NetWorthRow { key: string; label: string; color: string; icon: React.ReactNode; amount: number }
 
 function NetWorthBreakdownModal({
-  visible, onClose, investmentsValue, cashHomeValue, bankValue, pendingIncomeValue, loansValue,
+  visible, onClose, investmentsValue, cashHomeValue, bankValue, pendingIncomeValue, loansValue, installmentsValue,
   totalAmount, hideValues, toDisp, displayCurrency,
 }: {
   visible: boolean; onClose: () => void;
   investmentsValue: number; cashHomeValue: number; bankValue: number; pendingIncomeValue: number; loansValue: number;
+  installmentsValue: number;
   totalAmount: number; hideValues: boolean; toDisp: (egp: number) => number; displayCurrency: DisplayCurrency;
 }) {
   const colors = useColors();
@@ -2198,6 +2325,8 @@ function NetWorthBreakdownModal({
       icon: <ConceptIcon icon={ICON_PENDING_INCOME} size={16} color="#F59E0B" />, amount: pendingIncomeValue }] : []),
     ...(loansValue > 0 ? [{ key: 'loans', label: t.loansRowLabel, color: colors.red,
       icon: <ConceptIcon icon={ICON_LOANS} size={16} color={colors.red} />, amount: -loansValue }] : []),
+    ...(installmentsValue > 0 ? [{ key: 'installments', label: t.installmentsLeftEst, color: colors.red,
+      icon: <Feather name="calendar" size={16} color={colors.red} />, amount: -installmentsValue }] : []),
   ];
 
   return (
@@ -2288,6 +2417,12 @@ const styles = StyleSheet.create({
   // is left default (visible) since there's no rounded-corner edge left
   // for the wash to be clipped to.
   heroCard:   {},
+  headlineToggle:   { flexDirection: 'row', borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, padding: 3, gap: 2 },
+  headlinePill:     { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  headlinePillText: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
+  headlineNew:      { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
+  headlineNewText:  { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
+  todayDriverTxt:   { fontSize: 12, fontFamily: 'Inter_500Medium', textAlign: 'center', marginTop: 4 },
   // A narrow angled band swept across the card once on a milestone.
   heroSweep: { position: 'absolute', top: -40, bottom: -40, width: 90 },
   // 20, not the old card's 24 — with no border to pad away from, this

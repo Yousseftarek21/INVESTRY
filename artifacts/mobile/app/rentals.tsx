@@ -190,7 +190,7 @@ const s = StyleSheet.create({
   emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 11, marginTop: 6 },
   emptyBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   label: { fontSize: 12, fontFamily: 'Inter_500Medium' },
-  big: { fontSize: 28, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.4 },
+  big: { fontSize: 28, fontFamily: 'Inter_700Bold', letterSpacing: -0.4 },
   statsRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
   statValue: { fontSize: 15, fontFamily: 'Inter_700Bold' },
   unitName: { fontSize: 16, fontFamily: 'Inter_600SemiBold' },
