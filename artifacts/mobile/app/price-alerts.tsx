@@ -102,7 +102,7 @@ export default function PriceAlertsScreen() {
     [...(egxStocks ?? [])].sort((a, b) => a.ticker.localeCompare(b.ticker)).forEach(c => {
       opts.push({
         key: `stock_${c.ticker}`,
-        label: `${c.ticker} · ${language === 'ar' ? c.nameAr : c.nameEn}`,
+        label: `${c.ticker} · ${language === 'ar' && c.nameAr ? c.nameAr : c.nameEn}`,
         group: 'stocks',
         price: c.price,
       });

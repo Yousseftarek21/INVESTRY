@@ -115,7 +115,7 @@ async function fetchFromServer(): Promise<EGXStockLive[]> {
       const company: EGXCompany = known.get(s.symbol) ?? {
         ticker: s.symbol,
         nameEn: s.name,
-        nameAr: s.name,
+        nameAr: '', // no curated Arabic name yet — the row shows English only
         // The exchange files banks under "Finance" with everyone else.
         sector: /\b(bank|banque)\b/i.test(s.name) ? 'Banking' : (s.sector && SECTOR_MAP[s.sector]) || 'Industrial',
         industry: s.sector ?? '',

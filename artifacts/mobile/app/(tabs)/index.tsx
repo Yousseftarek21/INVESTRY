@@ -372,9 +372,6 @@ const chipSt = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-const HEADLINE_KEY = '@investry_home_headline';
-const NET_WORTH_SEEN_KEY = '@investry_home_networth_seen';
-
 export default function HomeScreen() {
   const colors = useColors();
   const t = useT();
@@ -824,32 +821,9 @@ export default function HomeScreen() {
   const installmentDebtEGP = useMemo(() => estimateInstallmentDebtEGP(holdings, todayCairo), [holdings, todayCairo]);
   const headlineNetWorthEGP = Math.max(0, netWorthEgp - installmentDebtEGP);
   const hasNetWorthExtras = cashTotalEGP > 0 || pendingIncomeEGP > 0 || installmentDebtEGP > 0;
-  // null until the saved choice has been read. Existing users keep
-  // Investments unless they switch; someone with no investments yet starts on
-  // Net worth, since Investments would read 0.
-  const [savedHeadline, setSavedHeadline] = useState<'investments' | 'networth' | null>(null);
-  const [netWorthSeen, setNetWorthSeen] = useState(true);
-  useEffect(() => {
-    AsyncStorage.multiGet([HEADLINE_KEY, NET_WORTH_SEEN_KEY])
-      .then(([[, mode], [, seen]]) => {
-        if (mode === 'investments' || mode === 'networth') setSavedHeadline(mode);
-        setNetWorthSeen(seen === '1');
-      })
-      .catch(() => null);
-  }, []);
-  const headlineMode: 'investments' | 'networth' = !hasNetWorthExtras
-    ? 'investments'
-    : savedHeadline ?? (holdings.length === 0 ? 'networth' : 'investments');
-  const chooseHeadline = (mode: 'investments' | 'networth') => {
-    impact();
-    setSavedHeadline(mode);
-    AsyncStorage.setItem(HEADLINE_KEY, mode).catch(() => null);
-    if (mode === 'networth' && !netWorthSeen) {
-      setNetWorthSeen(true);
-      AsyncStorage.setItem(NET_WORTH_SEEN_KEY, '1').catch(() => null);
-    }
-  };
-  const headlineValueEGP = headlineMode === 'networth' ? headlineNetWorthEGP : summary.totalValue;
+  // One headline, no modes: Net worth once there's cash or a debt, else
+  // the portfolio value. The tiles under it show what it adds up from.
+  const headlineValueEGP = hasNetWorthExtras ? headlineNetWorthEGP : summary.totalValue;
 
   // "Why it moved today": the asset type behind most of today's change.
   const todayDriver = useMemo(() => {
@@ -1131,35 +1105,9 @@ export default function HomeScreen() {
         <View style={styles.heroBody}>
           {/* Label */}
           <View style={styles.heroLabelRow}>
-            {hasNetWorthExtras ? (
-              <View style={[styles.headlineToggle, { backgroundColor: colors.muted + '80', borderColor: colors.border }]}>
-                {(['investments', 'networth'] as const).map(mode => {
-                  const active = headlineMode === mode;
-                  return (
-                    <Pressable
-                      key={mode}
-                      onPress={() => chooseHeadline(mode)}
-                      style={[styles.headlinePill, active && { backgroundColor: colors.card }]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                    >
-                      <Text style={[styles.headlinePillText, { color: active ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
-                        {mode === 'investments' ? t.investmentsLabel : t.homeNetWorth}
-                      </Text>
-                      {mode === 'networth' && !netWorthSeen && !active && (
-                        <View style={[styles.headlineNew, { backgroundColor: colors.primary }]}>
-                          <Text style={[styles.headlineNewText, { color: colors.primaryForeground }]}>{t.homeNew}</Text>
-                        </View>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : (
-              <Text style={[styles.heroLabel, heroEyebrow(language), { color: colors.mutedForeground, textAlign: 'center' }]}>
-                {t.totalPortfolioValue}
-              </Text>
-            )}
+            <Text style={[styles.heroLabel, heroEyebrow(language), { color: colors.mutedForeground, textAlign: 'center' }]}>
+              {hasNetWorthExtras ? t.homeNetWorth : t.totalPortfolioValue}
+            </Text>
           </View>
 
           {/* Big value + currency pill.
@@ -1262,37 +1210,32 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Net worth (investments + cash + pending income) — additive row,
-              only when the user has cash accounts and/or pending income.
-              Tappable (real user, Feedback & Ideas chat, asked for exactly
-              this — a Thndr-style info tap explaining where the gap between
-              this figure and Total Portfolio Value comes from) opens a
-              breakdown of cash-at-home vs bank vs pending vs any loans. */}
+          {/* What the headline adds up from: Investments + Cash − Debts.
+              Tap for the full breakdown. */}
           {hasNetWorthExtras && (
             <Pressable
-              style={styles.netWorthRow}
+              style={styles.eqRow}
               onPress={() => { impact(); setShowNetWorthBreakdown(true); }}
-              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t.netWorthBreakdownTitle}
             >
-              <Feather name="info" size={10} color={colors.mutedForeground + '88'} />
-              <Text style={[styles.netWorthTxt, { color: colors.mutedForeground }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                {(() => {
-                  // Spell out how the two numbers relate, so Net worth being
-                  // lower than Investments (installments still owed) never
-                  // reads as a bug.
-                  const c = (egp: number) => (hideValues ? '••••' : fmtCompact(toDisp(egp)));
-                  const cashSide = cashTotalEGP + pendingIncomeEGP;
-                  if (headlineMode === 'networth') {
-                    return [
-                      `${t.investmentsLabel} ${c(summary.totalValue)}`,
-                      cashSide > 0 ? `+ ${t.homeCashShort} ${c(cashSide)}` : null,
-                      installmentDebtEGP > 0 ? `− ${t.homeInstallmentsShort} ${c(installmentDebtEGP)}` : null,
-                    ].filter(Boolean).join('  ·  ');
-                  }
-                  const nw = `${t.homeNetWorth}: ${c(headlineNetWorthEGP)} ${displayCurrency}`;
-                  return installmentDebtEGP > 0 ? `${nw} · ${t.homeAfterInstallments(c(installmentDebtEGP))}` : nw;
-                })()}
-              </Text>
+              {[
+                { key: 'inv', sign: '', label: t.investmentsLabel, value: summary.totalValue, color: colors.text, on: true },
+                { key: 'cash', sign: '+', label: t.homeCashShort, value: cashTotalEGP + pendingIncomeEGP, color: colors.green, on: true },
+                { key: 'debt', sign: '−', label: t.homeDebtsShort, value: installmentDebtEGP, color: colors.red, on: true },
+              ].filter(p => p.key === 'inv' || p.value > 0).map(p => (
+                <View
+                  key={p.key}
+                  style={[styles.eqTile, { borderColor: p.on ? colors.border : colors.border + '80', backgroundColor: p.on ? colors.card : 'transparent', opacity: p.on ? 1 : 0.45 }]}
+                >
+                  <Text style={[styles.eqLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+                    {p.sign ? `${p.sign} ` : ''}{p.label}
+                  </Text>
+                  <Text style={[styles.eqValue, { color: p.key === 'inv' ? colors.text : p.color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                    {hideValues ? '••••' : fmtCompact(toDisp(p.value))}
+                  </Text>
+                </View>
+              ))}
             </Pressable>
           )}
           {todayDriver && !hideValues && (
@@ -2445,12 +2388,11 @@ const styles = StyleSheet.create({
   // is left default (visible) since there's no rounded-corner edge left
   // for the wash to be clipped to.
   heroCard:   {},
-  headlineToggle:   { flexDirection: 'row', borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, padding: 3, gap: 2 },
-  headlinePill:     { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
-  headlinePillText: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
-  headlineNew:      { borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
-  headlineNewText:  { fontSize: 9, fontFamily: 'Inter_700Bold', letterSpacing: 0.4 },
   todayDriverTxt:   { fontSize: 12, fontFamily: 'Inter_500Medium', textAlign: 'center', marginTop: 4 },
+  eqRow:            { flexDirection: 'row', gap: 8, alignSelf: 'stretch', marginTop: 10 },
+  eqTile:           { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 8, paddingHorizontal: 10, alignItems: 'center', gap: 2 },
+  eqLabel:          { fontSize: 11, fontFamily: 'Inter_500Medium' },
+  eqValue:          { fontSize: 15, fontFamily: 'Inter_700Bold' },
   // A narrow angled band swept across the card once on a milestone.
   heroSweep: { position: 'absolute', top: -40, bottom: -40, width: 90 },
   // 20, not the old card's 24 — with no border to pad away from, this

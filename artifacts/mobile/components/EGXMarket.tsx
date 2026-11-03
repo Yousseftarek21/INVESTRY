@@ -315,9 +315,11 @@ function StockCard({ stock, isLast }: { stock: EGXStockLive; isLast: boolean }) 
           <Text style={[sc.name, { color: colors.mutedForeground }]} numberOfLines={1}>
             {stock.nameEn}
           </Text>
+{!!stock.nameAr && stock.nameAr !== stock.nameEn && (
           <Text style={[sc.nameAr, { color: colors.mutedForeground }]} numberOfLines={1}>
             {stock.nameAr}
           </Text>
+          )}
         </View>
 
         {/* Price */}

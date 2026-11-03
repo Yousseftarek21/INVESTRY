@@ -1314,6 +1314,9 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       logoId, description, avgVolume30d,
     ] = d;
     if (!close) continue;                              // skip if TV returned no price
+    // Over-the-counter shares have no trading symbol, only an ISIN code
+    // (e.g. EGS3I0S1C019) — nothing a user could recognise or search for.
+    if (/^EGS[0-9A-Z]{9}/.test(symbol)) continue;
     // Listed but not trading (suspended, cancelled, or a new listing that
     // hasn't opened yet): no volume today and none over the last 30 days.
     if (!(volume && volume > 0) && !(avgVolume30d && avgVolume30d > 0)) continue;

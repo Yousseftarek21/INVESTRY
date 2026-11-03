@@ -38,6 +38,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
 
   // ─── Banking (13) ─────────────────────────────────────────────────────────
   { ticker: 'COMI',  nameEn: 'Commercial International Bank - Egypt (CIB) S.A.E.',     nameAr: 'البنك التجاري الدولي (CIB)',                   sector: 'Banking', industry: 'Banks',          fallbackPrice: 136.90 },
+  { ticker: 'BQDC',  nameEn: 'Banque du Caire',                                     nameAr: 'بنك القاهرة',                                   sector: 'Banking', industry: 'Banks',          fallbackPrice: 5.38 },
   { ticker: 'CIEB',  nameEn: 'Credit Agricole Egypt',                   nameAr: 'كريدي أجريكول مصر',                      sector: 'Banking', industry: 'Banks',          fallbackPrice: 24.40  },
   { ticker: 'ADIB',  nameEn: 'Abu Dhabi Islamic Bank-Egypt',             nameAr: 'بنك أبو ظبي الإسلامي مصر',               sector: 'Banking', industry: 'Islamic Banking', fallbackPrice: 46.50  },
   { ticker: 'HDBK',  nameEn: 'Housing & Development Bank',              nameAr: 'بنك التعمير والإسكان',                   sector: 'Banking', industry: 'Banks',          fallbackPrice: 78.03  },
@@ -203,6 +204,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
 
   // ─── Chemicals & Fertilizers (12) ─────────────────────────────────────────
   { ticker: 'ABUK',  nameEn: 'Abou Kir Fertilizers & Chemical Industries Co.', nameAr: 'أبو قير للأسمدة والصناعات الكيماوية', sector: 'Chemicals & Fertilizers', industry: 'Fertilizers',      fallbackPrice: 69.05  },
+  { ticker: 'FERC',  nameEn: 'Ferchem Misr for Fertilizers & Chemicals', nameAr: 'فيركيم مصر للأسمدة والكيماويات', sector: 'Chemicals & Fertilizers', industry: 'Fertilizers', fallbackPrice: 58.04 },
   { ticker: 'SKPC',  nameEn: 'Sidi Kerir Petrochemicals',               nameAr: 'سيدي كرير للبتروكيماويات',               sector: 'Chemicals & Fertilizers', industry: 'Petrochemicals',   fallbackPrice: 16.40  },
   { ticker: 'MFPC',  nameEn: 'Misr Fertilizers Production Company MOPCO',     nameAr: 'موبكو لإنتاج الأسمدة',                   sector: 'Chemicals & Fertilizers', industry: 'Fertilizers',      fallbackPrice: 37.10  },
   { ticker: 'EGCH',  nameEn: 'Egyptian Chemical Industries',     nameAr: 'الصناعات الكيماوية المصرية كيما',        sector: 'Chemicals & Fertilizers', industry: 'Chemicals',        fallbackPrice: 13.13  },
@@ -246,6 +248,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
 
   // ─── Healthcare (19) ──────────────────────────────────────────────────────
   { ticker: 'CLHO',  nameEn: 'Cleopatra Hospital Company',                nameAr: 'مجموعة مستشفيات كليوباترا',             sector: 'Healthcare', industry: 'Hospitals',           fallbackPrice: 16.07  },
+  { ticker: 'PHGC',  nameEn: 'Premium Healthcare Group', nameAr: 'بريميم هيلثكير جروب', sector: 'Healthcare', industry: 'Healthcare Services', fallbackPrice: 0.08 },
   { ticker: 'PHAR',  nameEn: 'Egyptian International Pharmaceutical Industries Co.',                                  nameAr: 'الشركة المصرية الدولية للأدوية',        sector: 'Healthcare', industry: 'Pharmaceuticals',     fallbackPrice: 85.80  },
   { ticker: 'SPMD',  nameEn: 'Speed Medical SAE',                           nameAr: 'سبيد ميدكال للتشخيص',                   sector: 'Healthcare', industry: 'Diagnostics',         fallbackPrice: 0.45   },
   { ticker: 'RMDA',  nameEn: 'Tenth of Ramadan Pharmaceutical Industries & Diagnostic-Rameda',                   nameAr: 'راميدا للأدوية',                        sector: 'Healthcare', industry: 'Pharmaceuticals',     fallbackPrice: 4.97   },
@@ -299,6 +302,7 @@ export const EGX_COMPANIES: EGXCompany[] = [
 
   // ─── Technology (10) ──────────────────────────────────────────────────────
   { ticker: 'FWRY',  nameEn: 'Fawry For Banking Technology And Electronic Payment', nameAr: 'فوري للبنوك والمدفوعات الإلكترونية', sector: 'Technology', industry: 'Payment Technology',  fallbackPrice: 19.30 },
+  { ticker: 'HALN',  nameEn: 'MNT-Halan', nameAr: 'إم إن تي - حالان', sector: 'Technology', industry: 'Fintech', fallbackPrice: 22.51 },
   { ticker: 'EFIH',  nameEn: 'e-finance for Digital and Financial Investments S.A.E.',     nameAr: 'إي فاينانس للاستثمارات الرقمية والمالية',      sector: 'Technology', industry: 'Digital Finance',     fallbackPrice: 22.45 },
   { ticker: 'VERT',  nameEn: 'Vertika for Industry & Trade',            nameAr: 'فيرتيكا للصناعة والتجارة',              sector: 'Technology', industry: 'Technology Services', fallbackPrice: 7.93   },
   { ticker: 'RACC',  nameEn: 'Raya Contact Center',                     nameAr: 'رايا لخدمات مراكز الاتصال',             sector: 'Technology', industry: 'Technology Services', fallbackPrice: 10.48  },
