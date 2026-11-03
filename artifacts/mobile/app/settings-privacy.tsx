@@ -30,7 +30,6 @@ export default function SettingsPrivacyScreen() {
   const { user } = useUser();
   const { getToken } = useAuth();
   const {
-    analyticsEnabled, setAnalyticsEnabled, crashReportsEnabled, setCrashReportsEnabled,
   } = useAppSettings();
   const { holdings, removeHolding } = useHoldings();
   const { cashAccounts } = useCash();
@@ -152,8 +151,6 @@ export default function SettingsPrivacyScreen() {
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={[s.content, { paddingBottom: botPad + 32 }]} showsVerticalScrollIndicator={false}>
           <Sect label={t.settingsSectPrivacy}>
-            <ToggleRow icon="activity" iconBg="#6366F1" label={t.analyticsSharingLabel} sublabel={t.analyticsSharingDesc} value={analyticsEnabled} onChange={v => setAnalyticsEnabled(v)} />
-            <ToggleRow icon="alert-circle" iconBg="#F97316" label={t.crashReportsLabel} sublabel={t.crashReportsDesc} value={crashReportsEnabled} onChange={v => setCrashReportsEnabled(v)} />
             <NavRow icon="shield" iconBg="#047857" label={t.privacySettingsLabel} sublabel={t.privacySettingsDesc} onPress={() => Linking.openSettings()} />
             <NavRow icon="download" iconBg="#0EA5E9" label={t.exportMyData}
               sublabel={`${holdings.length} ${t.investmentsLabel} · CSV / PDF`}

@@ -236,10 +236,8 @@ export default function SettingsAppearanceScreen() {
     visibleCurrencies, setVisibleCurrencies,
   } = useAppSettings();
 
-  const [modal, setModal] = useState<{ title: string; content: string } | null>(null);
   const [langOpen, setLangOpen] = useState(false);
   const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
-  const showModal = (title: string, content: string) => { haptic(); setModal({ title, content }); };
 
   const topPad = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -313,20 +311,11 @@ export default function SettingsAppearanceScreen() {
               </>
             )}
             <Div />
-            <NavRow icon="map-pin" iconBg="#EF4444" label={t.regionLabel} value="Egypt (EG)"
-              onPress={() => showModal(t.regionLabel, 'INVESTRY is built specifically for the Egyptian market — gold and silver prices, EGX stocks, and real estate values are all sourced and priced for Egypt.\n\nSupport for other regions may be added in a future update.')} />
-            <NavRow icon="hash" iconBg="#374151" label={t.dateFormatLabel} value="DD/MM/YYYY"
-              onPress={() => showModal(t.dateFormatLabel, 'Dates are currently shown in DD/MM/YYYY format, matching Egyptian conventions.\n\nCustom date formats are not yet configurable — this is coming in a future update.')} />
-            <NavRow icon="type" iconBg="#6B7280" label={t.numberFormatLabel} value="1,234.56"
-              onPress={() => showModal(t.numberFormatLabel, 'Numbers are currently shown with a comma thousands separator and period decimal (e.g. 1,234.56).\n\nCustom number formats are not yet configurable — this is coming in a future update.')} />
             <NavRow icon="dollar-sign" iconBg="#059669" label={t.currencyRowLabel} value={displayCurrency}
               onPress={() => setCurrencyPickerOpen(true)} last />
           </Sect>
         </ScrollView>
       </View>
-      {modal && (
-        <DetailModal visible title={modal.title} content={modal.content} onClose={() => setModal(null)} />
-      )}
       <CurrencyPickerModal
         visible={currencyPickerOpen}
         value={displayCurrency}

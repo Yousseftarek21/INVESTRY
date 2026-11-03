@@ -40,6 +40,7 @@ import { useCash } from '@/context/CashContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 import { RentalHomeCard } from '@/components/rental/RentalHomeCard';
 import { ComingUpStrip } from '@/components/home/ComingUpStrip';
+import { TrackChooser } from '@/components/home/TrackChooser';
 import { useRentalProperties } from '@/context/RentalPropertiesContext';
 import { todayIso as cairoTodayIso } from '@/utils/rentalMath';
 import { comingUp, estimateInstallmentDebtEGP } from '@/utils/homeSummary';
@@ -383,7 +384,7 @@ export default function HomeScreen() {
   const firstName = displayName.trim().split(' ')[0] || '';
   const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
   const { cashAccounts, isLoading: cashLoading } = useCash();
-  const { recurringIncomes } = useRecurringIncome();
+  const { recurringIncomes, isLoading: incomesLoading } = useRecurringIncome();
   const { goals } = useGoals();
   const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
@@ -874,6 +875,27 @@ export default function HomeScreen() {
   // Someone who only tracks rental units gets rental profit as the headline
   // instead of a 0 portfolio.
   const rentalsOnly = holdings.length === 0 && cashAccounts.length === 0 && pendingIncomeEGP === 0 && activeRentalData.length > 0;
+  // First run: nothing tracked yet → offer "What do you want to track?"
+  // instead of an all-zero Home. Only once every store has finished loading,
+  // so a slow sync never flashes it at someone who already has data.
+  const trackKey = `@investry_track_chooser_skipped_${user?.id ?? 'guest'}`;
+  const [trackSkipped, setTrackSkipped] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem(trackKey)
+      .then(v => { if (active) setTrackSkipped(v === '1'); })
+      .catch(() => { if (active) setTrackSkipped(false); });
+    return () => { active = false; };
+  }, [trackKey]);
+  const skipTrackChooser = () => {
+    setTrackSkipped(true);
+    AsyncStorage.setItem(trackKey, '1').catch(() => null);
+  };
+  const nothingTracked = holdings.length === 0 && cashAccounts.length === 0 && recurringIncomes.length === 0
+    && goals.length === 0 && rentalUnits.length === 0;
+  const showTrackChooser = trackSkipped === false && nothingTracked
+    && !holdingsLoading && !cashLoading && !incomesLoading && !rentalsLoading;
+
   const comingUpItems = useMemo(
     () => comingUp(activeRentalData, holdings, recurringIncomes, todayCairo),
     [activeRentalData, holdings, recurringIncomes, todayCairo],
@@ -1097,6 +1119,10 @@ export default function HomeScreen() {
             case; PortfolioHeroValue only mounts once heroReady is true. */}
         {pricesErrored && !rawPrices ? null : !heroReady ? (
           <HeroSkeleton />
+        ) : showTrackChooser ? (
+          <View style={styles.heroBody}>
+            <TrackChooser onSkip={skipTrackChooser} />
+          </View>
         ) : rentalsOnly ? (
           <View style={styles.heroBody}>
             <RentalHomeCard prices={prices} toDisp={toDisp} displayCurrency={displayCurrency} hideValues={hideValues} variant="hero" />
@@ -1920,6 +1946,7 @@ export default function HomeScreen() {
       )}
 
       {/* ── Top Investments ─────────────────────────────────────── */}
+      {!showTrackChooser && (
       <View style={styles.holdingsSection}>
         <View style={styles.sectionRow}>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
@@ -1990,6 +2017,7 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+      )}
     </ScrollView>
 
     <TodayBreakdownModal
