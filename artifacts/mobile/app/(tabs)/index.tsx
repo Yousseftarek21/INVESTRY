@@ -2544,9 +2544,9 @@ const styles = StyleSheet.create({
   // the two chips (4+4) on its own, matching Cash/Pending's own tiles
   // exactly. Keeping gap:8 here on top of that doubled the space between
   // the two chips to 16pt instead.
-  plRow:          { flexDirection: 'row', marginTop: -8, marginBottom: -8, marginHorizontal: -20, paddingHorizontal: 20 },
-  // Same width as the Invested · Profit · Return boxes above it.
-  todayCard:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1, paddingVertical: 12, paddingHorizontal: 14, margin: 4 },
+  plRow:          { flexDirection: 'row', marginTop: -8, marginBottom: -8, marginHorizontal: -20 },
+  // Same width and side padding as the full-width Cash card.
+  todayCard:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 14, borderWidth: 1, paddingVertical: 12, paddingHorizontal: 20, margin: 4 },
   todayLabel:     { fontSize: 13, fontFamily: 'Inter_500Medium' },
   todayValue:     { fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.2, fontVariant: ['tabular-nums'], flexShrink: 1 },
   todayBadge:     { paddingHorizontal: 7, paddingVertical: 3 },
