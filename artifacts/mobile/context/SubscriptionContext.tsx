@@ -24,6 +24,7 @@ import { useAuth } from '@clerk/expo';
 import { router } from 'expo-router';
 import { apiFetch } from '../utils/api';
 import { hasActiveIAPEntitlement } from '../utils/revenuecat';
+import { DEV_GUEST } from '../utils/devGuest';
 
 export type Plan = 'free' | 'pro';
 export type BillingPeriod = 'monthly' | 'annual';
@@ -295,7 +296,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   // on tempProUntil for why: ManageSubscriptionSheet and anything else
   // that means "real subscription" should keep reading isPro, unaffected).
   const tempProActive = tempProUntil != null && Date.now() < Date.parse(tempProUntil);
-  const featuresUnlocked = isPro || betaUnlockAll || tempProActive;
+  const featuresUnlocked = isPro || betaUnlockAll || tempProActive || (DEV_GUEST && !userId);
 
   return (
     <SubscriptionContext.Provider value={{

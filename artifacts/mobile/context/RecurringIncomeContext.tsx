@@ -1,3 +1,4 @@
+import { devGuestIncomes } from '@/utils/devGuest';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
@@ -97,7 +98,7 @@ export function RecurringIncomeProvider({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!isSignedIn || !userId) {
       const prevUserId = loadedRef.current;
-      setIncomes([]);
+      setIncomes(devGuestIncomes());
       setIsLoading(false);
       setSyncError(null);
       loadedRef.current = null;

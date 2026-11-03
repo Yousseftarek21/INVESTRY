@@ -4,13 +4,32 @@
     {
       "name": "investry-web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--dir", "artifacts/mobile", "run", "dev:local", "--port", "8081"],
+      "runtimeArgs": [
+        "--dir",
+        "artifacts/mobile",
+        "run",
+        "dev:local",
+        "--port",
+        "8081"
+      ],
+      "port": 8081
+    },
+    {
+      "name": "investry-sim",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd artifacts/mobile && EXPO_PUBLIC_DEV_GUEST=${DEV_GUEST:-full} EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuaW52ZXN0cnkuYXBwJA EXPO_PUBLIC_DOMAIN=api.investry.app pnpm exec expo start --port 8081 --clear"
+      ],
       "port": 8081
     },
     {
       "name": "egx-signals",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd /Users/yousseftarek/Documents/egx-signals && DATABASE_URL=postgres://localhost:5432/egx_signals_test npm run dev -- --port 3300"],
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/yousseftarek/Documents/egx-signals && DATABASE_URL=postgres://localhost:5432/egx_signals_test npm run dev -- --port 3300"
+      ],
       "port": 3300
     }
   ]

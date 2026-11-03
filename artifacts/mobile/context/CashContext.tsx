@@ -1,3 +1,4 @@
+import { devGuestCash } from '@/utils/devGuest';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
@@ -49,9 +50,9 @@ export function CashProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isSignedIn || !userId) {
       // Wipe in-memory state immediately so no stale cash accounts are ever
-      // shown to a different account.
+      // shown to a different account. (Simulator guest mode shows demo data.)
       const prevUserId = loadedUserRef.current;
-      setCashAccounts([]);
+      setCashAccounts(devGuestCash());
       setIsLoading(false);
       setSyncError(null);
       loadedUserRef.current = null;

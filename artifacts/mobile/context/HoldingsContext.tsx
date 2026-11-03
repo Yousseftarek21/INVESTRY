@@ -1,3 +1,4 @@
+import { devGuestHoldings } from '@/utils/devGuest';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
@@ -57,9 +58,9 @@ export function HoldingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isSignedIn || !userId) {
       // Wipe in-memory state immediately so no stale holdings are ever shown
-      // to a different account.
+      // to a different account. (Simulator guest mode shows demo data.)
       const prevUserId = loadedUserRef.current;
-      setHoldings([]);
+      setHoldings(devGuestHoldings());
       setIsLoading(false);
       setSyncError(null);
       loadedUserRef.current = null;

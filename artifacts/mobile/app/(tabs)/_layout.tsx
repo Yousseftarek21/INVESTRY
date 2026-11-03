@@ -1,3 +1,4 @@
+import { DEV_GUEST } from '@/utils/devGuest';
 import { useAuth } from "@clerk/expo";
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
@@ -212,7 +213,7 @@ export default function TabLayout() {
 
   if (!isLoaded && !IS_WEB) return <LoadingScreen />;
   // On web preview, skip auth gate — show tabs directly
-  if (!isSignedIn && !IS_WEB) return <Redirect href={"/(auth)/welcome" as any} />;
+  if (!isSignedIn && !IS_WEB && !DEV_GUEST) return <Redirect href={"/(auth)/welcome" as any} />;
 
   // NoNetworkOverlay sits here rather than in the root layout so it covers
   // every tab while remaining impossible to render over the auth screens —

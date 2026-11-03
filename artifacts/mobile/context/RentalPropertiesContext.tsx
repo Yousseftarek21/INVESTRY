@@ -1,3 +1,4 @@
+import { devGuestRentals } from '@/utils/devGuest';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
@@ -85,7 +86,7 @@ export function RentalPropertiesProvider({ children }: { children: React.ReactNo
   useEffect(() => {
     if (!isSignedIn || !userId) {
       const prev = loadedRef.current;
-      setData(EMPTY);
+      setData(devGuestRentals());
       setLoaded(false);
       loadedRef.current = null;
       if (prev) AsyncStorage.removeItem(storageKey(prev)).catch(() => null);
