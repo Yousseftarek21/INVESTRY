@@ -539,7 +539,7 @@ export function EGXMarket({
   const [section, setSection] = useState<'stocks' | 'funds'>('stocks');
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState<EGXSector>('All');
-  const sectorCounts = useMemo(() => getSectorCounts(), []);
+  const sectorCounts = useMemo(() => getSectorCounts(allStocks), [allStocks]);
 
   const handleQuery = useCallback((q: string) => {
     setQuery(q);
@@ -554,8 +554,7 @@ export function EGXMarket({
   const displayed = useMemo(() => {
     let stocks = allStocks;
     if (query.trim()) {
-      const matchedSet = new Set(searchCompanies(query).map(c => c.ticker));
-      return stocks.filter(s => matchedSet.has(s.ticker));
+      return searchCompanies(stocks, query);
     }
     if (sector !== 'All') return stocks.filter(s => s.sector === sector);
     return stocks;

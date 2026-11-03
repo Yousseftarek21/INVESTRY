@@ -399,15 +399,17 @@ export function getSectorCompanies(sector: EGXSector): EGXCompany[] {
   return EGX_COMPANIES.filter(c => c.sector === sector);
 }
 
-export function getSectorCounts(): Record<string, number> {
-  const counts: Record<string, number> = { All: EGX_COMPANIES.length };
-  for (const c of EGX_COMPANIES) counts[c.sector] = (counts[c.sector] ?? 0) + 1;
+/** Count per sector of the given list (the live list, so new listings count). */
+export function getSectorCounts(companies: readonly EGXCompany[]): Record<string, number> {
+  const counts: Record<string, number> = { All: companies.length };
+  for (const c of companies) counts[c.sector] = (counts[c.sector] ?? 0) + 1;
   return counts;
 }
 
-export function searchCompanies(query: string): EGXCompany[] {
-  const q = query.toLowerCase();
-  return EGX_COMPANIES.filter(
+/** Ticker, English or Arabic name match within the given list. */
+export function searchCompanies<T extends EGXCompany>(companies: readonly T[], query: string): T[] {
+  const q = query.trim().toLowerCase();
+  return companies.filter(
     c => c.ticker.toLowerCase().includes(q) ||
          c.nameEn.toLowerCase().includes(q) ||
          c.nameAr.includes(q)

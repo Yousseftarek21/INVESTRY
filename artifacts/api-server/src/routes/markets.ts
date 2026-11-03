@@ -1174,6 +1174,18 @@ const EGX_SYMBOL_SET: Set<string>        = new Set(EGX_TICKERS.map(t => t.symbol
 // new listings that aren't in EGX_TICKERS yet.
 const liveEgxSymbols = new Set<string>();
 const TV_BATCH_SIZE = 150;
+// Logos for EGX stocks TradingView has no logo for yet (new listings) — the
+// company's own website icon. Add a line here when a new listing shows the
+// ticker initials instead of a logo.
+const EGX_LOGO_FALLBACK_DOMAINS: Record<string, string> = {
+  HALN: "halan.com",        // MNT-Halan
+  BQDC: "bdc.com.eg",       // Banque du Caire
+};
+function egxLogoUrl(symbol: string, logoId: string | null | undefined): string | undefined {
+  if (logoId) return `https://s3-symbol-logo.tradingview.com/${logoId}.svg`;
+  const domain = EGX_LOGO_FALLBACK_DOMAINS[symbol];
+  return domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : undefined;
+}
 
 // Batch size kept at 150 — TradingView accepts it in one call with no rate issues.
 
@@ -1347,7 +1359,7 @@ async function fetchEGXViaTradingView(): Promise<EGXStockResponse[]> {
       freeCashFlowTtm:   freeCashFlowTtm ?? undefined,
       cashAndEquivalents: cashAndEquivalents ?? undefined,
       employees:         employees ?? undefined,
-      logoUrl:           logoId ? `https://s3-symbol-logo.tradingview.com/${logoId}.svg` : undefined,
+      logoUrl:           egxLogoUrl(symbol, logoId),
     });
   }
   return results;

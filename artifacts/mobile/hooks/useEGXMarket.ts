@@ -116,7 +116,8 @@ async function fetchFromServer(): Promise<EGXStockLive[]> {
         ticker: s.symbol,
         nameEn: s.name,
         nameAr: s.name,
-        sector: (s.sector && SECTOR_MAP[s.sector]) || 'Industrial',
+        // The exchange files banks under "Finance" with everyone else.
+        sector: /\b(bank|banque)\b/i.test(s.name) ? 'Banking' : (s.sector && SECTOR_MAP[s.sector]) || 'Industrial',
         industry: s.sector ?? '',
         fallbackPrice: 0,
       };
