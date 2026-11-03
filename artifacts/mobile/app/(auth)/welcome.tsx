@@ -13,6 +13,11 @@ import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { forwardArrow } from '@/utils/rtl';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useAppSettings } from '@/context/AppSettingsContext';
+import * as Updates from 'expo-updates';
+import {
+  LivePricesPreview, PortfolioPreview, PropertyPreview, RentalPreview, SmartPrivatePreview,
+} from '@/components/onboarding/OnboardingPreviews';
 
 const ONBOARDING_KEY = '@invstry_onboarding_done';
 
@@ -38,52 +43,25 @@ export default function WelcomeScreen() {
   const cardAnim = useRef(new Animated.Value(1)).current;
   const screenAnim = useRef(new Animated.Value(0)).current;
 
-  // Five slides: what the app actually does today, roughly in the order a
-  // new user would care about it — asset tracking first, the differentiated
-  // AI/gamification features next (a more compelling Pro hook than a bare
-  // "upgrade" pitch), privacy last as the trust close.
+  // Five slides, each showing a miniature of the real screen: live gold,
+  // dollar and EGX prices and real price per m² come straight from the
+  // public market endpoints, so a new user sees today's actual numbers
+  // before signing up. Privacy stays last as the trust close.
   const SLIDES = useMemo(() => [
-    {
-      id: '1',
-      icon: 'layers' as const,
-      iconColor: '#C9A227',
-      eyebrow: t.onboardSlide1Eyebrow,
-      title: t.onboardSlide1Title,
-      subtitle: t.onboardSlide1Sub,
-    },
-    {
-      id: '2',
-      icon: 'pie-chart' as const,
-      iconColor: '#00D4AA',
-      eyebrow: t.onboardSlide2Eyebrow,
-      title: t.onboardSlide2Title,
-      subtitle: t.onboardSlide2Sub,
-    },
-    {
-      id: '3',
-      icon: 'cpu' as const,
-      iconColor: '#4A9EFF',
-      eyebrow: t.onboardSlide3Eyebrow,
-      title: t.onboardSlide3Title,
-      subtitle: t.onboardSlide3Sub,
-    },
-    {
-      id: '4',
-      icon: 'award' as const,
-      iconColor: '#C9A227',
-      eyebrow: t.onboardSlide4Eyebrow,
-      title: t.onboardSlide4Title,
-      subtitle: t.onboardSlide4Sub,
-    },
-    {
-      id: '5',
-      icon: 'shield' as const,
-      iconColor: '#4A9EFF',
-      eyebrow: t.onboardSlide5Eyebrow,
-      title: t.onboardSlide5Title,
-      subtitle: t.onboardSlide5Sub,
-    },
+    { id: '1', color: '#C9A227', eyebrow: t.onboardSlide1Eyebrow, title: t.onboardSlide1Title, subtitle: t.onboardSlide1Sub, Preview: PortfolioPreview },
+    { id: '2', color: '#00D4AA', eyebrow: t.onboardSlide2Eyebrow, title: t.onboardSlide2Title, subtitle: t.onboardSlide2Sub, Preview: LivePricesPreview },
+    { id: '3', color: '#A47FCA', eyebrow: t.onboardSlide3Eyebrow, title: t.onboardSlide3Title, subtitle: t.onboardSlide3Sub, Preview: PropertyPreview },
+    { id: '4', color: '#F59E0B', eyebrow: t.onboardSlide4Eyebrow, title: t.onboardSlide4Title, subtitle: t.onboardSlide4Sub, Preview: RentalPreview },
+    { id: '5', color: '#4A9EFF', eyebrow: t.onboardSlide5Eyebrow, title: t.onboardSlide5Title, subtitle: t.onboardSlide5Sub, Preview: SmartPrivatePreview },
   ], [t]);
+
+  // English ⇄ Arabic before signing up. Reloads so the whole layout flips
+  // to right-to-left; if a reload isn't possible the text still switches.
+  const { language, setLanguage } = useAppSettings();
+  const switchLanguage = async () => {
+    await setLanguage(language === 'ar' ? 'en' : 'ar');
+    try { await Updates.reloadAsync(); } catch { /* text already switched */ }
+  };
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then(done => {
@@ -146,6 +124,7 @@ export default function WelcomeScreen() {
   const botPad = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
 
   const slide = SLIDES[currentIndex];
+  const SlidePreview = slide.Preview;
 
   if (showWelcome) {
     return (
@@ -209,6 +188,9 @@ export default function WelcomeScreen() {
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenAnim }]}>
       <View style={[styles.topRow, { paddingTop: topPad + 12 }]}>
+        <Pressable onPress={switchLanguage} style={[styles.skipBtn, { backgroundColor: colors.muted }]} accessibilityRole="button">
+          <Text style={[styles.skipText, { color: colors.text }]}>{t.obLangSwitch}</Text>
+        </Pressable>
         <View style={styles.stepRow}>
           {SLIDES.map((s, i) => (
             <View
@@ -226,21 +208,18 @@ export default function WelcomeScreen() {
       </View>
 
       <Animated.View style={[styles.slide, { opacity: slideAnim }]}>
-        <Animated.View style={{ transform: [{ scale: cardAnim }] }}>
-          <View style={[styles.heroCard, { borderColor: slide.iconColor + '35' }]}>
-            <ExpoLinearGradient
-              colors={[slide.iconColor + '22', slide.iconColor + '06']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <View style={[styles.slideIconWrap, { backgroundColor: slide.iconColor + '1E' }]}>
-              <Feather name={slide.icon} size={38} color={slide.iconColor} />
-            </View>
-          </View>
+        <Animated.View style={[styles.previewWrap, { transform: [{ scale: cardAnim }] }]}>
+          <ExpoLinearGradient
+            colors={[slide.color + '14', slide.color + '00']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.previewGlow}
+            pointerEvents="none"
+          />
+          <SlidePreview />
         </Animated.View>
 
-        <Text style={[styles.slideEyebrow, { color: slide.iconColor }]}>{slide.eyebrow}</Text>
+        <Text style={[styles.slideEyebrow, language === 'ar' && styles.slideEyebrowAr, { color: slide.color }]}>{slide.eyebrow}</Text>
         <Text style={[styles.slideTitle, { color: colors.text }]}>{slide.title}</Text>
         <Text style={[styles.slideSubtitle, { color: colors.mutedForeground }]}>{slide.subtitle}</Text>
       </Animated.View>
@@ -291,19 +270,13 @@ const styles = StyleSheet.create({
 
   slide: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 36, gap: 14,
+    paddingHorizontal: 24, gap: 12,
   },
-  heroCard: {
-    width: 176, height: 176, borderRadius: 40, borderWidth: 1.5,
-    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-    marginBottom: 12,
-  },
-  slideIconWrap: {
-    width: 84, height: 84, borderRadius: 26,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  previewWrap: { width: '100%', maxWidth: 380, marginBottom: 12 },
+  previewGlow: { position: 'absolute', top: -40, left: -8, right: -8, bottom: 0, borderRadius: 48 },
   slideEyebrow: { fontSize: 12, fontFamily: 'Inter_700Bold', letterSpacing: 2, textTransform: 'uppercase' },
-  slideTitle: { fontSize: 27, fontFamily: 'Inter_700Bold', letterSpacing: -0.7, textAlign: 'center', marginTop: 2 },
+  slideEyebrowAr: { letterSpacing: 0, fontSize: 13 },
+  slideTitle: { fontSize: 25, fontFamily: 'Inter_700Bold', letterSpacing: -0.7, textAlign: 'center', marginTop: 2 },
   slideSubtitle: { fontSize: 15, fontFamily: 'Inter_400Regular', lineHeight: 24, textAlign: 'center' },
 
   footer: { paddingHorizontal: 32, gap: 20, alignItems: 'center' },
