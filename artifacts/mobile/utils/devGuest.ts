@@ -1,4 +1,5 @@
 import type { CashAccount, Holding, Loan, RecurringIncome, RentalBooking, RentalExpense, RentalLease, RentalUnit } from '@/types';
+import type { SoldHolding } from '@/hooks/useSoldHoldings';
 
 /**
  * Simulator guest mode: opens the app without signing in, with Pro unlocked
@@ -83,4 +84,14 @@ export function devGuestLoans(): Loan[] {
     payments: [{ id: 'dev-p1', date: day(-30), amount: 12_500, month: day(-30).slice(0, 7) }].filter(p => p.month !== ym),
     createdAt: '2025-06-01',
   }];
+}
+
+/** Two past sales, so Sold investments isn't empty in the demo. */
+export function devGuestSold(): SoldHolding[] {
+  if (scenario !== 'full' && scenario !== 'invest') return [];
+  return [
+    { id: 'dev-sold-1', originalHoldingId: 'dev-old-swdy', type: 'stock', label: 'SWDY', quantity: 300, purchaseDate: '2025-03-10', amountInvested: 21_000, saleProceeds: 27_600, saleDate: day(-20), realizedGainLoss: 6_600, notes: null },
+    { id: 'dev-sold-3', originalHoldingId: 'dev-old-swdy', type: 'stock', label: 'SWDY', quantity: 200, purchaseDate: '2025-03-10', amountInvested: 14_000, saleProceeds: 16_900, saleDate: day(-120), realizedGainLoss: 2_900, notes: 'Took some profit before results' },
+    { id: 'dev-sold-2', originalHoldingId: 'dev-old-gold', type: 'gold', label: '24K Gold', quantity: 20, purchaseDate: '2025-08-01', amountInvested: 96_000, saleProceeds: 91_400, saleDate: day(-75), realizedGainLoss: -4_600, notes: null },
+  ];
 }

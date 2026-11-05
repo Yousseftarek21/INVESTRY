@@ -32,7 +32,8 @@ import { useSubscription } from '@/context/SubscriptionContext';
 import { hasActiveIAPEntitlement, isIOSIAPAvailable } from '@/utils/revenuecat';
 import { ManageSubscriptionSheet } from '@/components/ManageSubscriptionSheet';
 import { apiFetch } from '@/utils/api';
-import { Sect, NavRow } from '@/components/SettingsPrimitives';
+import { Sect, NavRow, ToggleRow, Bdg, Div } from '@/components/SettingsPrimitives';
+import { useAppSettings } from '@/context/AppSettingsContext';
 import { useFeedbackUnread } from '@/hooks/useFeedback';
 
 // Read live from the running binary/update instead of a hand-maintained
@@ -386,6 +387,80 @@ const mo = StyleSheet.create({
   close: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
 });
 
+// ─── Quick settings ────────────────────────────────────────────────────────────
+
+function Seg<V extends string>({ options, value, onChange }: { options: { v: V; label: string }[]; value: V; onChange: (v: V) => void }) {
+  const colors = useColors();
+  return (
+    <View style={[qs.seg, { backgroundColor: colors.muted }]}>
+      {options.map(o => {
+        const active = o.v === value;
+        return (
+          <TouchableOpacity
+            key={o.v}
+            style={[qs.segBtn, active && { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => onChange(o.v)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+          >
+            <Text style={[qs.segTxt, { color: active ? colors.text : colors.mutedForeground }]}>{o.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function QuickSettings() {
+  const colors = useColors();
+  const t = useT();
+  const { hideValues, setHideValues, language, setLanguage, themeMode, setThemeMode } = useAppSettings();
+  const haptic = () => Haptics.selectionAsync().catch(() => null);
+  return (
+    <Sect label={t.quickSettingsSect}>
+      <ToggleRow
+        icon="eye-off" iconBg="#64748B"
+        label={t.quickHideValues} sublabel={t.quickHideValuesSub}
+        value={hideValues} onChange={v => { haptic(); setHideValues(v); }}
+      />
+      <View style={qs.row}>
+        <Bdg icon="globe" bg="#0EA5E9" />
+        <Text style={[qs.label, { color: colors.text }]}>{t.languageLabel}</Text>
+        <Seg
+          options={[{ v: 'en' as const, label: 'EN' }, { v: 'ar' as const, label: 'عربي' }]}
+          value={language}
+          onChange={async v => {
+            if (v === language) return;
+            haptic();
+            await setLanguage(v);
+            // Right-to-left layout only flips after a restart.
+            Alert.alert('', t.languageRestartNote);
+          }}
+        />
+      </View>
+      <Div />
+      <View style={qs.row}>
+        <Bdg icon="moon" bg="#6366F1" />
+        <Text style={[qs.label, { color: colors.text }]}>{t.themeLabel}</Text>
+        <Seg
+          options={[{ v: 'system' as const, label: t.themeAuto }, { v: 'light' as const, label: t.themeLight }, { v: 'dark' as const, label: t.themeDark }]}
+          value={themeMode}
+          onChange={v => { haptic(); setThemeMode(v); }}
+        />
+      </View>
+    </Sect>
+  );
+}
+
+const qs = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12, minHeight: 56 },
+  label: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' },
+  seg: { flexDirection: 'row', borderRadius: 10, padding: 3, gap: 2 },
+  segBtn: { borderRadius: 8, borderWidth: 1, borderColor: 'transparent', paddingHorizontal: 10, paddingVertical: 5 },
+  segTxt: { fontSize: 12.5, fontFamily: 'Inter_600SemiBold' },
+});
+
 // ─── Smart footer ──────────────────────────────────────────────────────────────
 
 function SmartFooter() {
@@ -583,29 +658,29 @@ export default function SettingsScreen() {
             Title Case (the small-caps eyebrow strings like
             settingsSectAccount are for section headers, not row text). */}
         <View style={cat.wrap}>
-          <View style={cat.stack}>
-            {[
-              { icon: 'user' as const, bg: '#1D4ED8', label: t.settingsCatAccount, sub: t.settingsCatAccountSub, path: '/settings-account' },
-              // Second, not last — a card seven items deep in a list nobody
-              // scrolls to the bottom of doesn't get discovered. This is the
-              // one entry point into a brand-new, actively-posted-to feature,
-              // so it sits right after Account instead of behind five other
-              // settings categories nobody's specifically looking for.
-              {
-                icon: 'message-circle' as const, bg: '#EC4899', label: t.settingsCatFeedback, sub: t.settingsCatFeedbackSub, path: '/feedback',
-                badge: hasUnreadFeedback ? { text: t.newLabel, color: '#EF4444' } : { text: t.liveLabel, color: '#EC4899' },
-              },
-              { icon: 'sliders' as const, bg: '#8B5CF6', label: t.settingsCatAppearance, sub: t.settingsCatAppearanceSub, path: '/settings-appearance' },
-              { icon: 'bell' as const, bg: '#F59E0B', label: t.settingsCatNotifications, sub: t.settingsCatNotificationsSub, path: '/settings-notifications' },
-              { icon: 'briefcase' as const, bg: '#059669', label: t.settingsCatPortfolio, sub: t.settingsCatPortfolioSub, path: '/settings-portfolio' },
-              { icon: 'shield' as const, bg: '#047857', label: t.settingsCatPrivacy, sub: t.settingsCatPrivacySub, path: '/settings-privacy' },
-              { icon: 'help-circle' as const, bg: '#0EA5E9', label: t.settingsCatSupport, sub: t.settingsCatSupportSub, path: '/settings-support' },
-            ].map(c => (
-              <View key={c.path} style={[cat.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <NavRow icon={c.icon} iconBg={c.bg} label={c.label} sublabel={c.sub} badge={c.badge} onPress={() => goTo(c.path)} last />
-              </View>
-            ))}
-          </View>
+          {/* Quick switches for what people change most, so they don't
+              have to open a sub-page for them. */}
+          <QuickSettings />
+
+          {/* Seven categories in three groups instead of seven separate
+              cards — a shorter page with the same rows. */}
+          <Sect label={t.settingsGroupAccount}>
+            <NavRow icon="user" iconBg="#1D4ED8" label={t.settingsCatAccount} sublabel={t.settingsCatAccountSub} onPress={() => goTo('/settings-account')} />
+            <NavRow icon="shield" iconBg="#047857" label={t.settingsCatPrivacy} sublabel={t.settingsCatPrivacySub} onPress={() => goTo('/settings-privacy')} last />
+          </Sect>
+          <Sect label={t.settingsGroupApp}>
+            <NavRow icon="sliders" iconBg="#8B5CF6" label={t.settingsCatAppearance} sublabel={t.settingsCatAppearanceSub} onPress={() => goTo('/settings-appearance')} />
+            <NavRow icon="bell" iconBg="#F59E0B" label={t.settingsCatNotifications} sublabel={t.settingsCatNotificationsSub} onPress={() => goTo('/settings-notifications')} />
+            <NavRow icon="briefcase" iconBg="#059669" label={t.settingsCatPortfolio} sublabel={t.settingsCatPortfolioSub} onPress={() => goTo('/settings-portfolio')} last />
+          </Sect>
+          <Sect label={t.settingsGroupHelp}>
+            <NavRow
+              icon="message-circle" iconBg="#EC4899" label={t.settingsCatFeedback} sublabel={t.settingsCatFeedbackSub}
+              badge={hasUnreadFeedback ? { text: t.newLabel, color: '#EF4444' } : { text: t.liveLabel, color: '#EC4899' }}
+              onPress={() => goTo('/feedback')}
+            />
+            <NavRow icon="help-circle" iconBg="#0EA5E9" label={t.settingsCatSupport} sublabel={t.settingsCatSupportSub} onPress={() => goTo('/settings-support')} last />
+          </Sect>
         </View>
 
         {/* ── SIGN OUT ─────────────────────────────────────── */}
@@ -653,9 +728,7 @@ export default function SettingsScreen() {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
 const cat = StyleSheet.create({
-  wrap: { gap: 9 },
-  stack: { gap: 10 },
-  card: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  wrap: { gap: 22 },
 });
 
 const sc = StyleSheet.create({

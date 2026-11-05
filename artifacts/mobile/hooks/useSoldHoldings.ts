@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/utils/api';
 import { useStableGetToken } from './useStableGetToken';
+import { DEV_GUEST, devGuestSold } from '@/utils/devGuest';
 
 export interface SoldHolding {
   id: string;
@@ -29,7 +30,7 @@ export function useSoldHoldings() {
     queryKey: QUERY_KEY,
     queryFn: async () => {
       const token = await getToken();
-      if (!token) return [];
+      if (!token) return DEV_GUEST ? devGuestSold() : [];
       const res = await apiFetch('/api/sold-holdings', token);
       if (!res.ok) return [];
       return res.json();

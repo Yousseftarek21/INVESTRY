@@ -30,6 +30,11 @@ import { useAppSettings } from '@/context/AppSettingsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { LockedFeatureCard } from '@/components/LockedFeatureCard';
 import { apiFetch } from '@/utils/api';
+import { useHoldings } from '@/context/HoldingsContext';
+import { useLoans } from '@/context/LoansContext';
+import { useRentalProperties } from '@/context/RentalPropertiesContext';
+import { useGoals } from '@/context/GoalsContext';
+import { useSoldHoldings } from '@/hooks/useSoldHoldings';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -59,6 +64,11 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 export default function AIAssistantScreen() {
+  const { holdings } = useHoldings();
+  const { loans } = useLoans();
+  const { units: rentalUnits } = useRentalProperties();
+  const { goals } = useGoals();
+  const { soldHoldings } = useSoldHoldings();
   const colors = useColors();
   const t = useT();
   const { impact } = useHaptic();
@@ -308,7 +318,18 @@ export default function AIAssistantScreen() {
     }
   }, [messages, loading, getToken, impact, t, language, speak, voiceLang, refreshSubscription]);
 
-  const suggestions = [t.aiSuggestion1, t.aiSuggestion2, t.aiSuggestion3];
+  // Starter questions about what this person actually tracks, most
+  // specific first; the general portfolio questions fill any gap.
+  const suggestions = [
+    loans.length > 0 && t.aiSugLoans,
+    rentalUnits.some(u => !u.archived) && t.aiSugRentals,
+    soldHoldings.length > 0 && t.aiSugSold,
+    holdings.some(h => h.type === 'gold') && t.aiSugGold,
+    holdings.some(h => h.type === 'stock') && t.aiSugStocks,
+    goals.length > 0 && t.aiSuggestion3,
+    t.aiSuggestion1,
+    t.aiSuggestion2,
+  ].filter((q): q is string => !!q).slice(0, 3);
 
   const micState: 'idle' | 'listening' | 'speaking' = isSpeaking ? 'speaking' : isRecording ? 'listening' : 'idle';
   const micOnPress = micState === 'speaking' ? stopSpeaking : micState === 'listening' ? stopVoiceInput : startVoiceInput;

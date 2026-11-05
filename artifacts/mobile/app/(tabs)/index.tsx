@@ -386,6 +386,7 @@ export default function HomeScreen() {
   const { recurringIncomes, isLoading: incomesLoading } = useRecurringIncome();
   const { goals } = useGoals();
   const { loans, isLoading: loansLoading } = useLoans();
+  const { featuresUnlocked: proUnlocked, isLoading: subLoading, showPaywall } = useSubscription();
   const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   // US stocks merge into the same egxPrices dict (keyed by symbol, no
@@ -982,9 +983,23 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Right: live chip + bell */}
+        {/* Right: live chip + AI chat + bell */}
         <View style={styles.headerRight}>
           <LiveChip lastUpdated={prices?.lastUpdated ?? null} />
+          {/* The AI assistant, one tap from Home instead of three sections
+              down Analytics. A Pro feature: free users get the paywall. */}
+          <TouchableOpacity
+            style={[styles.bellBtn, { backgroundColor: '#8B5CF61F', borderColor: '#8B5CF655' }]}
+            activeOpacity={0.7}
+            accessibilityLabel={t.aiAssistantTitle}
+            onPress={() => {
+              impact();
+              if (!subLoading && !proUnlocked) { showPaywall(); return; }
+              router.push('/ai-assistant' as any);
+            }}
+          >
+            <Feather name="message-circle" size={15} color="#8B5CF6" />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.bellBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             activeOpacity={0.7}

@@ -13,6 +13,12 @@ import {
   chatMessagesTable,
   realEstatePricesTable,
   loansTable,
+  soldHoldingsTable,
+  dividendsTable,
+  rentalUnitsTable,
+  rentalBookingsTable,
+  rentalLeasesTable,
+  rentalExpensesTable,
 } from "@workspace/db";
 import { eq, asc, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
@@ -115,6 +121,91 @@ function summarizeHoldings(
 // here as a small pure function rather than imported, since that function
 // does its own DB fetches and buildPortfolioContext below already has
 // holdings/cash/prices in scope from its own single Promise.all.
+// ── Loans, sales, dividends and rentals: each on its own, the way the app
+// shows them — none of these change the net-worth figure above.
+type DecryptedRow = { data: unknown; unitId?: string };
+interface StoredSale { label?: string; type?: string; quantity?: number | null; amountInvested?: number; saleProceeds?: number; saleDate?: string; realizedGainLoss?: number; isDeletionRecord?: boolean }
+interface StoredDividend { symbol?: string; amount?: number; currency?: string; date?: string }
+
+function summarizeLoans(loans: Record<string, unknown>[], prices: MarketPricesResponse): string {
+  if (loans.length === 0) return "No loans or installments tracked.";
+  const lines = loans.map((l) => {
+    const paid = (Array.isArray(l.payments) ? l.payments : []).reduce((s: number, p: { amount?: number }) => s + (Number(p?.amount) || 0), 0);
+    const left = Math.max(0, (Number(l.startBalance) || 0) - paid);
+    const cur = String(l.currency ?? "EGP");
+    return `${String(l.name ?? "loan")} (${String(l.kind ?? "loan")}): ${left.toFixed(0)} ${cur} left` +
+      (l.monthlyPayment ? `, ${Number(l.monthlyPayment).toFixed(0)} ${cur}/month` : "") +
+      (l.dueDay ? `, due day ${l.dueDay}` : "") +
+      (l.annualRate ? `, ${l.annualRate}% yearly interest` : "") +
+      (l.endDate ? `, last payment ${l.endDate}` : "") +
+      (left > 0 && cur !== "EGP" ? ` (≈${toEGP(left, cur, prices).toFixed(0)} EGP)` : "");
+  });
+  return `Loans & installments (tracked separately, not part of net worth): ${lines.join("; ")}.`;
+}
+
+function summarizeSold(sales: StoredSale[]): string {
+  const real = sales.filter((s) => !s.isDeletionRecord);
+  if (real.length === 0) return "No investments sold yet.";
+  const sum = (k: "amountInvested" | "saleProceeds" | "realizedGainLoss") => real.reduce((t, s) => t + (Number(s[k]) || 0), 0);
+  const recent = [...real].sort((a, b) => String(b.saleDate).localeCompare(String(a.saleDate))).slice(0, 15).map((s) =>
+    `${s.label ?? s.type}${s.quantity ? ` ×${s.quantity}` : ""} sold ${s.saleDate}: invested ${(Number(s.amountInvested) || 0).toFixed(0)} → received ${(Number(s.saleProceeds) || 0).toFixed(0)} EGP (${(Number(s.realizedGainLoss) || 0) >= 0 ? "+" : ""}${(Number(s.realizedGainLoss) || 0).toFixed(0)})`);
+  return `Sold investments (realized, no longer held): ${real.length} sales, invested ${sum("amountInvested").toFixed(0)} → received ${sum("saleProceeds").toFixed(0)} EGP, realized profit ${sum("realizedGainLoss").toFixed(0)} EGP. Most recent: ${recent.join("; ")}.`;
+}
+
+function summarizeDividends(divs: StoredDividend[], prices: MarketPricesResponse): string {
+  if (divs.length === 0) return "No dividends logged.";
+  const year = new Date().getUTCFullYear().toString();
+  let all = 0, thisYear = 0;
+  const bySymbol = new Map<string, number>();
+  for (const d of divs) {
+    const egp = toEGP(Number(d.amount) || 0, d.currency, prices);
+    all += egp;
+    if (String(d.date ?? "").startsWith(year)) thisYear += egp;
+    const k = d.symbol ?? "?";
+    bySymbol.set(k, (bySymbol.get(k) ?? 0) + egp);
+  }
+  const top = [...bySymbol.entries()].sort((a, b) => b[1] - a[1]).map(([s, v]) => `${s} ${v.toFixed(0)}`).join(", ");
+  return `Dividends received: ${all.toFixed(0)} EGP in total, ${thisYear.toFixed(0)} EGP in ${year}. By stock: ${top}.`;
+}
+
+// Rough month-to-date view per unit: bookings that check in this month
+// (after platform fee), active tenant rent, and this month's costs.
+function summarizeRentals(rows: readonly (readonly DecryptedRow[])[], prices: MarketPricesResponse): string {
+  const [unitRows, bookingRows, leaseRows, expenseRows] = rows;
+  const dec = <T,>(r: DecryptedRow) => { try { return decryptFromStorage(r.data) as T; } catch { return null; } };
+  const units = unitRows
+    .map((r) => ({ id: (r as { id?: string }).id, ...(dec<{ name?: string; mode?: string; archived?: boolean }>(r) ?? {}) }))
+    .filter((u) => !u.archived);
+  if (units.length === 0) return "No rental properties tracked.";
+  const month = new Date().toISOString().slice(0, 7);
+  const today = new Date().toISOString().slice(0, 10);
+  const lines = units.map((u) => {
+    let income = 0, costs = 0, bookings = 0;
+    for (const r of bookingRows) {
+      if (r.unitId !== u.id) continue;
+      const b = dec<{ checkIn?: string; totalAmount?: number; platformFee?: number; currency?: string; status?: string }>(r);
+      if (!b || b.status === "cancelled" || !String(b.checkIn ?? "").startsWith(month)) continue;
+      bookings += 1;
+      income += toEGP((Number(b.totalAmount) || 0) - (Number(b.platformFee) || 0), b.currency, prices);
+    }
+    const tenants: string[] = [];
+    for (const r of leaseRows) {
+      if (r.unitId !== u.id) continue;
+      const l = dec<{ tenantName?: string; monthlyRent?: number; currency?: string; startDate?: string; endDate?: string }>(r);
+      if (!l || !l.startDate || l.startDate > today || (l.endDate && l.endDate < today)) continue;
+      income += toEGP(Number(l.monthlyRent) || 0, l.currency, prices);
+      tenants.push(`${l.tenantName ?? "tenant"} ${(Number(l.monthlyRent) || 0).toFixed(0)} ${l.currency ?? "EGP"}/month${l.endDate ? ` until ${l.endDate}` : ""}`);
+    }
+    for (const r of expenseRows) {
+      if (r.unitId !== u.id) continue;
+      const e = dec<{ date?: string; amount?: number; currency?: string }>(r);
+      if (e && String(e.date ?? "").startsWith(month)) costs += toEGP(Number(e.amount) || 0, e.currency, prices);
+    }
+    return `${u.name ?? "unit"} (${u.mode ?? "rental"}): this month ≈ ${income.toFixed(0)} EGP income from ${bookings} booking(s)${tenants.length ? ` and tenant(s) ${tenants.join(", ")}` : ""}, ${costs.toFixed(0)} EGP costs, ≈ ${(income - costs).toFixed(0)} EGP profit`;
+  });
+  return `Rental properties (tracked separately from investments; figures are month-to-date estimates): ${lines.join("; ")}.`;
+}
+
 function toEGP(amount: number, currency: string | undefined, prices: MarketPricesResponse): number {
   if (!currency || currency === "EGP") return amount;
   if (currency === "USD" && prices.usdToEgp) return amount * prices.usdToEgp;
@@ -294,7 +385,7 @@ function summarizeTrend(
 async function buildPortfolioContext(
   userId: string,
 ): Promise<{ context: string; egxStocks: EGXStockResponse[]; globalStocks: EGXStockResponse[] }> {
-  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, globalStocks, inflation, realEstateSummary, loanRows] =
+  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, globalStocks, inflation, realEstateSummary, loanRows, soldRows, dividendRows, rentalRows] =
     await Promise.all([
       db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
       db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
@@ -312,6 +403,14 @@ async function buildPortfolioContext(
       fetchInflation(),
       summarizeRealEstateMarket(),
       db.select().from(loansTable).where(eq(loansTable.userId, userId)).catch(() => []),
+      db.select().from(soldHoldingsTable).where(eq(soldHoldingsTable.userId, userId)).catch(() => []),
+      db.select().from(dividendsTable).where(eq(dividendsTable.userId, userId)).catch(() => []),
+      Promise.all([
+        db.select().from(rentalUnitsTable).where(eq(rentalUnitsTable.userId, userId)),
+        db.select().from(rentalBookingsTable).where(eq(rentalBookingsTable.userId, userId)),
+        db.select().from(rentalLeasesTable).where(eq(rentalLeasesTable.userId, userId)),
+        db.select().from(rentalExpensesTable).where(eq(rentalExpensesTable.userId, userId)),
+      ]).catch(() => [[], [], [], []] as const),
     ]);
 
   const holdings = holdingRows.map(
@@ -389,6 +488,10 @@ async function buildPortfolioContext(
     summarizeGoals(goals, cash),
     summarizePriceAlerts(alerts),
     summarizeRecurringIncome(income),
+    summarizeLoans(loans, prices),
+    summarizeSold(soldRows.map((r) => decryptFromStorage(r.data) as StoredSale)),
+    summarizeDividends(dividendRows.map((r) => decryptFromStorage(r.data) as StoredDividend), prices),
+    summarizeRentals(rentalRows, prices),
     `Egypt annual inflation rate: ${inflation.rate}% (${inflation.year}, World Bank/CAPMAS CPI data).`,
     summarizeMetals(prices),
     summarizeEgxMovers(egxStocks),

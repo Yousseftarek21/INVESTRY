@@ -21,6 +21,9 @@ import { parseAmount } from '@/utils/parseAmount';
 import { holdingName, holdingSoldBody } from '@/utils/activityText';
 import { computeCurrentValue, computeCost } from '@/components/HoldingCard';
 import { AssetIcon } from '@/components/AssetIcon';
+import { StockLogo } from '@/components/StockLogo';
+import { AccountPickerField } from '@/components/rental/RentalUI';
+import { useCashMove } from '@/hooks/useCashMove';
 import { Holding } from '@/types';
 
 function todayIso(): string {
@@ -60,6 +63,9 @@ export default function SellHoldingScreen() {
     return { ...rawPrices, egxPrices };
   }, [rawPrices, egxStocks, globalStocks]);
 
+  const stockLogoUrl = holding?.type === 'stock'
+    ? (egxStocks?.find(s => s.ticker === holding.symbol)?.logoUrl ?? globalStocks?.find(s => s.ticker === holding.symbol)?.logoUrl)
+    : undefined;
   const isFixedIncome = holding?.type === 'fixed_income';
   const currentValue = holding ? computeCurrentValue(holding, prices) : 0;
   const costBasis = holding ? computeCost(holding, prices) : 0;
@@ -70,6 +76,8 @@ export default function SellHoldingScreen() {
   const [sellQuantity, setSellQuantity] = useState(() => fullQuantity != null ? String(fullQuantity) : '');
   const [saleDate, setSaleDate] = useState(todayIso());
   const [notes, setNotes] = useState('');
+  const [depositTo, setDepositTo] = useState('');
+  const moveCash = useCashMove();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,6 +104,7 @@ export default function SellHoldingScreen() {
 
   const realizedGainLoss = parseAmount(saleProceeds || '0') - scaledCostBasis;
   const isGain = realizedGainLoss >= 0;
+  const gainPct = scaledCostBasis > 0 ? (realizedGainLoss / scaledCostBasis) * 100 : null;
   const gainColor = isGain ? colors.green : colors.red;
 
   const hasInstallmentBalance = holding?.type === 'real_estate' && (holding.remainingBalance ?? 0) > 0;
@@ -126,6 +135,8 @@ export default function SellHoldingScreen() {
     impact();
     try {
       await sellHolding(holding.id, proceeds, saleDate, notes.trim() || undefined, quantityToSend);
+      // Optional: the money from the sale goes into a cash account.
+      moveCash(depositTo || undefined, proceeds, 'EGP');
       queryClient.invalidateQueries({ queryKey: ['sold-holdings'] });
       const subtitle = holdingSoldBody(holding, t, quantityToSend, proceeds, scaledCostBasis);
       void logActivity('holding_sold', t.actSold(holdingName(holding, t)), subtitle, holding.id);
@@ -154,7 +165,13 @@ export default function SellHoldingScreen() {
 
   const title = isFixedIncome ? t.redeemHoldingTitle : t.sellHoldingTitle;
   const amountLabel = isFixedIncome ? t.redemptionAmountLabel : t.saleProceedsLabel;
-  const confirmLabel = isFixedIncome ? t.confirmRedeemCta : t.confirmSellCta;
+  const proceedsNum = parseAmount(saleProceeds || '0');
+  const confirmLabel = isFixedIncome ? t.confirmRedeemCta
+    : Number.isFinite(proceedsNum) && proceedsNum > 0 ? t.sellForCta(Math.round(proceedsNum).toLocaleString('en-EG'))
+    : t.confirmSellCta;
+  // Price per share/gram implied by what was received — a check on typos.
+  const perUnit = isFungible && Number.isFinite(parsedQuantity) && (parsedQuantity ?? 0) > 0 && Number.isFinite(proceedsNum) && proceedsNum > 0
+    ? proceedsNum / (parsedQuantity as number) : null;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -173,9 +190,13 @@ export default function SellHoldingScreen() {
       >
         {/* Holding summary */}
         <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: colors.primary + '17' }]}>
-            <AssetIcon type={holding.type} size={18} color={colors.primary} />
-          </View>
+          {stockLogoUrl ? (
+            <StockLogo symbol={holding.type === 'stock' ? holding.symbol : ''} logoUrl={stockLogoUrl} size={40} radius={12} />
+          ) : (
+            <View style={[styles.summaryIconWrap, { backgroundColor: colors.primary + '17' }]}>
+              <AssetIcon type={holding.type} size={18} color={colors.primary} />
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={[styles.summaryName, { color: colors.text }]} numberOfLines={1}>
               {holding.type === 'stock' ? holding.symbol
@@ -208,6 +229,27 @@ export default function SellHoldingScreen() {
                 {holding.type === 'stock' ? t.sharesLabel : 'g'}
               </Text>
             </View>
+            {fullQuantity != null && fullQuantity > 0 && (
+              <View style={styles.quickRow}>
+                {([0.25, 0.5, 1] as const).map(share => {
+                  // Shares are whole; grams keep up to 3 decimals.
+                  const q = holding.type === 'stock' ? Math.max(1, Math.floor(fullQuantity * share)) : Math.round(fullQuantity * share * 1000) / 1000;
+                  const active = Number.isFinite(parsedQuantity) && Math.abs((parsedQuantity ?? 0) - q) < 1e-9;
+                  return (
+                    <TouchableOpacity
+                      key={share}
+                      style={[styles.quickChip, { backgroundColor: active ? colors.primary + '1F' : colors.muted, borderColor: active ? colors.primary : colors.border }]}
+                      onPress={() => { impact(); setSellQuantity(String(q)); }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.quickChipText, { color: active ? colors.primary : colors.text }]}>
+                        {share === 1 ? t.sellAll : `${share * 100}%`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
@@ -221,6 +263,11 @@ export default function SellHoldingScreen() {
             placeholder="0"
             placeholderTextColor={colors.mutedForeground}
           />
+          {perUnit != null && (
+            <Text style={[styles.helper, { color: colors.mutedForeground }]}>
+              {t.sellPerUnit(perUnit.toLocaleString('en-EG', { maximumFractionDigits: 2 }), holding.type === 'stock' ? t.sellPerShareUnit : t.sellPerGramUnit)}
+            </Text>
+          )}
         </View>
 
         {/* Date */}
@@ -235,6 +282,7 @@ export default function SellHoldingScreen() {
             <Text style={[styles.previewLabel, { color: colors.mutedForeground }]}>{t.realizedProfitLossLabel}</Text>
             <Text style={[styles.previewHero, { color: gainColor }]} numberOfLines={1} adjustsFontSizeToFit>
               {isGain ? '+' : ''}{Math.round(realizedGainLoss).toLocaleString('en-EG')} <Text style={styles.previewHeroCurrency}>EGP</Text>
+              {gainPct != null && <Text style={styles.previewHeroCurrency}>{`  ${isGain ? '+' : '−'}${Math.abs(gainPct).toFixed(1)}%`}</Text>}
             </Text>
             <Text style={[styles.previewFrom, { color: colors.mutedForeground }]}>
               {t.costBasisLabel}: {Math.round(scaledCostBasis).toLocaleString('en-EG')} EGP
@@ -250,6 +298,9 @@ export default function SellHoldingScreen() {
             </Text>
           </View>
         )}
+
+        {/* Where the money went */}
+        <AccountPickerField value={depositTo} onChange={setDepositTo} />
 
         {/* Notes */}
         <View style={styles.section}>
@@ -309,6 +360,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
   },
   quantitySuffix: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  quickRow: { flexDirection: 'row', gap: 8 },
+  quickChip: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7 },
+  quickChipText: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  helper: { fontSize: 12.5, fontFamily: 'Inter_500Medium' },
   notesInput: {
     fontSize: 14, fontFamily: 'Inter_400Regular',
     borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
@@ -318,7 +373,7 @@ const styles = StyleSheet.create({
   previewAccent: { width: 4 },
   previewBody: { flex: 1, padding: 14, gap: 4 },
   previewLabel: { fontSize: 10.5, fontFamily: 'Inter_700Bold', letterSpacing: 0.8, textTransform: 'uppercase' },
-  previewHero: { fontSize: 24, fontFamily: 'Inter_800ExtraBold', letterSpacing: -0.5 },
+  previewHero: { fontSize: 24, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
   previewHeroCurrency: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   previewFrom: { fontSize: 12.5, fontFamily: 'Inter_500Medium', marginTop: 4 },
   warnCard: {

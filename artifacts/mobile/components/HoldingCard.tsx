@@ -290,11 +290,13 @@ export function HoldingCard({ holding, prices, onSell, hideValues, hideSubtitle,
           <View style={styles.actions}>
             <TouchableOpacity
               onPress={onSell}
-              style={styles.actionBtn}
-              hitSlop={10}
+              style={[styles.sellBtn, { borderColor: colors.border, backgroundColor: colors.muted }]}
+              hitSlop={8}
               activeOpacity={0.6}
+              accessibilityRole="button"
+              accessibilityLabel={holding.type === 'fixed_income' ? t.redeemShort : t.sellShort}
             >
-              <Feather name="check-circle" size={14} color={colors.green} />
+              <Text style={[styles.sellText, { color: colors.text }]}>{holding.type === 'fixed_income' ? t.redeemShort : t.sellShort}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -452,11 +454,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 2,
   },
-  actionBtn: {
-    width: 22,
-    height: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+  // A labelled "Sell" rather than a bare check icon, which read as
+  // "verified" more than "sell this".
+  sellBtn: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  sellText: {
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
   },
   loanRow: {
     flexDirection: 'row',

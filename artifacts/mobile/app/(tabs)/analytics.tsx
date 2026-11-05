@@ -1120,164 +1120,7 @@ export default function AnalyticsScreen() {
         <Text style={[s.pageTitle, { color: colors.text }]}>{t.analytics}</Text>
       </View>
 
-      {/* ══ SECTION 1: Planning ═══════════════════════════════════════ */}
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: '#22C55E18' }]}>
-          <Feather name="compass" size={15} color="#22C55E" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>{t.planningGrowthTools}</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.planningToolsSub}</Text>
-        </View>
-      </View>
-      <View style={s.planningRow}>
-        <PlanningToolCard
-          icon="target" color={colors.primary}
-          label={t.goals}
-          sub={t.goalsToolSub}
-          onPress={() => router.push('/goals' as any)}
-        />
-        <PlanningToolCard
-          icon="percent" color="#4A9EFF"
-          label={t.tbillsCalculator}
-          sub={t.tbillsToolSub}
-          onPress={() => router.push('/tbills-calculator' as any)}
-        />
-        <PlanningToolCard
-          icon="check-circle" color={colors.green}
-          label={t.shariahScreening}
-          sub={t.shariahScreeningDesc}
-          onPress={() => router.push('/sharia-screening' as any)}
-        />
-      </View>
-
-      {/* ══ SECTION 2: Financial Tools ════════════════════════════════ */}
-      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
-      <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: colors.primary + '18' }]}>
-          <Feather name="tool" size={15} color={colors.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>{t.financialToolsTitle}</Text>
-          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.financialToolsSub}</Text>
-        </View>
-        <View style={[s.toolsBadge, { backgroundColor: colors.primary + '18' }]}>
-          <Text style={[s.toolsBadgeTxt, { color: colors.primary }]}>{t.financialToolsCountBadge}</Text>
-        </View>
-      </View>
-      <FinancialTools />
-
-      {/* ══ SECTION: AI Financial Assistant ═══════════════════════════ */}
-      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
-      <PremiumGate
-        feature={t.aiAssistantTitle}
-        description={t.aiAssistantDesc}
-      >
-        <Pressable onPress={() => router.push('/ai-assistant' as any)}>
-          <ExpoLinearGradient
-            colors={['#8B5CF61C', '#6366F110']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[s.aiAssistantCard, { borderColor: '#8B5CF63A' }]}
-          >
-            <View style={[s.aiAssistantIcon, { backgroundColor: '#8B5CF622' }]}>
-              <ConceptIcon icon={ICON_AI_ASSISTANT} size={22} color="#8B5CF6" />
-              <View style={[s.aiSparkle, { backgroundColor: colors.card }]}>
-                <Feather name="zap" size={9} color="#8B5CF6" />
-              </View>
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={s.aiTitleRow}>
-                <Text style={[s.sectionTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
-                <BetaChip label={t.aiAssistantBetaChip} />
-              </View>
-              <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.aiAssistantDesc}</Text>
-            </View>
-            <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
-          </ExpoLinearGradient>
-        </Pressable>
-      </PremiumGate>
-
-      {/* ══ SECTION 2: Market Intelligence ══════════════════════════ */}
-      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
-      <PremiumGate
-        feature={t.subMarketIntelligence}
-        description={t.marketIntelligenceDesc}
-      >
-        <View style={s.sectionHeader}>
-          <View style={[s.sectionIconWrap, { backgroundColor: '#4A9EFF18' }]}>
-            <Feather name="globe" size={15} color="#4A9EFF" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.sectionTitle, { color: colors.text }]}>{t.subMarketIntelligence}</Text>
-            <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.liveRatesPortfolioSignals}</Text>
-          </View>
-          <LiveDot />
-        </View>
-
-        {/* Market Summary Cards — 3-up row */}
-        <View style={s.marketRow}>
-          <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>USD/EGP</Text>
-            <Text style={[s.mktPrice, { color: colors.text }]}>
-              {prices?.usdToEgp ? prices.usdToEgp.toFixed(2) : '—'}
-            </Text>
-            {/* Same rule as Overview and Markets — don't badge cached prices
-                as LIVE just because they're real. */}
-            <View style={[s.mktBadge, { backgroundColor: (pricesAreFresh(prices?.lastUpdated) ? '#4A9EFF' : colors.mutedForeground) + '18' }]}>
-              <Text style={[s.mktBadgeTxt, { color: pricesAreFresh(prices?.lastUpdated) ? '#4A9EFF' : colors.mutedForeground }]}>{t.liveLabel}</Text>
-            </View>
-          </View>
-
-          <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.primary + '30' }]}>
-            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>{t.gold21KPerGram}</Text>
-            <Text style={[s.mktPrice, { color: colors.primary }]}>
-              {prices ? Math.round(goldPricePerGram(prices, '21k')).toLocaleString('en-EG') : '—'}
-            </Text>
-            {prices?.goldChangePercent !== undefined && (
-              <View style={[s.mktBadge, { backgroundColor: (prices.goldChangePercent >= 0 ? colors.green : colors.red) + '18' }]}>
-                <Text style={[s.mktBadgeTxt, { color: prices.goldChangePercent >= 0 ? colors.green : colors.red }]}>
-                  {prices.goldChangePercent >= 0 ? '+' : ''}{prices.goldChangePercent.toFixed(2)}%
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <View style={[s.mktCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.mktLabel, { color: colors.mutedForeground }]}>{t.silverPerGram}</Text>
-            <Text style={[s.mktPrice, { color: colors.silverColor }]}>
-              {prices ? Math.round(silverPricePerGram(prices)).toLocaleString('en-EG') : '—'}
-            </Text>
-            {prices?.silverChangePercent !== undefined && (
-              <View style={[s.mktBadge, { backgroundColor: (prices.silverChangePercent >= 0 ? colors.green : colors.red) + '18' }]}>
-                <Text style={[s.mktBadgeTxt, { color: prices.silverChangePercent >= 0 ? colors.green : colors.red }]}>
-                  {prices.silverChangePercent >= 0 ? '+' : ''}{prices.silverChangePercent.toFixed(2)}%
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Gold karat strip */}
-        {prices && (
-          <View style={[s.karatStrip, { backgroundColor: colors.card, borderColor: colors.primary + '25' }]}>
-            <Text style={[s.karatStripLabel, { color: colors.mutedForeground }]}>{t.goldPricesEGP}</Text>
-            <View style={s.karatRow}>
-              {(['24k', '22k', '21k', '18k'] as const).map(k => (
-                <View key={k} style={s.karatCol}>
-                  <Text style={[s.karatVal, { color: colors.primary }]}>
-                    {Math.round(goldPricePerGram(prices, k)).toLocaleString('en-EG')}
-                  </Text>
-                  <Text style={[s.karatKey, { color: colors.mutedForeground }]}>{k.toUpperCase()}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-      </PremiumGate>
-
-      {/* ══ SECTION 3: Portfolio Analytics ═══════════════════════════ */}
-      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      {/* ══ Your portfolio first — this is what the tab is for ═════════ */}
       <PremiumGate
         feature={t.subPortfolioAnalytics}
         description={t.portfolioAnalyticsDesc}
@@ -1783,6 +1626,71 @@ export default function AnalyticsScreen() {
           <Feather name={forwardArrow()} size={16} color={colors.mutedForeground} />
         </Pressable>
       )}
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      {/* ══ SECTION: AI Financial Assistant ═══════════════════════════ */}
+      <PremiumGate
+        feature={t.aiAssistantTitle}
+        description={t.aiAssistantDesc}
+      >
+        <Pressable onPress={() => router.push('/ai-assistant' as any)}>
+          <ExpoLinearGradient
+            colors={['#8B5CF61C', '#6366F110']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[s.aiAssistantCard, { borderColor: '#8B5CF63A' }]}
+          >
+            <View style={[s.aiAssistantIcon, { backgroundColor: '#8B5CF622' }]}>
+              <ConceptIcon icon={ICON_AI_ASSISTANT} size={22} color="#8B5CF6" />
+              <View style={[s.aiSparkle, { backgroundColor: colors.card }]}>
+                <Feather name="zap" size={9} color="#8B5CF6" />
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={s.aiTitleRow}>
+                <Text style={[s.sectionTitle, { color: colors.text }]}>{t.aiAssistantTitle}</Text>
+                <BetaChip label={t.aiAssistantBetaChip} />
+              </View>
+              <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.aiAssistantDesc}</Text>
+            </View>
+            <Feather name={forwardChevron()} size={18} color={colors.mutedForeground} />
+          </ExpoLinearGradient>
+        </Pressable>
+      </PremiumGate>
+
+      <View style={[s.sectionDivider, { backgroundColor: colors.border }]} />
+      {/* ══ Tools: planning cards + calculators, one section ══════════ */}
+      <View style={s.sectionHeader}>
+        <View style={[s.sectionIconWrap, { backgroundColor: '#22C55E18' }]}>
+          <Feather name="tool" size={15} color="#22C55E" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.sectionTitle, { color: colors.text }]}>{t.toolsSectionTitle}</Text>
+          <Text style={[s.sectionSub, { color: colors.mutedForeground }]}>{t.toolsSectionSub}</Text>
+        </View>
+      </View>
+      <View style={s.planningRow}>
+        <PlanningToolCard
+          icon="target" color={colors.primary}
+          label={t.goals}
+          sub={t.goalsToolSub}
+          onPress={() => router.push('/goals' as any)}
+        />
+        <PlanningToolCard
+          icon="percent" color="#4A9EFF"
+          label={t.tbillsCalculator}
+          sub={t.tbillsToolSub}
+          onPress={() => router.push('/tbills-calculator' as any)}
+        />
+        <PlanningToolCard
+          icon="check-circle" color={colors.green}
+          label={t.shariahScreening}
+          sub={t.shariahScreeningDesc}
+          onPress={() => router.push('/sharia-screening' as any)}
+        />
+      </View>
+
+      <FinancialTools />
+
     </ScrollView>
     <WeeklyRecapCard
       visible={recapVisible}

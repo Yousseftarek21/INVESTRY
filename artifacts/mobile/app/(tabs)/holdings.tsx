@@ -19,6 +19,8 @@ import { getRECurrentValue } from '@/utils/rePrice';
 import { computePendingIncomeEGP } from '@/utils/cash';
 import { forwardChevron } from '@/utils/rtl';
 import { HoldingCard } from '@/components/HoldingCard';
+import { useSoldHoldings } from '@/hooks/useSoldHoldings';
+import { useAppSettings } from '@/context/AppSettingsContext';
 import { useRecurringIncome } from '@/context/RecurringIncomeContext';
 
 import { SwipeToDelete } from '@/components/SwipeToDelete';
@@ -303,6 +305,9 @@ export default function HoldingsScreen() {
 
   const openAdd = () => { impact(); router.push('/add-choose' as any); };
   const openSoldHoldings = () => { impact(); router.push('/sold-holdings' as any); };
+  const { soldHoldings } = useSoldHoldings();
+  const realizedTotal = soldHoldings.reduce((sum, h) => sum + h.realizedGainLoss, 0);
+  const { hideValues } = useAppSettings();
 
   const topInsets = Platform.OS === 'web' ? Math.max(insets.top, 67) : insets.top;
   const botInsets = Platform.OS === 'web' ? Math.max(insets.bottom, 34) : insets.bottom;
@@ -351,27 +356,19 @@ export default function HoldingsScreen() {
               </Text>
             )}
           </View>
-          <View style={styles.headerBtnCol}>
-            {/* Header add button — only shown when there are holdings */}
-            {totalCount > 0 && (
-              <TouchableOpacity
-                style={[styles.headerAddBtn, { backgroundColor: colors.primary }]}
-                onPress={openAdd}
-                activeOpacity={0.8}
-              >
-                <Feather name="plus" size={18} color={colors.primaryForeground} />
-                <Text style={[styles.headerAddText, { color: colors.primaryForeground }]}>{t.addTab}</Text>
-              </TouchableOpacity>
-            )}
+          {/* Header add button — only shown when there are holdings. Sold
+              investments moved to their own row at the end of the list. */}
+          {totalCount > 0 && (
             <TouchableOpacity
-              style={styles.soldLinkBtn}
-              onPress={openSoldHoldings}
-              activeOpacity={0.7}
+              style={[styles.headerAddBtn, { backgroundColor: colors.primary }]}
+              onPress={openAdd}
+              activeOpacity={0.8}
+              accessibilityRole="button"
             >
-              <Feather name="archive" size={12} color={colors.mutedForeground} />
-              <Text style={[styles.soldLinkText, { color: colors.mutedForeground }]}>{t.soldInvestments}</Text>
+              <Feather name="plus" size={18} color={colors.primaryForeground} />
+              <Text style={[styles.headerAddText, { color: colors.primaryForeground }]}>{t.addTab}</Text>
             </TouchableOpacity>
-          </View>
+          )}
         </View>
 
         {/* ── Pending income tile — a real user's complaint was that this
@@ -395,6 +392,31 @@ export default function HoldingsScreen() {
               <Text style={[styles.pendingTileLabel, { color: colors.mutedForeground }]}>{t.pendingIncomeLabel}</Text>
               <Text style={[styles.pendingTileValue, { color: colors.text }]}>
                 {pendingIncomeEGP.toLocaleString('en-EG', { maximumFractionDigits: 0 })} EGP
+              </Text>
+            </View>
+            <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        )}
+
+        {/* ── Sold investments — up here with Pending Income so it's seen
+             without scrolling past every holding. Only once something
+             has been sold. */}
+        {soldHoldings.length > 0 && (
+          <TouchableOpacity
+            style={[styles.pendingTile, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={openSoldHoldings}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+          >
+            <View style={[styles.pendingTileIcon, { backgroundColor: colors.muted }]}>
+              <Feather name="archive" size={17} color={colors.mutedForeground} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.pendingTileLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {t.soldRowTitle} · {t.soldGroupSub(soldHoldings.length, '')}
+              </Text>
+              <Text style={[styles.pendingTileValue, { color: hideValues ? colors.text : realizedTotal >= 0 ? colors.green : colors.red }]}>
+                {hideValues ? '••••' : `${realizedTotal >= 0 ? '+' : '−'}${Math.abs(Math.round(realizedTotal)).toLocaleString('en-EG')} EGP`}
               </Text>
             </View>
             <Feather name={forwardChevron()} size={16} color={colors.mutedForeground} />
@@ -657,19 +679,16 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 20 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: 4,
+    alignItems: 'center', marginBottom: 4,
   },
   screenTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', letterSpacing: -0.3 },
   subtitle: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 4 },
-  headerBtnCol: { alignItems: 'flex-end', gap: 8, marginTop: 6 },
   headerAddBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 14, paddingVertical: 9,
     borderRadius: 12,
   },
   headerAddText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  soldLinkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  soldLinkText: { fontSize: 12, fontFamily: 'Inter_500Medium' },
   groupHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   groupIconWrap: { width: 24, height: 24, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   groupLabel: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.1, flex: 1 },

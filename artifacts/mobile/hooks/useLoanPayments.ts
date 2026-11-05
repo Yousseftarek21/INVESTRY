@@ -1,13 +1,9 @@
 import { useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useLoans } from '@/context/LoansContext';
-import { useCash } from '@/context/CashContext';
-import { useMarketPrices } from '@/hooks/usePrices';
 import { useActivityLog } from '@/hooks/useActivityLog';
-import { useCashBalanceUpdates } from '@/hooks/useCashBalanceUpdates';
-import { applyOptimisticTodayChange } from '@/hooks/useCashAccountsTodayChanges';
 import { useT } from '@/hooks/useTranslation';
-import { convert, monthOf } from '@/utils/rentalMath';
+import { monthOf } from '@/utils/rentalMath';
+import { useCashMove } from '@/hooks/useCashMove';
 import { isLoanPaidOff } from '@/utils/loanMath';
 import { loanPaymentText } from '@/utils/activityText';
 import { generateId } from '@/components/rental/RentalUI';
@@ -21,25 +17,11 @@ import type { Loan, LoanPayment } from '@/types';
  */
 export function useLoanPayments() {
   const t = useT();
-  const queryClient = useQueryClient();
   const { updateLoan } = useLoans();
-  const { cashAccounts, updateCashAccount } = useCash();
-  const { data: prices } = useMarketPrices();
-  const { logUpdate } = useCashBalanceUpdates(null);
   const { logActivity } = useActivityLog();
 
-  // amount is in the loan's currency; negative takes money out of the account.
-  const moveCash = useCallback((accountId: string | undefined, amount: number, loanCurrency: string) => {
-    if (!accountId) return;
-    const account = cashAccounts.find(a => a.id === accountId);
-    if (!account) return;
-    const delta = Math.round(convert(amount, loanCurrency, account.currency || 'EGP', prices) * 100) / 100;
-    if (delta === 0) return;
-    const resulting = Math.round(((Number(account.balance) || 0) + delta) * 100) / 100;
-    updateCashAccount({ ...account, balance: resulting }).catch(() => null);
-    applyOptimisticTodayChange(queryClient, account.id, delta);
-    void logUpdate(account.id, delta, resulting);
-  }, [cashAccounts, updateCashAccount, prices, queryClient, logUpdate]);
+  // Amounts are in the loan's currency; negative takes money out of the account.
+  const moveCash = useCashMove();
 
   const recordPayment = useCallback(async (loan: Loan, input: { amount: number; date: string; cashAccountId?: string }) => {
     const payment: LoanPayment = {
