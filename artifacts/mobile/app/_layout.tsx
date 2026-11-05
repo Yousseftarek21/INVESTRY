@@ -27,6 +27,7 @@ import { CashProvider } from "@/context/CashContext";
 import { RecurringIncomeProvider } from "@/context/RecurringIncomeContext";
 import { DividendsProvider } from "@/context/DividendsContext";
 import { RentalPropertiesProvider } from "@/context/RentalPropertiesContext";
+import { LoansProvider } from "@/context/LoansContext";
 import { GoalsProvider } from "@/context/GoalsContext";
 import { PriceAlertsProvider } from "@/context/PriceAlertsContext";
 import { AppSettingsProvider, useAppSettings } from "@/context/AppSettingsContext";
@@ -159,6 +160,18 @@ function RootLayoutNav() {
         options={{ presentation: "modal", headerShown: false }}
       />
       <Stack.Screen
+        name="loans"
+        options={{ presentation: "modal", headerShown: false }}
+      />
+      <Stack.Screen
+        name="loan-detail"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="loan-form"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="rental-unit"
         options={{ headerShown: false }}
       />
@@ -271,13 +284,14 @@ function RootLayoutNav() {
 }
 
 function NotificationsInitializer() {
-  const { notifications } = useAppSettings();
+  const { notifications, language } = useAppSettings();
   usePushRegistration(
     notifications.portfolioAlerts,
     notifications.priceAlerts,
     notifications.dailySummary,
     notifications.weeklySummary,
     notifications.feedbackAlerts,
+    language,
   );
   useNotificationTapRouting();
   return null;
@@ -593,11 +607,13 @@ export default function RootLayout() {
                             <RecurringIncomeProvider>
                             <DividendsProvider>
                             <RentalPropertiesProvider>
+                            <LoansProvider>
                             <PriceAlertsProvider>
                               <AppWithPaywall>
                                 <RootLayoutNav />
                               </AppWithPaywall>
                             </PriceAlertsProvider>
+                            </LoansProvider>
                             </RentalPropertiesProvider>
                             </DividendsProvider>
                             </RecurringIncomeProvider>

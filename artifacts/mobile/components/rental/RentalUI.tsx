@@ -149,14 +149,21 @@ export function ToggleRow({ label, desc, value, onChange }: { label: string; des
 }
 
 /** Pick a cash account to deposit received money into, once. */
-export function AccountPickerField({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+export function AccountPickerField({ value, onChange, label, noneLabel }: {
+  value: string;
+  onChange: (id: string) => void;
+  /** Field title; defaults to "Deposit into (optional)". */
+  label?: string;
+  /** The "no account" option; defaults to "Don't add to cash". */
+  noneLabel?: string;
+}) {
   const colors = useColors();
   const t = useT();
   const { cashAccounts } = useCash();
   const [open, setOpen] = useState(false);
   const selected = cashAccounts.find(a => a.id === value);
   return (
-    <Field label={t.depositIntoOptional}>
+    <Field label={label ?? t.depositIntoOptional}>
       {cashAccounts.length === 0 ? (
         <View style={[rs.input, rs.rowCenter, { backgroundColor: colors.input, borderColor: colors.border }]}>
           <Feather name="alert-circle" size={14} color={colors.mutedForeground} />
@@ -169,7 +176,7 @@ export function AccountPickerField({ value, onChange }: { value: string; onChang
           activeOpacity={0.8}
         >
           <Text style={[rs.inputText, { color: value ? colors.text : colors.mutedForeground }]} numberOfLines={1}>
-            {selected ? `${selected.accountName} · ${selected.currency}` : t.dontAddToCash}
+            {selected ? `${selected.accountName} · ${selected.currency}` : noneLabel ?? t.dontAddToCash}
           </Text>
           <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
         </TouchableOpacity>
@@ -177,8 +184,8 @@ export function AccountPickerField({ value, onChange }: { value: string; onChang
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={rs.sheetOverlay} activeOpacity={1} onPress={() => setOpen(false)}>
           <View style={[rs.sheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[rs.sheetTitle, { color: colors.text }]}>{t.depositIntoOptional}</Text>
-            {[{ id: '', accountName: t.dontAddToCash, currency: '' }, ...cashAccounts].map(a => (
+            <Text style={[rs.sheetTitle, { color: colors.text }]}>{label ?? t.depositIntoOptional}</Text>
+            {[{ id: '', accountName: noneLabel ?? t.dontAddToCash, currency: '' }, ...cashAccounts].map(a => (
               <TouchableOpacity
                 key={a.id || 'none'}
                 style={[rs.sheetOption, { borderColor: colors.border, backgroundColor: value === a.id ? colors.primary + '14' : 'transparent' }]}

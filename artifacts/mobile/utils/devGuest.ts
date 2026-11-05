@@ -1,4 +1,4 @@
-import type { CashAccount, Holding, RecurringIncome, RentalBooking, RentalExpense, RentalLease, RentalUnit } from '@/types';
+import type { CashAccount, Holding, Loan, RecurringIncome, RentalBooking, RentalExpense, RentalLease, RentalUnit } from '@/types';
 
 /**
  * Simulator guest mode: opens the app without signing in, with Pro unlocked
@@ -71,4 +71,16 @@ export function devGuestRentals(): { units: RentalUnit[]; bookings: RentalBookin
     leases: [],
     expenses: [{ id: 'dev-e1', unitId: 'dev-unit', date: day(-3), amount: 1500, category: 'cleaning', currency: 'EGP', createdAt: day(-3) }],
   };
+}
+
+export function devGuestLoans(): Loan[] {
+  if (scenario !== 'full') return [];
+  const ym = day(0).slice(0, 7);
+  return [{
+    id: 'dev-car-loan', kind: 'car', name: 'CIB car loan', currency: 'EGP',
+    startBalance: 320_000, originalAmount: 450_000, monthlyPayment: 12_500, dueDay: Number(day(4).slice(8, 10)) > 28 ? 28 : Number(day(4).slice(8, 10)),
+    annualRate: 18, startDate: '2025-06-01', endDate: '2028-06-01',
+    payments: [{ id: 'dev-p1', date: day(-30), amount: 12_500, month: day(-30).slice(0, 7) }].filter(p => p.month !== ym),
+    createdAt: '2025-06-01',
+  }];
 }

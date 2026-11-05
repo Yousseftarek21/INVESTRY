@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
+import { activityRoute } from '@/utils/activityRoute';
 
 /**
  * Routes a tap on any server-sent push notification to the screen it's
@@ -27,11 +28,21 @@ const DESTINATION: Record<string, string> = {
   feedback_message: '/feedback',
   pending_income_reminder: '/recurring-income',
   rental_reminder: '/rentals',
+  loan_reminder: '/loans',
   pro_gate_notice: '/(tabs)/settings',
 };
 
 function routeFromResponse(response: Notifications.NotificationResponse): void {
-  const data = response.notification.request.content.data as { type?: string; route?: string } | undefined;
+  const data = response.notification.request.content.data as { type?: string; route?: string; activityType?: string; entityId?: string; loanId?: string } | undefined;
+  // Your own add/sell/update pushes open the thing they're about.
+  if (data?.type === 'activity_log' && data.activityType) {
+    router.push(activityRoute(data.activityType, data.entityId) as any);
+    return;
+  }
+  if (data?.type === 'loan_reminder' && data.loanId) {
+    router.push({ pathname: '/loan-detail', params: { loanId: data.loanId } } as any);
+    return;
+  }
   // admin_broadcast carries its own destination per-send (see
   // routes/admin.ts's broadcast-push) rather than a fixed one in
   // DESTINATION — a general-purpose broadcast tool can't know in advance

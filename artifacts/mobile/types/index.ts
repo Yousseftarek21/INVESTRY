@@ -430,3 +430,44 @@ export interface MarketPrices {
    * green +0.00%. This lets the UI say "not known yet" instead. */
   changesUnknown?: boolean;
 }
+
+// ─── Loans ──────────────────────────────────────────────────────────────────
+// Money the user owes — subtracted from net worth. Separate from LinkedLoan
+// (a loan against a certificate, recorded on that holding).
+export type LoanKind = 'personal' | 'car' | 'mortgage' | 'credit_card' | 'family' | 'installment' | 'other';
+
+export interface LoanPayment {
+  id: string;
+  /** YYYY-MM-DD the payment was made. */
+  date: string;
+  amount: number;
+  /** The month this payment covers (YYYY-MM), for monthly loans. */
+  month?: string;
+  /** Cash account the money came out of, if the user chose one. */
+  cashAccountId?: string;
+}
+
+export interface Loan {
+  id: string;
+  kind: LoanKind;
+  /** Lender or what it's for — "CIB car loan", "Mohamed", "Madinaty flat". */
+  name: string;
+  currency: string;
+  /** What was still owed when tracking started; payments count down from it. */
+  startBalance: number;
+  /** Full amount originally borrowed, if different (for "X% paid"). */
+  originalAmount?: number;
+  monthlyPayment?: number;
+  /** Day of the month a payment is due, 1-28. */
+  dueDay?: number;
+  /** Yearly interest %, informational. */
+  annualRate?: number;
+  startDate: string;
+  endDate?: string;
+  /** Real estate holding this installment plan belongs to. */
+  holdingId?: string;
+  notes?: string;
+  payments: LoanPayment[];
+  createdAt: string;
+  updatedAt?: string;
+}

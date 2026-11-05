@@ -4,6 +4,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useActivityLog } from '@/hooks/useActivityLog';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useRentalProperties } from '@/context/RentalPropertiesContext';
 import { AmountInput } from '@/components/AmountInput';
@@ -20,6 +21,7 @@ export default function RentalLeaseFormScreen() {
   const insets = useSafeAreaInsets();
   const { unitId, leaseId } = useLocalSearchParams<{ unitId: string; leaseId?: string }>();
   const { units, leases, add, update, remove } = useRentalProperties();
+  const { logActivity } = useActivityLog();
   const unit = units.find(u => u.id === unitId);
   const existing = leaseId ? leases.find(l => l.id === leaseId) : undefined;
 
@@ -70,7 +72,10 @@ export default function RentalLeaseFormScreen() {
     setSaving(true);
     try {
       if (existing) await update('leases', lease);
-      else await add('leases', lease);
+      else {
+        await add('leases', lease);
+        void logActivity('lease_added', t.actLeaseTitle(unit.name), t.actLeaseBody(lease.tenantName, lease.monthlyRent.toLocaleString('en-EG', { maximumFractionDigits: 0 }), lease.currency), unit.id);
+      }
       notify();
       router.back();
     } catch {

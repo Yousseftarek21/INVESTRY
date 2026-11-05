@@ -368,13 +368,8 @@ export default function CashAccountsScreen() {
             .then(() => { refreshTodayChanges(); refreshRecentUpdates(); });
           logActivity(
             'cash_edited',
-            t.activityCashEditedTitle,
-            t.activityCashEditedSubtitle(
-              account.accountName,
-              `${delta > 0 ? '+' : ''}${delta.toLocaleString('en-EG', { maximumFractionDigits: 2 })}`,
-              parsedBalance.toLocaleString('en-EG', { maximumFractionDigits: 2 }),
-              account.currency,
-            ),
+            t.actUpdated(account.accountName),
+            `${delta > 0 ? '+' : ''}${delta.toLocaleString('en-EG', { maximumFractionDigits: 2 })} ${account.currency} · ${t.actBalanceNow(parsedBalance.toLocaleString('en-EG', { maximumFractionDigits: 2 }), account.currency)}`,
             account.id,
           );
         }
@@ -382,8 +377,8 @@ export default function CashAccountsScreen() {
         addCashAccount(account);
         logActivity(
           'cash_added',
-          t.activityCashAddedTitle,
-          t.activityCashAddedSubtitle(account.accountName, account.balance.toLocaleString('en-EG', { maximumFractionDigits: 2 }), account.currency),
+          t.actAdded(account.accountName),
+          t.actBalanceNow(account.balance.toLocaleString('en-EG', { maximumFractionDigits: 2 }), account.currency),
           account.id,
         );
       }

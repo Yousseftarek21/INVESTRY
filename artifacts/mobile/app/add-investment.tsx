@@ -25,6 +25,8 @@ import { useRealEstatePrices, RealEstateAreaLive } from '@/hooks/useRealEstatePr
 import { parseAmount, cleanAmountInput } from '@/utils/parseAmount';
 import { useEGXMarket } from '@/hooks/useEGXMarket';
 import { useGlobalStocks } from '@/hooks/useGlobalStocks';
+import { holdingAddedBody, holdingName } from '@/utils/activityText';
+import { computeCost } from '@/components/HoldingCard';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
 import { DatePickerField } from '@/components/DatePickerField';
 import { AmountInput } from '@/components/AmountInput';
@@ -1105,21 +1107,9 @@ export default function AddInvestmentScreen() {
     }
 
     notify();
-    // Short "what this is" line for the activity-log confirmation — no
-    // field-by-field diffing between old/new on edit (six holding shapes
-    // would each need their own diff logic); just describes the holding as
-    // it stands after the save, same for add and edit.
-    const describeHolding = (h: Holding): string => {
-      switch (h.type) {
-        case 'gold': return `${t.gold}: ${h.grams}g`;
-        case 'silver': return `${t.silver}: ${h.grams}g`;
-        case 'stock': return `${h.symbol}: ${h.shares} ${t.sharesLabel}`;
-        case 'real_estate': return h.propertyName;
-        case 'personal_asset': return h.name;
-        case 'fixed_income': return h.label;
-        default: return t.egxStocksAllocLabel;
-      }
-    };
+    // Activity push / Notification History copy: names the holding, then
+    // what was bought and for how much (utils/activityText.ts).
+    const activityBody = holdingAddedBody(holding, t, computeCost(holding, marketPrices ?? undefined));
     // addHolding/updateHolding update local state synchronously (so the list
     // already reflects the edit) but still await the network round-trip here
     // before navigating away — otherwise a failed save gets silently rolled
@@ -1129,7 +1119,7 @@ export default function AddInvestmentScreen() {
       setSaving(true);
       if (isEditing) {
         await updateHolding(holding);
-        logActivity('holding_edited', t.activityHoldingEditedTitle, describeHolding(holding), holding.id);
+        logActivity('holding_edited', t.actUpdated(holdingName(holding, t)), activityBody, holding.id);
         router.back();
       } else {
         // Every addition is now its own lot, even for an asset already held
@@ -1141,7 +1131,7 @@ export default function AddInvestmentScreen() {
         // lots into one card (see groupLots in utils/lotGrouping.ts) —
         // this only changes how they're stored, not how they look.
         await addHolding(holding);
-        logActivity('holding_added', t.activityHoldingAddedTitle, describeHolding(holding), holding.id);
+        logActivity('holding_added', t.actAdded(holdingName(holding, t)), activityBody, holding.id);
         // Editing came from the holdings list, so `back()` already returns there.
         // Adding came through the add-choose type picker, so `back()` alone would
         // just land back on that picker sheet — dismiss past it to the list instead.

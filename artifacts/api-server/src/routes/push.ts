@@ -98,7 +98,12 @@ router.put("/push/preferences", async (req, res) => {
       return;
     }
   }
-  if (Object.values(bools).every(v => v === undefined)) {
+  const { language } = body;
+  if (language !== undefined && language !== "en" && language !== "ar") {
+    res.status(400).json({ error: "language must be en or ar" });
+    return;
+  }
+  if (Object.values(bools).every(v => v === undefined) && language === undefined) {
     res.status(400).json({ error: "at least one preference is required" });
     return;
   }
@@ -110,6 +115,7 @@ router.put("/push/preferences", async (req, res) => {
   if (dailySummaryEnabled !== undefined) set.dailySummaryEnabled = dailySummaryEnabled;
   if (weeklySummaryEnabled !== undefined) set.weeklySummaryEnabled = weeklySummaryEnabled;
   if (feedbackAlertsEnabled !== undefined) set.feedbackAlertsEnabled = feedbackAlertsEnabled;
+  if (language !== undefined) set.language = language;
 
   try {
     await db

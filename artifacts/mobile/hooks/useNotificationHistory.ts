@@ -2,14 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@clerk/expo';
 import { usePriceAlertsContext } from '@/context/PriceAlertsContext';
-import { useActivityLog, ActivityLogEntry } from '@/hooks/useActivityLog';
+import { useActivityLog, ActivityLogEntry, type ActivityType } from '@/hooks/useActivityLog';
 import { useT } from '@/hooks/useTranslation';
 
 export interface NotificationEvent {
   id: string;
-  type: 'price_alert' | 'portfolio_alert' | 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited' | 'holding_sold' | 'income_added' | 'income_edited' | 'income_collected' | 'rental_added' | 'rental_edited';
+  type: 'price_alert' | 'portfolio_alert' | ActivityType;
   title: string;
   subtitle: string;
+  entityId?: string | null;
   at: string; // ISO timestamp
 }
 
@@ -87,7 +88,7 @@ export function useNotificationHistory() {
     });
 
     activity.forEach(a => {
-      result.push({ id: `activity-${a.id}`, type: a.type, title: a.title, subtitle: a.subtitle, at: a.createdAt });
+      result.push({ id: `activity-${a.id}`, type: a.type, title: a.title, subtitle: a.subtitle, entityId: a.entityId, at: a.createdAt });
     });
 
     return result.sort((a, b) => b.at.localeCompare(a.at)).slice(0, MAX_EVENTS);

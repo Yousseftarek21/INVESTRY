@@ -1,14 +1,18 @@
 import { useCallback } from 'react';
 import { apiFetch } from '@/utils/api';
 import { useStableGetToken } from './useStableGetToken';
+import { useAppSettings } from '@/context/AppSettingsContext';
+import { useT } from './useTranslation';
 
-export type ActivityType = 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited' | 'holding_sold' | 'income_added' | 'income_edited' | 'income_collected' | 'rental_added' | 'rental_edited';
+export type ActivityType = 'cash_added' | 'cash_edited' | 'holding_added' | 'holding_edited' | 'holding_sold' | 'income_added' | 'income_edited' | 'income_collected' | 'rental_added' | 'rental_edited'
+  | 'rental_unit_added' | 'lease_added' | 'loan_added' | 'loan_payment' | 'loan_paid_off' | 'dividend_added';
 
 export interface ActivityLogEntry {
   id: string;
   type: ActivityType;
   title: string;
   subtitle: string;
+  entityId?: string | null;
   createdAt: string;
 }
 
@@ -18,6 +22,8 @@ export interface ActivityLogEntry {
 // alert in this app which is server-cron-triggered on a delay.
 export function useActivityLog() {
   const getToken = useStableGetToken();
+  const { hideValues } = useAppSettings();
+  const t = useT();
 
   const fetchRecent = useCallback(async (): Promise<ActivityLogEntry[]> => {
     try {
@@ -40,14 +46,17 @@ export function useActivityLog() {
     try {
       const token = await getToken();
       if (!token) return;
+      // The push shows on the lock screen: with "hide values" on, keep the
+      // amounts out of it and let the tap open the details instead.
+      const body = hideValues ? t.actTapForDetails : subtitle;
       await apiFetch('/api/activity', token, {
         method: 'POST',
-        body: JSON.stringify({ type, title, subtitle, entityId }),
+        body: JSON.stringify({ type, title, subtitle: body, entityId }),
       });
     } catch {
       // Best-effort, see above.
     }
-  }, [getToken]);
+  }, [getToken, hideValues, t]);
 
   return { fetchRecent, logActivity };
 }

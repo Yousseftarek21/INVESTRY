@@ -18,31 +18,13 @@ import { useGlobalStocks } from '@/hooks/useGlobalStocks';
 import { AmountInput } from '@/components/AmountInput';
 import { DatePickerField } from '@/components/DatePickerField';
 import { parseAmount } from '@/utils/parseAmount';
+import { holdingName, holdingSoldBody } from '@/utils/activityText';
 import { computeCurrentValue, computeCost } from '@/components/HoldingCard';
 import { AssetIcon } from '@/components/AssetIcon';
 import { Holding } from '@/types';
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-// Mirrors add-investment.tsx's own describeHolding — same label style used
-// for the "Investment Added"/"Investment Updated" activity log entries, so
-// "Investment Sold" reads consistently with those in Notification History.
-// `overrideQty` reflects the actual quantity SOLD for a partial sale — the
-// lot itself (h.grams/h.shares) may still be the pre-sale full amount at
-// the moment this runs, so the label would otherwise overstate what was
-// actually sold.
-function describeHolding(h: Holding, t: ReturnType<typeof useT>, overrideQty?: number): string {
-  switch (h.type) {
-    case 'gold': return `${t.gold}: ${overrideQty ?? h.grams}g`;
-    case 'silver': return `${t.silver}: ${overrideQty ?? h.grams}g`;
-    case 'stock': return `${h.symbol}: ${overrideQty ?? h.shares} ${t.sharesLabel}`;
-    case 'real_estate': return h.propertyName;
-    case 'personal_asset': return h.name;
-    case 'fixed_income': return h.label;
-    default: return t.egxStocksAllocLabel;
-  }
 }
 
 function fungibleQuantity(h: Holding): number | null {
@@ -145,9 +127,8 @@ export default function SellHoldingScreen() {
     try {
       await sellHolding(holding.id, proceeds, saleDate, notes.trim() || undefined, quantityToSend);
       queryClient.invalidateQueries({ queryKey: ['sold-holdings'] });
-      const sign = realizedGainLoss >= 0 ? '+' : '';
-      const subtitle = `${describeHolding(holding, t, quantityToSend)} — ${sign}${Math.round(realizedGainLoss).toLocaleString('en-EG')} EGP`;
-      void logActivity('holding_sold', t.activityHoldingSoldTitle, subtitle, holding.id);
+      const subtitle = holdingSoldBody(holding, t, quantityToSend, proceeds, scaledCostBasis);
+      void logActivity('holding_sold', t.actSold(holdingName(holding, t)), subtitle, holding.id);
       router.back();
     } catch {
       setPinnedHolding(undefined);

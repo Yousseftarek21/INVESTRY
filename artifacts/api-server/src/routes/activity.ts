@@ -26,7 +26,7 @@ const activityLogLimit = rateLimit({
   keyGenerator: (req) => getAuth(req).userId ?? "anonymous",
 });
 
-const VALID_TYPES = new Set(["cash_added", "cash_edited", "holding_added", "holding_edited", "holding_sold", "income_added", "income_edited", "income_collected", "rental_added", "rental_edited"]);
+const VALID_TYPES = new Set(["cash_added", "cash_edited", "holding_added", "holding_edited", "holding_sold", "income_added", "income_edited", "income_collected", "rental_added", "rental_edited", "rental_unit_added", "lease_added", "loan_added", "loan_payment", "loan_paid_off", "dividend_added"]);
 
 function generateActivityId(): string {
   return `act_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
@@ -46,6 +46,7 @@ router.get("/activity", async (req, res) => {
         type: activityLogTable.type,
         title: activityLogTable.title,
         subtitle: activityLogTable.subtitle,
+        entityId: activityLogTable.entityId,
         createdAt: activityLogTable.createdAt,
       })
       .from(activityLogTable)
@@ -104,7 +105,7 @@ router.post("/activity", activityLogLimit, async (req, res) => {
     res.status(201).json(row);
     // sendPushToTokens is itself best-effort and never rejects, so nothing
     // further to await/catch here — the response has already gone out.
-    void sendPushToTokens([user.pushToken], title, subtitle, { type: "activity_log" });
+    void sendPushToTokens([user.pushToken], title, subtitle, { type: "activity_log", activityType: type, ...(entityId ? { entityId } : {}) });
   } catch (err) {
     req.log.error({ err }, "POST /activity failed");
     res.status(500).json({ error: "Failed to log activity" });

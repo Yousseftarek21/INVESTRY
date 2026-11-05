@@ -4,6 +4,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useActivityLog } from '@/hooks/useActivityLog';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useHoldings } from '@/context/HoldingsContext';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -58,6 +59,7 @@ export default function RentalUnitFormScreen() {
     return n === undefined ? undefined : Math.round(n);
   };
 
+  const { logActivity } = useActivityLog();
   const save = async () => {
     if (!name.trim()) { Alert.alert(t.missingFields, t.rpNameRequired); return; }
     if (!existing && !subLoading && !featuresUnlocked) { showPaywallFromModal(); return; }
@@ -83,7 +85,11 @@ export default function RentalUnitFormScreen() {
     setSaving(true);
     try {
       if (existing) await update('units', unit);
-      else await add('units', unit);
+      else {
+        await add('units', unit);
+        const how = unit.mode === 'short_stay' ? t.rpModeShortStay : unit.mode === 'long_term' ? t.rpModeLongTerm : t.rpModeBoth;
+        void logActivity('rental_unit_added', t.actAdded(unit.name), unit.location ? `${how} · ${unit.location}` : how, unit.id);
+      }
       notify();
       router.back();
       // Open the new unit once this sheet has finished closing — presenting

@@ -1,4 +1,5 @@
-import type { Holding, RecurringIncome } from '@/types';
+import type { Holding, Loan, RecurringIncome } from '@/types';
+import { loanStatus } from '@/utils/loanMath';
 import { dayNum, monthOf, monthsBetween, upcomingEvents, type NextEvent, type UnitData } from '@/utils/rentalMath';
 
 /**
@@ -36,7 +37,8 @@ export function estimateInstallmentDebtEGP(holdings: Holding[], today: string): 
 export type ComingUpItem =
   | { kind: 'rental'; date: string; unitId: string; unitName: string; event: NextEvent }
   | { kind: 'maturity'; date: string; holdingId: string; label: string; principal: number }
-  | { kind: 'pending_income'; date: string; incomeId: string; name: string; amount: number; currency: string };
+  | { kind: 'pending_income'; date: string; incomeId: string; name: string; amount: number; currency: string }
+  | { kind: 'loan'; date: string; loanId: string; name: string; amount?: number; currency: string; overdue: boolean };
 
 /**
  * The next few dated things across the app, soonest first: rental check-ins,
@@ -49,6 +51,7 @@ export function comingUp(
   today: string,
   horizonDays = 14,
   limit = 3,
+  loans: Loan[] = [],
 ): ComingUpItem[] {
   const todayN = dayNum(today);
   const within = (iso: string, days = horizonDays) => {
@@ -73,6 +76,16 @@ export function comingUp(
         kind: 'pending_income', date: inc.expectedDate.slice(0, 10), incomeId: inc.id,
         name: inc.name, amount: Number(inc.amount) || 0, currency: inc.currency,
       });
+    }
+  }
+  for (const l of loans) {
+    const { status, nextDue } = loanStatus(l, today);
+    if (!nextDue) continue;
+    // Overdue payments show first, dated today, so they can't be missed.
+    if (status === 'overdue') {
+      items.push({ kind: 'loan', date: today, loanId: l.id, name: l.name, amount: l.monthlyPayment, currency: l.currency, overdue: true });
+    } else if (within(nextDue)) {
+      items.push({ kind: 'loan', date: nextDue, loanId: l.id, name: l.name, amount: l.monthlyPayment, currency: l.currency, overdue: false });
     }
   }
   return items.sort((a, b) => a.date.localeCompare(b.date)).slice(0, limit);

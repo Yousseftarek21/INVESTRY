@@ -17,6 +17,8 @@ export const usersTable = pgTable("users", {
   portfolioAlertsEnabled: boolean("portfolio_alerts_enabled").notNull().default(true), // gates the daily ±1% portfolio-value push
   priceAlertsEnabled:     boolean("price_alerts_enabled").notNull().default(true), // gates the custom target-price push
   activityAlertsEnabled:  boolean("activity_alerts_enabled").notNull().default(true), // gates the "you just added/edited X" push
+  // App language ("en" | "ar") for server-sent push copy (lib/pushText.ts). Null = English.
+  language:               text("language"),
   // Opt-in, default false — matches the client's own default before this
   // existed server-side. See lib/dailySummaryCron.ts.
   dailySummaryEnabled:    boolean("daily_summary_enabled").notNull().default(false),

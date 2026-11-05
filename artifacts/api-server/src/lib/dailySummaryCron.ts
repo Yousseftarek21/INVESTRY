@@ -1,10 +1,12 @@
 import { and, desc, eq, lt } from "drizzle-orm";
-import { db, usersTable, portfolioSnapshotsTable } from "@workspace/db";
+import { db, usersTable, portfolioSnapshotsTable, loansTable } from "@workspace/db";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
 import { cairoDateString } from "./cairoDate";
 import { snapshotOnOrBefore } from "./portfolioSnapshotHelpers";
 import { isUserPro } from "./isUserPro";
+import { decryptFromStorage } from "./encryption";
+import { loanMonthLine, portfolioRecap, pushLang, type PushLang } from "./pushText";
 
 // Replaces a client-scheduled local notification that fired every morning
 // with hardcoded, content-free text ("Good morning! Check your portfolio
@@ -44,29 +46,6 @@ function daysBeforeKey(dateKey: string, days: number): string {
   return new Date(new Date(`${dateKey}T00:00:00Z`).getTime() - days * 86_400_000).toISOString().slice(0, 10);
 }
 
-// Short EGP figure for a push body ("245.3k EGP"), not the full integer —
-// matches the compact style used throughout the app itself (utils/formatNumber.ts).
-function fmtCompact(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(2).replace(/\.?0+$/, "")}M`;
-  if (abs >= 1_000) return `${(n / 1_000).toFixed(2).replace(/\.?0+$/, "")}k`;
-  return n.toLocaleString("en-EG", { maximumFractionDigits: 0 });
-}
-
-// Full sentence, not a bare "+0.1% · 245.3k EGP" fragment sitting under a
-// "Good morning"/"Your week in review" title — matches the tone
-// portfolioAlertCron.ts's sibling push already uses ("Your portfolio is up
-// 2.7% today"). period is "today" for the daily push, "this week" for the
-// weekly one. A near-zero move reads as "steady" instead of an odd "up 0.0%".
-function pctBody(current: number, baseline: number, period: string): string {
-  const pct = ((current - baseline) / baseline) * 100;
-  if (Math.abs(pct) < 0.05) {
-    return `Your portfolio held steady ${period}, at ${fmtCompact(current)} EGP.`;
-  }
-  const dir = pct >= 0 ? "up" : "down";
-  return `Your portfolio is ${dir} ${Math.abs(pct).toFixed(1)}% ${period}, now at ${fmtCompact(current)} EGP.`;
-}
-
 async function priorSnapshot(userId: string, before: string): Promise<number | null> {
   const [row] = await db
     .select({ totalValue: portfolioSnapshotsTable.totalValue })
@@ -85,6 +64,27 @@ interface User {
   lastDaily: string | null;
   lastWeekly: string | null;
   isPro: boolean;
+  lang: PushLang;
+}
+
+// Monthly payments on the user's EGP loans that aren't paid off yet, for the
+// weekly recap's extra line. Other currencies are left out rather than
+// guessed at without live FX here.
+async function monthlyLoanPaymentsEgp(userId: string): Promise<number> {
+  const rows = await db.select({ data: loansTable.data }).from(loansTable).where(eq(loansTable.userId, userId));
+  let total = 0;
+  for (const r of rows) {
+    try {
+      const l = decryptFromStorage(r.data) as { currency?: string; monthlyPayment?: number; startBalance?: number; payments?: Array<{ amount?: number }> };
+      if ((l.currency ?? "EGP") !== "EGP" || !l.monthlyPayment) continue;
+      const paid = (l.payments ?? []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      if ((Number(l.startBalance) || 0) - paid <= 0.5) continue;
+      total += l.monthlyPayment;
+    } catch {
+      // Unreadable row: leave it out of the line.
+    }
+  }
+  return total;
 }
 
 async function sendDaily(u: User, today: string): Promise<void> {
@@ -98,7 +98,8 @@ async function sendDaily(u: User, today: string): Promise<void> {
   // this point should not retry every tick for the rest of the send window
   // and risk a duplicate if the failure was transient rather than total.
   await db.update(usersTable).set({ lastDailySummaryDate: today }).where(eq(usersTable.id, u.id));
-  await sendPushToTokens([u.pushToken], "Good Morning", pctBody(current, baseline, "today"), { type: "daily_summary" });
+  const msg = portfolioRecap(u.lang, "day", current, baseline);
+  await sendPushToTokens([u.pushToken], msg.title, msg.body, { type: "daily_summary" });
 }
 
 async function sendWeekly(u: User, today: string): Promise<void> {
@@ -110,7 +111,10 @@ async function sendWeekly(u: User, today: string): Promise<void> {
   if (current == null || baseline == null) return;
 
   await db.update(usersTable).set({ lastWeeklySummaryDate: today }).where(eq(usersTable.id, u.id));
-  await sendPushToTokens([u.pushToken], "Your Week in Review", pctBody(current, baseline, "this week"), { type: "weekly_summary" });
+  const msg = portfolioRecap(u.lang, "week", current, baseline);
+  const loansMonthly = await monthlyLoanPaymentsEgp(u.id).catch(() => 0);
+  const body = msg.body + (loansMonthly > 0 ? loanMonthLine(u.lang, loansMonthly) : "");
+  await sendPushToTokens([u.pushToken], msg.title, body, { type: "weekly_summary" });
 }
 
 let running = false;
@@ -135,9 +139,10 @@ async function checkAllUsers(): Promise<void> {
         lastWeekly: usersTable.lastWeeklySummaryDate,
         plan: usersTable.plan,
         proCreditExpiresAt: usersTable.proCreditExpiresAt,
+        language: usersTable.language,
       })
       .from(usersTable);
-    const users: User[] = rows.map(r => ({ ...r, isPro: isUserPro(r) || betaUnlockAll }));
+    const users: User[] = rows.map(r => ({ ...r, isPro: isUserPro(r) || betaUnlockAll, lang: pushLang(r.language) }));
 
     for (const u of users) {
       try {

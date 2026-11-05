@@ -37,6 +37,8 @@ export function usePushRegistration(
   dailySummaryEnabled: boolean,
   weeklySummaryEnabled: boolean,
   feedbackAlertsEnabled: boolean,
+  /** App language, so reminder pushes the server sends are in it too. */
+  language: string,
 ) {
   const { isSignedIn, userId } = useAuth();
   const getToken = useStableGetToken();
@@ -47,6 +49,7 @@ export function usePushRegistration(
   const lastSyncedDailySummaryPref = useRef<boolean | null>(null);
   const lastSyncedWeeklySummaryPref = useRef<boolean | null>(null);
   const lastSyncedFeedbackAlertsPref = useRef<boolean | null>(null);
+  const lastSyncedLanguage = useRef<string | null>(null);
   const syncingPrefsInFlight = useRef(false);
 
   useEffect(() => {
@@ -96,12 +99,13 @@ export function usePushRegistration(
     if (!isSignedIn || !userId) return;
     if (syncingPrefsInFlight.current) return;
 
-    const body: Record<string, boolean> = {};
+    const body: Record<string, boolean | string> = {};
     if (lastSyncedPortfolioPref.current !== portfolioAlertsEnabled) body.portfolioAlertsEnabled = portfolioAlertsEnabled;
     if (lastSyncedPriceAlertsPref.current !== priceAlertsEnabled) body.priceAlertsEnabled = priceAlertsEnabled;
     if (lastSyncedDailySummaryPref.current !== dailySummaryEnabled) body.dailySummaryEnabled = dailySummaryEnabled;
     if (lastSyncedWeeklySummaryPref.current !== weeklySummaryEnabled) body.weeklySummaryEnabled = weeklySummaryEnabled;
     if (lastSyncedFeedbackAlertsPref.current !== feedbackAlertsEnabled) body.feedbackAlertsEnabled = feedbackAlertsEnabled;
+    if (lastSyncedLanguage.current !== language && (language === 'en' || language === 'ar')) body.language = language;
     if (Object.keys(body).length === 0) return;
 
     syncingPrefsInFlight.current = true;
@@ -119,6 +123,7 @@ export function usePushRegistration(
           if ('dailySummaryEnabled' in body) lastSyncedDailySummaryPref.current = dailySummaryEnabled;
           if ('weeklySummaryEnabled' in body) lastSyncedWeeklySummaryPref.current = weeklySummaryEnabled;
           if ('feedbackAlertsEnabled' in body) lastSyncedFeedbackAlertsPref.current = feedbackAlertsEnabled;
+          if ('language' in body) lastSyncedLanguage.current = language;
         }
       } catch {
         // Silent — will retry next time any of these values change or the app restarts.
@@ -126,5 +131,5 @@ export function usePushRegistration(
         syncingPrefsInFlight.current = false;
       }
     })();
-  }, [isSignedIn, userId, getToken, portfolioAlertsEnabled, priceAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled, feedbackAlertsEnabled]);
+  }, [isSignedIn, userId, getToken, portfolioAlertsEnabled, priceAlertsEnabled, dailySummaryEnabled, weeklySummaryEnabled, feedbackAlertsEnabled, language]);
 }

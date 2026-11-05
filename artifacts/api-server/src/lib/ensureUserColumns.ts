@@ -26,7 +26,8 @@ export async function ensureUserColumns(): Promise<void> {
         ADD COLUMN IF NOT EXISTS "perf_leaderboard_notified_rank" integer,
         ADD COLUMN IF NOT EXISTS "perf_leaderboard_notified_week" text,
         ADD COLUMN IF NOT EXISTS "feedback_alerts_enabled" boolean NOT NULL DEFAULT false,
-        ADD COLUMN IF NOT EXISTS "pro_gate_notice_sent_at" timestamptz
+        ADD COLUMN IF NOT EXISTS "pro_gate_notice_sent_at" timestamptz,
+        ADD COLUMN IF NOT EXISTS "language" text
     `);
   } catch (err) {
     // Fails open, not closed: every caller of these columns already treats a

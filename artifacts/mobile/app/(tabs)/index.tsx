@@ -44,6 +44,8 @@ import { TrackChooser } from '@/components/home/TrackChooser';
 import { useRentalProperties } from '@/context/RentalPropertiesContext';
 import { todayIso as cairoTodayIso } from '@/utils/rentalMath';
 import { comingUp } from '@/utils/homeSummary';
+import { useLoans } from '@/context/LoansContext';
+import { LoansHomeCard } from '@/components/loans/LoansHomeCard';
 import { useGoals } from '@/context/GoalsContext';
 import { GoalRing } from '@/components/GoalRing';
 import { useMarketPrices, goldPricePerGram, silverPricePerGram } from '@/hooks/usePrices';
@@ -383,6 +385,7 @@ export default function HomeScreen() {
   const { cashAccounts, isLoading: cashLoading } = useCash();
   const { recurringIncomes, isLoading: incomesLoading } = useRecurringIncome();
   const { goals } = useGoals();
+  const { loans, isLoading: loansLoading } = useLoans();
   const { data: rawPrices, isLoading: pricesLoading, isPlaceholderData: pricesArePlaceholder, isError: pricesErrored, refetch } = useMarketPrices();
   const { data: egxStocks } = useEGXMarket();
   // US stocks merge into the same egxPrices dict (keyed by symbol, no
@@ -844,13 +847,13 @@ export default function HomeScreen() {
     AsyncStorage.setItem(trackKey, '1').catch(() => null);
   };
   const nothingTracked = holdings.length === 0 && cashAccounts.length === 0 && recurringIncomes.length === 0
-    && goals.length === 0 && rentalUnits.length === 0;
+    && goals.length === 0 && rentalUnits.length === 0 && loans.length === 0;
   const showTrackChooser = trackSkipped === false && nothingTracked
-    && !holdingsLoading && !cashLoading && !incomesLoading && !rentalsLoading;
+    && !holdingsLoading && !cashLoading && !incomesLoading && !rentalsLoading && !loansLoading;
 
   const comingUpItems = useMemo(
-    () => comingUp(activeRentalData, holdings, recurringIncomes, todayCairo),
-    [activeRentalData, holdings, recurringIncomes, todayCairo],
+    () => comingUp(activeRentalData, holdings, recurringIncomes, todayCairo, 14, 3, loans),
+    [activeRentalData, holdings, recurringIncomes, todayCairo, loans],
   );
   const { tier, since: tierSince, change: tierChange, clearChange: clearTierChange } = usePortfolioTier(netWorthEgp);
   const [showTierCard, setShowTierCard] = useState(false);
@@ -1837,6 +1840,10 @@ export default function HomeScreen() {
       {!rentalsOnly && (
         <RentalHomeCard prices={prices} toDisp={toDisp} displayCurrency={displayCurrency} hideValues={hideValues} />
       )}
+
+      {/* ── Loans & installments: their own card, never mixed into
+          the portfolio or net worth figures above ───────────────── */}
+      <LoansHomeCard prices={prices} toDisp={toDisp} displayCurrency={displayCurrency} hideValues={hideValues} />
 
       {/* ── Top Investments ─────────────────────────────────────── */}
       {!showTrackChooser && (

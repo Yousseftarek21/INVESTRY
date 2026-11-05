@@ -15,6 +15,7 @@ import { DatePickerField } from '@/components/DatePickerField';
 import { SwipeToDelete } from '@/components/SwipeToDelete';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
+import { useActivityLog } from '@/hooks/useActivityLog';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useCash } from '@/context/CashContext';
 import { useHoldings } from '@/context/HoldingsContext';
@@ -53,6 +54,7 @@ export default function DividendsScreen() {
   const { cashAccounts, updateCashAccount } = useCash();
   const { holdings } = useHoldings();
   const { dividends, addDividend, updateDividend, removeDividend } = useDividends();
+  const { logActivity } = useActivityLog();
   // dividends.tsx is presentation:"modal" (see app/_layout.tsx) — must use
   // showPaywallFromModal(), not showPaywall(), or the paywall opens with
   // paywallVisible=true but nothing actually appears on screen (iOS won't
@@ -172,6 +174,7 @@ export default function DividendsScreen() {
           cashAccountId: cashAccountId || undefined,
           createdAt: new Date().toISOString(),
         });
+        void logActivity('dividend_added', t.actDividendTitle(trimmedSymbol), `${amount.toLocaleString('en-EG', { maximumFractionDigits: 2 })} ${currency}`);
         // One-time bump, not tracked ongoing — same "user already knows the
         // delta" pattern as a manual cash balance edit, not a recurring
         // credit processor (dividends aren't periodic on a fixed schedule).

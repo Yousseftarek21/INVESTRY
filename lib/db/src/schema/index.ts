@@ -24,3 +24,4 @@ export * from "./feedbackLikes";
 export * from "./pushTickets";
 export * from "./rentalRecords";
 export * from "./rentalProperties";
+export * from "./loans";

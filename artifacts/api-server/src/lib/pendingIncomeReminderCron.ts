@@ -4,6 +4,7 @@ import { encryptForStorage, decryptFromStorage } from "./encryption";
 import { sendPushToTokens } from "./expoPush";
 import { logger } from "./logger";
 import { cairoDateString } from "./cairoDate";
+import { fmtAmount, pendingIncomeReminder, pushLang } from "./pushText";
 
 // A pending (receivable) income entry with an expectedDate just sat there
 // silently forever, even once that date arrived — nothing ever prompted the
@@ -27,14 +28,11 @@ function cairoHour(d: Date = new Date()): number {
   return Number(d.toLocaleString("en-US", { timeZone: "Africa/Cairo", hour: "2-digit", hour12: false }));
 }
 
-function fmtAmount(n: number): string {
-  return n.toLocaleString("en-EG", { maximumFractionDigits: 0 });
-}
-
 interface StoredIncome {
   kind?: "recurring" | "pending";
   collected?: boolean;
   expectedDate?: string;
+  name?: string;
   amount?: number;
   currency?: string;
   reminderSentAt?: string;
@@ -51,7 +49,7 @@ async function checkAllUsers(): Promise<void> {
     const today = cairoDateString();
 
     const users = await db
-      .select({ id: usersTable.id, pushToken: usersTable.pushToken, activityAlertsEnabled: usersTable.activityAlertsEnabled })
+      .select({ id: usersTable.id, pushToken: usersTable.pushToken, activityAlertsEnabled: usersTable.activityAlertsEnabled, language: usersTable.language })
       .from(usersTable);
     const userById = new Map(users.map(u => [u.id, u]));
 
@@ -69,7 +67,6 @@ async function checkAllUsers(): Promise<void> {
 
         const amount = typeof income.amount === "number" ? income.amount : 0;
         const currency = income.currency ?? "EGP";
-        const dateClause = income.expectedDate === today ? "today" : `on ${income.expectedDate}`;
 
         // Marked sent before the push call, not after: a push that fails
         // after this point should not retry every tick for the rest of the
@@ -79,12 +76,8 @@ async function checkAllUsers(): Promise<void> {
           .set({ data: encryptForStorage({ ...income, reminderSentAt: today }), updatedAt: new Date() })
           .where(eq(recurringIncomeTable.id, row.id));
 
-        await sendPushToTokens(
-          [user.pushToken],
-          "Pending payment reminder",
-          `A pending payment of ${fmtAmount(amount)} ${currency} was expected ${dateClause} — did it arrive? Check Income.`,
-          { type: "pending_income_reminder" },
-        );
+        const msg = pendingIncomeReminder(pushLang(user.language), income.name, fmtAmount(amount), currency, income.expectedDate, income.expectedDate === today);
+        await sendPushToTokens([user.pushToken], msg.title, msg.body, { type: "pending_income_reminder" });
       } catch (err) {
         logger.warn({ err, rowId: row.id }, "Pending income reminder failed for entry");
       }

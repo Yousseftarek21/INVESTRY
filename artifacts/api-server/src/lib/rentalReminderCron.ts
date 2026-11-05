@@ -5,6 +5,7 @@ import { sendPushToTokens } from "./expoPush";
 import { isUserPro } from "./isUserPro";
 import { logger } from "./logger";
 import { cairoDateString } from "./cairoDate";
+import { fmtAmount, leaseEnding, pushLang, rentDueToday, rentOverdue, rentalCheckIn } from "./pushText";
 
 // Rental Properties nudges (Pro only, gated on activityAlertsEnabled like
 // pendingIncomeReminderCron.ts): a guest checks in tomorrow, rent is due
@@ -31,10 +32,6 @@ function monthsBetween(a: string, b: string): number {
   const [ay, am] = a.split("-").map(Number);
   const [by, bm] = b.split("-").map(Number);
   return (by - ay) * 12 + (bm - am);
-}
-
-function fmtAmount(n: number): string {
-  return n.toLocaleString("en-EG", { maximumFractionDigits: 0 });
 }
 
 interface StoredUnit { name?: string; archived?: boolean }
@@ -96,18 +93,19 @@ async function checkAllUsers(): Promise<void> {
     if (units.length === 0) return;
 
     const users = await db
-      .select({ id: usersTable.id, pushToken: usersTable.pushToken, activityAlertsEnabled: usersTable.activityAlertsEnabled, plan: usersTable.plan, proCreditExpiresAt: usersTable.proCreditExpiresAt })
+      .select({ id: usersTable.id, pushToken: usersTable.pushToken, activityAlertsEnabled: usersTable.activityAlertsEnabled, language: usersTable.language, plan: usersTable.plan, proCreditExpiresAt: usersTable.proCreditExpiresAt })
       .from(usersTable);
     const eligible = new Map(users
       .filter(u => u.pushToken && u.activityAlertsEnabled && isUserPro(u))
       .map(u => [u.id, u.pushToken as string]));
+    const langFor = new Map(users.map(u => [u.id, pushLang(u.language)]));
 
     const unitName = new Map<string, string>();
     for (const row of units) {
       if (!eligible.has(row.userId)) continue;
       try {
         const u = decryptFromStorage(row.data) as StoredUnit;
-        if (!u.archived) unitName.set(row.id, u.name || "your unit");
+        if (!u.archived) unitName.set(row.id, u.name || (langFor.get(row.userId) === "ar" ? "وحدتك" : "your unit"));
       } catch (err) {
         logger.warn({ err, unitId: row.id }, "Rental reminder: unreadable unit");
       }
@@ -125,8 +123,7 @@ async function checkAllUsers(): Promise<void> {
         reminders.push({
           key: `checkin:${row.id}:${b.checkIn}`,
           userId: row.userId,
-          title: "Check-in tomorrow",
-          body: `${b.guestName ? `${b.guestName} checks in` : "A guest checks in"} at ${name} tomorrow.`,
+          ...rentalCheckIn(langFor.get(row.userId) ?? "en", b.guestName, name),
         });
       } catch (err) {
         logger.warn({ err, bookingId: row.id }, "Rental reminder: unreadable booking");
@@ -139,7 +136,8 @@ async function checkAllUsers(): Promise<void> {
       try {
         const l = decryptFromStorage(row.data) as StoredLease;
         if (!l.startDate || typeof l.monthlyRent !== "number" || l.monthlyRent <= 0) continue;
-        const who = l.tenantName || "Your tenant";
+        const who = l.tenantName;
+        const lang = langFor.get(row.userId) ?? "en";
         const cur = l.currency || "EGP";
 
         // Due today.
@@ -148,8 +146,7 @@ async function checkAllUsers(): Promise<void> {
           reminders.push({
             key: `rentdue:${row.id}:${ym}`,
             userId: row.userId,
-            title: "Rent due today",
-            body: `${who}'s rent of ${fmtAmount(rentFor(l, ym))} ${cur} for ${name} is due today.`,
+            ...rentDueToday(lang, who, fmtAmount(rentFor(l, ym)), cur, name),
           });
         }
 
@@ -161,8 +158,7 @@ async function checkAllUsers(): Promise<void> {
           reminders.push({
             key: `rentlate:${row.id}:${lateYm}`,
             userId: row.userId,
-            title: "Rent overdue",
-            body: `${who}'s rent for ${name} was due ${LATE_AFTER_DAYS} days ago and isn't marked paid.`,
+            ...rentOverdue(lang, who, name, LATE_AFTER_DAYS),
           });
         }
 
@@ -173,8 +169,7 @@ async function checkAllUsers(): Promise<void> {
             reminders.push({
               key: `leaseend:${row.id}:${l.endDate}`,
               userId: row.userId,
-              title: "Contract ending soon",
-              body: `${who}'s contract for ${name} ends ${daysLeft === 0 ? "today" : `in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}.`,
+              ...leaseEnding(lang, who, name, daysLeft),
             });
           }
         }

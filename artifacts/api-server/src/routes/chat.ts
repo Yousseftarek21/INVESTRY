@@ -12,6 +12,7 @@ import {
   recurringIncomeTable,
   chatMessagesTable,
   realEstatePricesTable,
+  loansTable,
 } from "@workspace/db";
 import { eq, asc, desc } from "drizzle-orm";
 import { encryptForStorage, decryptFromStorage } from "../lib/encryption";
@@ -293,7 +294,7 @@ function summarizeTrend(
 async function buildPortfolioContext(
   userId: string,
 ): Promise<{ context: string; egxStocks: EGXStockResponse[]; globalStocks: EGXStockResponse[] }> {
-  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, globalStocks, inflation, realEstateSummary] =
+  const [holdingRows, cashRows, goalRows, alertRows, incomeRows, snapshotRows, prices, egxStocks, globalStocks, inflation, realEstateSummary, loanRows] =
     await Promise.all([
       db.select().from(holdingsTable).where(eq(holdingsTable.userId, userId)),
       db.select().from(cashAccountsTable).where(eq(cashAccountsTable.userId, userId)),
@@ -310,6 +311,7 @@ async function buildPortfolioContext(
       getCachedGlobalStocks().catch(() => []),
       fetchInflation(),
       summarizeRealEstateMarket(),
+      db.select().from(loansTable).where(eq(loansTable.userId, userId)).catch(() => []),
     ]);
 
   const holdings = holdingRows.map(
@@ -353,6 +355,14 @@ async function buildPortfolioContext(
   const pendingIncomeEGP = income
     .filter((e) => e.kind === "pending" && !e.collected)
     .reduce((sum, e) => sum + toEGP(Number(e.amount) || 0, e.currency as string | undefined, prices), 0);
+  // Loans tracked in the Loans screen: what's left on each (start balance
+  // minus payments recorded). Kept separate from net worth, as in the app.
+  const loans = loanRows.map((r) => decryptFromStorage(r.data) as Record<string, unknown>);
+  const loansOwedEGP = loans.reduce((sum, l) => {
+    const paid = (Array.isArray(l.payments) ? l.payments : []).reduce((s: number, p: { amount?: number }) => s + (Number(p?.amount) || 0), 0);
+    const left = Math.max(0, (Number(l.startBalance) || 0) - paid);
+    return sum + toEGP(left, l.currency as string | undefined, prices);
+  }, 0);
   // Floored at 0 — total debt exceeding total assets should never render
   // as a negative headline figure.
   const netWorthEGP = Math.max(0, holdingsValueEGP + cashValueEGP + pendingIncomeEGP);
@@ -369,6 +379,7 @@ async function buildPortfolioContext(
       `Breakdown — investment holdings: ${holdingsValueEGP.toFixed(0)} EGP` +
       (loanBalanceEGP > 0 ? ` (already net of ${loanBalanceEGP.toFixed(0)} EGP in outstanding loans taken against fixed-income certificates)` : "") +
       `, cash accounts: ${cashValueEGP.toFixed(0)} EGP, uncollected pending income: ${pendingIncomeEGP.toFixed(0)} EGP. ` +
+      (loansOwedEGP > 0 ? `Separately, the user tracks loans and installments in the app's Loans screen: ${loansOwedEGP.toFixed(0)} EGP still owed (${loans.map(l => String(l.name ?? "loan")).join(", ")}). The app shows these on their own and does NOT subtract them from net worth — keep them separate when answering. ` : "") +
       `This is the correct total for "net worth" or "how much am I worth" — always include all three parts, not just holdings. If asked about a loan against a certificate specifically, explain it's informational (doesn't reduce the certificate's own displayed value) but is already subtracted once at the net-worth level so the borrowed money isn't counted twice.`,
     latestSnapshot
       ? `Investment holdings value trend (holdings only, NOT net worth — as of ${latestSnapshot.date}): ${latestSnapshot.totalValue} EGP.${trends.length ? ` ${trends.join("; ")}.` : ""}`

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
@@ -8,14 +8,40 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { fmtMoney, useDateFormat } from '@/components/rental/RentalUI';
 import { dayNum } from '@/utils/rentalMath';
 import type { ComingUpItem } from '@/utils/homeSummary';
+import { useLoans } from '@/context/LoansContext';
+import { useLoanPayments } from '@/hooks/useLoanPayments';
+import { loanRemaining } from '@/utils/loanMath';
 
 /** The next few dated things across the app (see utils/homeSummary.ts comingUp). */
 export function ComingUpStrip({ items, today, hideValues }: { items: ComingUpItem[]; today: string; hideValues: boolean }) {
   const colors = useColors();
   const t = useT();
   const fmt = useDateFormat();
-  const { impact } = useHaptic();
+  const { impact, notify } = useHaptic();
+  const { loans } = useLoans();
+  const { recordPayment } = useLoanPayments();
   if (items.length === 0) return null;
+
+  // One tap to record this month's loan payment (the monthly amount, today,
+  // not taken from a cash account — the loan screen has the full form).
+  const markLoanPaid = (item: Extract<ComingUpItem, { kind: 'loan' }>) => {
+    const loan = loans.find(l => l.id === item.loanId);
+    if (!loan || !item.amount) return;
+    const amount = Math.min(item.amount, loanRemaining(loan));
+    if (amount <= 0) return;
+    impact();
+    Alert.alert(t.loanMarkPayment, t.cuMarkPaidConfirm(fmtMoney(amount, item.currency), item.name), [
+      { text: t.cancel, style: 'cancel' },
+      {
+        text: t.cuMarkPaid,
+        onPress: () => {
+          recordPayment(loan, { amount, date: today })
+            .then(() => notify())
+            .catch(() => Alert.alert(t.couldNotSave, t.loanSaveFailed));
+        },
+      },
+    ]);
+  };
 
   const money = (amount: number, currency: string) => (hideValues ? '••••' : fmtMoney(amount, currency));
   const whenLabel = (iso: string) => {
@@ -31,6 +57,13 @@ export function ComingUpStrip({ items, today, hideValues }: { items: ComingUpIte
       if (e.kind === 'checkout') return { icon: 'log-out', color: colors.primary, title: item.unitName, sub: t.cuCheckOut, open };
       if (e.kind === 'rent') return { icon: 'key', color: '#F59E0B', title: item.unitName, sub: t.cuRentDue(money(e.month.due - e.month.paid, e.lease.currency)), open };
       return { icon: 'file-text', color: colors.mutedForeground, title: item.unitName, sub: t.cuLeaseEnd, open };
+    }
+    if (item.kind === 'loan') {
+      return {
+        icon: 'file-minus', color: item.overdue ? colors.red : '#F59E0B', title: item.name,
+        sub: item.overdue ? t.loanOverdueShort : item.amount ? t.cuLoanDue(money(item.amount, item.currency)) : t.cuLoanDueNoAmount,
+        open: () => router.push({ pathname: '/loan-detail', params: { loanId: item.loanId } } as any),
+      };
     }
     if (item.kind === 'maturity') {
       return {
@@ -68,6 +101,18 @@ export function ComingUpStrip({ items, today, hideValues }: { items: ComingUpIte
             <View style={[s.when, { backgroundColor: soon ? colors.primary + '1F' : colors.muted }]}>
               <Text style={[s.whenText, { color: soon ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>{whenLabel(item.date)}</Text>
             </View>
+            {item.kind === 'loan' && !!item.amount && (
+              <TouchableOpacity
+                style={[s.paid, { borderColor: colors.green + '66' }]}
+                onPress={() => markLoanPaid(item)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={t.cuMarkPaid}
+              >
+                <Feather name="check" size={13} color={colors.green} />
+                <Text style={[s.paidText, { color: colors.green }]}>{t.cuMarkPaid}</Text>
+              </TouchableOpacity>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -84,4 +129,6 @@ const s = StyleSheet.create({
   sub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 1 },
   when: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, maxWidth: 110 },
   whenText: { fontSize: 11.5, fontFamily: 'Inter_600SemiBold' },
+  paid: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3 },
+  paidText: { fontSize: 11.5, fontFamily: 'Inter_600SemiBold' },
 });

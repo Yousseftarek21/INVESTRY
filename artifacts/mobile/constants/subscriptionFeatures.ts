@@ -6,6 +6,7 @@ import { useT } from '@/hooks/useTranslation';
 // up-front check and the on-save check can never disagree.
 export const FREE_INVESTMENT_LIMIT = 1;
 export const FREE_CASH_ACCOUNT_LIMIT = 1;
+export const FREE_LOAN_LIMIT = 1;
 
 export interface FeatureRow {
   icon: keyof typeof Feather.glyphMap;

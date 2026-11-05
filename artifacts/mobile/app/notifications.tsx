@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useT } from '@/hooks/useTranslation';
 import { useNotificationHistory } from '@/hooks/useNotificationHistory';
+import { activityRoute } from '@/utils/activityRoute';
 
 // Where tapping each event type should actually go — was previously a
 // dead-end list (no onPress at all), same gap as push notifications had
@@ -21,16 +22,6 @@ import { useNotificationHistory } from '@/hooks/useNotificationHistory';
 const EVENT_DESTINATION: Record<string, string> = {
   price_alert: '/price-alerts',
   portfolio_alert: '/(tabs)',
-  cash_added: '/cash-accounts',
-  cash_edited: '/cash-accounts',
-  holding_added: '/(tabs)/holdings',
-  holding_edited: '/(tabs)/holdings',
-  holding_sold: '/sold-holdings',
-  income_added: '/recurring-income',
-  income_edited: '/recurring-income',
-  income_collected: '/recurring-income',
-  rental_added: '/rentals',
-  rental_edited: '/rentals',
   // Settings, not straight to the paywall — the paywall itself is a modal
   // opened via a context call (showPaywall/showPaywallFromModal), not a
   // routable screen, and Settings already has a one-tap "Free Plan" card
@@ -69,7 +60,16 @@ function eventVisual(type: string, subtitle: string, colors: ReturnType<typeof u
       return { icon: <Feather name="check-circle" size={18} color={colors.green} />, color: colors.green };
     case 'rental_added':
     case 'rental_edited':
+    case 'rental_unit_added':
+    case 'lease_added':
       return { icon: <Feather name="key" size={18} color="#F59E0B" />, color: '#F59E0B' };
+    case 'loan_added':
+    case 'loan_payment':
+      return { icon: <Feather name="file-minus" size={18} color={colors.red} />, color: colors.red };
+    case 'loan_paid_off':
+      return { icon: <Feather name="check-circle" size={18} color={colors.green} />, color: colors.green };
+    case 'dividend_added':
+      return { icon: <Feather name="pie-chart" size={18} color={colors.green} />, color: colors.green };
     case 'pro_gate_notice':
       return { icon: <Feather name="lock" size={18} color={colors.primary} />, color: colors.primary };
     case 'portfolio_alert':
@@ -129,7 +129,8 @@ export default function NotificationsScreen() {
             <View style={s.list}>
               {recentEvents.map(item => {
                 const visual = eventVisual(item.type, item.subtitle, colors);
-                const destination = EVENT_DESTINATION[item.type];
+                // Your own actions open the exact item (utils/activityRoute.ts).
+                const destination = EVENT_DESTINATION[item.type] ?? activityRoute(item.type, item.entityId);
                 return (
                   <TouchableOpacity
                     key={item.id}

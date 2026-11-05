@@ -287,3 +287,29 @@ export async function ensureRentalPropertyTables(): Promise<void> {
     logger.error({ err }, "ensureRentalPropertyTables: failed — Rental Properties will be inert until this is resolved");
   }
 }
+
+// Loans the user owes (see lib/db/src/schema/loans.ts). Plus a log of
+// reminder pushes already sent, so a due-date reminder goes out once.
+export async function ensureLoansTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "loans" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "data" jsonb NOT NULL,
+        "created_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "loans_user_idx" ON "loans" ("user_id")`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "loan_reminders_sent" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "sent_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensureLoansTable: failed — loans will be inert until this is resolved");
+  }
+}
