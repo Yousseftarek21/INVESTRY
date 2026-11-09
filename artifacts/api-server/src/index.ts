@@ -13,7 +13,7 @@ import { startRentalReminderCron } from "./lib/rentalReminderCron";
 import { startLoanReminderCron } from "./lib/loanReminderCron";
 import { startPushReceiptCron } from "./lib/pushReceiptCron";
 import { ensureUserColumns } from "./lib/ensureUserColumns";
-import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable, ensureEgxCloseSnapshotsTable, ensureFeedbackTables, ensurePerformanceLeaderboardResultsTable, ensurePushTicketsTable, ensureRentalRecordsTable, ensureRealEstatePriceTables, ensureRentalPropertyTables, ensureLoansTable } from "./lib/ensureDividendsTable";
+import { ensureDividendsTable, ensureIntradayColumn, ensureSoldHoldingsTable, ensureDailyChangeSnapshotsTable, ensureReferralMonthlyWinnersTable, ensureEgxCloseSnapshotsTable, ensureFeedbackTables, ensurePerformanceLeaderboardResultsTable, ensurePushTicketsTable, ensureRentalRecordsTable, ensureRealEstatePriceTables, ensureRentalPropertyTables, ensureLoansTable, ensurePaymobPaymentsTable } from "./lib/ensureDividendsTable";
 import { sendCompetitionAnnouncement } from "./lib/competitionAnnouncement";
 import { sendProGateNotice } from "./lib/proGateNotice";
 // TEMPORARY — see oneTimeCleanup.ts's own header. Remove this import and
@@ -58,6 +58,7 @@ app.listen(port, async (err) => {
   await ensureRealEstatePriceTables();
   await ensureRentalPropertyTables();
   await ensureLoansTable();
+  await ensurePaymobPaymentsTable();
   await oneTimeClearBadFrozenLeaderboardResults(); // TEMPORARY — see its own header
   await sendCompetitionAnnouncement();
   await sendProGateNotice();

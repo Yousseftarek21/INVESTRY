@@ -28,7 +28,9 @@ export function devGuestHoldings(): Holding[] {
   if (scenario !== 'full' && scenario !== 'invest') return [];
   const base: Holding[] = [
     { id: 'dev-gold', type: 'gold', karat: '21k', form: 'physical', grams: 100, purchasePricePerGram: 4000, purchaseDate: '2025-01-01', notes: '' },
-    { id: 'dev-comi', type: 'stock', symbol: 'COMI', companyName: 'Commercial International Bank', shares: 200, purchasePricePerShare: 80, purchaseDate: '2025-01-01', notes: '' },
+    { id: 'dev-comi', type: 'stock', symbol: 'COMI', companyName: 'Commercial International Bank', shares: 1500, purchasePricePerShare: 80, purchaseDate: '2025-01-01', notes: '' },
+    { id: 'dev-swdy', type: 'stock', symbol: 'SWDY', companyName: 'Elsewedy Electric', shares: 2000, purchasePricePerShare: 62, purchaseDate: '2025-04-10', notes: '' },
+    { id: 'dev-tmgh', type: 'stock', symbol: 'TMGH', companyName: 'Talaat Moustafa Group', shares: 3000, purchasePricePerShare: 48, purchaseDate: '2025-06-01', notes: '' },
   ] as Holding[];
   if (scenario === 'invest') return base;
   return [

@@ -45,6 +45,7 @@ import { useRentalProperties } from '@/context/RentalPropertiesContext';
 import { todayIso as cairoTodayIso } from '@/utils/rentalMath';
 import { comingUp } from '@/utils/homeSummary';
 import { useLoans } from '@/context/LoansContext';
+import { DEV_GUEST } from '@/utils/devGuest';
 import { LoansHomeCard } from '@/components/loans/LoansHomeCard';
 import { useGoals } from '@/context/GoalsContext';
 import { GoalRing } from '@/components/GoalRing';
@@ -380,7 +381,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useUser();
   const displayName = (user?.unsafeMetadata?.displayName as string | undefined) || user?.firstName || '';
-  const firstName = displayName.trim().split(' ')[0] || '';
+  // Simulator demo only (DEV_GUEST is never on in a store/OTA build).
+  const firstName = displayName.trim().split(' ')[0] || (DEV_GUEST ? 'Ahmed' : '');
   const { holdings, isLoading: holdingsLoading, syncError: holdingsSyncError } = useHoldings();
   const { cashAccounts, isLoading: cashLoading } = useCash();
   const { recurringIncomes, isLoading: incomesLoading } = useRecurringIncome();

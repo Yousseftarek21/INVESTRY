@@ -423,93 +423,71 @@
   .form-success p { color: var(--muted); font-size: 15px; margin: 0; }
 
   /* Pricing */
-  .pricing-cards {
-    display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;
-    max-width: 640px; margin: 0 auto;
+  /* Pricing = the app's paywall (components/Paywall.tsx) on the web. */
+  .pw { max-width: 440px; margin: 0 auto; }
+  .pw-card, .pw-free { text-align: start; }
+  .pw-toggle { display: flex; background: #F1ECE2; border-radius: 14px; padding: 4px; margin-bottom: 16px; }
+  .pw-toggle button {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: 0; border-radius: 11px; background: transparent; padding: 10px;
+    font-family: inherit; font-size: 14px; font-weight: 700; color: var(--muted); cursor: pointer;
   }
-  .price-card {
-    flex: 1 1 260px; max-width: 280px; text-align: start;
-    border: 1px solid var(--border); border-radius: 20px; padding: 28px;
-    background: var(--card);
-  }
-  .price-card.pro { border-color: var(--accent); background: var(--bg); box-shadow: 0 0 0 1px var(--accent); }
-  .price-plan { font-size: 13px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
-  .price-card.pro .price-plan { color: var(--accent); }
-  .price-amount { font-family: 'Fraunces', Georgia, serif; font-size: 30px; font-weight: 700; letter-spacing: -0.8px; margin: 0 0 4px; }
-  html[dir="rtl"] .price-amount { font-family: 'Cairo', serif; }
-  .price-unit { font-size: 13px; color: var(--muted); margin: 0 0 20px; }
-  .price-features { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 10px; }
-  .price-features li { font-size: 13.5px; color: var(--text); display: flex; align-items: center; gap: 8px; }
-  .price-features li svg { flex-shrink: 0; color: var(--accent); }
-  .price-cta {
-    width: 100%; border: none; border-radius: 12px; padding: 13px 18px;
-    font-family: inherit; font-weight: 600; font-size: 14.5px; cursor: pointer;
-    background: var(--text); color: #fff; transition: opacity 0.15s ease;
-  }
-  .price-cta:hover { opacity: 0.85; }
-  .price-cta:disabled { opacity: 0.5; cursor: default; }
-  .price-cta.secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
-  .price-period-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
-  .price-period-toggle button {
-    flex: 1; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
-    padding: 8px; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer;
-  }
-  .price-period-toggle button.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-  .price-status-note { font-size: 13px; color: var(--muted); text-align: center; margin: 18px auto 0; max-width: 420px; }
+  .pw-toggle button.active { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .pw-toggle button:focus-visible, .pw-cta:focus-visible, .pw-seeall:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pw-save { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: var(--border); color: var(--muted); }
+  .pw-toggle button.active .pw-save { background: var(--accent); color: #fff; }
 
-  /* Pricing — Pro gets real visual weight (badge, soft glow, hover lift);
-     Free stays intentionally quiet (muted checks, plain border). */
-  .pricing-cards { max-width: 700px; gap: 24px; align-items: stretch; }
-  .price-card { max-width: 320px; padding: 32px; border-radius: 22px; position: relative; display: flex; flex-direction: column; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-  .price-card.pro {
-    box-shadow: 0 0 0 1px var(--accent), 0 16px 40px -20px rgba(169, 130, 30, 0.35);
-    padding-top: 38px;
+  .pw-card {
+    position: relative; overflow: hidden; border-radius: 24px; padding: 22px 20px 20px;
+    background: linear-gradient(150deg, #D4A63A 0%, #C79A2E 45%, #241C08 100%);
+    box-shadow: 0 14px 32px -12px rgba(199, 154, 46, 0.55); color: #fff; margin-bottom: 18px;
   }
-  .price-card.pro:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--accent), 0 22px 48px -18px rgba(169, 130, 30, 0.42); }
-  @media (prefers-reduced-motion: reduce) { .price-card.pro:hover { transform: none; } }
-
-  .pro-badge {
-    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-    display: inline-flex; align-items: center; gap: 5px;
-    background: var(--accent); color: #fff;
-    font-size: 11.5px; font-weight: 700; letter-spacing: 0.3px;
-    padding: 6px 14px; border-radius: 999px; white-space: nowrap;
+  .pw-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.38)); pointer-events: none; }
+  .pw-card > * { position: relative; z-index: 1; }
+  .pw-sweep {
+    position: absolute !important; top: -100px; bottom: -100px; width: 100px; z-index: 2 !important;
+    background: rgba(255,255,255,0.16); transform: rotate(18deg) translateX(-260px);
+    animation: pw-shine 1.3s ease-out 0.2s 1 forwards; pointer-events: none;
   }
-  html[dir="rtl"] .pro-badge { font-family: 'Cairo', sans-serif; }
-
-  .price-card.free .price-features li svg { color: var(--muted); }
-  .price-card.free .price-cta.secondary { border-color: var(--border); color: var(--muted); }
-
-  .price-savings-note {
-    font-size: 12.5px; font-weight: 600; color: var(--accent);
-    background: var(--accent-soft); display: inline-block;
-    padding: 4px 10px; border-radius: 999px; margin: 0 0 18px;
+  @keyframes pw-shine { to { transform: rotate(18deg) translateX(560px); } }
+  @media (prefers-reduced-motion: reduce) { .pw-sweep { display: none; } }
+  .pw-ribbon {
+    position: absolute !important; top: 14px; inset-inline-end: 14px; z-index: 3 !important;
+    background: #fff; color: #241C08; border-radius: 8px; padding: 4px 9px; font-size: 11px; font-weight: 700;
   }
+  .pw-ribbon:empty { display: none; }
+  .pw-issuer { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: 2.2px; color: rgba(255,255,255,0.92); }
+  .pw-price { margin: 0; display: flex; align-items: flex-end; gap: 4px; min-height: 44px; }
+  .pw-cur { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .pw-whole { font-size: 38px; font-weight: 800; letter-spacing: -1px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .pw-per { font-size: 15px; margin-bottom: 4px; color: rgba(255,255,255,0.75); }
+  .pw-billed { margin: 6px 0 0; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.8); }
+  .pw-billed:empty { display: none; }
+  .pw-hero { margin: 12px 0 0; font-size: 13px; line-height: 1.45; color: rgba(255,255,255,0.78); }
+  .pw-div { border: 0; border-top: 1px dashed rgba(255,255,255,0.3); margin: 16px 0; }
+  .pw-features { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .pw-features li { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13.5px; font-weight: 500; line-height: 1.4; color: rgba(255,255,255,0.95); }
+  .pw-features li .pw-check { width: 22px; height: 22px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pw-seeall { margin-top: 8px; border: 0; background: none; padding: 4px 0; display: inline-flex; align-items: center; gap: 4px; font-family: inherit; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.92); cursor: pointer; }
 
-  .price-features { flex: 1; }
-  .price-card.pro .price-features { gap: 14px; margin-bottom: 26px; }
-  .price-card.pro .price-features li { align-items: flex-start; }
-  /* 18 real features (was 8) need a grid, not a single tall column, to
-     keep the card a sane height — two columns once the card is wide
-     enough to hold them without crowding, one column below that. */
-  .pf-grid { display: grid; grid-template-columns: 1fr; gap: 14px 20px; }
-  @media (min-width: 640px) { .pf-grid { grid-template-columns: 1fr 1fr; } }
-  .price-feature-pro .pf-check {
-    width: 20px; height: 20px; border-radius: 999px; background: var(--accent-soft);
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    margin-top: 1px;
+  .pw-free { margin-bottom: 18px; }
+  .pw-free-title { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted); }
+  .pw-free-grid { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+  .pw-free-grid span { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+
+  .pw-cta {
+    width: 100%; border: 0; border-radius: 16px; padding: 16px; cursor: pointer;
+    background: var(--accent); color: #fff; font-family: inherit; font-size: 16px; font-weight: 700;
+    transition: opacity 0.15s ease;
   }
-  .price-feature-pro .pf-text { display: flex; flex-direction: column; gap: 1px; }
-  .price-feature-pro .pf-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
-  .price-feature-pro .pf-desc { font-size: 12px; color: var(--muted); line-height: 1.45; }
-  /* Pro genuinely needs more room at 18 features — Free stays at the
-     shared 320px above. */
-  .price-card.pro { max-width: 620px; flex: 1 1 460px; }
-  .pricing-cards { max-width: 980px; }
-
-  .price-cta.primary-lg { padding: 15px 18px; font-size: 15px; transition: opacity 0.15s ease, transform 0.15s ease; }
-  .price-cta.primary-lg:hover { opacity: 0.9; transform: translateY(-1px); }
-  @media (prefers-reduced-motion: reduce) { .price-cta.primary-lg:hover { transform: none; } }
+  .pw-cta:hover { opacity: 0.9; }
+  .pw-cta:disabled { opacity: 0.6; cursor: default; }
+  .price-status-note { font-size: 13px; color: var(--muted); text-align: center; margin: 12px auto 0; }
+  .price-status-note:empty { display: none; }
+  .pw-legal { margin: 12px 0 0; font-size: 11.5px; line-height: 1.5; text-align: center; color: var(--muted); }
+  .pw-links { margin: 8px 0 0; display: flex; justify-content: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .pw-links a { color: var(--muted); }
+  .pw .trust-line { text-align: center; }
 
   .trust-line {
     display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -800,71 +778,42 @@
         <p class="section-sub" data-i18n="pricingSub">Everything you need to track your investments. Upgrade only when you're ready.</p>
       </div>
 
-      <div class="pricing-cards">
-        <div class="price-card free">
-          <p class="price-plan" data-i18n="planFree">Free</p>
-          <p class="price-amount">0 EGP</p>
-          <p class="price-unit" data-i18n="planFreeUnit">forever</p>
-          <ul class="price-features">
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF1">1 investment</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF2">Live prices</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF4">1 cash account</span></li>
-            <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="planFreeF6">Basic portfolio tracking</span></li>
-          </ul>
-          <button class="price-cta secondary" disabled data-i18n="planCurrentFree">Your current plan</button>
+      <!-- Same paywall as the app (components/Paywall.tsx): billing toggle,
+           the gold "membership card", top features with See all, what's
+           already free, then checkout. Copy matches the app's own strings. -->
+      <div class="pw">
+        <div class="pw-toggle">
+          <button type="button" id="periodMonthly" data-i18n="pwMonthly">Monthly</button>
+          <button type="button" id="periodAnnual" class="active"><span data-i18n="pwAnnual">Annual</span><span class="pw-save" id="pwSaveBadge"></span></button>
         </div>
 
-        <div class="price-card pro">
-          <span class="pro-badge">⭐ <span data-i18n="mostPopular">Most Popular</span></span>
-          <p class="price-plan">Pro</p>
-          <!-- Real billing is live (PRO_FREE_DURING_LAUNCH = false below) —
-               the launch free-for-everyone period has ended. Prices here
-               match Paywall.tsx's own MONTHLY_PRICE/ANNUAL_PRICE constants
-               exactly (the fallback used for this same Android/web Stripe
-               checkout path in the app). -->
-          <div class="price-period-toggle">
-            <button type="button" id="periodMonthly" class="active" data-i18n="periodMonthly">Monthly</button>
-            <button type="button" id="periodAnnual" data-i18n="periodAnnual">Annual · Save 33%</button>
-          </div>
-          <p class="price-amount" id="proAmount">99 EGP</p>
-          <p class="price-unit" id="proUnit" data-i18n="perMonth">per month</p>
-          <p class="price-savings-note" id="proSavingsNote" style="display:none;"></p>
-          <!-- All 18 rows here mirror getPaywallHighlights() in the mobile
-               app exactly (constants/subscriptionFeatures.ts) — the single
-               source the app itself uses for both its Paywall and its
-               Manage Subscription screen. One shared checkmark icon per
-               row (not a bespoke icon per feature) so this list stays
-               trivially easy to keep in sync — the risk with the old
-               8-item, custom-icon version is exactly what caused it to
-               silently drift out of date and miss 10 real Pro features. -->
-          <ul class="price-features pf-grid">
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF1t">Unlimited Investments</span><span class="pf-desc" data-i18n="planProF1d">Hold as many holdings as you want — no limit, ever.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF2t">Unlimited Cash Accounts</span><span class="pf-desc" data-i18n="planProF2d">Every bank balance and wallet, tracked together.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF3t">Unlimited Goals</span><span class="pf-desc" data-i18n="planProF3d">Set and track as many savings goals as you want.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF4t">Income Tracking</span><span class="pf-desc" data-i18n="planProF4d">Unlimited recurring income, or money owed to you.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF5t">AI Financial Assistant</span><span class="pf-desc" data-i18n="planProF5d">Full access to the AI assistant for your portfolio.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF6t">Alerts &amp; Summaries</span><span class="pf-desc" data-i18n="planProF6d">Unlimited price alerts, plus daily &amp; weekly summaries.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF7t">Notification Controls</span><span class="pf-desc" data-i18n="planProF7d">Full control over every notification setting.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF8t">Live Market Rates</span><span class="pf-desc" data-i18n="planProF8d">Live USD/EGP rate, gold &amp; silver prices by karat.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF9t">Personalized Signals</span><span class="pf-desc" data-i18n="planProF9d">Signals generated from your own real portfolio.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF10t">Portfolio Health Score</span><span class="pf-desc" data-i18n="planProF10d">A health score and diversification breakdown.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF11t">Full Performance Charts</span><span class="pf-desc" data-i18n="planProF11d">Charts across every time frame, not just a snapshot.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF12t">Allocation Breakdown</span><span class="pf-desc" data-i18n="planProF12d">See exactly how your assets are allocated.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF13t">Top Performers</span><span class="pf-desc" data-i18n="planProF13d">See which of your holdings is actually working.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF14t">Benchmark Comparison</span><span class="pf-desc" data-i18n="planProF14d">Compare your portfolio to the community benchmark.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF15t">Fix My Portfolio</span><span class="pf-desc" data-i18n="planProF15d">A concrete rebalancing plan, not just a diagnosis.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF16t">Dividend Tracking</span><span class="pf-desc" data-i18n="planProF16d">Unlimited dividend tracking.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF17t">Export Your Data</span><span class="pf-desc" data-i18n="planProF17d">Export your portfolio as CSV or PDF.</span></span></li>
-            <li class="price-feature-pro"><span class="pf-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span><span class="pf-text"><span class="pf-title" data-i18n="planProF18t">Target Allocation</span><span class="pf-desc" data-i18n="planProF18d">Set target allocations to guide rebalancing.</span></span></li>
-          </ul>
-          <button class="price-cta primary-lg" id="proCta" type="button" data-i18n="subscribeBtn">Unlock Pro</button>
+        <div class="pw-card">
+          <span class="pw-sweep" aria-hidden="true"></span>
+          <span class="pw-ribbon" id="pwRibbon"></span>
+          <p class="pw-issuer">INVESTRY</p>
+          <p class="pw-price"><span class="pw-cur">EGP</span><span class="pw-whole" id="proAmount">67</span><span class="pw-per" id="proUnit"></span></p>
+          <p class="pw-billed" id="proSavingsNote"></p>
+          <p class="pw-hero" data-i18n="pwHeroSub">Unlock your full financial potential</p>
+          <hr class="pw-div">
+          <ul class="pw-features" id="pwFeatures"></ul>
+          <button type="button" class="pw-seeall" id="pwSeeAll" aria-expanded="false"></button>
         </div>
+
+        <div class="pw-free">
+          <p class="pw-free-title" data-i18n="pwAlsoFreeTitle">Already free — no upgrade needed</p>
+          <div class="pw-free-grid" id="pwFree"></div>
+        </div>
+
+        <button class="pw-cta" id="proCta" type="button" data-i18n="subscribeBtn">Upgrade to Pro</button>
+        <p class="price-status-note" id="pricingStatusNote"></p>
+        <p class="pw-legal" id="pwRenew"></p>
+        <p class="pw-links">
+          <a href="https://api.investry.app/api/legal/terms" data-i18n="pwTerms">Terms of Use</a>
+          <span aria-hidden="true">·</span>
+          <a href="https://api.investry.app/api/legal/privacy" data-i18n="pwPrivacy">Privacy Policy</a>
+        </p>
+        <p class="trust-line"><span data-i18n="trustStripe">🔒 Secure checkout via Stripe · Cancel anytime</span></p>
       </div>
-
-      <p class="price-status-note" id="pricingStatusNote"></p>
-      <p class="trust-line">
-        <span data-i18n="trustStripe">🔒 Secure checkout via Stripe · Cancel anytime</span>
-      </p>
     </div>
   </section>
 
@@ -1065,6 +1014,23 @@
 <script>
   var translations = {
     en: {
+      pwMonthly: "Monthly",
+      pwAnnual: "Annual",
+      pwPerMonth: "month",
+      pwBilledYearly: "{price} EGP billed yearly · save {pct}% vs. paying monthly",
+      pwHeroSub: "Unlock your full financial potential",
+      pwSeeAll: "See all {n} Pro features",
+      pwShowFewer: "Show fewer",
+      pwAlsoFreeTitle: "Already free — no upgrade needed",
+      pwRenewMonthly: "Renews automatically every month until cancelled. Cancel anytime here with Manage billing — Pro works in the app on the same account.",
+      pwRenewYearly: "Renews automatically every year until cancelled. Cancel anytime here with Manage billing — Pro works in the app on the same account.",
+      pwTerms: "Terms of Use",
+      pwOnceMonthly: "One-time payment for 1 month of Pro — it doesn't renew automatically. Buy again any time to add more time. Pro works in the app on the same account.",
+      pwOnceYearly: "One-time payment for 1 year of Pro — it doesn't renew automatically. Buy again any time to add more time. Pro works in the app on the same account.",
+      trustPaymob: "🔒 Secure checkout via Paymob · Cards, Meeza, wallets & Apple Pay",
+      extendPro: "Add more Pro time",
+      proUntil: "You have Pro until {date}",
+      pwPrivacy: "Privacy Policy",
       navHow: "How It Works",
       navFeatures: "Features",
       navPricing: "Pricing",
@@ -1161,7 +1127,7 @@
       faq4a: "Yes, anytime from the billing portal — your next invoice is prorated automatically.",
       faq5q: "What happens if my subscription expires?",
       faq5a: "You're moved back to the Free plan automatically. Nothing you've already entered is ever deleted.",
-      subscribeBtn: "Get Pro Free",
+      subscribeBtn: "Upgrade to Pro",
       proFreeAmount: "Free",
       proFreeUnit: "during launch — no card required",
       proFreeNote: "Pro is free for everyone right now — download the app and sign in to get started, no payment needed.",
@@ -1207,6 +1173,23 @@
       toggleLabel: "العربية",
     },
     ar: {
+      pwMonthly: "شهري",
+      pwAnnual: "سنوي",
+      pwPerMonth: "شهر",
+      pwBilledYearly: "{price} جنيه في السنة · وفّر {pct}% مقارنة بالدفع الشهري",
+      pwHeroSub: "افتح إمكاناتك المالية الكاملة",
+      pwSeeAll: "عرض كل مزايا Pro ({n})",
+      pwShowFewer: "عرض أقل",
+      pwAlsoFreeTitle: "مجاني بالفعل — لا حاجة للترقية",
+      pwRenewMonthly: "يتجدد تلقائيًا كل شهر حتى تلغيه. تقدر تلغي في أي وقت من هنا عن طريق \"إدارة الاشتراك\" — وPro بيشتغل في التطبيق على نفس الحساب.",
+      pwRenewYearly: "يتجدد تلقائيًا كل سنة حتى تلغيه. تقدر تلغي في أي وقت من هنا عن طريق \"إدارة الاشتراك\" — وPro بيشتغل في التطبيق على نفس الحساب.",
+      pwTerms: "شروط الاستخدام",
+      pwOnceMonthly: "دفعة واحدة لشهر Pro — مش بيتجدد تلقائيًا. تقدر تشتري تاني في أي وقت وتزوّد المدة. وPro بيشتغل في التطبيق على نفس الحساب.",
+      pwOnceYearly: "دفعة واحدة لسنة Pro — مش بيتجدد تلقائيًا. تقدر تشتري تاني في أي وقت وتزوّد المدة. وPro بيشتغل في التطبيق على نفس الحساب.",
+      trustPaymob: "🔒 دفع آمن عن طريق Paymob · كروت، ميزة، محافظ وApple Pay",
+      extendPro: "زوّد مدة Pro",
+      proUntil: "عندك Pro لحد {date}",
+      pwPrivacy: "سياسة الخصوصية",
       navHow: "طريقة الاستخدام",
       navFeatures: "المميزات",
       navPricing: "الأسعار",
@@ -1303,7 +1286,7 @@
       faq4a: "أيوه، في أي وقت من بوابة الفوترة — الفاتورة الجاية بتتحسب تلقائيًا حسب الفرق.",
       faq5q: "لو الاشتراك خلص هيحصل إيه؟",
       faq5a: "هترجع للخطة المجانية تلقائيًا. أي حاجة سجلتها قبل كده متتحذفش خالص.",
-      subscribeBtn: "فعّل Pro مجانًا",
+      subscribeBtn: "ترقية إلى Pro",
       proFreeAmount: "مجاني",
       proFreeUnit: "طول فترة الإطلاق — من غير كارت",
       proFreeNote: "خطة Pro مجانية للجميع دلوقتي — حمّل التطبيق وسجّل دخول عشان تبدأ، من غير أي دفع.",
@@ -1494,14 +1477,54 @@
   var periodMonthlyBtn = document.getElementById('periodMonthly');
   var periodAnnualBtn = document.getElementById('periodAnnual');
   var proSavingsNote = document.getElementById('proSavingsNote');
-  var selectedPeriod = 'monthly';
+  var selectedPeriod = 'annual'; // opens on yearly, like the app
   // Real current price (confirmed directly, not from Paywall.tsx's own
   // MONTHLY_PRICE/ANNUAL_PRICE fallback constants — those are Android/web
   // only and had drifted stale at 79/799; iOS itself always shows its own
   // live App Store price via RevenueCat, untouched by this page either
   // way). If those constants in the app ever get corrected to match,
   // update this literal alongside them — nothing here reads from there.
-  var PRICES = { monthly: '99 EGP', annual: '799 EGP' };
+  // EGP amounts, refreshed from GET /api/stripe/prices so the page always
+  // shows exactly what checkout charges.
+  var PRICES = { monthly: 99, annual: 799 };
+  // Which checkout is live (Paymob or Stripe) and whether plans auto-renew.
+  var PAY = { provider: 'paymob', renews: false };
+  fetch(API_BASE + '/api/payments/config').then(function (r) { return r.ok ? r.json() : null; }).then(function (p) {
+    if (!p) return;
+    PAY = { provider: p.provider, renews: !!p.renews };
+    if (p.monthly > 0 && p.annual > 0) PRICES = { monthly: p.monthly, annual: p.annual };
+    updatePeriodDisplay();
+  }).catch(function () {});
+
+  // The app's own paywall copy (getPaywallHighlights + "Already free"), so
+  // the web and the app list the same things in the same order.
+  var PW_COPY = {"en": {"features": ["Unlimited investments — hold as many as you want", "Full access to the AI Financial Assistant", "Fix My Portfolio — a concrete rebalancing plan, not just a diagnosis", "Rental Properties — stays, tenants & profit", "Portfolio health score & diversification breakdown", "Portfolio & price alerts, plus daily & weekly summaries", "Unlimited cash accounts", "Income tracking — recurring, or money owed to you", "Savings goals with progress tracking", "Full control over every notification setting", "Personalized portfolio signals", "Full performance charts across all time frames", "Asset allocation breakdown", "Top performers ranking", "Compare your portfolio to the community benchmark", "Dividend tracking", "Export your portfolio as CSV or PDF", "Set target allocations for rebalancing"], "alsoFree": ["Financial Tools", "Markets", "Daily History", "Performance Leaderboard", "Invite Friends", "Shariah Screening", "T-Bills Calculator"]}, "ar": {"features": ["استثمارات غير محدودة — احتفظ بما تشاء", "وصول كامل للمساعد المالي الذكي", "إصلاح محفظتي — خطة إعادة توازن ملموسة، لا مجرد تشخيص", "العقارات المؤجرة — الإقامات والمستأجرون والأرباح", "درجة صحة المحفظة وتوزيع التنويع", "تنبيهات المحفظة والأسعار، بالإضافة إلى الملخصات اليومية والأسبوعية", "حسابات نقدية غير محدودة", "تتبّع الدخل — متكرر، أو مبالغ مستحقة لك", "أهداف ادخار مع متابعة التقدم", "تحكم كامل في كل إعدادات الإشعارات", "إشارات المحفظة الشخصية", "مخططات أداء كاملة لكل الفترات الزمنية", "تفصيل توزيع الأصول", "ترتيب الأفضل أداءً", "قارن محفظتك بمتوسط أداء المجتمع", "تتبّع الأرباح الموزعة", "تصدير محفظتك كملف CSV أو PDF", "حدد نسب توزيع مستهدفة لإعادة التوازن"], "alsoFree": ["الأدوات المالية", "الأسواق", "السجل اليومي", "لوحة متصدري الأداء", "ادعُ أصدقاءك", "الفحص الشرعي", "حاسبة أذون الخزانة"]}};
+  var PW_TOP = 6;
+  var pwShowAll = false;
+  var CHECK_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2b2308" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+  var SMALL_CHECK = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
+  function renderPaywallLists() {
+    var lang = currentLang(), t = translations[lang], c = PW_COPY[lang] || PW_COPY.en;
+    var list = document.getElementById('pwFeatures');
+    var shown = pwShowAll ? c.features : c.features.slice(0, PW_TOP);
+    list.innerHTML = '';
+    shown.forEach(function (text) {
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="pw-check">' + CHECK_SVG + '</span>';
+      var span = document.createElement('span'); span.textContent = text; li.appendChild(span);
+      list.appendChild(li);
+    });
+    var seeAll = document.getElementById('pwSeeAll');
+    seeAll.textContent = pwShowAll ? t.pwShowFewer : t.pwSeeAll.replace('{n}', c.features.length);
+    seeAll.setAttribute('aria-expanded', pwShowAll ? 'true' : 'false');
+    var free = document.getElementById('pwFree');
+    free.innerHTML = '';
+    c.alsoFree.forEach(function (text) {
+      var s2 = document.createElement('span'); s2.innerHTML = SMALL_CHECK; s2.appendChild(document.createTextNode(text)); free.appendChild(s2);
+    });
+  }
+  document.getElementById('pwSeeAll').addEventListener('click', function () { pwShowAll = !pwShowAll; renderPaywallLists(); });
 
   // The launch free-for-everyone period has ended (BETA_UNLOCK_ALL is off
   // server-side) — Pro is real, paid billing now. Kept as a named flag
@@ -1541,26 +1564,28 @@
 
   function updatePeriodDisplay() {
     var t = translations[currentLang()];
-    if (PRO_FREE_DURING_LAUNCH) {
-      proAmount.textContent = t.proFreeAmount;
-      proUnit.textContent = t.proFreeUnit;
-      proSavingsNote.style.display = 'none';
-      return;
-    }
-    periodMonthlyBtn.classList.toggle('active', selectedPeriod === 'monthly');
-    periodAnnualBtn.classList.toggle('active', selectedPeriod === 'annual');
-    proAmount.textContent = PRICES[selectedPeriod];
-    proUnit.textContent = selectedPeriod === 'monthly' ? t.perMonth : t.perYear;
-    if (selectedPeriod === 'annual') {
-      var perMonth = (parseFloat(PRICES.annual) / 12).toFixed(2);
-      proSavingsNote.textContent = t.annualPerMonth.replace('{price}', perMonth);
-      proSavingsNote.style.display = 'inline-block';
-    } else {
-      proSavingsNote.style.display = 'none';
-    }
+    var isAnnual = selectedPeriod === 'annual';
+    var savings = Math.round((1 - (PRICES.annual / 12) / PRICES.monthly) * 100);
+    periodMonthlyBtn.classList.toggle('active', !isAnnual);
+    periodAnnualBtn.classList.toggle('active', isAnnual);
+    document.getElementById('pwSaveBadge').textContent = savings > 0 ? '-' + savings + '%' : '';
+    document.getElementById('pwRibbon').textContent = isAnnual && savings > 0 ? '-' + savings + '%' : '';
+    // The big number is per month on both plans, like the app.
+    proAmount.textContent = isAnnual ? Math.round(PRICES.annual / 12) : PRICES.monthly;
+    proUnit.textContent = '/' + t.pwPerMonth;
+    proSavingsNote.textContent = isAnnual ? t.pwBilledYearly.replace('{price}', PRICES.annual.toLocaleString('en-US')).replace('{pct}', savings) : '';
+    document.getElementById('pwRenew').textContent = PAY.renews
+      ? (isAnnual ? t.pwRenewYearly : t.pwRenewMonthly)
+      : (isAnnual ? t.pwOnceYearly : t.pwOnceMonthly);
+    var trust = document.querySelector('[data-i18n="trustStripe"]');
+    if (trust) trust.textContent = PAY.provider === 'paymob' ? t.trustPaymob : t.trustStripe;
+    renderPaywallLists();
   }
   periodMonthlyBtn.addEventListener('click', function () { selectedPeriod = 'monthly'; updatePeriodDisplay(); });
   periodAnnualBtn.addEventListener('click', function () { selectedPeriod = 'annual'; updatePeriodDisplay(); });
+  // Drawn right away, not after sign-in loads, so prices and features show
+  // even if Clerk is slow or blocked.
+  updatePeriodDisplay();
 
   // Reflects the real backend-synced plan — never assumed, never set from
   // just "the user clicked subscribe." Same GET /api/subscription the app
@@ -1588,6 +1613,10 @@
       if (data && data.plan === 'pro') {
         proCta.textContent = t.manageBillingBtn;
         pricingStatusNote.textContent = t.currentPlanPro;
+      } else if (data && data.tempProUntil) {
+        // A Paymob pass (or referral credit): Pro until a date; buying again adds time.
+        proCta.textContent = t.extendPro;
+        pricingStatusNote.textContent = t.proUntil.replace('{date}', new Date(data.tempProUntil).toLocaleDateString(currentLang() === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
       } else {
         proCta.textContent = t.subscribeBtn;
       }
@@ -1607,8 +1636,21 @@
     }
     proCta.disabled = true;
     var isManage = proCta.textContent === t.manageBillingBtn;
-    var endpoint = isManage ? '/api/stripe/create-portal-session' : '/api/stripe/create-checkout-session';
-    var body = isManage ? {} : { billingPeriod: selectedPeriod };
+    // No payment provider switched on yet: say so instead of opening any checkout.
+    if (!isManage && !PAY.provider) {
+      pricingStatusNote.textContent = t.subscribeUnavailable;
+      proCta.disabled = false;
+      return;
+    }
+    var u = window.Clerk.user;
+    var endpoint = isManage ? '/api/stripe/create-portal-session'
+      : PAY.provider === 'paymob' ? '/api/paymob/create-checkout' : '/api/stripe/create-checkout-session';
+    var body = isManage ? {} : {
+      billingPeriod: selectedPeriod,
+      email: u && u.primaryEmailAddress ? u.primaryEmailAddress.emailAddress : undefined,
+      firstName: u ? u.firstName || undefined : undefined,
+      lastName: u ? u.lastName || undefined : undefined,
+    };
 
     window.Clerk.session.getToken().then(function (token) {
       return fetch(API_BASE + endpoint, {

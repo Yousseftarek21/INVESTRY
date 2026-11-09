@@ -31,6 +31,15 @@
         "cd /Users/yousseftarek/Documents/egx-signals && DATABASE_URL=postgres://localhost:5432/egx_signals_test npm run dev -- --port 3300"
       ],
       "port": 3300
+    },
+    {
+      "name": "investry-website",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd artifacts/website && npx --yes http-server -p 4321 -c-1 ."
+      ],
+      "port": 4321
     }
   ]
 }

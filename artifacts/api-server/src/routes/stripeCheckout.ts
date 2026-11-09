@@ -3,6 +3,7 @@ import { clerkMiddleware, getAuth } from "@clerk/express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getStripe } from "../lib/stripe";
+import { egpPriceId, EGP_PRICES } from "../lib/stripePrices";
 import { logger } from "../lib/logger";
 
 // The website's side of the subscription flow — the mobile app never hits
@@ -17,19 +18,19 @@ router.use(["/stripe/create-checkout-session", "/stripe/create-portal-session"],
   next();
 });
 
-const PRICE_IDS: Record<"monthly" | "annual", string | undefined> = {
-  monthly: process.env.STRIPE_PRICE_ID_MONTHLY,
-  annual: process.env.STRIPE_PRICE_ID_ANNUAL,
-};
+// GET /api/stripe/prices — the EGP amounts the website shows, so the page
+// and the checkout can never disagree. Public, no sign-in needed.
+router.get("/stripe/prices", (_req, res) => {
+  res.json({ currency: "EGP", monthly: EGP_PRICES.monthly, annual: EGP_PRICES.annual });
+});
 
 // POST /api/stripe/create-checkout-session — { billingPeriod: 'monthly' | 'annual' }
 router.post("/stripe/create-checkout-session", async (req, res) => {
   const { userId } = getAuth(req);
   const stripe = getStripe();
   const billingPeriod = req.body?.billingPeriod === "annual" ? "annual" : "monthly";
-  const priceId = PRICE_IDS[billingPeriod];
 
-  if (!stripe || !priceId) {
+  if (!stripe) {
     logger.warn({ billingPeriod }, "Checkout requested but Stripe is not fully configured");
     res.status(503).json({ error: "Subscriptions are not available yet" });
     return;
@@ -44,6 +45,10 @@ router.post("/stripe/create-checkout-session", async (req, res) => {
       .select({ stripeCustomerId: usersTable.stripeCustomerId })
       .from(usersTable)
       .where(eq(usersTable.id, userId!));
+
+    // Always the EGP price, so Egyptian cards are charged in pounds with no
+    // currency conversion on the receipt.
+    const priceId = await egpPriceId(stripe, billingPeriod);
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",

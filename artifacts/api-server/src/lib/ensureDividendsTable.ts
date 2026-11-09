@@ -288,6 +288,24 @@ export async function ensureRentalPropertyTables(): Promise<void> {
   }
 }
 
+// One row per Paymob payment that unlocked Pro — the webhook claims the row
+// before extending Pro, so a resent callback never adds the time twice.
+export async function ensurePaymobPaymentsTable(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "paymob_payments" (
+        "id" text PRIMARY KEY,
+        "user_id" text NOT NULL,
+        "period" text NOT NULL,
+        "amount_cents" integer NOT NULL,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+  } catch (err) {
+    logger.error({ err }, "ensurePaymobPaymentsTable: failed — Paymob payments can't unlock Pro until this is resolved");
+  }
+}
+
 // Loans the user owes (see lib/db/src/schema/loans.ts). Plus a log of
 // reminder pushes already sent, so a due-date reminder goes out once.
 export async function ensureLoansTable(): Promise<void> {
